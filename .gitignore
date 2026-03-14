@@ -1,0 +1,39 @@
+## IDE and User Settings
+.vs/
+.vscode/
+.idea/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+## Build Output
+bin/
+obj/
+out/
+[Publish]/
+coverage/
+TestResults/
+test-results/
+
+## Node & Package
+node_modules/
+*.log
+.env
+
+## Aspire & Containers
+.aspire/
+.devcontainer/
+.dockerignore
+# Ignore local secrets, but NOT the template
+appsettings.Local.json
+secrets.json
+
+## Playwright & Testing
+playwright-report/
+blob-report/
+playwright/.cache/
+
+## OS Specific
+.DS_Store
+Thumbs.db
