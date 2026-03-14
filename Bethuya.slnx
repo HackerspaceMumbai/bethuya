@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Project Path="AppHost/AppHost/AppHost.csproj" />
+  <Project Path="ServiceDefaults/ServiceDefaults.csproj" Id="8ddc89f8-756d-45a6-abd4-5856ee6bea70" />
+  <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Bethuya.Hybrid.Shared.csproj" />
+  <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Web.Client/Bethuya.Hybrid.Web.Client.csproj" />
+  <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Bethuya.Hybrid.Web.csproj" />
+  <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid/Bethuya.Hybrid.csproj" />
+</Solution>
