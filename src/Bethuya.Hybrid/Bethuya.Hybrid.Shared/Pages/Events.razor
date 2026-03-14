@@ -1,0 +1,119 @@
+@page "/events"
+
+<PageTitle>Events — Bethuya</PageTitle>
+
+<div class="container mx-auto p-4">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Community Events</h1>
+        <BbButton Variant="ButtonVariant.Default" OnClick="@(() => showCreateForm = true)">
+            + New Event
+        </BbButton>
+    </div>
+
+    @if (showCreateForm)
+    {
+        <BbCard Class="mb-6 p-4">
+            <h2 class="text-lg font-semibold mb-4">Create Event</h2>
+            <div class="grid gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Title</label>
+                    <BbInput @bind-Value="newEventTitle" Placeholder="Event title" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Description</label>
+                    <BbTextarea @bind-Value="newEventDescription" Placeholder="Event description" />
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Capacity</label>
+                        <BbInput @bind-Value="newEventCapacity" Placeholder="100" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Location</label>
+                        <BbInput @bind-Value="newEventLocation" Placeholder="Location" />
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <BbButton Variant="ButtonVariant.Default" OnClick="CreateEvent">Create</BbButton>
+                    <BbButton Variant="ButtonVariant.Outline" OnClick="@(() => showCreateForm = false)">Cancel</BbButton>
+                </div>
+            </div>
+        </BbCard>
+    }
+
+    @if (events.Count == 0)
+    {
+        <BbCard Class="p-8 text-center">
+            <p class="text-muted-foreground">No events yet. Create your first community event!</p>
+        </BbCard>
+    }
+    else
+    {
+        <div class="grid gap-4">
+            @foreach (var evt in events)
+            {
+                <BbCard Class="p-4" data-test="event-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-lg font-semibold">@evt.Title</h3>
+                            <p class="text-sm text-muted-foreground">@evt.Description</p>
+                            <div class="flex gap-4 mt-2 text-sm">
+                                <span>📍 @(evt.Location ?? "TBD")</span>
+                                <span>👥 Capacity: @evt.Capacity</span>
+                                <span>📊 Status: @evt.Status</span>
+                            </div>
+                        </div>
+                        <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                                  OnClick="@(() => NavigateToEvent(evt.Id))">
+                            View →
+                        </BbButton>
+                    </div>
+                </BbCard>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private List<EventViewModel> events = [];
+    private bool showCreateForm;
+    private string newEventTitle = "";
+    private string newEventDescription = "";
+    private string newEventCapacity = "100";
+    private string newEventLocation = "";
+
+    private void CreateEvent()
+    {
+        if (string.IsNullOrWhiteSpace(newEventTitle)) return;
+
+        events.Add(new EventViewModel
+        {
+            Id = Guid.NewGuid(),
+            Title = newEventTitle,
+            Description = newEventDescription,
+            Capacity = int.TryParse(newEventCapacity, out var cap) ? cap : 100,
+            Location = newEventLocation,
+            Status = "Draft"
+        });
+
+        newEventTitle = "";
+        newEventDescription = "";
+        newEventCapacity = "100";
+        newEventLocation = "";
+        showCreateForm = false;
+    }
+
+    private void NavigateToEvent(Guid id) => Navigation.NavigateTo($"/events/{id}");
+
+    private sealed class EventViewModel
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = "";
+        public string? Description { get; set; }
+        public int Capacity { get; set; }
+        public string? Location { get; set; }
+        public string Status { get; set; } = "Draft";
+    }
+}
