@@ -1,0 +1,119 @@
+@page "/curation/{EventId:guid}"
+@rendermode InteractiveServer
+
+<PageTitle>Attendee Curation — Bethuya</PageTitle>
+
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-2">🎯 Attendee Curation</h1>
+    <p class="text-sm text-muted-foreground mb-6">
+        ⚠️ This view handles attendee PII — processed locally via Foundry Local. Never sent to cloud.
+    </p>
+
+    <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-2">
+            <BbCard Class="p-4 mb-4">
+                <h2 class="text-lg font-semibold mb-4">Fairness Budget</h2>
+                <p class="text-sm text-muted-foreground mb-4">
+                    Set aspirational diversity and equity targets. These are nudges, not hard quotas.
+                </p>
+                <div class="space-y-3">
+                    @foreach (var target in fairnessTargets)
+                    {
+                        <div class="flex items-center gap-4">
+                            <span class="w-48 text-sm">@target.Label</span>
+                            <div class="flex-1">
+                                <div class="w-full bg-secondary rounded-full h-2">
+                                    <div class="bg-primary h-2 rounded-full" style="width: @(target.Actual / target.Target * 100)%"></div>
+                                </div>
+                            </div>
+                            <span class="text-sm w-24 text-right">@($"{target.Actual * 100:F0}")% / @($"{target.Target * 100:F0}")%</span>
+                        </div>
+                    }
+                </div>
+            </BbCard>
+
+            <BbCard Class="p-4">
+                <h2 class="text-lg font-semibold mb-4">Attendance Proposal</h2>
+                <p class="text-sm text-muted-foreground mb-2">
+                    AI recommendations — <strong>you decide</strong>. Review each suggestion carefully.
+                </p>
+
+                <BbButton Variant="ButtonVariant.Default" OnClick="InvokeCurator" Disabled="@isCurating"
+                          Class="mb-4">
+                    @(isCurating ? "Curating..." : "🤖 Generate Curation Proposal")
+                </BbButton>
+
+                @if (curationInsights.Count > 0)
+                {
+                    <div class="space-y-2">
+                        @foreach (var insight in curationInsights)
+                        {
+                            <div class="p-2 border rounded text-sm">
+                                <span class="font-medium">@insight.Type:</span> @insight.Message
+                            </div>
+                        }
+                    </div>
+                }
+            </BbCard>
+        </div>
+
+        <div>
+            <BbCard Class="p-4">
+                <h2 class="text-lg font-semibold mb-4">Curation Principles</h2>
+                <div class="space-y-2 text-sm">
+                    <p>✅ Consent-first — only consented fields</p>
+                    <p>✅ Explainable — transparent reasoning</p>
+                    <p>✅ Human approval — AI recommends only</p>
+                    <p>❌ No auto-accept/reject</p>
+                    <p>❌ No opaque scoring</p>
+                    <p>❌ No trait inference</p>
+                    <p>🔒 PII processed locally only</p>
+                </div>
+            </BbCard>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private bool isCurating;
+    private List<FairnessTarget> fairnessTargets =
+    [
+        new() { Label = "First-time attendees", Target = 0.30, Actual = 0.22 },
+        new() { Label = "Students", Target = 0.20, Actual = 0.15 },
+        new() { Label = "Geographic diversity", Target = 0.40, Actual = 0.35 }
+    ];
+
+    private List<InsightViewModel> curationInsights = [];
+
+    private async Task InvokeCurator()
+    {
+        isCurating = true;
+        await Task.Delay(1500); // Simulated — replace with Curator Agent call via Foundry Local
+
+        curationInsights =
+        [
+            new() { Type = "DEI Nudge", Message = "Consider increasing first-time attendee representation (currently 22%, target 30%)" },
+            new() { Type = "Theme Alignment", Message = "12 registrants have strong AI/ML interests matching event theme" },
+            new() { Type = "Over-representation", Message = "No over-representation detected in current pool" },
+            new() { Type = "Community Signal", Message = "5 registrants are returning community members" },
+            new() { Type = "Equity Prompt", Message = "3 registrants from underrepresented geographic areas — consider prioritizing" }
+        ];
+
+        isCurating = false;
+    }
+
+    private sealed class FairnessTarget
+    {
+        public string Label { get; set; } = "";
+        public double Target { get; set; }
+        public double Actual { get; set; }
+    }
+
+    private sealed class InsightViewModel
+    {
+        public string Type { get; set; } = "";
+        public string Message { get; set; } = "";
+    }
+}

@@ -1,6 +1,7 @@
 using Bethuya.Hybrid.Web.Components;
 using Bethuya.Hybrid.Shared.Services;
 using Bethuya.Hybrid.Web.Services;
+using BlazorBlueprint.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,8 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
+
+builder.Services.AddBlazorBlueprintComponents();
 
 // Add device-specific services used by the Bethuya.Hybrid.Shared project
 builder.Services.AddSingleton<IFormFactor, FormFactor>();

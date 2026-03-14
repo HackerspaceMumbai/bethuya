@@ -1,0 +1,97 @@
+@page "/agents/{EventId:guid}"
+@rendermode InteractiveServer
+
+<PageTitle>Agent Panel — Bethuya</PageTitle>
+
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-6">🤖 Agent Panel</h1>
+    <p class="text-muted-foreground mb-4">Event ID: @EventId</p>
+
+    <div class="grid grid-cols-2 gap-6">
+        <div>
+            <h2 class="text-lg font-semibold mb-2">Planner Agent</h2>
+            <p class="text-sm text-muted-foreground mb-2">Draft agendas, timings, and speaker suggestions.</p>
+            <BbButton Variant="ButtonVariant.Default" OnClick="InvokePlanner" Disabled="@isProcessing">
+                @(isProcessing ? "Processing..." : "📋 Draft Agenda")
+            </BbButton>
+
+            @if (plannerResult is not null)
+            {
+                <BbCard Class="mt-4 p-4">
+                    <h3 class="font-semibold mb-2">Draft Result</h3>
+                    <p class="text-sm">@plannerResult</p>
+                    <div class="flex gap-2 mt-4">
+                        <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                                  OnClick="@(() => ApproveResult("Planner"))">✅ Approve</BbButton>
+                        <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Small"
+                                  OnClick="@(() => RejectResult("Planner"))">❌ Reject</BbButton>
+                    </div>
+                </BbCard>
+            }
+        </div>
+
+        <div>
+            <h2 class="text-lg font-semibold mb-2">Reporter Agent</h2>
+            <p class="text-sm text-muted-foreground mb-2">Draft post-event summaries and action items.</p>
+            <BbButton Variant="ButtonVariant.Default" OnClick="InvokeReporter" Disabled="@isProcessing">
+                @(isProcessing ? "Processing..." : "📝 Draft Report")
+            </BbButton>
+
+            @if (reporterResult is not null)
+            {
+                <BbCard Class="mt-4 p-4">
+                    <h3 class="font-semibold mb-2">Draft Report</h3>
+                    <p class="text-sm">@reporterResult</p>
+                    <div class="flex gap-2 mt-4">
+                        <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                                  OnClick="@(() => ApproveResult("Reporter"))">✅ Approve</BbButton>
+                        <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Small"
+                                  OnClick="@(() => RejectResult("Reporter"))">❌ Reject</BbButton>
+                    </div>
+                </BbCard>
+            }
+        </div>
+    </div>
+
+    @if (approvalMessage is not null)
+    {
+        <BbCard Class="mt-6 p-4 border-green-500">
+            <p class="text-sm">@approvalMessage</p>
+        </BbCard>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private bool isProcessing;
+    private string? plannerResult;
+    private string? reporterResult;
+    private string? approvalMessage;
+
+    private async Task InvokePlanner()
+    {
+        isProcessing = true;
+        await Task.Delay(1000); // Simulated — replace with actual agent call
+        plannerResult = "Draft agenda: Opening (30 min) → Keynote (45 min) → Workshop (90 min) → Networking (30 min) → Closing (15 min)";
+        isProcessing = false;
+    }
+
+    private async Task InvokeReporter()
+    {
+        isProcessing = true;
+        await Task.Delay(1000); // Simulated — replace with actual agent call
+        reporterResult = "The event brought together 85 community members for an engaging session on AI-assisted development. Key highlights include...";
+        isProcessing = false;
+    }
+
+    private void ApproveResult(string agentName)
+    {
+        approvalMessage = $"✅ {agentName} draft approved. Decision logged to audit trail.";
+    }
+
+    private void RejectResult(string agentName)
+    {
+        approvalMessage = $"❌ {agentName} draft rejected. The agent will be prompted for revisions.";
+    }
+}
