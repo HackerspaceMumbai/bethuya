@@ -1,7 +1,10 @@
 using Bethuya.Hybrid.Web.Components;
 using Bethuya.Hybrid.Shared.Services;
+using Bethuya.Hybrid.Web.Auth;
 using Bethuya.Hybrid.Web.Services;
 using BlazorBlueprint.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Hosting;
 using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,9 +21,29 @@ builder.Services.AddBlazorBlueprintComponents();
 // Add device-specific services used by the Bethuya.Hybrid.Shared project
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
 
-// Auth abstraction — unauthenticated placeholder until a provider branch is merged.
-// See: feature/auth/entra | feature/auth/auth0 | feature/auth/keycloak
-builder.Services.AddScoped<ICurrentUserService, NullCurrentUserService>();
+// Authentication — provider selected via appsettings "Authentication:Provider"
+builder.AddBethuyaWebAuthentication();
+builder.AddBethuyaAuthorization();
+
+// Resolve auth options to determine provider mode
+var authOptions = new BethuyaAuthOptions();
+builder.Configuration.GetSection(BethuyaAuthOptions.SectionName).Bind(authOptions);
+
+if (authOptions.Provider == AuthProviderType.None)
+{
+    // Dev mode: fake auth state + null user service
+    builder.Services.AddScoped<AuthenticationStateProvider, DevelopmentAuthenticationStateProvider>();
+    builder.Services.AddScoped<ICurrentUserService, NullCurrentUserService>();
+    builder.Services.AddCascadingAuthenticationState();
+    builder.Services.AddAuthorization();
+}
+else
+{
+    // Production: real OIDC auth state + claims-based user service
+    builder.Services.AddScoped<AuthenticationStateProvider, PersistingRevalidatingAuthenticationStateProvider>();
+    builder.Services.AddScoped<ICurrentUserService, ClaimsCurrentUserService>();
+    builder.Services.AddHttpContextAccessor();
+}
 
 // Refit typed client for Backend Events API (Aspire service discovery)
 builder.Services
@@ -55,11 +78,17 @@ app.UseHttpsRedirection();
 // Security headers (CSP, X-Frame-Options, etc.) + rate limiting — from ServiceDefaults
 app.UseSecurityDefaults();
 
+// Authentication + Authorization middleware (no-op when provider is None)
+app.UseBethuyaAuthentication();
+
 app.UseCors("BethuyaMobileClients");
 
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+// Auth endpoints (login/logout/user-info) — only functional when a provider is configured
+app.MapBethuyaAuthEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

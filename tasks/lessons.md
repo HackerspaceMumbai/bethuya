@@ -18,6 +18,24 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-03-21] Partial Squad initialization needs a structural validation pass
+- **What happened:** The repository already had a `.squad/` directory, but `team.md` had no members, `casting/registry.json` was missing, and the Scribe files were only loosely scaffolded.
+- **Root cause:** Squad setup stopped after creating baseline files, so Team Mode state existed without a usable roster or casting metadata.
+- **Fix:** Rebuilt the roster, routing, casting policy/registry/history, normalized Scribe, and created the core agent charters/histories before routing work.
+- **Prevention:** When `.squad/` exists, validate `team.md`, `casting/*.json`, and agent charter/history files together before assuming the squad is operational.
+
+## [2026-03-21] ServiceDefaults cannot reference Bethuya.Hybrid.Shared without circular dependencies
+- **What happened:** Build error CS0246 — `using Bethuya.Hybrid.Shared.Auth` in ServiceDefaults failed because ServiceDefaults has no project reference to Shared.
+- **Root cause:** ServiceDefaults → Web/Backend (shared infra), Shared → Web/Client/MAUI (UI). Adding Shared → ServiceDefaults would drag ASP.NET FrameworkReference into the Razor class library and MAUI project.
+- **Fix:** Inlined the role/policy string values in ServiceDefaults extension methods with a sync-note comment. Kept the constants as the source of truth in Shared.
+- **Prevention:** ServiceDefaults should only depend on framework packages and NuGet libraries, never on application projects. If shared types are needed, inline them or create a minimal abstractions package.
+
+## [2026-03-21] TUnit TUnitAssertions0005 — cannot Assert.That() on const values
+- **What happened:** Build errors on `await Assert.That(BethuyaRoles.Admin).IsEqualTo("Admin")` — TUnit's source generator rejects assertions on compile-time constants.
+- **Root cause:** TUnit v0.50 analyzer flags `Assert.That(constantValue)` as a code smell since the assertion is always trivially true/false.
+- **Fix:** Replaced per-constant assertions with aggregate tests (e.g., "all roles are distinct and non-empty").
+- **Prevention:** In TUnit, test computed/runtime values, not compile-time constants. For constant validation, test properties like uniqueness and non-emptiness.
+
 ## [2025-07-17] Blazor Blueprint Separator enum is `SeparatorOrientation`, not `Orientation`
 - **What happened:** Build error CS0103 — `Orientation` does not exist in context
 - **Root cause:** BbSeparator uses `SeparatorOrientation.Vertical` not generic `Orientation.Vertical`. Each BB component has its own prefixed enum.

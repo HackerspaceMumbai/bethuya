@@ -1,5 +1,6 @@
 @page "/agents/{EventId:guid}"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireOrganizer)]
 
 <PageTitle>Agent Panel — Bethuya</PageTitle>
 

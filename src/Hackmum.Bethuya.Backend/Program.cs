@@ -11,6 +11,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 builder.AddServiceDefaults();
+builder.AddBethuyaApiAuthentication();
+builder.AddBethuyaAuthorization();
 builder.AddBethuyaInfrastructure();
 builder.AddBethuyaAI();
 builder.AddBethuyaAgents();
@@ -25,6 +27,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseSecurityDefaults();
+app.UseBethuyaAuthentication();
 
 app.MapEventEndpoints();
 app.MapRegistrationEndpoints();

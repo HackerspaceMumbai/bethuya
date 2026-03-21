@@ -6,12 +6,14 @@ How to decide who handles what.
 
 | Work Type | Route To | Examples |
 |-----------|----------|----------|
-| {domain 1} | {Name} | {example tasks} |
-| {domain 2} | {Name} | {example tasks} |
-| {domain 3} | {Name} | {example tasks} |
-| Code review | {Name} | Review PRs, check quality, suggest improvements |
-| Testing | {Name} | Write tests, find edge cases, verify fixes |
-| Scope & priorities | {Name} | What to build next, trade-offs, decisions |
+| Architecture, decomposition, and code review | Neo | System design, scope trade-offs, reviewer gates, cross-cutting changes |
+| Blazor UI, render modes, and UX flows | Trinity | Razor components, page flows, UI interactions, InteractiveServer-sensitive pages |
+| APIs, data access, and service wiring | Tank | ASP.NET Core, DI, data flow, provider abstractions, backend integration |
+| Testing and verification | Switch | TUnit, Playwright, edge cases, regression checks |
+| Authentication, authorization, and privacy-sensitive work | Morpheus | Auth providers, claims/roles, policy design, security review |
+| Code review | Neo | Review PRs, check quality, enforce reviewer gates |
+| Testing | Switch | Write tests, find edge cases, verify fixes |
+| Scope & priorities | Neo | What to build next, trade-offs, decisions |
 | Async issue work (bugs, tests, small features) | @copilot 🤖 | Well-defined tasks matching capability profile |
 | Session logging | Scribe | Automatic — never needs routing |
 

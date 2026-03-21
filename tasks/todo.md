@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-03-21] Repair Squad Setup and Implement Extensible Identity System
+- **Status:** done
+- **Agent/Owner:** Squad Coordinator
+- **Description:** Normalized `.squad/` workspace and implemented production-ready identity system with interchangeable Entra External ID, Auth0, and Keycloak strategies via `Authentication:Provider` config switch.
+- **Acceptance:** ✅ Squad repaired. ✅ Identity system implemented with strategy pattern. ✅ `NullCurrentUserService` retained for dev mode. ✅ `InteractiveServer` pages protected with `[Authorize]` policies. ✅ Build: 0 errors, 0 warnings. ✅ Tests: 55/55 pass.
+
 ## [2026-03-17] Wire Event Drafting End-to-End (Create + List)
 - **Status:** in-progress
 - **Agent/Owner:** Copilot CLI

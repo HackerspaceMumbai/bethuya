@@ -1,0 +1,17 @@
+@using Microsoft.AspNetCore.Components.Authorization
+
+<AuthorizeView>
+    <Authorized>
+        <div class="login-display" data-test="login-display-authenticated">
+            <span class="login-display-name" data-test="user-name">@context.User.Identity?.Name</span>
+            <form method="post" action="/authentication/logout">
+                <button type="submit" class="login-display-logout" data-test="logout-button">Log out</button>
+            </form>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="login-display" data-test="login-display-anonymous">
+            <a href="/authentication/login" class="login-display-login" data-test="login-link">Log in</a>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
