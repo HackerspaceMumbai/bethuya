@@ -1,0 +1,17 @@
+@using Bethuya.Hybrid.Shared.Components.Dashboard
+
+<div data-test="ai-insights-banner">
+<BbAlert Class="insights-banner">
+    <LucideIcon Name="lightbulb" Size="22" Class="insights-icon" />
+    <BbAlertTitle Class="insights-title">AI Insights</BbAlertTitle>
+    <BbAlertDescription Class="insights-text">
+        Your <strong>@EventTitle</strong> needs a final agenda.
+        <a href="@ReviewUrl" class="insights-link">Review now.</a>
+    </BbAlertDescription>
+</BbAlert>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string EventTitle { get; set; } = "";
+    [Parameter, EditorRequired] public string ReviewUrl { get; set; } = "#";
+}

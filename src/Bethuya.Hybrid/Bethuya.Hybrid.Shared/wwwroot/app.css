@@ -1,23 +1,72 @@
+/* ── Hackerspace Mumbai · Dark Gold Design System ── */
+:root {
+    --hs-bg:              #0d0b09;
+    --hs-card:            #181210;
+    --hs-card-hover:      #1e1715;
+    --hs-sidebar:         #0a0807;
+    --hs-gold:            #D4A830;
+    --hs-gold-15:         rgba(212, 168, 48, 0.15);
+    --hs-gold-25:         rgba(212, 168, 48, 0.25);
+    --hs-gold-60:         rgba(212, 168, 48, 0.6);
+    --hs-text:            #F0EAE0;
+    --hs-text-muted:      #7a6a57;
+    --hs-border:          rgba(212, 168, 48, 0.2);
+    --hs-border-strong:   rgba(212, 168, 48, 0.55);
+    --hs-radius:          10px;
+    --hs-transition:      0.18s ease;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--hs-text);
+    background-color: var(--hs-bg);
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--hs-gold);
+}
+
+a:hover {
+    color: #E8BE48;
+    text-decoration: underline;
 }
 
 .btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    color: var(--hs-bg);
+    background-color: var(--hs-gold);
+    border-color: var(--hs-gold);
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background-color: #E8BE48;
+    border-color: #E8BE48;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem var(--hs-bg), 0 0 0 0.3rem var(--hs-gold);
+}
+
+/* Skip-to-main accessibility link */
+.skip-link {
+    position: absolute;
+    top: -3rem;
+    left: 1rem;
+    background: var(--hs-gold);
+    color: var(--hs-bg);
+    padding: 0.5rem 1rem;
+    border-radius: 0 0 var(--hs-radius) var(--hs-radius);
+    font-weight: 700;
+    z-index: 9999;
+    transition: top 0.1s;
+}
+
+.skip-link:focus {
+    top: 0;
 }
 
 .content {
-    padding-top: 1.1rem;
+    padding-top: 1.5rem;
 }
 
 h1:focus {

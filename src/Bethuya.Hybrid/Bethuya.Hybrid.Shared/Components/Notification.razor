@@ -1,0 +1,79 @@
+@* Notification toast — wraps BbAlert with fixed positioning and auto-dismiss.
+   Place data-test on the wrapper div because BB components don't support arbitrary HTML attributes. *@
+
+@if (IsVisible)
+{
+    <div class="notification-container" data-test="notification">
+        <BbAlert Variant="@Variant">
+            @Message
+            <button class="notification-close" @onclick="HandleDismiss" aria-label="Close notification">✕</button>
+        </BbAlert>
+    </div>
+}
+
+@implements IDisposable
+
+@code {
+    /// <summary>The notification text to display.</summary>
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>Controls visibility. Supports two-way binding via <see cref="IsVisibleChanged"/>.</summary>
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    /// <summary>Callback for two-way binding on <see cref="IsVisible"/>.</summary>
+    [Parameter]
+    public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    /// <summary>Alert style variant. Use <c>AlertVariant.Danger</c> for errors.</summary>
+    [Parameter]
+    public AlertVariant Variant { get; set; } = AlertVariant.Default;
+
+    /// <summary>Seconds before auto-dismiss. Set to 0 to disable auto-dismiss.</summary>
+    [Parameter]
+    public int AutoDismissSeconds { get; set; } = 5;
+
+    private CancellationTokenSource? _cts;
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible && AutoDismissSeconds > 0)
+        {
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+            _ = AutoDismissAsync(_cts.Token);
+        }
+    }
+
+    private async Task AutoDismissAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(AutoDismissSeconds * 1000, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                await HandleDismiss();
+                StateHasChanged();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Dismissed manually before timeout
+        }
+    }
+
+    private async Task HandleDismiss()
+    {
+        _cts?.Cancel();
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

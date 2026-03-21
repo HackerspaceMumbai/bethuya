@@ -11,6 +11,7 @@
     <ProjectReference Include="..\Bethuya.Hybrid.Web.Client\Bethuya.Hybrid.Web.Client.csproj" />
     <ProjectReference Include="..\..\..\ServiceDefaults\ServiceDefaults.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <PackageReference Include="Refit.HttpClientFactory" />
   </ItemGroup>
 
 </Project>

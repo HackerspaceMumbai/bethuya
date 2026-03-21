@@ -1,0 +1,51 @@
+/* ── Create Event Dialog ── */
+::deep .create-dialog {
+    background-color: var(--hs-card);
+    border: 1px solid var(--hs-border-strong);
+    border-radius: 12px;
+    max-width: 560px;
+    color: var(--hs-text);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding: 0 1.5rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.form-field--full {
+    grid-column: 1 / -1;
+}
+
+.field-select,
+.field-input {
+    background-color: #110e0c;
+    border: 1px solid var(--hs-border);
+    color: var(--hs-text);
+    border-radius: 7px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.88rem;
+    width: 100%;
+    transition: border-color var(--hs-transition);
+}
+
+.field-select:focus,
+.field-input:focus {
+    outline: none;
+    border-color: var(--hs-gold);
+    box-shadow: 0 0 0 2px var(--hs-gold-15);
+}
+
+::deep .form-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 0.6rem;
+    padding-top: 0.25rem;
+}

@@ -1,0 +1,47 @@
+/* ── Stat Card ── */
+::deep .stat-card {
+    background-color: var(--hs-card);
+    border: 1px solid var(--hs-border);
+    border-radius: var(--hs-radius);
+    padding: 1.1rem 1.2rem 1.3rem;
+    transition: border-color var(--hs-transition), background-color var(--hs-transition);
+    cursor: default;
+}
+
+::deep .stat-card:hover {
+    border-color: var(--hs-gold-60);
+    background-color: var(--hs-card-hover);
+}
+
+::deep .stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+    padding: 0;
+}
+
+::deep .stat-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--hs-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+::deep .stat-icon-wrap {
+    color: var(--hs-gold);
+    opacity: 0.55;
+}
+
+::deep .stat-value-wrap {
+    padding: 0;
+}
+
+::deep .stat-value {
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: var(--hs-gold);
+    line-height: 1;
+    letter-spacing: -0.02em;
+}

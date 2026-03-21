@@ -1,0 +1,62 @@
+@using Bethuya.Hybrid.Shared.Components.Dashboard
+
+<article data-test="event-card">
+<BbCard Class="event-card">
+    <BbCardContent Class="event-card-body">
+        <div class="event-badge-row">
+            <BbBadge Variant="@GetStatusVariant(Event.Status)">@Event.Status</BbBadge>
+            @if (Event.AgendaStatus is not null)
+            {
+                <BbBadge Variant="BadgeVariant.Outline">@Event.AgendaStatus</BbBadge>
+            }
+            else
+            {
+                <BbBadge Variant="BadgeVariant.Secondary">No Agenda</BbBadge>
+            }
+        </div>
+        <h3 class="event-title">@Event.Title</h3>
+        <p class="event-desc">@(Event.Description ?? "")</p>
+        <div class="event-meta">
+            <div class="meta-row">
+                <LucideIcon Name="map-pin" Size="13" />
+                @(Event.Location ?? "TBD")
+            </div>
+            <div class="meta-row">
+                <LucideIcon Name="calendar" Size="13" />
+                @Event.StartDate.ToString("MMM d, yyyy")@(Event.StartDate != Event.EndDate ? $" – {Event.EndDate:MMM d, yyyy}" : "")
+            </div>
+            <div class="meta-row">
+                <LucideIcon Name="users" Size="13" />
+                Capacity: @Event.Capacity
+            </div>
+        </div>
+    </BbCardContent>
+    <BbCardFooter Class="event-card-foot">
+        <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                  OnClick="@(() => OnDraftClick.InvokeAsync(Event))">
+            <span data-test="draft-schedule-btn">Draft Schedule →</span>
+        </BbButton>
+        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                  OnClick="@(() => OnRegistrationsClick.InvokeAsync(Event))">
+            Registrations
+        </BbButton>
+    </BbCardFooter>
+</BbCard>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public EventViewModel Event { get; set; } = default!;
+    [Parameter] public EventCallback<EventViewModel> OnDraftClick { get; set; }
+    [Parameter] public EventCallback<EventViewModel> OnRegistrationsClick { get; set; }
+
+    private static BadgeVariant GetStatusVariant(string status) => status switch
+    {
+        "Draft" => BadgeVariant.Secondary,
+        "Planning" => BadgeVariant.Outline,
+        "RegistrationOpen" => BadgeVariant.Default,
+        "InProgress" => BadgeVariant.Default,
+        "Completed" => BadgeVariant.Default,
+        "Cancelled" => BadgeVariant.Destructive,
+        _ => BadgeVariant.Secondary
+    };
+}

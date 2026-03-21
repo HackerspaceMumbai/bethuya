@@ -1,0 +1,149 @@
+@using Bethuya.Hybrid.Shared.Components.Dashboard
+@using Bethuya.Hybrid.Shared.Models
+@using Bethuya.Hybrid.Shared.Services
+
+@inject IEventApi EventApi
+
+<BbDialog Open="@IsOpen" OpenChanged="@HandleOpenChanged">
+    <BbDialogContent Class="create-dialog">
+        <BbDialogHeader>
+            <BbDialogTitle>Create Event</BbDialogTitle>
+        </BbDialogHeader>
+
+        <EditForm Model="@formModel" OnValidSubmit="HandleValidSubmit" FormName="create-event">
+            <DataAnnotationsValidator />
+
+            <div class="form-grid">
+                <div class="form-field form-field--full">
+                    <BbLabel For="newTitle">Title *</BbLabel>
+                    <BbInput id="newTitle" @bind-Value="formModel.Title" Placeholder="Event title" />
+                    <ValidationMessage For="@(() => formModel.Title)" />
+                </div>
+                <div class="form-field form-field--full">
+                    <BbLabel For="newDescription">Description</BbLabel>
+                    <BbTextarea id="newDescription" @bind-Value="formModel.Description" Placeholder="Event description" />
+                    <ValidationMessage For="@(() => formModel.Description)" />
+                </div>
+                <div class="form-field">
+                    <BbLabel For="newType">Event Type</BbLabel>
+                    <select id="newType" class="field-select" @bind="formModel.Type">
+                        <option value="Workshop">Workshop</option>
+                        <option value="Meetup">Meetup</option>
+                        <option value="Hackathon">Hackathon</option>
+                        <option value="Conference">Conference</option>
+                        <option value="Panel">Panel</option>
+                        <option value="Social">Social</option>
+                    </select>
+                    <ValidationMessage For="@(() => formModel.Type)" />
+                </div>
+                <div class="form-field">
+                    <BbLabel For="newCapacity">Capacity</BbLabel>
+                    <InputNumber id="newCapacity" @bind-Value="formModel.Capacity" class="field-input" />
+                    <ValidationMessage For="@(() => formModel.Capacity)" />
+                </div>
+                <div class="form-field form-field--full">
+                    <BbLabel For="newLocation">Location</BbLabel>
+                    <BbInput id="newLocation" @bind-Value="formModel.Location" Placeholder="Location" />
+                    <ValidationMessage For="@(() => formModel.Location)" />
+                </div>
+                <div class="form-field">
+                    <BbLabel For="newStartDate">Start Date</BbLabel>
+                    <input id="newStartDate" type="date" class="field-input" @bind="formModel.StartDate" />
+                    <ValidationMessage For="@(() => formModel.StartDate)" />
+                </div>
+                <div class="form-field">
+                    <BbLabel For="newEndDate">End Date</BbLabel>
+                    <input id="newEndDate" type="date" class="field-input" @bind="formModel.EndDate" />
+                    <ValidationMessage For="@(() => formModel.EndDate)" />
+                </div>
+            </div>
+
+            @if (errorMessage is not null)
+            {
+                <div data-test="create-error" class="mt-3">
+                    <BbAlert Variant="AlertVariant.Danger">@errorMessage</BbAlert>
+                </div>
+            }
+
+            <BbDialogFooter Class="form-actions">
+                <BbButton Variant="ButtonVariant.Default" Type="ButtonType.Submit" Disabled="@isSaving">
+                    @(isSaving ? "Creating…" : "Create")
+                </BbButton>
+                <BbButton Variant="ButtonVariant.Outline" OnClick="HandleCancel" Disabled="@isSaving">Cancel</BbButton>
+            </BbDialogFooter>
+        </EditForm>
+    </BbDialogContent>
+</BbDialog>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EventCallback<EventViewModel> OnEventCreated { get; set; }
+
+    private CreateEventFormModel formModel = new();
+    private bool isSaving;
+    private string? errorMessage;
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            var dto = new CreateEventDto(
+                Title: formModel.Title,
+                Description: formModel.Description,
+                Type: formModel.Type,
+                Capacity: formModel.Capacity,
+                StartDate: formModel.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                EndDate: formModel.EndDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                Location: formModel.Location,
+                CreatedBy: "organizer@hackmum.org");
+
+            var created = await EventApi.CreateAsync(dto);
+
+            var viewModel = new EventViewModel
+            {
+                Id = created.Id,
+                Title = created.Title,
+                Description = created.Description,
+                Type = created.Type,
+                Status = created.Status,
+                Capacity = created.Capacity,
+                Location = created.Location,
+                StartDate = DateOnly.FromDateTime(created.StartDate.DateTime),
+                EndDate = DateOnly.FromDateTime(created.EndDate.DateTime)
+            };
+
+            await OnEventCreated.InvokeAsync(viewModel);
+            ResetForm();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Failed to create event. Please try again.";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        ResetForm();
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task HandleOpenChanged(bool open)
+    {
+        if (!open) ResetForm();
+        await IsOpenChanged.InvokeAsync(open);
+    }
+
+    private void ResetForm()
+    {
+        formModel = new CreateEventFormModel();
+        errorMessage = null;
+    }
+}

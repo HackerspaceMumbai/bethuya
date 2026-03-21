@@ -1,0 +1,21 @@
+@using Bethuya.Hybrid.Shared.Components.Dashboard
+
+<div data-test="stat-card">
+<BbCard Class="stat-card">
+    <BbCardHeader Class="stat-header">
+        <BbCardTitle Class="stat-label">@Label</BbCardTitle>
+        <span class="stat-icon-wrap" aria-hidden="true">
+            <LucideIcon Name="@IconName" Size="18" />
+        </span>
+    </BbCardHeader>
+    <BbCardContent Class="stat-value-wrap">
+        <span class="stat-value">@Value</span>
+    </BbCardContent>
+</BbCard>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public int Value { get; set; }
+    [Parameter, EditorRequired] public string IconName { get; set; } = "calendar";
+}

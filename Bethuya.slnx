@@ -5,20 +5,22 @@
     <File Path="Directory.Packages.props" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Hackmum.Bethuya.Core/Hackmum.Bethuya.Core.csproj" />
     <Project Path="src/Hackmum.Bethuya.Agents/Hackmum.Bethuya.Agents.csproj" />
     <Project Path="src/Hackmum.Bethuya.AI/Hackmum.Bethuya.AI.csproj" />
     <Project Path="src/Hackmum.Bethuya.Backend/Hackmum.Bethuya.Backend.csproj" />
     <Project Path="src/Hackmum.Bethuya.Infrastructure/Hackmum.Bethuya.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="src/Hackmum.Bethuya.Core/Hackmum.Bethuya.Core.csproj" />
-    <Project Path="tests/Bethuya.Benchmarks/Bethuya.Benchmarks.csproj" />
     <Project Path="tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj" />
+    <Project Path="tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj" />
+    <Project Path="tests/Bethuya.Benchmarks/Bethuya.Benchmarks.csproj" />
   </Folder>
   <Project Path="AppHost/AppHost/AppHost.csproj" />
   <Project Path="ServiceDefaults/ServiceDefaults.csproj" Id="8ddc89f8-756d-45a6-abd4-5856ee6bea70" />
-  <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Bethuya.Hybrid.Shared.csproj" />
-  <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Web.Client/Bethuya.Hybrid.Web.Client.csproj" />
-  <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Bethuya.Hybrid.Web.csproj" />
-  <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid/Bethuya.Hybrid.csproj" />
+  <Folder Name="/frontend/">
+    <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Bethuya.Hybrid.Shared.csproj" />
+    <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Bethuya.Hybrid.Web.csproj" />
+    <Project Path="src/Bethuya.Hybrid/Bethuya.Hybrid.Web.Client/Bethuya.Hybrid.Web.Client.csproj" />
+  </Folder>
 </Solution>

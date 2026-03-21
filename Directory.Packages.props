@@ -20,6 +20,9 @@
     <PackageVersion Include="Auth0.AspNetCore.Authentication" Version="1.4.0" />
     <!-- Input validation -->
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.0" />
+    <!-- Refit — typed REST client generation -->
+    <PackageVersion Include="Refit" Version="10.0.1" />
+    <PackageVersion Include="Refit.HttpClientFactory" Version="10.0.1" />
     <PackageVersion Include="BlazorBlueprint.Components" Version="3.5.2" />
     <PackageVersion Include="BlazorBlueprint.Icons.Lucide" Version="2.0.0" />
     <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.50" />
@@ -28,5 +31,27 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.5" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.5" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.5" />
+    <!-- EF Core — Azure SQL (local SQL Server container via Aspire for dev) -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5" />
+    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.0.0" />
+    <!-- Aspire hosting for SQL Server (AppHost) -->
+    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.1.2" />
+    
+    <!-- Testing — TUnit (not xUnit/NUnit per project standards) -->
+    <PackageVersion Include="TUnit" Version="0.50.0" />
+    <!-- E2E — Playwright for .NET -->
+    <PackageVersion Include="Microsoft.Playwright" Version="1.52.0" />
+    <PackageVersion Include="Microsoft.Playwright.MSTest" Version="1.52.0" />
+    <!-- MSTest -->
+    <PackageVersion Include="MSTest" Version="4.1.0" />
+    <!-- Benchmarking -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+    <!-- Microsoft.Extensions.AI for AI provider abstraction -->
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.4.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.4.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.5" />
   </ItemGroup>
 </Project>

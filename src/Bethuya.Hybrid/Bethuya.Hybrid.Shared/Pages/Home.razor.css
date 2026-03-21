@@ -1,0 +1,82 @@
+/* ── Dashboard page — layout-only scoped styles ── */
+/* Component-level styles live in Components/Dashboard/*.razor.css */
+
+/* ── Skip link (accessibility) ── */
+.sr-only:not(:focus):not(:active) {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+/* ── Dashboard grid ── */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+@media (min-width: 900px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr 1.05fr;
+        align-items: start;
+    }
+}
+
+/* ── Stats 2×2 ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* ── Events section ── */
+.events-section {
+    padding-top: 0.5rem;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--hs-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+}
+
+.empty-state {
+    background-color: var(--hs-card);
+    border: 1px solid var(--hs-border);
+    border-radius: var(--hs-radius);
+    padding: 2.5rem;
+    text-align: center;
+    color: var(--hs-text-muted);
+}
+
+.empty-hint {
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+}
+
+/* ── Events grid ── */
+.events-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 700px) {
+    .events-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1100px) {
+    .events-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
