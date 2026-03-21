@@ -40,6 +40,8 @@
     <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.0.0" />
     <!-- Aspire hosting for SQL Server (AppHost) -->
     <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.1.2" />
+    <!-- Aspire hosting for Keycloak (AppHost — local OIDC testing) -->
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.1.2-preview.1.26125.13" />
     
     <!-- Testing — TUnit (not xUnit/NUnit per project standards) -->
     <PackageVersion Include="TUnit" Version="0.50.0" />

@@ -131,34 +131,37 @@ Accessible, headless primitives for a high-performance shadcn/ui inspired fronte
     / (root)
     ├─ Bethuya.slnx
     ├─ Directory.Build.props
+    ├─ Directory.Packages.props              # Central Package Management (all versions here)
     ├─ README.md
     │
+    ├─ AppHost/AppHost/                      # .NET Aspire AppHost (SQL, Keycloak, Backend, Web)
+    ├─ ServiceDefaults/                      # Aspire shared: resilience, service discovery, OpenTelemetry
+    │  └─ Auth/                             # Auth extensions, options, provider routing
+    │
     ├─ src/
-    │  ├─ Hackmum.Bethuya.App/              # MAUI Blazor Hybrid client (WebView, Blazor Blueprint UI in wwwroot)
-    │  │   ├─ wwwroot/
-    │  │   │   ├─ theme.css                 # (optional) shadcn/tweakcn theme variables
-    │  │   │   └─ index.html                # host page, references blazorblueprint.css
+    │  ├─ Bethuya.Hybrid/                   # Blazor Hybrid + Web umbrella
+    │  │   ├─ Bethuya.Hybrid/              # .NET MAUI Blazor Hybrid (Android/iOS/macOS/Windows)
+    │  │   ├─ Bethuya.Hybrid.Web/          # Blazor Web App (SSR + WASM host)
+    │  │   │   └─ Auth/                    # DevelopmentAuthStateProvider, ClaimsCurrentUserService
+    │  │   ├─ Bethuya.Hybrid.Web.Client/   # Blazor WebAssembly client
+    │  │   └─ Bethuya.Hybrid.Shared/       # Shared Razor components, Auth (roles, policies, UserInfo)
     │  ├─ Hackmum.Bethuya.Core/             # Domain: Events, Registrations, Decisions, FairnessBudget
-    │  ├─ Hackmum.Bethuya.Agents/           # Planner, Curator(attendees), Facilitator, Reporter
+    │  ├─ Hackmum.Bethuya.Agents/           # Planner, Curator, Facilitator, Reporter agents
     │  ├─ Hackmum.Bethuya.AI/               # Provider router (Foundry/Ollama/Azure/OpenAI), prompts, memory
-    │  ├─ Hackmum.Bethuya.Backend/          # Backend APIs/services (Aspire-connected)
-    │  ├─ Hackmum.Bethuya.Infrastructure/   # Storage (Azure SQL), repos, platform adapters
-    │  └─ Hackmum.Bethuya.Tests/            # Unit & integration tests (TDD)
+    │  ├─ Hackmum.Bethuya.Backend/          # Minimal API (Aspire-connected, Refit-ready)
+    │  └─ Hackmum.Bethuya.Infrastructure/   # Storage (Azure SQL), repos, platform adapters
     │
     ├─ tests/
-    │  └─ Hackmum.Bethuya.E2E/              # Playwright .NET E2E (with traces)
-    │
-    ├─ aspire/
-    │  ├─ Hackmum.Bethuya.AppHost/          # Aspire AppHost (compose Backend + Workers + Resources)
-    │  ├─ Hackmum.Bethuya.ServiceHost/      # Agent workers + resources
-    │  ├─ resources/                        # DB / queue config; migrations; seeders
-    │  └─ dashboards/                       # Observability presets
+    │  ├─ Hackmum.Bethuya.Tests/            # TUnit unit & integration tests (TDD-first)
+    │  ├─ Hackmum.Bethuya.E2E/              # Playwright .NET E2E (Chromium/WebKit/Firefox + traces)
+    │  └─ Bethuya.Benchmarks/               # BenchmarkDotNet micro-benchmarks
     │
     ├─ copilot/
-    │  ├─ skills/                           # GitHub Copilot SDK skills (repo-aware)
-    │  └─ extension/                        # Optional VS Code extension wiring
+    │  └─ skills/                           # GitHub Copilot SDK skills (repo-aware)
     │
-    └─ assets/                               # Branding, screenshots, sample data
+    └─ tasks/
+       ├─ todo.md                           # Plan-first task tracker
+       └─ lessons.md                        # Self-correction log
 
 ***
 
@@ -218,6 +221,85 @@ We route AI calls by sensitivity:
 4. **OpenAI** — optional, non‑sensitive public content.
 
 > **Foundry Local** chooses optimized model variants for your hardware and runs fully offline once models are cached. [\[github.com\]](https://github.com/microsoft/Foundry-Local), [\[clemenssiebler.com\]](https://clemenssiebler.com/posts/running-slm-locally-azure-foundry-local/)
+
+***
+
+## 🔐 Authentication
+
+Bethuya uses a **provider-pluggable** authentication system controlled by a single config key:
+
+```jsonc
+// appsettings.json (structure only — never store secrets here)
+"Authentication": {
+  "Provider": "None"   // None | Entra | Auth0 | Keycloak
+}
+```
+
+### Dev Mode (`Provider = "None"` — default)
+
+When `Provider` is `"None"`, a `DevelopmentAuthenticationStateProvider` auto-authenticates every request as a **dev admin user** with all roles (Admin, Organizer, Curator, Attendee). No login challenge, no OIDC — the dashboard just works. This is the default on `main` for local development.
+
+### Configuring a Real Provider
+
+Provider credentials are stored via **`dotnet user-secrets`** — never in `appsettings.json`.
+
+#### Microsoft Entra External ID
+
+```bash
+cd src/Bethuya.Hybrid/Bethuya.Hybrid.Web
+dotnet user-secrets set "Authentication:Provider" "Entra"
+dotnet user-secrets set "Authentication:Entra:Instance" "https://login.microsoftonline.com/"
+dotnet user-secrets set "Authentication:Entra:TenantId" "<your-tenant-id>"
+dotnet user-secrets set "Authentication:Entra:ClientId" "<your-client-id>"
+dotnet user-secrets set "Authentication:Entra:ClientSecret" "<your-client-secret>"
+dotnet user-secrets set "Authentication:Entra:Domain" "<your-domain>.onmicrosoft.com"
+```
+
+#### Auth0
+
+```bash
+cd src/Bethuya.Hybrid/Bethuya.Hybrid.Web
+dotnet user-secrets set "Authentication:Provider" "Auth0"
+dotnet user-secrets set "Authentication:Auth0:Domain" "<your-tenant>.auth0.com"
+dotnet user-secrets set "Authentication:Auth0:ClientId" "<your-client-id>"
+dotnet user-secrets set "Authentication:Auth0:ClientSecret" "<your-client-secret>"
+dotnet user-secrets set "Authentication:Auth0:Audience" "<your-api-audience>"
+```
+
+#### Keycloak (self-hosted OIDC)
+
+```bash
+cd src/Bethuya.Hybrid/Bethuya.Hybrid.Web
+dotnet user-secrets set "Authentication:Provider" "Keycloak"
+dotnet user-secrets set "Authentication:Keycloak:Authority" "http://localhost:8080/realms/bethuya"
+dotnet user-secrets set "Authentication:Keycloak:ClientId" "bethuya-web"
+dotnet user-secrets set "Authentication:Keycloak:ClientSecret" "<your-client-secret>"
+```
+
+### 🐳 Local OIDC Testing with Keycloak
+
+The Aspire AppHost includes a **Keycloak container** — run `dotnet run --project AppHost/AppHost` and Keycloak starts alongside the app. Then:
+
+1. Open the Keycloak admin console (check Aspire Dashboard for the URL, default port `8080`).
+2. Create a realm called `bethuya`, a client called `bethuya-web` (confidential, Authorization Code flow), and assign roles matching `BethuyaRoles` (Admin, Organizer, Curator, Attendee).
+3. Set user-secrets as shown above with `Provider = "Keycloak"`.
+
+> **Tip:** Use a stable port for Keycloak (`8080`) to avoid browser cookie issues with OIDC tokens that embed the authority URL.
+
+### Role Claim Mapping
+
+Each provider emits roles under a different claim type — the auth system maps them automatically:
+
+| Provider | Role Claim |
+|---|---|
+| Entra | `roles` |
+| Auth0 | `https://bethuya.dev/roles` |
+| Keycloak | `realm_access` |
+
+### ⚠️ Render Mode Rule
+
+> **Login, auth, PII, organizer, and agent control pages MUST use `@rendermode InteractiveServer`.**
+> WASM code is client-inspectable — sensitive pages are server-side only.
 
 ***
 
