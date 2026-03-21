@@ -1,0 +1,26 @@
+{
+  "universe_usage_history": [
+    {
+      "assignment_id": "bethuya-2026-03-21-core-team",
+      "universe": "The Matrix",
+      "created_at": "2026-03-21T11:50:19.882Z",
+      "member_count": 5
+    }
+  ],
+  "assignment_cast_snapshots": {
+    "bethuya-2026-03-21-core-team": {
+      "project": "bethuya",
+      "owner": "Augustine Correa",
+      "universe": "The Matrix",
+      "members": [
+        "Neo",
+        "Trinity",
+        "Tank",
+        "Switch",
+        "Morpheus",
+        "Scribe",
+        "Ralph"
+      ]
+    }
+  }
+}

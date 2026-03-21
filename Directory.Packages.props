@@ -13,11 +13,13 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
-    <!-- Auth providers — versions in props, referenced only from feature/auth/* branches -->
+    <!-- Auth providers -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.5" />
     <PackageVersion Include="Microsoft.Identity.Web" Version="3.8.4" />
     <PackageVersion Include="Auth0.AspNetCore.Authentication" Version="1.4.0" />
+    <!-- Blazor auth components (AuthorizeView, CascadingAuthenticationState, etc.) -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.5" />
     <!-- Input validation -->
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <!-- Refit — typed REST client generation -->

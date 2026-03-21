@@ -1,5 +1,6 @@
 @page "/curation/{EventId:guid}"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireCurator)]
 
 <PageTitle>Attendee Curation — Bethuya</PageTitle>
 
