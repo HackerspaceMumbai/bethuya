@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hackmum.Bethuya.Core\Hackmum.Bethuya.Core.csproj" />
+    <ProjectReference Include="..\Hackmum.Bethuya.AI\Hackmum.Bethuya.AI.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,134 @@
+/* ── Featured Event Card ── */
+::deep .featured-card {
+    background-color: var(--hs-card);
+    border: 1px solid var(--hs-border);
+    border-radius: var(--hs-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+}
+
+::deep .featured-card--empty {
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    min-height: 220px;
+}
+
+.featured-photo {
+    position: relative;
+    height: 160px;
+    background:
+        linear-gradient(160deg,
+            rgba(180, 100, 20, 0.55) 0%,
+            rgba(80, 40, 10, 0.7) 40%,
+            rgba(15, 10, 8, 0.9) 100%),
+        radial-gradient(ellipse at 70% 30%, rgba(212, 168, 48, 0.25) 0%, transparent 60%),
+        linear-gradient(135deg, #2a1a08 0%, #1a0d04 50%, #0d0a08 100%);
+    flex-shrink: 0;
+}
+
+.featured-photo-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 40%, var(--hs-card) 100%);
+}
+
+::deep .featured-body {
+    padding: 1.1rem 1.2rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.featured-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--hs-text);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.featured-desc {
+    font-size: 0.85rem;
+    color: var(--hs-text-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ── Horizontal meta: Location | Date ── */
+.featured-meta {
+    display: flex;
+    align-items: stretch;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.meta-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--hs-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.meta-value {
+    font-size: 0.85rem;
+    color: var(--hs-text);
+}
+
+::deep .meta-divider {
+    height: auto;
+    align-self: stretch;
+    background-color: var(--hs-border);
+}
+
+/* ── Actions footer ── */
+::deep .featured-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 1.2rem 1.25rem;
+    border-top: none;
+}
+
+::deep .feat-btn {
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 7px;
+    gap: 0.4rem;
+}
+
+::deep .feat-btn--gold {
+    color: #0d0b09;
+    background-color: var(--hs-gold);
+    border-color: var(--hs-gold);
+    font-weight: 700;
+}
+
+::deep .feat-btn--gold:hover {
+    background-color: #E8BE48;
+    border-color: #E8BE48;
+}
+
+.empty-text {
+    color: var(--hs-text-muted);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+::deep .empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}

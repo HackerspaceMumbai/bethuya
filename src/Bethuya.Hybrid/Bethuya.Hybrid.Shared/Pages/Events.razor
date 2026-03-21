@@ -1,74 +1,104 @@
 @page "/events"
+@using Bethuya.Hybrid.Shared.Services
+@using Bethuya.Hybrid.Shared.Components.Dashboard
+@inject IEventApi EventApi
 
 <PageTitle>Events — Bethuya</PageTitle>
 
-<div class="container mx-auto p-4">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Community Events</h1>
-        <BbButton Variant="ButtonVariant.Default" OnClick="@(() => showCreateForm = true)">
-            + New Event
-        </BbButton>
+<div data-test="events-page" class="container mx-auto p-4">
+
+    @* Page Header *@
+    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+        <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold">Events</h1>
+            <BbBadge Variant="BadgeVariant.Secondary">@filteredEvents.Count</BbBadge>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <select data-test="status-filter" class="form-select" @bind="statusFilter">
+                <option value="All">All Statuses</option>
+                <option value="Draft">Draft</option>
+                <option value="Planning">Planning</option>
+                <option value="RegistrationOpen">Registration Open</option>
+                <option value="InProgress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+
+            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="ToggleSort">
+                @(sortAscending ? "Date ↑" : "Date ↓")
+            </BbButton>
+        </div>
     </div>
 
-    @if (showCreateForm)
+    @* Event List *@
+    @if (isLoading)
     {
-        <BbCard Class="mb-6 p-4">
-            <h2 class="text-lg font-semibold mb-4">Create Event</h2>
-            <div class="grid gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Title</label>
-                    <BbInput @bind-Value="newEventTitle" Placeholder="Event title" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Description</label>
-                    <BbTextarea @bind-Value="newEventDescription" Placeholder="Event description" />
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Capacity</label>
-                        <BbInput @bind-Value="newEventCapacity" Placeholder="100" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Location</label>
-                        <BbInput @bind-Value="newEventLocation" Placeholder="Location" />
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <BbButton Variant="ButtonVariant.Default" OnClick="CreateEvent">Create</BbButton>
-                    <BbButton Variant="ButtonVariant.Outline" OnClick="@(() => showCreateForm = false)">Cancel</BbButton>
-                </div>
-            </div>
-        </BbCard>
+        <div data-test="loading-state" class="p-8 text-center">
+            <p>Loading events…</p>
+        </div>
     }
-
-    @if (events.Count == 0)
+    else if (errorMessage is not null)
+    {
+        <div data-test="error-state">
+            <BbAlert Variant="AlertVariant.Danger">
+                <BbAlertDescription>@errorMessage</BbAlertDescription>
+            </BbAlert>
+        </div>
+    }
+    else if (filteredEvents.Count == 0)
     {
         <BbCard Class="p-8 text-center">
-            <p class="text-muted-foreground">No events yet. Create your first community event!</p>
+            <p class="text-muted-foreground">No events match the selected filter.</p>
         </BbCard>
     }
     else
     {
         <div class="grid gap-4">
-            @foreach (var evt in events)
+            @foreach (var evt in filteredEvents)
             {
-                <BbCard Class="p-4" data-test="event-card">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="text-lg font-semibold">@evt.Title</h3>
-                            <p class="text-sm text-muted-foreground">@evt.Description</p>
-                            <div class="flex gap-4 mt-2 text-sm">
+                <div data-test="event-row">
+                <BbCard Class="p-4">
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-lg font-semibold mb-1">@evt.Title</h3>
+                            <p class="text-sm text-muted-foreground mb-3">@(evt.Description ?? "")</p>
+
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <BbBadge Variant="@GetStatusVariant(evt.Status)">@evt.Status</BbBadge>
+                                @if (evt.AgendaStatus is not null)
+                                {
+                                    <BbBadge Variant="@GetAgendaVariant(evt.AgendaStatus)">@evt.AgendaStatus</BbBadge>
+                                }
+                                else
+                                {
+                                    <BbBadge Variant="BadgeVariant.Outline">No Agenda</BbBadge>
+                                }
+                                <BbBadge Variant="BadgeVariant.Secondary">@evt.Type</BbBadge>
+                            </div>
+
+                            <div class="flex flex-wrap gap-4 text-sm text-muted-foreground">
                                 <span>📍 @(evt.Location ?? "TBD")</span>
-                                <span>👥 Capacity: @evt.Capacity</span>
-                                <span>📊 Status: @evt.Status</span>
+                                <span>👥 @evt.Capacity</span>
+                                <span>📅 @evt.StartDate.ToString("MMM dd, yyyy")@(evt.StartDate != evt.EndDate ? $" – {evt.EndDate:MMM dd, yyyy}" : "")</span>
                             </div>
                         </div>
-                        <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                                  OnClick="@(() => NavigateToEvent(evt.Id))">
-                            View →
-                        </BbButton>
+
+                        <div class="flex gap-2 shrink-0">
+                            <div data-test="draft-schedule-btn">
+                                <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                                          OnClick="@(() => Navigation.NavigateTo($"/events/{evt.Id}"))">
+                                    Draft Schedule →
+                                </BbButton>
+                            </div>
+                            <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                      OnClick="@(() => Navigation.NavigateTo($"/events/{evt.Id}/registrations"))">
+                                Registrations
+                            </BbButton>
+                        </div>
                     </div>
                 </BbCard>
+                </div>
             }
         </div>
     }
@@ -77,43 +107,74 @@
 @code {
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
-    private List<EventViewModel> events = [];
-    private bool showCreateForm;
-    private string newEventTitle = "";
-    private string newEventDescription = "";
-    private string newEventCapacity = "100";
-    private string newEventLocation = "";
+    private List<EventViewModel> allEvents = [];
+    private string statusFilter = "All";
+    private bool sortAscending = true;
+    private bool isLoading = true;
+    private string? errorMessage;
 
-    private void CreateEvent()
+    private List<EventViewModel> filteredEvents
     {
-        if (string.IsNullOrWhiteSpace(newEventTitle)) return;
-
-        events.Add(new EventViewModel
+        get
         {
-            Id = Guid.NewGuid(),
-            Title = newEventTitle,
-            Description = newEventDescription,
-            Capacity = int.TryParse(newEventCapacity, out var cap) ? cap : 100,
-            Location = newEventLocation,
-            Status = "Draft"
-        });
+            var query = statusFilter == "All"
+                ? allEvents.AsEnumerable()
+                : allEvents.Where(e => e.Status == statusFilter);
 
-        newEventTitle = "";
-        newEventDescription = "";
-        newEventCapacity = "100";
-        newEventLocation = "";
-        showCreateForm = false;
+            return sortAscending
+                ? query.OrderBy(e => e.StartDate).ToList()
+                : query.OrderByDescending(e => e.StartDate).ToList();
+        }
     }
 
-    private void NavigateToEvent(Guid id) => Navigation.NavigateTo($"/events/{id}");
-
-    private sealed class EventViewModel
+    protected override async Task OnInitializedAsync()
     {
-        public Guid Id { get; set; }
-        public string Title { get; set; } = "";
-        public string? Description { get; set; }
-        public int Capacity { get; set; }
-        public string? Location { get; set; }
-        public string Status { get; set; } = "Draft";
+        try
+        {
+            var dtos = await EventApi.GetAllAsync();
+            allEvents = dtos.Select(MapToViewModel).ToList();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Failed to load events. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
+
+    private static EventViewModel MapToViewModel(EventDto dto) => new()
+    {
+        Id = dto.Id,
+        Title = dto.Title,
+        Description = dto.Description,
+        Type = dto.Type,
+        Status = dto.Status,
+        Capacity = dto.Capacity,
+        Location = dto.Location,
+        StartDate = DateOnly.FromDateTime(dto.StartDate.DateTime),
+        EndDate = DateOnly.FromDateTime(dto.EndDate.DateTime)
+    };
+
+    private void ToggleSort() => sortAscending = !sortAscending;
+
+    private static BadgeVariant GetStatusVariant(string status) => status switch
+    {
+        "Draft" => BadgeVariant.Outline,
+        "Planning" => BadgeVariant.Secondary,
+        "RegistrationOpen" or "InProgress" => BadgeVariant.Default,
+        "Completed" => BadgeVariant.Default,
+        "Cancelled" => BadgeVariant.Destructive,
+        _ => BadgeVariant.Outline
+    };
+
+    private static BadgeVariant GetAgendaVariant(string? status) => status switch
+    {
+        "ProposedByAgent" => BadgeVariant.Secondary,
+        "ApprovedByHuman" or "Published" => BadgeVariant.Default,
+        "Archived" => BadgeVariant.Destructive,
+        _ => BadgeVariant.Outline
+    };
+
 }

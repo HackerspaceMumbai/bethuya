@@ -95,7 +95,7 @@ Do not skip this — without it the service won't appear healthy in the Dashboar
 ### Adding Resources (Databases, Queues)
 ```csharp
 // AppHost.cs — add a resource and wire it to a service
-var db = builder.AddPostgres("bethuya-db")
+var db = builder.AddAzureSqlServer("bethuya-db")
                 .AddDatabase("bethuya");
 
 builder.AddProject<Projects.Bethuya_Backend>("bethuya-backend")

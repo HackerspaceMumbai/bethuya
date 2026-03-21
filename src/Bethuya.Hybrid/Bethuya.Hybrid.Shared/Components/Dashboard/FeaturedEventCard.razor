@@ -1,0 +1,67 @@
+@using Bethuya.Hybrid.Shared.Components.Dashboard
+
+@if (Event is not null)
+{
+    <div data-test="featured-event-card">
+    <BbCard Class="featured-card">
+        <div class="featured-photo" role="img" aria-label="@Event.Title event photo">
+            <div class="featured-photo-overlay" aria-hidden="true"></div>
+        </div>
+        <BbCardContent Class="featured-body">
+            <h2 class="featured-title">@Event.Title</h2>
+            <p class="featured-desc">@(Event.Description ?? "")</p>
+
+            <div class="featured-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Location</span>
+                    <span class="meta-value">@(Event.Location ?? "TBD")</span>
+                </div>
+                <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="meta-divider" />
+                <div class="meta-item">
+                    <span class="meta-label">Date</span>
+                    <span class="meta-value">
+                        @Event.StartDate.ToString("MMM d, yyyy")@(Event.StartDate != Event.EndDate ? $" – {Event.EndDate:MMM d, yyyy}" : "")
+                    </span>
+                </div>
+            </div>
+        </BbCardContent>
+        <BbCardFooter Class="featured-actions">
+            <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnPanelClick.InvokeAsync())">
+                Panel
+                <LucideIcon Name="bot" Size="14" />
+            </BbButton>
+            <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnCurationClick.InvokeAsync())">
+                Curation
+                <LucideIcon Name="settings" Size="14" />
+            </BbButton>
+            <BbButton Variant="ButtonVariant.Default" Class="feat-btn feat-btn--gold"
+                      OnClick="@(() => OnCreateClick.InvokeAsync())">
+                <span data-test="create-event-btn">Create New Event</span>
+                <LucideIcon Name="plus" Size="14" />
+            </BbButton>
+        </BbCardFooter>
+    </BbCard>
+    </div>
+}
+else
+{
+    <div data-test="featured-event-card">
+    <BbCard Class="featured-card featured-card--empty">
+        <BbCardContent Class="empty-content">
+            <p class="empty-text">No upcoming events.</p>
+            <BbButton Variant="ButtonVariant.Default" Class="feat-btn--gold"
+                      OnClick="@(() => OnCreateClick.InvokeAsync())">
+                <span data-test="create-event-btn">Create New Event</span>
+                <LucideIcon Name="plus" Size="14" />
+            </BbButton>
+        </BbCardContent>
+    </BbCard>
+    </div>
+}
+
+@code {
+    [Parameter] public EventViewModel? Event { get; set; }
+    [Parameter] public EventCallback OnPanelClick { get; set; }
+    [Parameter] public EventCallback OnCurationClick { get; set; }
+    [Parameter] public EventCallback OnCreateClick { get; set; }
+}

@@ -3,71 +3,438 @@
 <PageTitle>Event Details — Bethuya</PageTitle>
 
 <div class="container mx-auto p-4">
-    <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => Navigation.NavigateTo("/events"))">
-        ← Back to Events
+    @* Header Section *@
+    <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => Navigation.NavigateTo("/"))">
+        ← Back to Dashboard
     </BbButton>
 
-    <BbCard Class="mt-4 p-6">
-        <h1 class="text-2xl font-bold mb-2">Event Details</h1>
-        <p class="text-muted-foreground mb-4">Event ID: @EventId</p>
-
-        <div class="grid grid-cols-2 gap-6">
-            <div>
-                <h2 class="text-lg font-semibold mb-2">📋 Agenda</h2>
-                <BbCard Class="p-4">
-                    <p class="text-sm text-muted-foreground">
-                        Use the <strong>Planner Agent</strong> to draft an agenda.
-                    </p>
-                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" Class="mt-2"
-                              Disabled="true">
-                        🤖 Invoke Planner
-                    </BbButton>
-                </BbCard>
-            </div>
-
-            <div>
-                <h2 class="text-lg font-semibold mb-2">👥 Registrations</h2>
-                <BbCard Class="p-4">
-                    <p class="text-sm text-muted-foreground">
-                        Manage attendee registrations and curation.
-                    </p>
-                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" Class="mt-2"
-                              OnClick="@(() => Navigation.NavigateTo($"/events/{EventId}/registrations"))">
-                        View Registrations
-                    </BbButton>
-                </BbCard>
-            </div>
-
-            <div>
-                <h2 class="text-lg font-semibold mb-2">🎤 Live Facilitation</h2>
-                <BbCard Class="p-4">
-                    <p class="text-sm text-muted-foreground">
-                        Get live prompts and Q&amp;A suggestions during the event.
-                    </p>
-                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" Class="mt-2"
-                              Disabled="true">
-                        🤖 Start Facilitator
-                    </BbButton>
-                </BbCard>
-            </div>
-
-            <div>
-                <h2 class="text-lg font-semibold mb-2">📝 Post-Event Report</h2>
-                <BbCard Class="p-4">
-                    <p class="text-sm text-muted-foreground">
-                        Generate a summary with highlights and action items.
-                    </p>
-                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" Class="mt-2"
-                              Disabled="true">
-                        🤖 Draft Report
-                    </BbButton>
-                </BbCard>
-            </div>
+    <div class="mt-4 mb-6">
+        <div class="flex items-center gap-3 mb-1">
+            <h1 class="text-2xl font-bold">@eventTitle</h1>
+            <BbBadge Variant="@GetStatusBadgeVariant(agendaStatus)">
+                @GetStatusDisplayText(agendaStatus)
+            </BbBadge>
         </div>
-    </BbCard>
+        <p class="text-sm text-muted-foreground">Event ID: @EventId</p>
+    </div>
+
+    @* Schedule Editor — two-column layout *@
+    <div data-test="schedule-editor" class="grid grid-cols-3 gap-6">
+
+        @* ── Left Column: Session List & Add Form (2/3 width) ── *@
+        <div class="col-span-2">
+            <h2 class="text-lg font-semibold mb-4">📋 Schedule</h2>
+
+            @if (sessions.Count == 0)
+            {
+                <BbCard Class="p-8 text-center">
+                    <p class="text-muted-foreground">
+                        No sessions yet. Add sessions manually or use the AI draft.
+                    </p>
+                </BbCard>
+            }
+            else
+            {
+                @foreach (var session in sessions.OrderBy(s => s.Order))
+                {
+                    <div data-test="session-card">
+                    <BbCard @key="session.Id" Class="p-4 mb-3">
+                        @if (session.IsEditing)
+                        {
+                            <div class="space-y-3">
+                                <BbInput @bind-Value="session.Title" Placeholder="Session title" />
+                                <BbInput @bind-Value="session.Speaker" Placeholder="Speaker name" />
+                                <div class="flex gap-3">
+                                    <input type="time" value="@session.StartTime"
+                                           @onchange="@(e => session.StartTime = e.Value?.ToString() ?? "09:00")"
+                                           class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm" />
+                                    <input type="time" value="@session.EndTime"
+                                           @onchange="@(e => session.EndTime = e.Value?.ToString() ?? "09:30")"
+                                           class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm" />
+                                </div>
+                                <BbTextarea @bind-Value="session.Description" Placeholder="Session description" />
+                                <div class="flex gap-2">
+                                    <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                                              OnClick="@(() => session.IsEditing = false)">
+                                        Save
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                              OnClick="@(() => CancelEdit(session))">
+                                        Cancel
+                                    </BbButton>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-mono text-sm text-muted-foreground">@session.Order.</span>
+                                        <span class="font-semibold">@session.Title</span>
+                                        @if (!string.IsNullOrWhiteSpace(session.Speaker))
+                                        {
+                                            <span class="text-sm text-muted-foreground">— @session.Speaker</span>
+                                        }
+                                    </div>
+                                    <p class="text-sm text-muted-foreground">
+                                        🕐 @session.StartTime — @session.EndTime
+                                    </p>
+                                    @if (!string.IsNullOrWhiteSpace(session.Description))
+                                    {
+                                        <p class="text-sm mt-1">
+                                            @TruncateText(session.Description, 100)
+                                        </p>
+                                    }
+                                </div>
+                                <div class="flex gap-1">
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                              OnClick="@(() => StartEdit(session))">
+                                        ✏️
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                              OnClick="@(() => MoveUp(session))"
+                                              Disabled="@(session.Order <= 1)">
+                                        ▲
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                              OnClick="@(() => MoveDown(session))"
+                                              Disabled="@(session.Order >= sessions.Count)">
+                                        ▼
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Small"
+                                              OnClick="@(() => DeleteSession(session))">
+                                        🗑️
+                                    </BbButton>
+                                </div>
+                            </div>
+                        }
+                    </BbCard>
+                    </div>
+                }
+            }
+
+            @* Add Session *@
+            @if (showAddForm)
+            {
+                <BbCard Class="p-4 mt-4">
+                    <h3 class="font-semibold mb-3">Add New Session</h3>
+                    <div class="space-y-3">
+                        <BbInput @bind-Value="newSession.Title" Placeholder="Session title (required)" />
+                        <BbInput @bind-Value="newSession.Speaker" Placeholder="Speaker name" />
+                        <div class="flex gap-3">
+                            <input type="time" value="@newSession.StartTime"
+                                   @onchange="@(e => newSession.StartTime = e.Value?.ToString() ?? "09:00")"
+                                   class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm" />
+                            <input type="time" value="@newSession.EndTime"
+                                   @onchange="@(e => newSession.EndTime = e.Value?.ToString() ?? "09:30")"
+                                   class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm" />
+                        </div>
+                        <BbTextarea @bind-Value="newSession.Description" Placeholder="Session description" />
+                        <div class="flex gap-2">
+                            <BbButton Variant="ButtonVariant.Default"
+                                      OnClick="AddSession"
+                                      Disabled="@string.IsNullOrWhiteSpace(newSession.Title)">
+                                Add
+                            </BbButton>
+                            <BbButton Variant="ButtonVariant.Ghost"
+                                      OnClick="@(() => showAddForm = false)">
+                                Cancel
+                            </BbButton>
+                        </div>
+                    </div>
+                </BbCard>
+            }
+            else
+            {
+                <div class="mt-4">
+                    <div data-test="add-session-btn">
+                        <BbButton Variant="ButtonVariant.Outline"
+                                  OnClick="@(() => showAddForm = true)">
+                            + Add Session
+                        </BbButton>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ── Right Column: AI Draft & Quick Actions (1/3 width) ── *@
+        <div>
+            @* AI Draft Panel *@
+            <BbCard Class="p-4 mb-4">
+                <h3 class="font-semibold mb-3">🤖 AI Planner</h3>
+                <p class="text-sm text-muted-foreground mb-3">
+                    Let the Planner Agent draft a schedule for your event.
+                </p>
+                @if (isAiDrafting)
+                {
+                    <BbButton Variant="ButtonVariant.Outline" Disabled="true">
+                        ⏳ Drafting…
+                    </BbButton>
+                }
+                else
+                {
+                    <div data-test="ai-draft-btn">
+                        <BbButton Variant="ButtonVariant.Default"
+                                  OnClick="DraftWithAiAsync">
+                            🤖 Draft Schedule with AI
+                        </BbButton>
+                    </div>
+                }
+            </BbCard>
+
+            @* Human-in-the-Loop Review (only when AI has proposed) *@
+            @if (agendaStatus == ScheduleStatus.ProposedByAgent)
+            {
+                <BbCard Class="p-4 mb-4">
+                    <h3 class="font-semibold mb-2">🧑‍⚖️ Review Required</h3>
+                    <p class="text-sm text-muted-foreground mb-3">
+                        This schedule was drafted by the Planner Agent. Review and decide:
+                    </p>
+                    <div class="flex flex-col gap-2">
+                        <div data-test="approve-btn">
+                            <BbButton Variant="ButtonVariant.Default"
+                                      OnClick="ApproveSchedule">
+                                ✅ Approve
+                            </BbButton>
+                        </div>
+                        <div data-test="reject-btn">
+                            <BbButton Variant="ButtonVariant.Outline"
+                                      OnClick="RejectSchedule">
+                                ❌ Reject
+                            </BbButton>
+                        </div>
+                        <BbButton Variant="ButtonVariant.Ghost"
+                                  OnClick="EditScheduleManually">
+                            ✏️ Edit Manually
+                        </BbButton>
+                    </div>
+                </BbCard>
+            }
+
+            @* Status Message *@
+            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                <BbCard Class="p-3 mb-4">
+                    <p class="text-sm">@statusMessage</p>
+                </BbCard>
+            }
+
+            @* Quick Actions *@
+            <BbCard Class="p-4">
+                <h3 class="font-semibold mb-3">⚡ Quick Actions</h3>
+                <div class="flex flex-col gap-2">
+                    <BbButton Variant="ButtonVariant.Outline"
+                              OnClick="PublishSchedule"
+                              Disabled="@(agendaStatus != ScheduleStatus.ApprovedByHuman)">
+                        📢 Publish Schedule
+                    </BbButton>
+                    <BbButton Variant="ButtonVariant.Ghost"
+                              OnClick="ClearAll">
+                        🗑️ Clear All
+                    </BbButton>
+                </div>
+                <p class="text-sm text-muted-foreground mt-3">
+                    @sessions.Count session@(sessions.Count == 1 ? "" : "s")
+                </p>
+            </BbCard>
+        </div>
+    </div>
 </div>
 
 @code {
     [Parameter] public Guid EventId { get; set; }
     [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private string eventTitle = "Event";
+    private ScheduleStatus agendaStatus = ScheduleStatus.Draft;
+    private List<SessionViewModel> sessions = [];
+    private SessionViewModel newSession = new();
+    private bool showAddForm;
+    private bool isAiDrafting;
+    private string? statusMessage;
+    private readonly Dictionary<Guid, SessionViewModel> editSnapshots = new();
+
+    // ── View-local enum (mirrors Hackmum.Bethuya.Core.Enums.AgendaStatus) ──
+    private enum ScheduleStatus
+    {
+        Draft,
+        ProposedByAgent,
+        ApprovedByHuman,
+        Published,
+        Archived
+    }
+
+    private sealed class SessionViewModel
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public string Title { get; set; } = "";
+        public string Speaker { get; set; } = "";
+        public string StartTime { get; set; } = "09:00";
+        public string EndTime { get; set; } = "09:30";
+        public string Description { get; set; } = "";
+        public int Order { get; set; }
+        public bool IsEditing { get; set; }
+    }
+
+    // ── Badge mapping ──
+
+    private static BadgeVariant GetStatusBadgeVariant(ScheduleStatus status) => status switch
+    {
+        ScheduleStatus.Draft => BadgeVariant.Outline,
+        ScheduleStatus.ProposedByAgent => BadgeVariant.Secondary,
+        ScheduleStatus.ApprovedByHuman => BadgeVariant.Default,
+        ScheduleStatus.Published => BadgeVariant.Default,
+        ScheduleStatus.Archived => BadgeVariant.Destructive,
+        _ => BadgeVariant.Outline
+    };
+
+    private static string GetStatusDisplayText(ScheduleStatus status) => status switch
+    {
+        ScheduleStatus.Published => "✅ Published",
+        ScheduleStatus.ProposedByAgent => "Proposed by Agent",
+        ScheduleStatus.ApprovedByHuman => "Approved",
+        _ => status.ToString()
+    };
+
+    private static string TruncateText(string text, int maxLength) =>
+        text.Length > maxLength ? string.Concat(text.AsSpan(0, maxLength), "…") : text;
+
+    // ── Session CRUD ──
+
+    private void AddSession()
+    {
+        if (string.IsNullOrWhiteSpace(newSession.Title))
+            return;
+
+        newSession.Order = sessions.Count + 1;
+        sessions.Add(newSession);
+        newSession = new SessionViewModel();
+        showAddForm = false;
+        statusMessage = null;
+    }
+
+    private void DeleteSession(SessionViewModel session)
+    {
+        sessions.Remove(session);
+        ReorderSessions();
+        statusMessage = null;
+    }
+
+    private void MoveUp(SessionViewModel session)
+    {
+        var other = sessions.Find(s => s.Order == session.Order - 1);
+        if (other is null) return;
+        other.Order++;
+        session.Order--;
+    }
+
+    private void MoveDown(SessionViewModel session)
+    {
+        var other = sessions.Find(s => s.Order == session.Order + 1);
+        if (other is null) return;
+        other.Order--;
+        session.Order++;
+    }
+
+    private void ReorderSessions()
+    {
+        var ordered = sessions.OrderBy(s => s.Order).ToList();
+        for (var i = 0; i < ordered.Count; i++)
+            ordered[i].Order = i + 1;
+    }
+
+    // ── Inline editing with cancel support ──
+
+    private void StartEdit(SessionViewModel session)
+    {
+        editSnapshots[session.Id] = new SessionViewModel
+        {
+            Id = session.Id,
+            Title = session.Title,
+            Speaker = session.Speaker,
+            StartTime = session.StartTime,
+            EndTime = session.EndTime,
+            Description = session.Description,
+            Order = session.Order
+        };
+        session.IsEditing = true;
+    }
+
+    private void CancelEdit(SessionViewModel session)
+    {
+        if (editSnapshots.TryGetValue(session.Id, out var snapshot))
+        {
+            session.Title = snapshot.Title;
+            session.Speaker = snapshot.Speaker;
+            session.StartTime = snapshot.StartTime;
+            session.EndTime = snapshot.EndTime;
+            session.Description = snapshot.Description;
+            editSnapshots.Remove(session.Id);
+        }
+        session.IsEditing = false;
+    }
+
+    // ── AI Draft ──
+
+    private async Task DraftWithAiAsync()
+    {
+        isAiDrafting = true;
+        statusMessage = null;
+        StateHasChanged();
+
+        await Task.Delay(1500);
+
+        sessions =
+        [
+            new() { Title = "Opening & Welcome", Speaker = "Event Organizer", StartTime = "09:00", EndTime = "09:30", Order = 1, Description = "Welcome remarks and event overview." },
+            new() { Title = "Keynote: Innovation & Community", Speaker = "Featured Speaker", StartTime = "09:30", EndTime = "10:15", Order = 2, Description = "Inspiring keynote on innovation and community building." },
+            new() { Title = "☕ Break", StartTime = "10:15", EndTime = "10:30", Order = 3 },
+            new() { Title = "Workshop Session 1", Speaker = "Workshop Lead", StartTime = "10:30", EndTime = "12:00", Order = 4, Description = "Hands-on workshop diving into core topics." },
+            new() { Title = "🍕 Lunch & Networking", StartTime = "12:00", EndTime = "13:00", Order = 5 },
+            new() { Title = "Workshop Session 2", Speaker = "Workshop Lead", StartTime = "13:00", EndTime = "14:30", Order = 6, Description = "Advanced workshop continuation." },
+            new() { Title = "Lightning Talks", Speaker = "Community", StartTime = "14:30", EndTime = "15:15", Order = 7, Description = "Short community-driven presentations." },
+            new() { Title = "Closing & Next Steps", Speaker = "Event Organizer", StartTime = "15:15", EndTime = "15:45", Order = 8, Description = "Wrap-up, action items, and future plans." },
+        ];
+
+        agendaStatus = ScheduleStatus.ProposedByAgent;
+        isAiDrafting = false;
+    }
+
+    // ── Human-in-the-Loop actions ──
+
+    private void ApproveSchedule()
+    {
+        agendaStatus = ScheduleStatus.ApprovedByHuman;
+        statusMessage = "✅ Schedule approved! You can now publish it.";
+    }
+
+    private void RejectSchedule()
+    {
+        sessions.Clear();
+        agendaStatus = ScheduleStatus.Draft;
+        statusMessage = "❌ AI draft rejected. Start fresh or draft again.";
+    }
+
+    private void EditScheduleManually()
+    {
+        agendaStatus = ScheduleStatus.Draft;
+        statusMessage = "✏️ Editing mode — make your changes and approve when ready.";
+    }
+
+    // ── Quick Actions ──
+
+    private void PublishSchedule()
+    {
+        if (agendaStatus != ScheduleStatus.ApprovedByHuman) return;
+        agendaStatus = ScheduleStatus.Published;
+        statusMessage = "📢 Schedule published successfully!";
+    }
+
+    private void ClearAll()
+    {
+        sessions.Clear();
+        agendaStatus = ScheduleStatus.Draft;
+        statusMessage = null;
+    }
 }

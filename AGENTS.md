@@ -18,7 +18,10 @@ AppHost (Aspire)
   ├─ Bethuya.Hybrid.Web.Client   # Blazor WebAssembly client
   ├─ Bethuya.Hybrid.Shared       # Shared Razor component library
   ├─ Bethuya.Hybrid              # .NET MAUI Blazor Hybrid (Android/iOS/macOS/Windows)
-  └─ ServiceDefaults             # Aspire shared: resilience, service discovery, OpenTelemetry
+  ├─ Bethuya.ApiService          # Minimal API for core logic (Refit-ready)
+  ├─ Bethuya.MigrationService    # SQL Migration Worker (Local-to-Cloud parity)
+  └─ ServiceDefaults             # Aspire shared: resilience, service  discovery, OpenTelemetry
+  └─ Scalar                      # Integrated via Aspire for API exploration
 ```
 
 Planned additions (scaffold in `src/`):
@@ -26,7 +29,7 @@ Planned additions (scaffold in `src/`):
 - `Bethuya.Agents` — Planner, Curator, Facilitator, Reporter agents
 - `Bethuya.AI` — Provider router (Foundry Local / Ollama / Azure OpenAI / OpenAI), prompts, memory
 - `Bethuya.Backend` — ASP.NET Core API (Aspire-connected)
-- `Bethuya.Infrastructure` — Storage (SQLite/Postgres), repos, platform adapters
+- `Bethuya.Infrastructure` — Storage (Azure SQL), repos, platform adapters
 
 ---
 
@@ -35,12 +38,16 @@ Planned additions (scaffold in `src/`):
 | Layer | Technology |
 |---|---|
 | Runtime | .NET 10, C# 14 |
-| Orchestration | .NET Aspire 13 |
+| Orchestration | .NET Aspire 13 (File-based Resource Definition) |
+| API Docs | Scalar (Aspire Integrations) |
+| API Layer | Refit (Type-safe contracts) |
+| Data Engine | Data API Builder (DAB) — Native MCP Server support |
+| Identity | Vogen (Zero-allocation Value Objects) |
 | Mobile/Desktop | .NET MAUI Blazor Hybrid |
 | Web | Blazor Web App (SSR + WASM) |
 | UI Components | Blazor Blueprint UI (`BlazorBlueprint.Components`, `BlazorBlueprint.Icons.Lucide`) |
 | AI Agents | Microsoft Agent Framework |
-| AI Providers | Foundry Local, Ollama, Azure OpenAI, OpenAI |
+| AI Providers | Foundry Local, Microsoft Foundry |
 | Testing (unit) | TUnit (NOT xUnit, NOT NUnit) |
 | Testing (E2E) | Playwright for .NET |
 | Performance | BenchmarkDotNet, NBomber |
@@ -98,13 +105,23 @@ Route AI calls by data sensitivity:
 ## Coding Standards
 
 ### General
+
 - **Nullable reference types:** Always enabled (`<Nullable>enable</Nullable>`).
 - **Warnings as errors:** `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` — fix all warnings; never suppress without documented justification.
 - **Analysis level:** `latest-Recommended` — heed analyzer suggestions.
 - **Code style:** Enforced in build (`<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>`).
 - Suppressed globally: `CA1716` (reserved keywords), `CA1711` (name suffixes) — do not add others without discussion.
 
+### API & Communication
+
+Documentation: All APIs MUST be defined via Scalar. Use the Aspire.Hosting.Scalar integration for service discovery.
+
+Contracts: Never use raw HttpClient. Always use Refit interfaces shared in Bethuya.Shared.
+
+Identity: Use Vogen for all domain IDs (AttendeeId, EventId). Raw primitives are prohibited.
+
 ### C# Style
+
 - Use **file-scoped namespaces** (`namespace Foo;` not `namespace Foo { }`).
 - Use **primary constructors** where appropriate (C# 14).
 - Use **collection expressions** (`[1, 2, 3]` not `new List<int> { 1, 2, 3 }`).
@@ -112,21 +129,28 @@ Route AI calls by data sensitivity:
 - Private fields: `_camelCase`. Public members: `PascalCase`. Locals: `camelCase`.
 - XML doc comments on all public APIs.
 
+### AI & Privacy
+
+PII: All sensitive curation is routed to Foundry Local (on-device). Non-sensitive orchestration uses Microsoft Foundry.
+
 ### Packages
+
 - **Central Package Management is enforced.** Never add `Version=""` to `<PackageReference>` in `.csproj` files. All versions go in `Directory.Packages.props`.
 - Always add new packages to `Directory.Packages.props` first, then reference without version.
 
 ### Testing
+
 - **Unit/integration tests:** Use **TUnit** — not xUnit, not NUnit.
 - **Test-first:** Every feature begins with a TUnit test.
 - **E2E:** Use **Playwright for .NET**. Always use `data-test` selectors (not CSS classes) for stability.
 - **Performance:** Use BenchmarkDotNet for micro-benchmarks; NBomber for load tests.
 
 ### Performance Targets
+
 | Metric | Target |
 |---|---|
 | Hot path latency (p99) | < 180ms @ 2,500 RPS |
-| Memory allocation (hot path) | 0 B |
+| Memory allocation (hot path) | 0 B (enforced via Vogen and BenchmarkDotNet). |
 | Cache hit rate | > 90% |
 | Memory (steady state) | < 65% allocated RAM |
 
@@ -145,7 +169,7 @@ Route AI calls by data sensitivity:
 
 ## Repository Layout
 
-```
+``` folder structure
 / (root)
 ├─ Bethuya.slnx
 ├─ Directory.Build.props          # Global MSBuild properties
@@ -209,10 +233,10 @@ dotnet test tests/
 
 # Watch tests during TDD
 dotnet watch test
-
+Oh, we need to. I. I. Play.
 # Security: check for vulnerable packages
 dotnet list package --vulnerable --include-transitive
-
+Move to.
 # Security: run check-security skill
 # (use Copilot CLI: /check-security)
 ```
@@ -222,6 +246,7 @@ dotnet list package --vulnerable --include-transitive
 ## Security
 
 ### Authentication
+
 Auth is implemented on three interchangeable feature branches:
 - `feature/auth/entra` — Microsoft Entra External ID
 - `feature/auth/auth0` — Auth0
@@ -230,15 +255,18 @@ Auth is implemented on three interchangeable feature branches:
 On `main`, `NullCurrentUserService` is registered as the `ICurrentUserService` placeholder. Merge the desired auth branch when ready.
 
 ### Authorization
+
 - All non-public Blazor pages must have `[Authorize]` or `<AuthorizeView>`
 - Authorization policies use `BethuyaRoles` constants (Admin, Organizer, Curator, Attendee)
 - Policies: `RequireOrganizer`, `RequireCurator`, `RequireAttendee` — defined in auth branches
 
 ### Blazor Render Mode Rule
+
 > **Login, auth, PII, organizer, and agent control pages = `@rendermode InteractiveServer` only.**
 > WASM code is client-inspectable. Sensitive pages MUST be server-side.
 
 ### Security Infrastructure (active on main)
+
 - **Security headers:** CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy — added via `app.UseSecurityDefaults()` from ServiceDefaults
 - **Rate limiting:** 100 req/min (general), 20 req/min for `RateLimitPolicies.Ai` — configured in ServiceDefaults
 - **CORS:** Named policy `"BethuyaMobileClients"`, origins from `appsettings.json` `Cors:AllowedOrigins`
@@ -249,4 +277,5 @@ On `main`, `NullCurrentUserService` is registered as the `ICurrentUserService` p
 - **Responsible disclosure:** `SECURITY.md`
 
 ### PII Routing
+
 The Curator Agent processes attendee PII exclusively via **Foundry Local** (on-device). PII never reaches any cloud endpoint. See `curator.md` for guardrails.

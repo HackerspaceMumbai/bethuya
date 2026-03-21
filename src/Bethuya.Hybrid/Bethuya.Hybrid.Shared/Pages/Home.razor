@@ -1,14 +1,132 @@
-﻿@page "/"
+@page "/"
+@using Bethuya.Hybrid.Shared.Components.Dashboard
 @using Bethuya.Hybrid.Shared.Services
-@inject IFormFactor FormFactor
+@inject IEventApi EventApi
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Dashboard — Bethuya</PageTitle>
 
-<h1>Hello, world!</h1>
+<a class="skip-link" href="#dashboard-main">Skip to main content</a>
 
-Welcome to your new app running on <em>@factor</em> using <em>@platform</em>.
+<main id="dashboard-main" aria-label="Dashboard">
+
+    @if (isLoading)
+    {
+        <div data-test="loading-state" class="p-8 text-center">
+            <p>Loading events…</p>
+        </div>
+    }
+    else if (errorMessage is not null)
+    {
+        <div data-test="error-state">
+            <BbAlert Variant="AlertVariant.Danger">
+                <BbAlertDescription>@errorMessage</BbAlertDescription>
+            </BbAlert>
+        </div>
+    }
+    else
+    {
+        @* ── AI Insights Banner ── *@
+        @if (featuredEvent is not null && featuredEvent.AgendaStatus is null)
+        {
+            <AiInsightsBanner EventTitle="@featuredEvent.Title"
+                              ReviewUrl="@($"/events/{featuredEvent.Id}")" />
+        }
+
+        @* ── Dashboard grid: stats + featured event ── *@
+        <div class="dashboard-grid">
+            <div class="stats-grid" data-test="stats-row" aria-label="Event statistics">
+                <StatCard Label="Total Events" Value="@events.Count" IconName="calendar" />
+                <StatCard Label="Drafts" Value="@events.Count(e => e.Status == "Draft")" IconName="file-edit" />
+                <StatCard Label="Upcoming" Value="@UpcomingCount" IconName="calendar-clock" />
+                <StatCard Label="Completed" Value="@events.Count(e => e.Status == "Completed")" IconName="circle-check" />
+            </div>
+
+            <FeaturedEventCard Event="@featuredEvent"
+                               OnPanelClick="@(() => Navigation.NavigateTo("/agents"))"
+                               OnCurationClick="@(() => Navigation.NavigateTo("/curation"))"
+                               OnCreateClick="@(() => showCreateDialog = true)" />
+        </div>
+
+        @* ── Create Event Dialog ── *@
+        <CreateEventDialog @bind-IsOpen="showCreateDialog"
+                           OnEventCreated="HandleEventCreated" />
+
+        @* ── Events list ── *@
+        <section class="events-section" aria-label="All events">
+            <h2 class="section-title">Events</h2>
+
+            @if (events.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>No events yet.</p>
+                    <p class="empty-hint">Create your first community event to get started!</p>
+                </div>
+            }
+            else
+            {
+                <div class="events-grid">
+                    @foreach (var evt in events)
+                    {
+                        <EventCard Event="@evt"
+                                   OnDraftClick="@(e => Navigation.NavigateTo($"/events/{e.Id}"))"
+                                   OnRegistrationsClick="@(e => Navigation.NavigateTo($"/events/{e.Id}/registrations"))" />
+                    }
+                </div>
+            }
+        </section>
+    }
+
+</main>
 
 @code {
-    private string factor => FormFactor.GetFormFactor();
-    private string platform => FormFactor.GetPlatform();
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private List<EventViewModel> events = [];
+    private bool showCreateDialog;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private int UpcomingCount => events.Count(e =>
+        e.StartDate >= DateOnly.FromDateTime(DateTime.Now) &&
+        e.Status is not ("Completed" or "Cancelled"));
+
+    private EventViewModel? featuredEvent =>
+        events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled") && e.StartDate >= DateOnly.FromDateTime(DateTime.Now))
+        ?? events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled"));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var dtos = await EventApi.GetAllAsync();
+            events = dtos.Select(MapToViewModel).ToList();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Failed to load events. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void HandleEventCreated(EventViewModel newEvent)
+    {
+        events.Insert(0, newEvent);
+        showCreateDialog = false;
+    }
+
+    private static EventViewModel MapToViewModel(EventDto dto) => new()
+    {
+        Id = dto.Id,
+        Title = dto.Title,
+        Description = dto.Description,
+        Type = dto.Type,
+        Status = dto.Status,
+        Capacity = dto.Capacity,
+        Location = dto.Location,
+        StartDate = DateOnly.FromDateTime(dto.StartDate.DateTime),
+        EndDate = DateOnly.FromDateTime(dto.EndDate.DateTime)
+    };
 }

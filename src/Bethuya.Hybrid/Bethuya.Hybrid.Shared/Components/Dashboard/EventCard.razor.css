@@ -1,0 +1,78 @@
+/* ── Event Card ── */
+::deep .event-card {
+    background-color: var(--hs-card);
+    border: 1px solid var(--hs-border);
+    border-radius: var(--hs-radius);
+    display: flex;
+    flex-direction: column;
+    transition: border-color var(--hs-transition), transform var(--hs-transition);
+    padding: 0;
+}
+
+::deep .event-card:hover {
+    border-color: var(--hs-gold-60);
+    transform: translateY(-1px);
+}
+
+::deep .event-card-body {
+    padding: 1rem 1.1rem 0.75rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.event-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.event-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--hs-text);
+    margin: 0;
+    line-height: 1.35;
+}
+
+.event-desc {
+    font-size: 0.82rem;
+    color: var(--hs-text-muted);
+    margin: 0;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.event-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+}
+
+.meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    color: var(--hs-text-muted);
+}
+
+::deep .meta-row svg {
+    flex-shrink: 0;
+    color: var(--hs-gold);
+    opacity: 0.7;
+}
+
+::deep .event-card-foot {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1.1rem 1rem;
+    border-top: 1px solid var(--hs-border);
+    flex-wrap: wrap;
+}

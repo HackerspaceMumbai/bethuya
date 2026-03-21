@@ -2,6 +2,7 @@ using Bethuya.Hybrid.Web.Components;
 using Bethuya.Hybrid.Shared.Services;
 using Bethuya.Hybrid.Web.Services;
 using BlazorBlueprint.Components;
+using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,11 @@ builder.Services.AddSingleton<IFormFactor, FormFactor>();
 // Auth abstraction — unauthenticated placeholder until a provider branch is merged.
 // See: feature/auth/entra | feature/auth/auth0 | feature/auth/keycloak
 builder.Services.AddScoped<ICurrentUserService, NullCurrentUserService>();
+
+// Refit typed client for Backend Events API (Aspire service discovery)
+builder.Services
+    .AddRefitClient<IEventApi>()
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"));
 
 // CORS — origins from appsettings.json "Cors:AllowedOrigins" (empty by default in production)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

@@ -8,4 +8,13 @@
     <UserSecretsId>d4ad228f-7569-48ef-a171-65225c06ec1c</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.Sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hackmum.Bethuya.Backend\Hackmum.Bethuya.Backend.csproj" />
+    <ProjectReference Include="..\..\src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj" />
+  </ItemGroup>
+
 </Project>
