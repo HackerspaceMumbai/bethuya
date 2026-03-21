@@ -116,15 +116,15 @@ Accessible, headless primitives for a high-performance shadcn/ui inspired fronte
 
 | Metric | Target | Verification Tool |
 | :--- | :--- | :--- |
-| **Hot Path Latency (p99)** | < 180ms @ 2,500 RPS | [cite_start]NBomber / TUnit [cite: 849, 876] |
-| **Memory Allocation** | 0 B on Hot Path | [cite_start]BenchmarkDotNet [cite: 484, 536] |
-| **Visual Accuracy** | 100% Match | [cite_start]Playwright Visual Regression [cite: 890, 894] |
+| **Hot Path Latency (p99)** | < 180ms @ 2,500 RPS | [cite_start]NBomber / TUnit |
+| **Memory Allocation** | 0 B on Hot Path | [cite_start]BenchmarkDotNet |
+| **Visual Accuracy** | 100% Match | [cite_start]Playwright Visual Regression|
 
 ## 🔄 Development Protocol
 
-- **Plan First**: All tasks must be planned in `tasks/todo.md` before execution[cite: 881, 886].
+- **Plan First**: All tasks must be planned in `tasks/todo.md` before execution.
 * **No Laziness**: Identify root causes; no temporary hacks[cite: 888].
-* **Autonomous Fixes**: Agents are authorized to resolve failing tests/CI without manual intervention[cite: 885].
+* **Autonomous Fixes**: Agents are authorized to resolve failing tests/CI without manual intervention.
 
 ## 📁 Repository Structure (Aspire + Frontend + Dev‑AI)
 
