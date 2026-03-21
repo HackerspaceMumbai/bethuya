@@ -40,4 +40,4 @@ The Bethuya Curator Agent processes personally identifiable information (PII) lo
 - CodeQL SAST analysis on all PRs (`.github/workflows/security.yml`)
 - Dependabot for NuGet and GitHub Actions weekly updates
 - `dotnet list package --vulnerable` gates CI builds
-- Auth implemented per auth provider on feature branches: `feature/auth/entra`, `feature/auth/auth0`, `feature/auth/keycloak`
+- Authentication is provider-pluggable on `main` — supports Microsoft Entra External ID, Auth0, and Keycloak via `Authentication:Provider` configuration. Provider credentials stored in user-secrets, never in appsettings.json.
