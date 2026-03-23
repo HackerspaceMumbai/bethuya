@@ -14,3 +14,8 @@
 - Role claim types differ by provider: Entra=`roles`, Auth0=`https://bethuya.dev/roles`, Keycloak=`realm_access`. Mapped in `BethuyaAuthenticationExtensions.cs`.
 - README repository structure was stale (referenced old `aspire/`, `Hackmum.Bethuya.App` paths). Updated to reflect actual layout.
 - Key auth files: `AuthProviderType.cs`, `BethuyaAuthOptions.cs`, `BethuyaAuthenticationExtensions.cs`, `BethuyaAuthorizationExtensions.cs` in `ServiceDefaults/Auth/`.
+- Backend event endpoints hardened (2026-03-21): Added `EventResponse` DTO in `EventContracts.cs` to decouple API responses from domain entities. All GET/POST/PUT endpoints now return consistent DTOs with enums serialized as strings (Type, Status).
+- Server-side validation added to POST/PUT `/api/events`: Title required + max 200 chars, Capacity 1-10,000, EndDate >= StartDate, CreatedBy required. Returns `Results.ValidationProblem()` with field-level errors.
+- `JsonStringEnumConverter` registered in `Program.cs` (line 10-11) enables frontend to send `Type: "Meetup"` string, Backend deserializes to `EventType.Meetup` enum correctly.
+- Key Backend files: `src/Hackmum.Bethuya.Backend/Endpoints/EventEndpoints.cs`, `src/Hackmum.Bethuya.Backend/Contracts/EventContracts.cs`, `src/Hackmum.Bethuya.Backend/Program.cs`.
+- Frontend API contract: `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Services/IEventApi.cs` defines `EventDto` and `CreateEventDto` for Refit client.

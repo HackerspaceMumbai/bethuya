@@ -66,10 +66,14 @@
             }
 
             <BbDialogFooter Class="form-actions">
-                <BbButton Variant="ButtonVariant.Default" Type="ButtonType.Submit" Disabled="@isSaving">
-                    @(isSaving ? "Creating…" : "Create")
-                </BbButton>
-                <BbButton Variant="ButtonVariant.Outline" OnClick="HandleCancel" Disabled="@isSaving">Cancel</BbButton>
+                <div data-test="create-event-submit">
+                    <BbButton Variant="ButtonVariant.Default" Type="ButtonType.Submit" Disabled="@isSaving">
+                        @(isSaving ? "Creating…" : "Create")
+                    </BbButton>
+                </div>
+                <div data-test="create-event-cancel">
+                    <BbButton Variant="ButtonVariant.Outline" OnClick="HandleCancel" Disabled="@isSaving">Cancel</BbButton>
+                </div>
             </BbDialogFooter>
         </EditForm>
     </BbDialogContent>
@@ -79,6 +83,7 @@
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public EventCallback<EventViewModel> OnEventCreated { get; set; }
+    [Parameter] public EventCallback<string> OnNotification { get; set; }
 
     private CreateEventFormModel formModel = new();
     private bool isSaving;
@@ -117,11 +122,13 @@
             };
 
             await OnEventCreated.InvokeAsync(viewModel);
+            await OnNotification.InvokeAsync($"Event '{created.Title}' created successfully!");
             ResetForm();
         }
         catch (Exception)
         {
             errorMessage = "Failed to create event. Please try again.";
+            await OnNotification.InvokeAsync("Failed to create event. Please try again.");
         }
         finally
         {

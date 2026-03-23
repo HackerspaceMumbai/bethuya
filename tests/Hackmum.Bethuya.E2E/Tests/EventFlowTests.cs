@@ -10,15 +10,22 @@ public class EventFlowTests : BethuyaE2ETest
     {
         await Page.GotoAsync("/events");
 
-        await Page.GetByRole(AriaRole.Button, new() { Name = "New Event" }).ClickAsync();
+        // Click the new event button using data-test selector
+        await Page.Locator("[data-test='new-event-btn']").ClickAsync();
 
+        // Fill in form fields
         await Page.GetByPlaceholder("Event title").FillAsync("Test Community Meetup");
         await Page.GetByPlaceholder("Event description").FillAsync("A test event for E2E testing");
 
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
+        // Submit the form using data-test selector
+        await Page.Locator("[data-test='create-event-submit']").ClickAsync();
 
-        var eventCard = Page.Locator("[data-test='event-card']").First;
-        await Expect(eventCard).ToContainTextAsync("Test Community Meetup");
+        // Verify success notification appears
+        await Expect(Page.Locator("[data-test='notification']")).ToBeVisibleAsync();
+
+        // Verify event appears in the list
+        var eventCard = Page.Locator("[data-test='event-card']").Filter(new() { HasText = "Test Community Meetup" });
+        await Expect(eventCard).ToBeVisibleAsync();
     }
 
     [TestMethod]
@@ -26,10 +33,15 @@ public class EventFlowTests : BethuyaE2ETest
     {
         await Page.GotoAsync("/events");
 
-        await Page.GetByRole(AriaRole.Button, new() { Name = "New Event" }).ClickAsync();
+        // Click the new event button using data-test selector
+        await Page.Locator("[data-test='new-event-btn']").ClickAsync();
         await Page.GetByPlaceholder("Event title").FillAsync("Agent Test Event");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
+        await Page.Locator("[data-test='create-event-submit']").ClickAsync();
 
+        // Wait for navigation after creation
+        await Expect(Page.Locator("[data-test='notification']")).ToBeVisibleAsync();
+
+        // Navigate to event detail - using role-based selector as view button may not have data-test yet
         await Page.GetByRole(AriaRole.Button, new() { Name = "View →" }).First.ClickAsync();
 
         await Expect(Page.GetByText("Agenda")).ToBeVisibleAsync();

@@ -123,6 +123,38 @@ public class CreateEventFormModelTests
         await Assert.That(results).IsEmpty();
     }
 
+    [Test]
+    public async Task NegativeCapacity_FailsValidation()
+    {
+        var model = CreateValidModel();
+        model.Capacity = -1;
+        var results = ValidateModel(model);
+
+        await Assert.That(results).IsNotEmpty();
+        await Assert.That(results.Any(r => r.MemberNames.Contains(nameof(CreateEventFormModel.Capacity)))).IsTrue();
+    }
+
+    [Test]
+    public async Task MaxBoundaryCapacity_PassesValidation()
+    {
+        var model = CreateValidModel();
+        model.Capacity = 10_000;
+        var results = ValidateModel(model);
+
+        await Assert.That(results).IsEmpty();
+    }
+
+    [Test]
+    public async Task OverMaxCapacity_FailsValidation()
+    {
+        var model = CreateValidModel();
+        model.Capacity = 10_001;
+        var results = ValidateModel(model);
+
+        await Assert.That(results).IsNotEmpty();
+        await Assert.That(results.Any(r => r.MemberNames.Contains(nameof(CreateEventFormModel.Capacity)))).IsTrue();
+    }
+
     private static CreateEventFormModel CreateValidModel() => new()
     {
         Title = "Community AI Hackathon",

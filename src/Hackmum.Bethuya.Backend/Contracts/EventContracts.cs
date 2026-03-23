@@ -21,3 +21,16 @@ public sealed record UpdateEventRequest(
     DateTimeOffset EndDate,
     string? Location,
     EventStatus Status);
+
+public sealed record EventResponse(
+    Guid Id,
+    string Title,
+    string? Description,
+    string Type,
+    string Status,
+    int Capacity,
+    DateTimeOffset StartDate,
+    DateTimeOffset EndDate,
+    string? Location,
+    string CreatedBy,
+    DateTimeOffset CreatedAt);
