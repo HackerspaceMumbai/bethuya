@@ -1,6 +1,7 @@
 @page "/events"
 @using Bethuya.Hybrid.Shared.Services
 @using Bethuya.Hybrid.Shared.Components.Dashboard
+@using Bethuya.Hybrid.Shared.Components
 @inject IEventApi EventApi
 
 <PageTitle>Events — Bethuya</PageTitle>
@@ -15,6 +16,13 @@
         </div>
 
         <div class="flex items-center gap-3">
+            <div data-test="new-event-btn">
+                <BbButton Variant="ButtonVariant.Default" OnClick="@(() => showCreateDialog = true)">
+                    <LucideIcon Name="calendar-plus" Size="16" />
+                    New Event
+                </BbButton>
+            </div>
+
             <select data-test="status-filter" class="form-select" @bind="statusFilter">
                 <option value="All">All Statuses</option>
                 <option value="Draft">Draft</option>
@@ -102,6 +110,14 @@
             }
         </div>
     }
+
+    @* ── Create Event Dialog ── *@
+    <CreateEventDialog @bind-IsOpen="showCreateDialog"
+                       OnEventCreated="HandleEventCreated"
+                       OnNotification="HandleNotification" />
+
+    @* ── Notification Toast ── *@
+    <Notification @bind-IsVisible="showNotification" Message="@notificationMessage" Variant="@notificationVariant" AutoDismissSeconds="5" />
 </div>
 
 @code {
@@ -112,6 +128,10 @@
     private bool sortAscending = true;
     private bool isLoading = true;
     private string? errorMessage;
+    private bool showCreateDialog;
+    private bool showNotification;
+    private string notificationMessage = string.Empty;
+    private AlertVariant notificationVariant = AlertVariant.Success;
 
     private List<EventViewModel> filteredEvents
     {
@@ -158,6 +178,21 @@
     };
 
     private void ToggleSort() => sortAscending = !sortAscending;
+
+    private void HandleEventCreated(EventViewModel newEvent)
+    {
+        allEvents.Insert(0, newEvent);
+        showCreateDialog = false;
+    }
+
+    private void HandleNotification(string message)
+    {
+        notificationMessage = message;
+        notificationVariant = message.Contains("successfully", StringComparison.OrdinalIgnoreCase)
+            ? AlertVariant.Success
+            : AlertVariant.Danger;
+        showNotification = true;
+    }
 
     private static BadgeVariant GetStatusVariant(string status) => status switch
     {
