@@ -1,6 +1,6 @@
 @page "/"
+@rendermode InteractiveServer
 @using Bethuya.Hybrid.Shared.Components.Dashboard
-@using Bethuya.Hybrid.Shared.Components
 @using Bethuya.Hybrid.Shared.Services
 @inject IEventApi EventApi
 
@@ -50,11 +50,7 @@
 
         @* ── Create Event Dialog ── *@
         <CreateEventDialog @bind-IsOpen="showCreateDialog"
-                           OnEventCreated="HandleEventCreated"
-                           OnNotification="HandleNotification" />
-
-        @* ── Notification Toast ── *@
-        <Notification @bind-IsVisible="showNotification" Message="@notificationMessage" Variant="@notificationVariant" AutoDismissSeconds="5" />
+                           OnEventCreated="HandleEventCreated" />
 
         @* ── Events list ── *@
         <section class="events-section" aria-label="All events">
@@ -90,9 +86,6 @@
     private bool showCreateDialog;
     private bool isLoading = true;
     private string? errorMessage;
-    private bool showNotification;
-    private string notificationMessage = string.Empty;
-    private AlertVariant notificationVariant = AlertVariant.Success;
 
     private int UpcomingCount => events.Count(e =>
         e.StartDate >= DateOnly.FromDateTime(DateTime.Now) &&
@@ -123,15 +116,6 @@
     {
         events.Insert(0, newEvent);
         showCreateDialog = false;
-    }
-
-    private void HandleNotification(string message)
-    {
-        notificationMessage = message;
-        notificationVariant = message.Contains("successfully", StringComparison.OrdinalIgnoreCase)
-            ? AlertVariant.Success
-            : AlertVariant.Danger;
-        showNotification = true;
     }
 
     private static EventViewModel MapToViewModel(EventDto dto) => new()
