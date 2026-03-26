@@ -62,9 +62,9 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## [2026-03-26] Missing @rendermode silently kills all button clicks
 - **What happened:** The "New Event" button on Events.razor did nothing at runtime. No JS errors, no visual feedback.
-- **Root cause:** Pages without `@rendermode InteractiveServer` are rendered as static SSR. Event handlers (`OnClick`, `@bind`, etc.) are stripped — the browser never wires them up.
-- **Fix:** Added `@rendermode InteractiveServer` to `Events.razor` and `Home.razor`.
-- **Prevention:** Every page with any interactivity (buttons, dialogs, forms, two-way binding) **must** have `@rendermode InteractiveServer`. Make this a PR checklist item. E2E tests must assert dialogs opened after button click — a `ToBeVisibleAsync()` on the dialog immediately after the click would catch this within seconds.
+- **Root cause:** `<Routes/>` in `App.razor` had no `@rendermode`, so the router ran in static SSR. Per-page `@rendermode InteractiveServer` directives on shared-RCL pages are unreliable when routed through `AuthorizeRouteView` in static SSR mode — the render mode may not be picked up.
+- **Fix:** Set `@rendermode="InteractiveServer"` on `<Routes>` in `App.razor` (Web project only — MAUI has its own app entry). This makes the entire web app interactive globally. Per-page directives in shared pages were then redundant and removed.
+- **Prevention:** For a Blazor Web App where all pages need interactivity, set the render mode at the router (`<Routes @rendermode="InteractiveServer"/>`) in `App.razor`, not on individual shared-library pages. Per-page `@rendermode` in a shared RCL with `AuthorizeRouteView` is fragile.
 
 ## [2026-03-26] E2E tests must always run alongside unit tests in CI verification
 - **What happened:** `dotnet test tests/Hackmum.Bethuya.Tests/` only ran TUnit unit tests. The Playwright MSTest project (`Hackmum.Bethuya.E2E`) was never executed, so the static SSR render mode bug shipped undetected.
