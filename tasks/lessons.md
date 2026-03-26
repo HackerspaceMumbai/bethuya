@@ -18,6 +18,34 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2025-03-24] BbCategoryPortalHost renders a transparent full-page overlay that blocks all clicks
+- **What happened:** After adding `<BbCategoryPortalHost />` to fix `BbDialog`, ALL buttons on the page became unclickable — even after replacing `BbDialog` with a plain HTML modal.
+- **Root cause:** `BbCategoryPortalHost` renders a transparent full-screen overlay div (position:fixed, z-index > content) used to position portaled dialogs. This overlay intercepts all mouse events on the page even when no dialog is open.
+- **Fix:** Remove `BbCategoryPortalHost` from `MainLayout.razor`. Use native CSS modals (`position:fixed` backdrop with `@if`) instead of any BlazorBlueprint dialog/portal components.
+- **Prevention:** Never add portal host components from UI libraries unless you understand what DOM elements they inject. Check the rendered HTML in browser DevTools for transparent overlay divs when buttons become mysteriously unclickable.
+
+## [2025-03-24] E2E tests must cover Home page buttons specifically, with ToBeEnabledAsync before clicking
+- **What happened:** The E2E tests only covered the `/events` page button, not the `/` (Home) dashboard button. The Home button was broken for weeks without automated detection.
+- **Root cause:** `HomeCreateButton_ShouldOpenDialog` test was never written. Even the events test lacked `ToBeEnabledAsync()` — a click on a disabled/covered element succeeds silently in Playwright.
+- **Fix:** Added `HomeCreateButton_ShouldOpenDialog` test targeting `/` + `[data-test='create-event-btn']`. Added `ToBeEnabledAsync()` before every `ClickAsync()`. Added short `Timeout` on dialog-visible assertion to fail fast.
+- **Prevention:** Every interactive feature needs an E2E test on EVERY page it appears on. Always assert `ToBeEnabledAsync()` before clicking and assert visible state AFTER clicking with a tight timeout.
+
+
+- **What happened:** `@onclick` handlers never bound despite WebSocket connected. Page was visible but completely non-interactive.
+- **Root cause:** With `prerender: true` (default), Blazor renders static HTML on the server, sends it to the browser, then "activates" the DOM via WebSocket. If the server-side pre-render pass calls an async API (`EventApi.GetAllAsync()`) and the interactive render produces different output, Blazor's DOM reconciliation silently fails — handlers aren't registered.
+- **Fix:** `new InteractiveServerRenderMode(prerender: false)` on `<Routes>` and `<HeadOutlet>` in App.razor. Eliminates the two-pass render; components render once, fully interactively.
+- **Prevention:** When using `InteractiveServer` with async data-fetching on page load, either disable prerendering or use `OnAfterRenderAsync(firstRender)` for the API call (static pre-render won't call it, preventing mismatch).
+
+- **What happened:** `BbButton OnClick="@(() => ...)"` rendered the button visually but click events never fired, even with Blazor WebSocket confirmed connected.
+- **Root cause:** Unknown — `BbButton`'s `OnClick` parameter appears to not wire to the underlying `<button>`'s click event in this usage pattern. The WebSocket being active ruled out render mode issues.
+- **Fix:** Replace `BbButton` with native `<button @onclick="...">` elements. Style directly with CSS classes; no `::deep` needed.
+- **Prevention:** When a UI component's event callback silently does nothing despite Blazor being connected, replace with native HTML elements to isolate whether the issue is the component library or Blazor itself. Native elements should always be the first diagnostic step.
+
+- **What happened:** `BbDialog` with `Open`/`OpenChanged` parameters was set up for programmatic control, but clicking the button had no effect — the dialog never opened.
+- **Root cause:** `BbDialog` v3.5.2 only works via its `BbDialogTrigger` (uncontrolled pattern). Without a `BbDialogTrigger` nested inside the dialog, external `Open` state changes are ignored. The README only documents the trigger pattern; `Open`/`OpenChanged`/`Controlled` params exist in the binary but are undocumented and non-functional for cross-component scenarios.
+- **Fix:** Replace `BbDialog` with a plain CSS `position:fixed` modal overlay (`@if (IsOpen)` + backdrop div). No portal host needed, complete control, no external state.
+- **Prevention:** When using a UI library's overlay/dialog component, verify that the desired open/close pattern (trigger vs. programmatic) is explicitly documented. If a component only documents trigger-based opening, don't assume programmatic `Open` works across component boundaries.
+
 ## [2026-03-21] Partial Squad initialization needs a structural validation pass
 - **What happened:** The repository already had a `.squad/` directory, but `team.md` had no members, `casting/registry.json` was missing, and the Scribe files were only loosely scaffolded.
 - **Root cause:** Squad setup stopped after creating baseline files, so Team Mode state existed without a usable roster or casting metadata.
@@ -59,3 +87,21 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** `BadgeVariant` has `Destructive` but `AlertVariant` uses `Danger`. BB component properties were hallucinated by agents — `BbAlert` only supports `Variant`, `Dismissible`, `OnDismiss`, `Class`.
 - **Fix:** Changed to `AlertVariant.Danger`. Rewrote Notification component to use `Task.Delay` + `CancellationTokenSource` for auto-dismiss instead of non-existent props.
 - **Prevention:** Always verify BB enum/property names against the actual DLL. `AlertVariant` values: `Default, Success, Info, Warning, Danger`. For auto-dismiss, implement manually with `Task.Delay`.
+
+## [2026-03-26] BbCategoryPortalHost required in MainLayout for dialogs/overlays
+- **What happened:** `BbDialog` backdrop rendered as an invisible full-screen overlay, silently blocking all clicks on the page. No visual indication — button appeared clickable but never fired.
+- **Root cause:** BlazorBlueprint overlay components (Dialog, Sheet, Popover, Tooltip) use a portal service to render outside the component tree. Without `<BbCategoryPortalHost />` in `MainLayout.razor`, the portal falls back to inline rendering — placing the full-screen dialog overlay directly in the DOM where it intercepts every mouse event.
+- **Fix:** Added `@using BlazorBlueprint.Primitives.Services` and `<BbCategoryPortalHost />` to `MainLayout.razor`. Also added `@rendermode="InteractiveServer"` to `<HeadOutlet>` and `<Routes>` in `App.razor` per BlazorBlueprint docs.
+- **Prevention:** Any app using BlazorBlueprint overlay components MUST have `<BbCategoryPortalHost />` in the root layout. Note: the README says `<BbPortalHost />` but the actual component in v3.5.2 is `BbCategoryPortalHost` from `BlazorBlueprint.Primitives.Services`.
+
+
+- **What happened:** The "New Event" button on Events.razor did nothing at runtime. No JS errors, no visual feedback.
+- **Root cause:** `<Routes/>` in `App.razor` had no `@rendermode`, so the router ran in static SSR. Per-page `@rendermode InteractiveServer` directives on shared-RCL pages are unreliable when routed through `AuthorizeRouteView` in static SSR mode — the render mode may not be picked up.
+- **Fix:** Set `@rendermode="InteractiveServer"` on `<Routes>` in `App.razor` (Web project only — MAUI has its own app entry). This makes the entire web app interactive globally. Per-page directives in shared pages were then redundant and removed.
+- **Prevention:** For a Blazor Web App where all pages need interactivity, set the render mode at the router (`<Routes @rendermode="InteractiveServer"/>`) in `App.razor`, not on individual shared-library pages. Per-page `@rendermode` in a shared RCL with `AuthorizeRouteView` is fragile.
+
+## [2026-03-26] E2E tests must always run alongside unit tests in CI verification
+- **What happened:** `dotnet test tests/Hackmum.Bethuya.Tests/` only ran TUnit unit tests. The Playwright MSTest project (`Hackmum.Bethuya.E2E`) was never executed, so the static SSR render mode bug shipped undetected.
+- **Root cause:** The E2E project uses MSTest and requires a live Aspire stack — it was excluded from the unit test run command by targeting the wrong project path.
+- **Fix:** Fixed E2E tests to assert dialog visibility immediately after button click, added `data-test="create-dialog"` wrapper, corrected `event-card`→`event-row` and `"View →"`→`data-test="view-event-btn"` selector mismatches.
+- **Prevention:** CI verification must run both `dotnet test tests/Hackmum.Bethuya.Tests/` (TUnit) AND `dotnet test tests/Hackmum.Bethuya.E2E/` (Playwright, requires live stack). Always add a post-click `ToBeVisibleAsync()` assertion for any dialog or panel opened by a button — this is the cheapest guard against static SSR regressions.
