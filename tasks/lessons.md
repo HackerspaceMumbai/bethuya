@@ -60,7 +60,13 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Fix:** Changed to `AlertVariant.Danger`. Rewrote Notification component to use `Task.Delay` + `CancellationTokenSource` for auto-dismiss instead of non-existent props.
 - **Prevention:** Always verify BB enum/property names against the actual DLL. `AlertVariant` values: `Default, Success, Info, Warning, Danger`. For auto-dismiss, implement manually with `Task.Delay`.
 
-## [2026-03-26] Missing @rendermode silently kills all button clicks
+## [2026-03-26] BbCategoryPortalHost required in MainLayout for dialogs/overlays
+- **What happened:** `BbDialog` backdrop rendered as an invisible full-screen overlay, silently blocking all clicks on the page. No visual indication — button appeared clickable but never fired.
+- **Root cause:** BlazorBlueprint overlay components (Dialog, Sheet, Popover, Tooltip) use a portal service to render outside the component tree. Without `<BbCategoryPortalHost />` in `MainLayout.razor`, the portal falls back to inline rendering — placing the full-screen dialog overlay directly in the DOM where it intercepts every mouse event.
+- **Fix:** Added `@using BlazorBlueprint.Primitives.Services` and `<BbCategoryPortalHost />` to `MainLayout.razor`. Also added `@rendermode="InteractiveServer"` to `<HeadOutlet>` and `<Routes>` in `App.razor` per BlazorBlueprint docs.
+- **Prevention:** Any app using BlazorBlueprint overlay components MUST have `<BbCategoryPortalHost />` in the root layout. Note: the README says `<BbPortalHost />` but the actual component in v3.5.2 is `BbCategoryPortalHost` from `BlazorBlueprint.Primitives.Services`.
+
+
 - **What happened:** The "New Event" button on Events.razor did nothing at runtime. No JS errors, no visual feedback.
 - **Root cause:** `<Routes/>` in `App.razor` had no `@rendermode`, so the router ran in static SSR. Per-page `@rendermode InteractiveServer` directives on shared-RCL pages are unreliable when routed through `AuthorizeRouteView` in static SSR mode — the render mode may not be picked up.
 - **Fix:** Set `@rendermode="InteractiveServer"` on `<Routes>` in `App.razor` (Web project only — MAUI has its own app entry). This makes the entire web app interactive globally. Per-page directives in shared pages were then redundant and removed.
