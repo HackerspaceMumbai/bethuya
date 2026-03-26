@@ -59,3 +59,15 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** `BadgeVariant` has `Destructive` but `AlertVariant` uses `Danger`. BB component properties were hallucinated by agents — `BbAlert` only supports `Variant`, `Dismissible`, `OnDismiss`, `Class`.
 - **Fix:** Changed to `AlertVariant.Danger`. Rewrote Notification component to use `Task.Delay` + `CancellationTokenSource` for auto-dismiss instead of non-existent props.
 - **Prevention:** Always verify BB enum/property names against the actual DLL. `AlertVariant` values: `Default, Success, Info, Warning, Danger`. For auto-dismiss, implement manually with `Task.Delay`.
+
+## [2026-03-26] Missing @rendermode silently kills all button clicks
+- **What happened:** The "New Event" button on Events.razor did nothing at runtime. No JS errors, no visual feedback.
+- **Root cause:** Pages without `@rendermode InteractiveServer` are rendered as static SSR. Event handlers (`OnClick`, `@bind`, etc.) are stripped — the browser never wires them up.
+- **Fix:** Added `@rendermode InteractiveServer` to `Events.razor` and `Home.razor`.
+- **Prevention:** Every page with any interactivity (buttons, dialogs, forms, two-way binding) **must** have `@rendermode InteractiveServer`. Make this a PR checklist item. E2E tests must assert dialogs opened after button click — a `ToBeVisibleAsync()` on the dialog immediately after the click would catch this within seconds.
+
+## [2026-03-26] E2E tests must always run alongside unit tests in CI verification
+- **What happened:** `dotnet test tests/Hackmum.Bethuya.Tests/` only ran TUnit unit tests. The Playwright MSTest project (`Hackmum.Bethuya.E2E`) was never executed, so the static SSR render mode bug shipped undetected.
+- **Root cause:** The E2E project uses MSTest and requires a live Aspire stack — it was excluded from the unit test run command by targeting the wrong project path.
+- **Fix:** Fixed E2E tests to assert dialog visibility immediately after button click, added `data-test="create-dialog"` wrapper, corrected `event-card`→`event-row` and `"View →"`→`data-test="view-event-btn"` selector mismatches.
+- **Prevention:** CI verification must run both `dotnet test tests/Hackmum.Bethuya.Tests/` (TUnit) AND `dotnet test tests/Hackmum.Bethuya.E2E/` (Playwright, requires live stack). Always add a post-click `ToBeVisibleAsync()` assertion for any dialog or panel opened by a button — this is the cheapest guard against static SSR regressions.
