@@ -26,19 +26,19 @@
             </div>
         </BbCardContent>
         <BbCardFooter Class="featured-actions">
-            <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnPanelClick.InvokeAsync())">
+            <button class="feat-btn feat-btn--outline" type="button" @onclick="@(() => OnPanelClick.InvokeAsync())">
                 Panel
                 <LucideIcon Name="bot" Size="14" />
-            </BbButton>
-            <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnCurationClick.InvokeAsync())">
+            </button>
+            <button class="feat-btn feat-btn--outline" type="button" @onclick="@(() => OnCurationClick.InvokeAsync())">
                 Curation
                 <LucideIcon Name="settings" Size="14" />
-            </BbButton>
-            <BbButton Variant="ButtonVariant.Default" Class="feat-btn feat-btn--gold"
-                      OnClick="@(() => OnCreateClick.InvokeAsync())">
-                <span data-test="create-event-btn">Create New Event</span>
+            </button>
+            <button class="feat-btn feat-btn--gold" type="button" @onclick="@(() => OnCreateClick.InvokeAsync())"
+                    data-test="create-event-btn">
+                Create New Event
                 <LucideIcon Name="plus" Size="14" />
-            </BbButton>
+            </button>
         </BbCardFooter>
     </BbCard>
     </div>
@@ -49,11 +49,11 @@ else
     <BbCard Class="featured-card featured-card--empty">
         <BbCardContent Class="empty-content">
             <p class="empty-text">No upcoming events.</p>
-            <BbButton Variant="ButtonVariant.Default" Class="feat-btn--gold"
-                      OnClick="@(() => OnCreateClick.InvokeAsync())">
-                <span data-test="create-event-btn">Create New Event</span>
+            <button class="feat-btn feat-btn--gold" type="button" @onclick="@(() => OnCreateClick.InvokeAsync())"
+                    data-test="create-event-btn">
+                Create New Event
                 <LucideIcon Name="plus" Size="14" />
-            </BbButton>
+            </button>
         </BbCardContent>
     </BbCard>
     </div>
