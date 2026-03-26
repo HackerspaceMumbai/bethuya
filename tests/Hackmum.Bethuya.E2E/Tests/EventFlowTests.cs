@@ -5,16 +5,42 @@ namespace Hackmum.Bethuya.E2E.Tests;
 [TestClass]
 public class EventFlowTests : BethuyaE2ETest
 {
+    /// <summary>
+    /// Verifies the "Create New Event" button on the Home dashboard opens the dialog.
+    /// This test specifically targets the Home page button (FeaturedEventCard),
+    /// which has historically been broken by CSS overlays and Blazor activation issues.
+    /// </summary>
     [TestMethod]
-    public async Task CreateEvent_ShouldShowInList()
+    public async Task HomeCreateButton_ShouldOpenDialog()
+    {
+        await Page.GotoAsync("/");
+
+        // Wait for Blazor interactive rendering — button must be present and enabled
+        var createBtn = Page.Locator("[data-test='create-event-btn']").First;
+        await Expect(createBtn).ToBeVisibleAsync();
+        await Expect(createBtn).ToBeEnabledAsync();
+
+        // Click and immediately assert the dialog is visible
+        // If nothing happens (CSS overlay, non-interactive Blazor), this assertion fails
+        await createBtn.ClickAsync();
+        await Expect(Page.Locator("[data-test='create-dialog']"))
+            .ToBeVisibleAsync(new() { Timeout = 5000 });
+    }
+
+    [TestMethod]
+    public async Task CreateEvent_OnEventsPage_ShouldShowInList()
     {
         await Page.GotoAsync("/events");
 
         // Click the new event button
-        await Page.Locator("[data-test='new-event-btn']").ClickAsync();
+        var newEventBtn = Page.Locator("[data-test='new-event-btn']");
+        await Expect(newEventBtn).ToBeVisibleAsync();
+        await Expect(newEventBtn).ToBeEnabledAsync();
+        await newEventBtn.ClickAsync();
 
         // Assert dialog opened — catches static SSR (no interactivity) failures immediately
-        await Expect(Page.Locator("[data-test='create-dialog']")).ToBeVisibleAsync();
+        await Expect(Page.Locator("[data-test='create-dialog']"))
+            .ToBeVisibleAsync(new() { Timeout = 5000 });
 
         // Fill in form fields
         await Page.GetByPlaceholder("Event title").FillAsync("Test Community Meetup");
@@ -37,8 +63,12 @@ public class EventFlowTests : BethuyaE2ETest
         await Page.GotoAsync("/events");
 
         // Create an event first
-        await Page.Locator("[data-test='new-event-btn']").ClickAsync();
-        await Expect(Page.Locator("[data-test='create-dialog']")).ToBeVisibleAsync();
+        var newEventBtn = Page.Locator("[data-test='new-event-btn']");
+        await Expect(newEventBtn).ToBeEnabledAsync();
+        await newEventBtn.ClickAsync();
+
+        await Expect(Page.Locator("[data-test='create-dialog']"))
+            .ToBeVisibleAsync(new() { Timeout = 5000 });
 
         await Page.GetByPlaceholder("Event title").FillAsync("Agent Test Event");
         await Page.Locator("[data-test='create-event-submit']").ClickAsync();
