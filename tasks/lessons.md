@@ -18,7 +18,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
-## [2025-03-24] BbButton.OnClick silently swallows click events
+## [2025-03-24] Blazor prerendering + async API data causes silent activation failure
+- **What happened:** `@onclick` handlers never bound despite WebSocket connected. Page was visible but completely non-interactive.
+- **Root cause:** With `prerender: true` (default), Blazor renders static HTML on the server, sends it to the browser, then "activates" the DOM via WebSocket. If the server-side pre-render pass calls an async API (`EventApi.GetAllAsync()`) and the interactive render produces different output, Blazor's DOM reconciliation silently fails — handlers aren't registered.
+- **Fix:** `new InteractiveServerRenderMode(prerender: false)` on `<Routes>` and `<HeadOutlet>` in App.razor. Eliminates the two-pass render; components render once, fully interactively.
+- **Prevention:** When using `InteractiveServer` with async data-fetching on page load, either disable prerendering or use `OnAfterRenderAsync(firstRender)` for the API call (static pre-render won't call it, preventing mismatch).
+
 - **What happened:** `BbButton OnClick="@(() => ...)"` rendered the button visually but click events never fired, even with Blazor WebSocket confirmed connected.
 - **Root cause:** Unknown — `BbButton`'s `OnClick` parameter appears to not wire to the underlying `<button>`'s click event in this usage pattern. The WebSocket being active ruled out render mode issues.
 - **Fix:** Replace `BbButton` with native `<button @onclick="...">` elements. Style directly with CSS classes; no `::deep` needed.
