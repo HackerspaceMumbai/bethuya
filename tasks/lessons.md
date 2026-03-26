@@ -18,7 +18,19 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
-## [2025-03-24] Blazor prerendering + async API data causes silent activation failure
+## [2025-03-24] BbCategoryPortalHost renders a transparent full-page overlay that blocks all clicks
+- **What happened:** After adding `<BbCategoryPortalHost />` to fix `BbDialog`, ALL buttons on the page became unclickable — even after replacing `BbDialog` with a plain HTML modal.
+- **Root cause:** `BbCategoryPortalHost` renders a transparent full-screen overlay div (position:fixed, z-index > content) used to position portaled dialogs. This overlay intercepts all mouse events on the page even when no dialog is open.
+- **Fix:** Remove `BbCategoryPortalHost` from `MainLayout.razor`. Use native CSS modals (`position:fixed` backdrop with `@if`) instead of any BlazorBlueprint dialog/portal components.
+- **Prevention:** Never add portal host components from UI libraries unless you understand what DOM elements they inject. Check the rendered HTML in browser DevTools for transparent overlay divs when buttons become mysteriously unclickable.
+
+## [2025-03-24] E2E tests must cover Home page buttons specifically, with ToBeEnabledAsync before clicking
+- **What happened:** The E2E tests only covered the `/events` page button, not the `/` (Home) dashboard button. The Home button was broken for weeks without automated detection.
+- **Root cause:** `HomeCreateButton_ShouldOpenDialog` test was never written. Even the events test lacked `ToBeEnabledAsync()` — a click on a disabled/covered element succeeds silently in Playwright.
+- **Fix:** Added `HomeCreateButton_ShouldOpenDialog` test targeting `/` + `[data-test='create-event-btn']`. Added `ToBeEnabledAsync()` before every `ClickAsync()`. Added short `Timeout` on dialog-visible assertion to fail fast.
+- **Prevention:** Every interactive feature needs an E2E test on EVERY page it appears on. Always assert `ToBeEnabledAsync()` before clicking and assert visible state AFTER clicking with a tight timeout.
+
+
 - **What happened:** `@onclick` handlers never bound despite WebSocket connected. Page was visible but completely non-interactive.
 - **Root cause:** With `prerender: true` (default), Blazor renders static HTML on the server, sends it to the browser, then "activates" the DOM via WebSocket. If the server-side pre-render pass calls an async API (`EventApi.GetAllAsync()`) and the interactive render produces different output, Blazor's DOM reconciliation silently fails — handlers aren't registered.
 - **Fix:** `new InteractiveServerRenderMode(prerender: false)` on `<Routes>` and `<HeadOutlet>` in App.razor. Eliminates the two-pass render; components render once, fully interactively.
