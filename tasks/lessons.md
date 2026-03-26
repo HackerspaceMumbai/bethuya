@@ -18,7 +18,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
-## [2025-03-24] BbDialog programmatic control requires BbDialogTrigger inside the component tree
+## [2025-03-24] BbButton.OnClick silently swallows click events
+- **What happened:** `BbButton OnClick="@(() => ...)"` rendered the button visually but click events never fired, even with Blazor WebSocket confirmed connected.
+- **Root cause:** Unknown — `BbButton`'s `OnClick` parameter appears to not wire to the underlying `<button>`'s click event in this usage pattern. The WebSocket being active ruled out render mode issues.
+- **Fix:** Replace `BbButton` with native `<button @onclick="...">` elements. Style directly with CSS classes; no `::deep` needed.
+- **Prevention:** When a UI component's event callback silently does nothing despite Blazor being connected, replace with native HTML elements to isolate whether the issue is the component library or Blazor itself. Native elements should always be the first diagnostic step.
+
 - **What happened:** `BbDialog` with `Open`/`OpenChanged` parameters was set up for programmatic control, but clicking the button had no effect — the dialog never opened.
 - **Root cause:** `BbDialog` v3.5.2 only works via its `BbDialogTrigger` (uncontrolled pattern). Without a `BbDialogTrigger` nested inside the dialog, external `Open` state changes are ignored. The README only documents the trigger pattern; `Open`/`OpenChanged`/`Controlled` params exist in the binary but are undocumented and non-functional for cross-component scenarios.
 - **Fix:** Replace `BbDialog` with a plain CSS `position:fixed` modal overlay (`@if (IsOpen)` + backdrop div). No portal host needed, complete control, no external state.
