@@ -18,7 +18,13 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
-## [2025-03-24] BbCategoryPortalHost renders a transparent full-page overlay that blocks all clicks
+## [2026-03-26] ALL fixes were committed to main; worktree branch never received them
+- **What happened:** Every bug fix was committed and verified on `main`. The running application was in a worktree on branch `copilot/worktree-2026-03-24T09-26-45`. Fixes had zero effect on the user's running app for the entire session.
+- **Root cause:** Git worktrees share a `.git` but each is on an independent branch. Commits to `main` are invisible to any other worktree branch until explicitly merged.
+- **Fix:** `git merge main --no-ff` in the worktree.
+- **Prevention:** **Always check the current working directory and active branch before making changes.** If the session CWD is a worktree, that is the branch the user's app runs from. Commit and build-verify there, or merge main into it before declaring work done.
+
+
 - **What happened:** After adding `<BbCategoryPortalHost />` to fix `BbDialog`, ALL buttons on the page became unclickable — even after replacing `BbDialog` with a plain HTML modal.
 - **Root cause:** `BbCategoryPortalHost` renders a transparent full-screen overlay div (position:fixed, z-index > content) used to position portaled dialogs. This overlay intercepts all mouse events on the page even when no dialog is open.
 - **Fix:** Remove `BbCategoryPortalHost` from `MainLayout.razor`. Use native CSS modals (`position:fixed` backdrop with `@if`) instead of any BlazorBlueprint dialog/portal components.
