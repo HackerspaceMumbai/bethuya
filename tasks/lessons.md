@@ -18,6 +18,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2025-03-24] BbDialog programmatic control requires BbDialogTrigger inside the component tree
+- **What happened:** `BbDialog` with `Open`/`OpenChanged` parameters was set up for programmatic control, but clicking the button had no effect — the dialog never opened.
+- **Root cause:** `BbDialog` v3.5.2 only works via its `BbDialogTrigger` (uncontrolled pattern). Without a `BbDialogTrigger` nested inside the dialog, external `Open` state changes are ignored. The README only documents the trigger pattern; `Open`/`OpenChanged`/`Controlled` params exist in the binary but are undocumented and non-functional for cross-component scenarios.
+- **Fix:** Replace `BbDialog` with a plain CSS `position:fixed` modal overlay (`@if (IsOpen)` + backdrop div). No portal host needed, complete control, no external state.
+- **Prevention:** When using a UI library's overlay/dialog component, verify that the desired open/close pattern (trigger vs. programmatic) is explicitly documented. If a component only documents trigger-based opening, don't assume programmatic `Open` works across component boundaries.
+
 ## [2026-03-21] Partial Squad initialization needs a structural validation pass
 - **What happened:** The repository already had a `.squad/` directory, but `team.md` had no members, `casting/registry.json` was missing, and the Scribe files were only loosely scaffolded.
 - **Root cause:** Squad setup stopped after creating baseline files, so Team Mode state existed without a usable roster or casting metadata.
