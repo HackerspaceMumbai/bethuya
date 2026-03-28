@@ -1,10 +1,11 @@
 @if (Event is not null)
 {
-    <div class="featured-card" data-test="featured-event-card">
+    <div data-test="featured-event-card">
+    <BbCard Class="featured-card">
         <div class="featured-photo" role="img" aria-label="@Event.Title event photo">
             <div class="featured-photo-overlay" aria-hidden="true"></div>
         </div>
-        <div class="featured-body">
+        <BbCardContent Class="featured-body">
             <h2 class="featured-title">@Event.Title</h2>
             <p class="featured-desc">@(Event.Description ?? "")</p>
 
@@ -13,7 +14,7 @@
                     <span class="meta-label">Location</span>
                     <span class="meta-value">@(Event.Location ?? "TBD")</span>
                 </div>
-                <div class="meta-divider" aria-hidden="true"></div>
+                <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="meta-divider" />
                 <div class="meta-item">
                     <span class="meta-label">Date</span>
                     <span class="meta-value">
@@ -21,35 +22,42 @@
                     </span>
                 </div>
             </div>
-        </div>
-        <div class="featured-actions">
-            <button class="feat-btn feat-btn--outline" type="button" @onclick="@(() => OnPanelClick.InvokeAsync())">
+        </BbCardContent>
+        <BbCardFooter Class="featured-actions">
+            <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnPanelClick.InvokeAsync())">
                 Panel
                 <LucideIcon Name="bot" Size="14" />
-            </button>
-            <button class="feat-btn feat-btn--outline" type="button" @onclick="@(() => OnCurationClick.InvokeAsync())">
+            </BbButton>
+            <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnCurationClick.InvokeAsync())">
                 Curation
                 <LucideIcon Name="settings" Size="14" />
-            </button>
-            <button class="feat-btn feat-btn--gold" type="button" @onclick="@(() => OnCreateClick.InvokeAsync())"
-                    data-test="create-event-btn">
-                Create New Event
-                <LucideIcon Name="plus" Size="14" />
-            </button>
-        </div>
+            </BbButton>
+            <div data-test="create-event-btn">
+                <BbButton Variant="ButtonVariant.Default" Class="feat-btn feat-btn--gold"
+                          OnClick="@(() => OnCreateClick.InvokeAsync())">
+                    Create New Event
+                    <LucideIcon Name="plus" Size="14" />
+                </BbButton>
+            </div>
+        </BbCardFooter>
+    </BbCard>
     </div>
 }
 else
 {
-    <div class="featured-card featured-card--empty" data-test="featured-event-card">
-        <div class="empty-content">
+    <div data-test="featured-event-card">
+    <BbCard Class="featured-card featured-card--empty">
+        <BbCardContent Class="empty-content">
             <p class="empty-text">No upcoming events.</p>
-            <button class="feat-btn feat-btn--gold" type="button" @onclick="@(() => OnCreateClick.InvokeAsync())"
-                    data-test="create-event-btn">
-                Create New Event
-                <LucideIcon Name="plus" Size="14" />
-            </button>
-        </div>
+            <div data-test="create-event-btn">
+                <BbButton Variant="ButtonVariant.Default" Class="feat-btn--gold"
+                          OnClick="@(() => OnCreateClick.InvokeAsync())">
+                    Create New Event
+                    <LucideIcon Name="plus" Size="14" />
+                </BbButton>
+            </div>
+        </BbCardContent>
+    </BbCard>
     </div>
 }
 
