@@ -1,3 +1,5 @@
+using Scalar.Aspire;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 var sql = builder.AddAzureSqlServer("sql")
@@ -16,5 +18,8 @@ var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web")
     .WithReference(backend)
     .WaitFor(backend)
     .WithReference(keycloak);
+
+builder.AddScalarApiReference()
+    .WithApiReference(backend);
 
 builder.Build().Run();

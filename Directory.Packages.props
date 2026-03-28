@@ -57,5 +57,10 @@
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.4.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.5" />
+    <!-- Scalar — API documentation -->
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.13.15" />
+    <PackageVersion Include="Scalar.Aspire" Version="0.9.15" />
+    <!-- OpenAPI document generation (.NET built-in) -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
   </ItemGroup>
 </Project>
