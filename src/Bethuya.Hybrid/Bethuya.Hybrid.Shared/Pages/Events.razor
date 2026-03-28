@@ -96,7 +96,7 @@
                         <div class="flex gap-2 shrink-0">
                             <div data-test="view-event-btn">
                                 <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
-                                          OnClick="@(() => Navigation.NavigateTo($"/events/{evt.Id}"))">
+                                          OnClick="@(() => Navigation.NavigateTo(evt.Hashtag is not null ? $"/events/{evt.Hashtag}" : $"/events/{evt.Id}"))">
                                     Draft Schedule →
                                 </BbButton>
                             </div>
@@ -168,6 +168,7 @@
         Status = dto.Status,
         Capacity = dto.Capacity,
         Location = dto.Location,
+        Hashtag = dto.Hashtag,
         StartDate = DateOnly.FromDateTime(dto.StartDate.DateTime),
         EndDate = DateOnly.FromDateTime(dto.EndDate.DateTime)
     };

@@ -22,6 +22,11 @@ public sealed class CreateEventFormModel : IValidatableObject
     [MaxLength(300, ErrorMessage = "Location must be 300 characters or fewer.")]
     public string? Location { get; set; }
 
+    [MaxLength(100, ErrorMessage = "Hashtag must be 100 characters or fewer.")]
+    [RegularExpression(@"^[A-Za-z][A-Za-z0-9_]*$",
+        ErrorMessage = "Hashtag must start with a letter and contain only letters, digits, and underscores.")]
+    public string? Hashtag { get; set; }
+
     [Required(ErrorMessage = "Start date is required.")]
     public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
 

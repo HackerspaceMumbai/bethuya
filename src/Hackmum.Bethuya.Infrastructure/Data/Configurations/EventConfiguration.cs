@@ -20,6 +20,13 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Location)
             .HasMaxLength(500);
 
+        builder.Property(e => e.Hashtag)
+            .HasMaxLength(100);
+
+        builder.HasIndex(e => e.Hashtag)
+            .IsUnique()
+            .HasFilter("[Hashtag] IS NOT NULL");
+
         builder.Property(e => e.CreatedBy)
             .IsRequired()
             .HasMaxLength(200);
