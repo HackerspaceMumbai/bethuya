@@ -1,0 +1,136 @@
+@page "/events/create"
+@rendermode InteractiveServer
+@using Bethuya.Hybrid.Shared.Models
+@using Bethuya.Hybrid.Shared.Services
+@inject IEventApi EventApi
+@inject NavigationManager Navigation
+
+<PageTitle>Create Event — Bethuya</PageTitle>
+
+<div data-test="create-event-page" class="create-event-page">
+
+    <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => Navigation.NavigateTo("/events"))">
+        ← Back to Events
+    </BbButton>
+
+    <div class="page-header">
+        <h1 class="page-title">Create Event</h1>
+        <p class="page-subtitle">Fill in the details below to create a new community event draft.</p>
+    </div>
+
+    <BbCard Class="form-card">
+        <EditForm Model="@_formModel" OnValidSubmit="HandleValidSubmit" FormName="create-event" data-test="create-event-form">
+            <DataAnnotationsValidator />
+
+            <div class="form-grid">
+                <div class="form-field form-field--full">
+                    <BbLabel For="newTitle">Title *</BbLabel>
+                    <BbInput id="newTitle" @bind-Value="_formModel.Title" Placeholder="Event title" />
+                    <ValidationMessage For="@(() => _formModel.Title)" />
+                </div>
+
+                <div class="form-field form-field--full">
+                    <BbLabel For="newDescription">Description</BbLabel>
+                    <BbTextarea id="newDescription" @bind-Value="_formModel.Description" Placeholder="Event description" />
+                    <ValidationMessage For="@(() => _formModel.Description)" />
+                </div>
+
+                <div class="form-field">
+                    <BbLabel For="newType">Event Type</BbLabel>
+                    <select id="newType" class="field-select" @bind="_formModel.Type">
+                        <option value="Workshop">Workshop</option>
+                        <option value="Meetup">Meetup</option>
+                        <option value="Hackathon">Hackathon</option>
+                        <option value="Conference">Conference</option>
+                        <option value="Panel">Panel</option>
+                        <option value="Social">Social</option>
+                    </select>
+                    <ValidationMessage For="@(() => _formModel.Type)" />
+                </div>
+
+                <div class="form-field">
+                    <BbLabel For="newCapacity">Capacity</BbLabel>
+                    <InputNumber id="newCapacity" @bind-Value="_formModel.Capacity" class="field-input" />
+                    <ValidationMessage For="@(() => _formModel.Capacity)" />
+                </div>
+
+                <div class="form-field form-field--full">
+                    <BbLabel For="newLocation">Location</BbLabel>
+                    <BbInput id="newLocation" @bind-Value="_formModel.Location" Placeholder="Location" />
+                    <ValidationMessage For="@(() => _formModel.Location)" />
+                </div>
+
+                <div class="form-field">
+                    <BbLabel For="newStartDate">Start Date</BbLabel>
+                    <input id="newStartDate" type="date" class="field-input" @bind="_formModel.StartDate" />
+                    <ValidationMessage For="@(() => _formModel.StartDate)" />
+                </div>
+
+                <div class="form-field">
+                    <BbLabel For="newEndDate">End Date</BbLabel>
+                    <input id="newEndDate" type="date" class="field-input" @bind="_formModel.EndDate" />
+                    <ValidationMessage For="@(() => _formModel.EndDate)" />
+                </div>
+            </div>
+
+            @if (_errorMessage is not null)
+            {
+                <div data-test="create-error" class="form-error">
+                    <BbAlert Variant="AlertVariant.Danger">@_errorMessage</BbAlert>
+                </div>
+            }
+
+            <div class="form-actions">
+                <div data-test="create-event-submit">
+                    <BbButton Variant="ButtonVariant.Default" Type="ButtonType.Submit" Disabled="@_isSaving">
+                        @(_isSaving ? "Creating…" : "Create Event")
+                    </BbButton>
+                </div>
+                <BbButton Variant="ButtonVariant.Outline" OnClick="HandleCancel" Disabled="@_isSaving">
+                    Cancel
+                </BbButton>
+            </div>
+        </EditForm>
+    </BbCard>
+</div>
+
+@code {
+    private CreateEventFormModel _formModel = new();
+    private bool _isSaving;
+    private string? _errorMessage;
+
+    private async Task HandleValidSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            var dto = new CreateEventDto(
+                Title: _formModel.Title,
+                Description: _formModel.Description,
+                Type: _formModel.Type,
+                Capacity: _formModel.Capacity,
+                StartDate: _formModel.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                EndDate: _formModel.EndDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                Location: _formModel.Location,
+                CreatedBy: "organizer@hackmum.org");
+
+            await EventApi.CreateAsync(dto);
+            Navigation.NavigateTo("/events");
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Failed to create event. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void HandleCancel()
+    {
+        Navigation.NavigateTo("/events");
+    }
+}

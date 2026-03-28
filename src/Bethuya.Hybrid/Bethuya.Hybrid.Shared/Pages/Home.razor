@@ -45,12 +45,8 @@
             <FeaturedEventCard Event="@featuredEvent"
                                OnPanelClick="@(() => Navigation.NavigateTo("/agents"))"
                                OnCurationClick="@(() => Navigation.NavigateTo("/curation"))"
-                               OnCreateClick="@(() => showCreateDialog = true)" />
+                               OnCreateClick="@(() => Navigation.NavigateTo("/events/create"))" />
         </div>
-
-        @* ── Create Event Dialog ── *@
-        <CreateEventDialog @bind-IsOpen="showCreateDialog"
-                           OnEventCreated="HandleEventCreated" />
 
         @* ── Events list ── *@
         <section class="events-section" aria-label="All events">
@@ -85,7 +81,6 @@
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private List<EventViewModel> events = [];
-    private bool showCreateDialog;
     private bool isLoading = true;
     private string? errorMessage;
 
@@ -112,12 +107,6 @@
         {
             isLoading = false;
         }
-    }
-
-    private void HandleEventCreated(EventViewModel newEvent)
-    {
-        events.Insert(0, newEvent);
-        showCreateDialog = false;
     }
 
     private static EventViewModel MapToViewModel(EventDto dto) => new()

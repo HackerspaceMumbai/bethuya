@@ -1,0 +1,90 @@
+/* ── Create Event Page ── */
+.create-event-page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem;
+}
+
+.page-header {
+    margin: 1.5rem 0;
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--hs-text);
+    margin: 0 0 0.35rem;
+}
+
+.page-subtitle {
+    font-size: 0.9rem;
+    color: var(--hs-text-muted);
+    margin: 0;
+}
+
+/* ── Form card ── */
+::deep .form-card {
+    background-color: var(--hs-card);
+    border: 1px solid var(--hs-border);
+    border-radius: var(--hs-radius);
+    padding: 1.5rem;
+}
+
+/* ── Form layout ── */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.form-field--full {
+    grid-column: 1 / -1;
+}
+
+.field-select,
+.field-input {
+    background-color: #110e0c;
+    border: 1px solid var(--hs-border);
+    color: var(--hs-text);
+    border-radius: 7px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.88rem;
+    width: 100%;
+    transition: border-color var(--hs-transition);
+}
+
+.field-select:focus,
+.field-input:focus {
+    outline: none;
+    border-color: var(--hs-gold);
+    box-shadow: 0 0 0 2px var(--hs-gold-15);
+}
+
+/* ── Error ── */
+.form-error {
+    margin: 1rem 0 0;
+}
+
+/* ── Actions ── */
+.form-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-field--full {
+        grid-column: 1;
+    }
+}
