@@ -111,3 +111,9 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** The E2E project uses MSTest and requires a live Aspire stack — it was excluded from the unit test run command by targeting the wrong project path.
 - **Fix:** Fixed E2E tests to assert dialog visibility immediately after button click, added `data-test="create-dialog"` wrapper, corrected `event-card`→`event-row` and `"View →"`→`data-test="view-event-btn"` selector mismatches.
 - **Prevention:** CI verification must run both `dotnet test tests/Hackmum.Bethuya.Tests/` (TUnit) AND `dotnet test tests/Hackmum.Bethuya.E2E/` (Playwright, requires live stack). Always add a post-click `ToBeVisibleAsync()` assertion for any dialog or panel opened by a button — this is the cheapest guard against static SSR regressions.
+
+## [2026-03-28] BbDialog Open/OpenChanged is non-functional for programmatic control in v3.5.2
+- **What happened:** Restored `BbDialog Open="@IsOpen" OpenChanged="@HandleOpenChanged"` after confirming per-page `@rendermode InteractiveServer` works and BbButton OnClick fires (both verified via diagnostic counter test). Clicking "Create New Event" still did nothing — the dialog never opened.
+- **Root cause:** `BbDialog` in BlazorBlueprint v3.5.2 only opens via `BbDialogTrigger` nested inside the component tree. The `Open`/`OpenChanged` parameters exist in the compiled binary but are **not wired to internal state** — external parameter changes are silently ignored.
+- **Fix:** Replaced `BbDialog` with `@if (IsOpen)` custom CSS modal overlay. BB form components (BbLabel, BbInput, BbTextarea, BbButton, BbAlert) work perfectly inside the custom modal.
+- **Prevention:** Never use `BbDialog` for programmatic/controlled open state. Use `BbDialogTrigger` (uncontrolled, trigger must be inside BbDialog tree) or replace with `@if (IsOpen)` + custom modal CSS. File issue with BlazorBlueprint for programmatic dialog support.
