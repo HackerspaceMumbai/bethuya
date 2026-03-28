@@ -61,6 +61,16 @@
                 </div>
 
                 <div class="form-field">
+                    <BbLabel For="newHashtag">Hashtag</BbLabel>
+                    <div class="hashtag-input-wrapper">
+                        <span class="hashtag-prefix">#</span>
+                        <BbInput id="newHashtag" @bind-Value="_formModel.Hashtag" Placeholder="CopilotDevDays" />
+                    </div>
+                    <p class="field-hint">Optional. Letters, digits, underscores. Used as the event URL shortcode.</p>
+                    <ValidationMessage For="@(() => _formModel.Hashtag)" />
+                </div>
+
+                <div class="form-field">
                     <BbLabel For="newStartDate">Start Date</BbLabel>
                     <input id="newStartDate" type="date" class="field-input" @bind="_formModel.StartDate" />
                     <ValidationMessage For="@(() => _formModel.StartDate)" />
@@ -114,7 +124,8 @@
                 StartDate: _formModel.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
                 EndDate: _formModel.EndDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
                 Location: _formModel.Location,
-                CreatedBy: "organizer@hackmum.org");
+                CreatedBy: "organizer@hackmum.org",
+                Hashtag: string.IsNullOrWhiteSpace(_formModel.Hashtag) ? null : _formModel.Hashtag);
 
             await EventApi.CreateAsync(dto);
             Navigation.NavigateTo("/events");

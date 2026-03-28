@@ -88,3 +88,23 @@
         grid-column: 1;
     }
 }
+
+.hashtag-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.hashtag-prefix {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary);
+    line-height: 1;
+    padding-top: 0.1rem;
+}
+
+.field-hint {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    margin-top: 0.25rem;
+}

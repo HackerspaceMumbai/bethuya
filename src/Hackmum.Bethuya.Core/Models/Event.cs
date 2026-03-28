@@ -13,6 +13,7 @@ public sealed class Event
     public DateTimeOffset StartDate { get; set; }
     public DateTimeOffset EndDate { get; set; }
     public string? Location { get; set; }
+    public string? Hashtag { get; set; }
     public required string CreatedBy { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
