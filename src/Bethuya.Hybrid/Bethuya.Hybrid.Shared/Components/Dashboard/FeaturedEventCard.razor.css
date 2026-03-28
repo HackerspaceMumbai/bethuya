@@ -110,15 +110,12 @@
 }
 
 ::deep .feat-btn--gold {
-    color: #0d0b09;
-    background-color: var(--hs-gold);
-    border-color: var(--hs-gold);
     font-weight: 700;
 }
 
 ::deep .feat-btn--gold:hover {
-    background-color: #E8BE48;
-    border-color: #E8BE48;
+    background-color: var(--hs-gold-hover);
+    border-color: var(--hs-gold-hover);
 }
 
 .empty-text {

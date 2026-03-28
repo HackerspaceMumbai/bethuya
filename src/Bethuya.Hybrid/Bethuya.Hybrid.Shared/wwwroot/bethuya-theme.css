@@ -1,0 +1,72 @@
+/*
+ * Bethuya Theme — Hackerspace Mumbai Dark Gold Design System
+ * Maps Blazor Blueprint CSS variables to the Hackerspace Mumbai brand.
+ *
+ * BB uses Tailwind v4 @theme inline — all --color-* map to var(--*).
+ * e.g. bg-primary → var(--color-primary) → var(--primary) → #D4A830
+ *
+ * This file is loaded BEFORE blazorblueprint.css so the variables are
+ * available when Tailwind utilities resolve.
+ *
+ * Dark mode is the only mode (class="dark" on <html>).
+ */
+
+:root,
+.dark {
+    /* ── Brand tokens (unchanged from app.css) ── */
+    --hs-gold-hover:      #E8BE48;
+
+    /* ── Core palette ── */
+    --background:           #0d0b09;
+    --foreground:           #F0EAE0;
+
+    /* ── Card / elevated surfaces ── */
+    --card:                 #181210;
+    --card-foreground:      #F0EAE0;
+
+    /* ── Popover (dialogs, dropdowns) ── */
+    --popover:              #181210;
+    --popover-foreground:   #F0EAE0;
+
+    /* ── Primary = Hackerspace Mumbai Gold ── */
+    --primary:              #D4A830;
+    --primary-foreground:   #0d0b09;
+
+    /* ── Secondary (subtle surfaces) ── */
+    --secondary:            #1e1715;
+    --secondary-foreground: #F0EAE0;
+
+    /* ── Muted (disabled / placeholder) ── */
+    --muted:                #1e1715;
+    --muted-foreground:     #7a6a57;
+
+    /* ── Accent (hover highlights) ── */
+    --accent:               #1e1715;
+    --accent-foreground:    #F0EAE0;
+
+    /* ── Destructive (errors, delete) ── */
+    --destructive:          #e53e3e;
+    --destructive-foreground: #F0EAE0;
+
+    /* ── Borders, inputs, focus rings ── */
+    --border:               rgba(212, 168, 48, 0.2);
+    --input:                rgba(212, 168, 48, 0.2);
+    --ring:                 #D4A830;
+
+    /* ── Border radius ── */
+    --radius:               0.625rem;
+
+    /* ── Sidebar ── */
+    --sidebar:                      #0a0807;
+    --sidebar-foreground:           #F0EAE0;
+    --sidebar-primary:              #D4A830;
+    --sidebar-primary-foreground:   #0d0b09;
+    --sidebar-accent:               #181210;
+    --sidebar-accent-foreground:    #F0EAE0;
+    --sidebar-border:               rgba(212, 168, 48, 0.2);
+    --sidebar-ring:                 #D4A830;
+
+    /* ── Font stack ── */
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                 'Helvetica Neue', Arial, sans-serif;
+}
