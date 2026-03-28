@@ -18,7 +18,7 @@
 
         <div class="flex items-center gap-3">
             <div data-test="new-event-btn">
-                <BbButton Variant="ButtonVariant.Default" OnClick="@(() => showCreateDialog = true)">
+                <BbButton Variant="ButtonVariant.Default" OnClick="@(() => Navigation.NavigateTo("/events/create"))">
                     <LucideIcon Name="calendar-plus" Size="16" />
                     New Event
                 </BbButton>
@@ -112,11 +112,6 @@
         </div>
     }
 
-    @* ── Create Event Dialog ── *@
-    <CreateEventDialog @bind-IsOpen="showCreateDialog"
-                       OnEventCreated="HandleEventCreated"
-                       OnNotification="HandleNotification" />
-
     @* ── Notification Toast ── *@
     <Notification @bind-IsVisible="showNotification" Message="@notificationMessage" Variant="@notificationVariant" AutoDismissSeconds="5" />
 </div>
@@ -129,7 +124,6 @@
     private bool sortAscending = true;
     private bool isLoading = true;
     private string? errorMessage;
-    private bool showCreateDialog;
     private bool showNotification;
     private string notificationMessage = string.Empty;
     private AlertVariant notificationVariant = AlertVariant.Success;
@@ -179,12 +173,6 @@
     };
 
     private void ToggleSort() => sortAscending = !sortAscending;
-
-    private void HandleEventCreated(EventViewModel newEvent)
-    {
-        allEvents.Insert(0, newEvent);
-        showCreateDialog = false;
-    }
 
     private void HandleNotification(string message)
     {
