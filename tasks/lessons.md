@@ -141,3 +141,9 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** BB components don't use `[Parameter(CaptureUnmatchedValues = true)]`, so any unknown attribute (including `data-test`) throws at runtime. **This is invisible at build time** — the Razor compiler doesn't validate component parameter names.
 - **Fix:** Always wrap BB components in `<div data-test="...">` wrappers. Added bUnit render test (`CreateEventRenderTests.cs`) that catches this at test time.
 - **Prevention:** Never put `data-test` or any custom HTML attribute directly on a BB component. Always wrap in a plain HTML element. The bUnit test catches this regression — ensure it runs in CI.
+
+## [2026-03-30] bethuya-theme.css uses rgba/hex — never wrap in hsl()
+- **What happened:** Capacity InputNumber had white background in dark theme — visually jarring vs all other dark-themed inputs.
+- **Root cause:** `.field-input` CSS used `background-color: hsl(var(--input))` but `bethuya-theme.css` defines `--input: rgba(212, 168, 48, 0.2)` — an rgba value, NOT an HSL component. `hsl(rgba(...))` is invalid CSS → browser falls back to default (white for input elements). Same issue for `--border`, `--foreground`, `--ring`.
+- **Fix:** Changed all color references in `.field-input` to use `var(--border)`, `var(--background)`, `var(--foreground)`, `var(--ring)` directly without any `hsl()` wrapper.
+- **Prevention:** **Always check bethuya-theme.css variable format before writing CSS.** The theme uses full color values (hex `#0d0b09`, rgba `rgba(212,168,48,0.2)`), NOT HSL components. Use `var(--name)` directly. The `hsl()` wrapping pattern is from ShadCN/Tailwind docs that use `--primary: 210 40% 98%` — bethuya-theme.css does NOT follow that convention.
