@@ -17,6 +17,10 @@ public interface IEventApi
 
     [Post("/api/events")]
     Task<EventDto> CreateAsync([Body] CreateEventDto request, CancellationToken ct = default);
+
+    [Multipart]
+    [Post("/api/images/upload")]
+    Task<ImageUploadResponse> UploadImageAsync([AliasAs("file")] StreamPart file, CancellationToken ct = default);
 }
 
 /// <summary>Event data returned from the API.</summary>
@@ -32,7 +36,8 @@ public sealed record EventDto(
     string? Location,
     string CreatedBy,
     DateTimeOffset CreatedAt,
-    string? Hashtag);
+    string? Hashtag,
+    string? CoverImageUrl);
 
 /// <summary>Payload sent to create a new event draft.</summary>
 public sealed record CreateEventDto(
@@ -44,4 +49,8 @@ public sealed record CreateEventDto(
     DateTimeOffset EndDate,
     string? Location,
     string CreatedBy,
-    string? Hashtag);
+    string? Hashtag,
+    string? CoverImageUrl);
+
+/// <summary>Response from the image upload endpoint.</summary>
+public sealed record ImageUploadResponse(string Url);
