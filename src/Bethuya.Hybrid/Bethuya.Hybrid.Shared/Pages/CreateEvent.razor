@@ -83,33 +83,39 @@
 
                     <div class="form-row-2col">
                         <div class="form-group">
-                            <BbLabel For="newStartDate">Start Date &amp; Time</BbLabel>
-                            <div class="datetime-row">
-                                <div data-test="start-date-picker">
-                                    <BbDatePicker id="newStartDate" @bind-Value="_formModel.StartDate"
-                                                  Placeholder="Pick a date" MinDate="DateTime.Today" Class="w-full" />
-                                </div>
-                                <div data-test="start-time-picker">
-                                    <BbTimePicker @bind-Value="_formModel.StartTime"
-                                                  Placeholder="Pick a time" Class="w-full" />
-                                </div>
+                            <BbLabel For="newStartDate">Start Date</BbLabel>
+                            <div data-test="start-date-picker">
+                                <BbDatePicker id="newStartDate" @bind-Value="_formModel.StartDate"
+                                              Placeholder="Pick a date" MinDate="DateTime.Today" Class="w-full" />
                             </div>
                             <ValidationMessage For="@(() => _formModel.StartDate)" />
                         </div>
 
                         <div class="form-group">
-                            <BbLabel For="newEndDate">End Date &amp; Time</BbLabel>
-                            <div class="datetime-row">
-                                <div data-test="end-date-picker">
-                                    <BbDatePicker id="newEndDate" @bind-Value="_formModel.EndDate"
-                                                  Placeholder="Pick a date" MinDate="DateTime.Today" Class="w-full" />
-                                </div>
-                                <div data-test="end-time-picker">
-                                    <BbTimePicker @bind-Value="_formModel.EndTime"
-                                                  Placeholder="Pick a time" Class="w-full" />
-                                </div>
+                            <BbLabel>Start Time</BbLabel>
+                            <div data-test="start-time-picker">
+                                <BbTimePicker @bind-Value="_formModel.StartTime"
+                                              Placeholder="Pick a time" Class="w-full" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <BbLabel For="newEndDate">End Date</BbLabel>
+                            <div data-test="end-date-picker">
+                                <BbDatePicker id="newEndDate" @bind-Value="_formModel.EndDate"
+                                              Placeholder="Pick a date" MinDate="DateTime.Today" Class="w-full" />
                             </div>
                             <ValidationMessage For="@(() => _formModel.EndDate)" />
+                        </div>
+
+                        <div class="form-group">
+                            <BbLabel>End Time</BbLabel>
+                            <div data-test="end-time-picker">
+                                <BbTimePicker @bind-Value="_formModel.EndTime"
+                                              Placeholder="Pick a time" Class="w-full" />
+                            </div>
                         </div>
                     </div>
 

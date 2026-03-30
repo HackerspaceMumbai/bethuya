@@ -41,7 +41,7 @@
 /* Title/Hashtag Row: 85/15 split */
 .title-hashtag-row {
     display: grid;
-    grid-template-columns: minmax(0, 85fr) minmax(0, 15fr);
+    grid-template-columns: minmax(0, 70fr) minmax(0, 30fr);
     gap: 1rem;
     align-items: flex-start;
 }
@@ -87,9 +87,9 @@
 /* ── Native InputNumber: styled to match BB BbInput appearance ── */
 .field-input {
     height: 2.5rem;
-    background-color: hsl(var(--input));
-    border: 1px solid hsl(var(--border));
-    color: hsl(var(--foreground));
+    background-color: var(--background);
+    border: 1px solid var(--border);
+    color: var(--foreground);
     border-radius: var(--radius);
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
@@ -100,6 +100,6 @@
 
 .field-input:focus {
     outline: none;
-    border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 2px color-mix(in srgb, hsl(var(--ring)) 20%, transparent);
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 20%, transparent);
 }
