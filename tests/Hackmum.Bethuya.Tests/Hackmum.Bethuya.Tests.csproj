@@ -11,6 +11,12 @@
     <PackageReference Include="TUnit" />
     <PackageReference Include="bunit.web" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+  </ItemGroup>
+
+  <!-- ASP.NET Core shared framework for endpoint testing -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>

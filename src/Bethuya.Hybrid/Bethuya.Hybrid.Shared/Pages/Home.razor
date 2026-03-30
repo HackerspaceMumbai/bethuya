@@ -1,5 +1,4 @@
 @page "/"
-@rendermode InteractiveServer
 @using Bethuya.Hybrid.Shared.Components.Dashboard
 @using Bethuya.Hybrid.Shared.Services
 @inject IEventApi EventApi
@@ -74,8 +73,6 @@
     }
 
 </main>
-
-
 
 @code {
     [Inject] private NavigationManager Navigation { get; set; } = default!;
