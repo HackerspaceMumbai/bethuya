@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 
 namespace Hackmum.Bethuya.E2E.Tests;
@@ -6,12 +7,11 @@ namespace Hackmum.Bethuya.E2E.Tests;
 public class EventFlowTests : BethuyaE2ETest
 {
     /// <summary>
-    /// Verifies the "Create New Event" button on the Home dashboard opens the dialog.
-    /// This test specifically targets the Home page button (FeaturedEventCard),
-    /// which has historically been broken by CSS overlays and Blazor activation issues.
+    /// Verifies the "Create New Event" button on the Home dashboard navigates
+    /// to the dedicated /events/create page.
     /// </summary>
     [TestMethod]
-    public async Task HomeCreateButton_ShouldOpenDialog()
+    public async Task HomeCreateButton_ShouldNavigateToCreatePage()
     {
         await Page.GotoAsync("/");
 
@@ -20,11 +20,11 @@ public class EventFlowTests : BethuyaE2ETest
         await Expect(createBtn).ToBeVisibleAsync();
         await Expect(createBtn).ToBeEnabledAsync();
 
-        // Click and immediately assert the dialog is visible
-        // If nothing happens (CSS overlay, non-interactive Blazor), this assertion fails
+        // Click and assert navigation to /events/create
         await createBtn.ClickAsync();
-        await Expect(Page.Locator("[data-test='create-dialog']"))
+        await Expect(Page.Locator("[data-test='create-event-page']"))
             .ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Expect(Page).ToHaveURLAsync(new Regex("/events/create$"));
     }
 
     [TestMethod]
@@ -32,14 +32,14 @@ public class EventFlowTests : BethuyaE2ETest
     {
         await Page.GotoAsync("/events");
 
-        // Click the new event button
+        // Click the new event button — navigates to /events/create
         var newEventBtn = Page.Locator("[data-test='new-event-btn']");
         await Expect(newEventBtn).ToBeVisibleAsync();
         await Expect(newEventBtn).ToBeEnabledAsync();
         await newEventBtn.ClickAsync();
 
-        // Assert dialog opened — catches static SSR (no interactivity) failures immediately
-        await Expect(Page.Locator("[data-test='create-dialog']"))
+        // Assert we're on the create page
+        await Expect(Page.Locator("[data-test='create-event-page']"))
             .ToBeVisibleAsync(new() { Timeout = 5000 });
 
         // Fill in form fields
@@ -49,10 +49,11 @@ public class EventFlowTests : BethuyaE2ETest
         // Submit the form
         await Page.Locator("[data-test='create-event-submit']").ClickAsync();
 
-        // Verify success notification appears
-        await Expect(Page.Locator("[data-test='notification']")).ToBeVisibleAsync();
+        // Should redirect back to /events after successful creation
+        await Expect(Page.Locator("[data-test='events-page']"))
+            .ToBeVisibleAsync(new() { Timeout = 5000 });
 
-        // Verify event appears in the list (data-test='event-row' per Events.razor markup)
+        // Verify event appears in the list
         var eventRow = Page.Locator("[data-test='event-row']").Filter(new() { HasText = "Test Community Meetup" });
         await Expect(eventRow).ToBeVisibleAsync();
     }
@@ -60,21 +61,18 @@ public class EventFlowTests : BethuyaE2ETest
     [TestMethod]
     public async Task EventDetail_ShouldShowAgentPanels()
     {
-        await Page.GotoAsync("/events");
-
-        // Create an event first
-        var newEventBtn = Page.Locator("[data-test='new-event-btn']");
-        await Expect(newEventBtn).ToBeEnabledAsync();
-        await newEventBtn.ClickAsync();
-
-        await Expect(Page.Locator("[data-test='create-dialog']"))
+        // Navigate to create page directly
+        await Page.GotoAsync("/events/create");
+        await Expect(Page.Locator("[data-test='create-event-page']"))
             .ToBeVisibleAsync(new() { Timeout = 5000 });
 
+        // Create an event
         await Page.GetByPlaceholder("Event title").FillAsync("Agent Test Event");
         await Page.Locator("[data-test='create-event-submit']").ClickAsync();
 
-        // Wait for creation to complete
-        await Expect(Page.Locator("[data-test='notification']")).ToBeVisibleAsync();
+        // Should redirect to events list
+        await Expect(Page.Locator("[data-test='events-page']"))
+            .ToBeVisibleAsync(new() { Timeout = 5000 });
 
         // Navigate to event detail using data-test selector
         await Page.Locator("[data-test='view-event-btn']").First.ClickAsync();

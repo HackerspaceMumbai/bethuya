@@ -2,11 +2,15 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- CA1707: test method names use underscores by convention -->
+    <!-- NU1608: bunit.web's HtmlSanitizer pins AngleSharp 0.17.1 but bunit.web itself needs AngleSharp 1.x; known transitive conflict in bunit, safe to suppress -->
+    <NoWarn>$(NoWarn);CA1707;NU1608</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="TUnit" />
+    <PackageReference Include="bunit.web" />
+    <PackageReference Include="NSubstitute" />
   </ItemGroup>
 
   <ItemGroup>

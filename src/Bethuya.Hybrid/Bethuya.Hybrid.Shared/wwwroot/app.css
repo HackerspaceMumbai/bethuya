@@ -1,10 +1,13 @@
 /* ── Hackerspace Mumbai · Dark Gold Design System ── */
+/* Theme variables for BB components: see bethuya-theme.css */
+/* These --hs-* tokens are used by component-scoped CSS       */
 :root {
     --hs-bg:              #0d0b09;
     --hs-card:            #181210;
     --hs-card-hover:      #1e1715;
     --hs-sidebar:         #0a0807;
     --hs-gold:            #D4A830;
+    --hs-gold-hover:      #E8BE48;
     --hs-gold-15:         rgba(212, 168, 48, 0.15);
     --hs-gold-25:         rgba(212, 168, 48, 0.25);
     --hs-gold-60:         rgba(212, 168, 48, 0.6);
@@ -27,24 +30,8 @@ a, .btn-link {
 }
 
 a:hover {
-    color: #E8BE48;
+    color: var(--hs-gold-hover);
     text-decoration: underline;
-}
-
-.btn-primary {
-    color: var(--hs-bg);
-    background-color: var(--hs-gold);
-    border-color: var(--hs-gold);
-    font-weight: 600;
-}
-
-.btn-primary:hover {
-    background-color: #E8BE48;
-    border-color: #E8BE48;
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-    box-shadow: 0 0 0 0.1rem var(--hs-bg), 0 0 0 0.3rem var(--hs-gold);
 }
 
 /* Skip-to-main accessibility link */

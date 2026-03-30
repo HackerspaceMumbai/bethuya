@@ -45,6 +45,15 @@
     
     <!-- Testing — TUnit (not xUnit/NUnit per project standards) -->
     <PackageVersion Include="TUnit" Version="0.50.0" />
+    <!-- bUnit component rendering tests (bunit.web = no xUnit dependency, includes TestContext) -->
+    <PackageVersion Include="bunit.web" Version="1.40.0" />
+    <!-- AngleSharp: bunit.web 1.40 requires 1.2.0 / 1.0.0-beta.154.
+         BlazorBlueprint.Components → HtmlSanitizer 9.0.892 requires AngleSharp = 0.17.1 (exact).
+         We pin to bunit's newer version; NU1608 is suppressed in the test project. -->
+    <PackageVersion Include="AngleSharp" Version="1.2.0" />
+    <PackageVersion Include="AngleSharp.Css" Version="1.0.0-beta.154" />
+    <!-- NSubstitute — mocking for component tests -->
+    <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <!-- E2E — Playwright for .NET -->
     <PackageVersion Include="Microsoft.Playwright" Version="1.52.0" />
     <PackageVersion Include="Microsoft.Playwright.MSTest" Version="1.52.0" />
