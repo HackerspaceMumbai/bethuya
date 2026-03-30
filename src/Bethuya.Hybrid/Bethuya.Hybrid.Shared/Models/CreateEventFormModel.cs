@@ -27,6 +27,10 @@ public sealed class CreateEventFormModel : IValidatableObject
         ErrorMessage = "Hashtag must start with a letter and contain only letters, digits, and underscores.")]
     public string? Hashtag { get; set; }
 
+    /// <summary>Public URL of the uploaded cover image (set after successful upload).</summary>
+    [MaxLength(2048, ErrorMessage = "Cover image URL must be 2,048 characters or fewer.")]
+    public string? CoverImageUrl { get; set; }
+
     [Required(ErrorMessage = "Start date is required.")]
     public DateTime? StartDate { get; set; } = DateTime.Today;
 

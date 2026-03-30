@@ -118,6 +118,41 @@
                         </div>
                     </div>
 
+                    <div class="form-group" data-test="cover-image-section">
+                        <BbLabel>Cover Image</BbLabel>
+                        <div class="cover-upload-area">
+                            @if (_formModel.CoverImageUrl is not null)
+                            {
+                                <div class="cover-preview" data-test="cover-image-preview">
+                                    <img src="@_formModel.CoverImageUrl" alt="Cover preview" class="cover-preview-img" />
+                                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                                              OnClick="RemoveCoverImage" Disabled="@_isUploading"
+                                              data-test="remove-cover-btn">
+                                        Remove
+                                    </BbButton>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="cover-dropzone" data-test="cover-image-dropzone">
+                                    <InputFile OnChange="HandleCoverImageSelected" accept="image/jpeg,image/png,image/webp,image/gif"
+                                               data-test="cover-image-input" />
+                                    <p class="field-hint">JPEG, PNG, WebP, or GIF — max 5 MB</p>
+                                </div>
+                            }
+                            @if (_isUploading)
+                            {
+                                <p class="field-hint" data-test="upload-progress">Uploading…</p>
+                            }
+                            @if (_uploadError is not null)
+                            {
+                                <div data-test="upload-error">
+                                    <BbAlert Variant="AlertVariant.Danger">@_uploadError</BbAlert>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
                     @if (_errorMessage is not null)
                     {
                         <div data-test="create-error">
@@ -147,6 +182,8 @@
     private CreateEventFormModel _formModel = new();
     private bool _isSaving;
     private string? _errorMessage;
+    private bool _isUploading;
+    private string? _uploadError;
 
     private async Task HandleValidSubmit()
     {
@@ -164,7 +201,8 @@
                 EndDate: new DateTimeOffset(_formModel.EndDate!.Value.Date + (_formModel.EndTime ?? TimeSpan.Zero), TimeSpan.Zero),
                 Location: _formModel.Location,
                 CreatedBy: "organizer@hackmum.org",
-                Hashtag: string.IsNullOrWhiteSpace(_formModel.Hashtag) ? null : _formModel.Hashtag);
+                Hashtag: string.IsNullOrWhiteSpace(_formModel.Hashtag) ? null : _formModel.Hashtag,
+                CoverImageUrl: _formModel.CoverImageUrl);
 
             await EventApi.CreateAsync(dto);
             Navigation.NavigateTo("/events");
@@ -177,6 +215,47 @@
         {
             _isSaving = false;
         }
+    }
+
+    private async Task HandleCoverImageSelected(InputFileChangeEventArgs e)
+    {
+        _uploadError = null;
+        var file = e.File;
+
+        if (file.Size > 5 * 1024 * 1024)
+        {
+            _uploadError = "File size must not exceed 5 MB.";
+            return;
+        }
+
+        _isUploading = true;
+        StateHasChanged();
+
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var streamPart = new Refit.StreamPart(ms, file.Name, file.ContentType);
+            var response = await EventApi.UploadImageAsync(streamPart);
+            _formModel.CoverImageUrl = response.Url;
+        }
+        catch (Exception)
+        {
+            _uploadError = "Failed to upload image. Please try again.";
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private void RemoveCoverImage(MouseEventArgs _)
+    {
+        _formModel.CoverImageUrl = null;
+        _uploadError = null;
     }
 
     private void HandleCancel()

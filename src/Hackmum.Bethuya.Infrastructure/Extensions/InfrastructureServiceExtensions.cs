@@ -1,6 +1,8 @@
 using Hackmum.Bethuya.Core.Repositories;
+using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Repositories;
+using Hackmum.Bethuya.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -18,6 +20,10 @@ public static class InfrastructureServiceExtensions
         builder.Services.AddScoped<IEventRepository, EventRepository>();
         builder.Services.AddScoped<IRegistrationRepository, RegistrationRepository>();
         builder.Services.AddScoped<IDecisionRepository, DecisionRepository>();
+
+        builder.Services.Configure<CloudinaryOptions>(
+            builder.Configuration.GetSection(CloudinaryOptions.SectionName));
+        builder.Services.AddSingleton<IImageUploadService, CloudinaryImageUploadService>();
 
         return builder;
     }

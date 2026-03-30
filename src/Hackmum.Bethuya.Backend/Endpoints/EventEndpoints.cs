@@ -97,7 +97,8 @@ public static class EventEndpoints
                 EndDate = request.EndDate,
                 Location = request.Location,
                 Hashtag = string.IsNullOrEmpty(request.Hashtag) ? null : request.Hashtag,
-                CreatedBy = request.CreatedBy
+                CreatedBy = request.CreatedBy,
+                CoverImageUrl = request.CoverImageUrl
             };
 
             var created = await repo.CreateAsync(evt, ct);
@@ -144,6 +145,7 @@ public static class EventEndpoints
             evt.EndDate = request.EndDate;
             evt.Location = request.Location;
             evt.Status = request.Status;
+            evt.CoverImageUrl = request.CoverImageUrl;
 
             await repo.UpdateAsync(evt, ct);
             return Results.Ok(MapToResponse(evt));
@@ -169,5 +171,6 @@ public static class EventEndpoints
             evt.Location,
             evt.CreatedBy,
             evt.CreatedAt,
-            evt.Hashtag);
+            evt.Hashtag,
+            evt.CoverImageUrl);
 }

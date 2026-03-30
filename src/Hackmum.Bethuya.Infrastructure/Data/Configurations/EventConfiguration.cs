@@ -23,6 +23,9 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Hashtag)
             .HasMaxLength(100);
 
+        builder.Property(e => e.CoverImageUrl)
+            .HasMaxLength(2048);
+
         builder.HasIndex(e => e.Hashtag)
             .IsUnique()
             .HasFilter("[Hashtag] IS NOT NULL");

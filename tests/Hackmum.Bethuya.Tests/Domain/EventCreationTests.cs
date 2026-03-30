@@ -30,7 +30,8 @@ public class EventCreationTests
             EndDate: new DateTimeOffset(2026, 6, 15, 17, 0, 0, TimeSpan.Zero),
             Location: "HackerspaceMumbai",
             CreatedBy: "org@hackmum.org",
-            Hashtag: null
+            Hashtag: null,
+            CoverImageUrl: null
         );
 
         // Act - Map the request to an Event model
