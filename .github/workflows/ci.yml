@@ -53,21 +53,17 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Install Playwright browsers
-        run: |
-          dotnet tool install --global Microsoft.Playwright.CLI || true
-          playwright install --with-deps chromium
-
       - name: Restore
         run: dotnet restore
 
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      - name: Install Playwright browsers
+        run: pwsh tests/Hackmum.Bethuya.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
       - name: Run E2E tests
-        run: dotnet test tests/ --no-build --configuration Release --logger trx --results-directory TestResults/E2E/
-        env:
-          PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
+        run: dotnet test tests/Hackmum.Bethuya.E2E/ --no-build --configuration Release --logger trx --results-directory TestResults/E2E/
 
       - name: Upload E2E results and traces
         if: always()
