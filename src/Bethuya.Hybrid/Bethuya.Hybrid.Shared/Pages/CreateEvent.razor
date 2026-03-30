@@ -13,93 +13,127 @@
         ← Back to Events
     </BbButton>
 
-    <div class="page-header">
-        <h1 class="page-title">Create Event</h1>
-        <p class="page-subtitle">Fill in the details below to create a new community event draft.</p>
-    </div>
+    <BbCard Class="mt-6">
+        <BbCardHeader>
+            <BbCardTitle Class="text-2xl">Create Event</BbCardTitle>
+            <BbCardDescription>Fill in the details below to create a new community event draft.</BbCardDescription>
+        </BbCardHeader>
 
-    <BbCard Class="form-card">
         <EditForm Model="@_formModel" OnValidSubmit="HandleValidSubmit" FormName="create-event" data-test="create-event-form">
             <DataAnnotationsValidator />
 
-            <div class="form-grid">
-                <div class="form-field form-field--full">
-                    <BbLabel For="newTitle">Title *</BbLabel>
-                    <BbInput id="newTitle" @bind-Value="_formModel.Title" Placeholder="Event title" />
-                    <ValidationMessage For="@(() => _formModel.Title)" />
-                </div>
+            <BbCardContent>
+                <div class="form-fields">
 
-                <div class="form-field form-field--full">
-                    <BbLabel For="newDescription">Description</BbLabel>
-                    <BbTextarea id="newDescription" @bind-Value="_formModel.Description" Placeholder="Event description" />
-                    <ValidationMessage For="@(() => _formModel.Description)" />
-                </div>
+                    <div class="title-hashtag-row">
+                        <div class="form-group">
+                            <BbLabel For="newTitle">Title *</BbLabel>
+                            <BbInput id="newTitle" @bind-Value="_formModel.Title" Placeholder="Event title" Class="w-full" />
+                            <ValidationMessage For="@(() => _formModel.Title)" />
+                        </div>
 
-                <div class="form-field">
-                    <BbLabel For="newType">Event Type</BbLabel>
-                    <select id="newType" class="field-select" @bind="_formModel.Type">
-                        <option value="Workshop">Workshop</option>
-                        <option value="Meetup">Meetup</option>
-                        <option value="Hackathon">Hackathon</option>
-                        <option value="Conference">Conference</option>
-                        <option value="Panel">Panel</option>
-                        <option value="Social">Social</option>
-                    </select>
-                    <ValidationMessage For="@(() => _formModel.Type)" />
-                </div>
-
-                <div class="form-field">
-                    <BbLabel For="newCapacity">Capacity</BbLabel>
-                    <InputNumber id="newCapacity" @bind-Value="_formModel.Capacity" class="field-input" />
-                    <ValidationMessage For="@(() => _formModel.Capacity)" />
-                </div>
-
-                <div class="form-field form-field--full">
-                    <BbLabel For="newLocation">Location</BbLabel>
-                    <BbInput id="newLocation" @bind-Value="_formModel.Location" Placeholder="Location" />
-                    <ValidationMessage For="@(() => _formModel.Location)" />
-                </div>
-
-                <div class="form-field">
-                    <BbLabel For="newHashtag">Hashtag</BbLabel>
-                    <div class="hashtag-input-wrapper">
-                        <span class="hashtag-prefix">#</span>
-                        <BbInput id="newHashtag" @bind-Value="_formModel.Hashtag" Placeholder="CopilotDevDays" />
+                        <div class="form-group">
+                            <BbLabel For="newHashtag">Hashtag</BbLabel>
+                            <div class="hashtag-inline">
+                                <span class="hashtag-prefix">#</span>
+                                <BbInput id="newHashtag" @bind-Value="_formModel.Hashtag" Placeholder="CopilotDevDays" Class="w-full" />
+                            </div>
+                            <p class="field-hint">Optional event shortcode.</p>
+                            <ValidationMessage For="@(() => _formModel.Hashtag)" />
+                        </div>
                     </div>
-                    <p class="field-hint">Optional. Letters, digits, underscores. Used as the event URL shortcode.</p>
-                    <ValidationMessage For="@(() => _formModel.Hashtag)" />
-                </div>
 
-                <div class="form-field">
-                    <BbLabel For="newStartDate">Start Date</BbLabel>
-                    <input id="newStartDate" type="date" class="field-input" @bind="_formModel.StartDate" />
-                    <ValidationMessage For="@(() => _formModel.StartDate)" />
-                </div>
+                    <div class="form-group">
+                        <BbLabel For="newDescription">Description</BbLabel>
+                        <BbTextarea id="newDescription" @bind-Value="_formModel.Description" Placeholder="Event description" Class="w-full" />
+                        <ValidationMessage For="@(() => _formModel.Description)" />
+                    </div>
 
-                <div class="form-field">
-                    <BbLabel For="newEndDate">End Date</BbLabel>
-                    <input id="newEndDate" type="date" class="field-input" @bind="_formModel.EndDate" />
-                    <ValidationMessage For="@(() => _formModel.EndDate)" />
-                </div>
-            </div>
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <BbLabel For="newType">Event Type</BbLabel>
+                            <BbSelect @bind-Value="_formModel.Type">
+                                <BbSelectTrigger>
+                                    <BbSelectValue Placeholder="Select type" />
+                                </BbSelectTrigger>
+                                <BbSelectContent>
+                                    <BbSelectItem TValue="string" Value="@("Workshop")" Text="Workshop">Workshop</BbSelectItem>
+                                    <BbSelectItem TValue="string" Value="@("Meetup")" Text="Meetup">Meetup</BbSelectItem>
+                                    <BbSelectItem TValue="string" Value="@("Hackathon")" Text="Hackathon">Hackathon</BbSelectItem>
+                                    <BbSelectItem TValue="string" Value="@("Conference")" Text="Conference">Conference</BbSelectItem>
+                                    <BbSelectItem TValue="string" Value="@("Panel")" Text="Panel">Panel</BbSelectItem>
+                                    <BbSelectItem TValue="string" Value="@("Social")" Text="Social">Social</BbSelectItem>
+                                </BbSelectContent>
+                            </BbSelect>
+                            <ValidationMessage For="@(() => _formModel.Type)" />
+                        </div>
 
-            @if (_errorMessage is not null)
-            {
-                <div data-test="create-error" class="form-error">
-                    <BbAlert Variant="AlertVariant.Danger">@_errorMessage</BbAlert>
-                </div>
-            }
+                        <div class="form-group">
+                            <BbLabel For="newCapacity">Capacity</BbLabel>
+                            <InputNumber id="newCapacity" @bind-Value="_formModel.Capacity" class="field-input" />
+                            <ValidationMessage For="@(() => _formModel.Capacity)" />
+                        </div>
+                    </div>
 
-            <div class="form-actions">
-                <div data-test="create-event-submit">
-                    <BbButton Variant="ButtonVariant.Default" Type="ButtonType.Submit" Disabled="@_isSaving">
-                        @(_isSaving ? "Creating…" : "Create Event")
+                    <div class="form-group">
+                        <BbLabel For="newLocation">Location</BbLabel>
+                        <BbInput id="newLocation" @bind-Value="_formModel.Location" Placeholder="Location" Class="w-full" />
+                        <ValidationMessage For="@(() => _formModel.Location)" />
+                    </div>
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <BbLabel For="newStartDate">Start Date &amp; Time</BbLabel>
+                            <div class="datetime-row">
+                                <div data-test="start-date-picker">
+                                    <BbDatePicker id="newStartDate" @bind-Value="_formModel.StartDate"
+                                                  Placeholder="Pick a date" MinDate="DateTime.Today" Class="w-full" />
+                                </div>
+                                <div data-test="start-time-picker">
+                                    <BbTimePicker @bind-Value="_formModel.StartTime"
+                                                  Placeholder="Pick a time" Class="w-full" />
+                                </div>
+                            </div>
+                            <ValidationMessage For="@(() => _formModel.StartDate)" />
+                        </div>
+
+                        <div class="form-group">
+                            <BbLabel For="newEndDate">End Date &amp; Time</BbLabel>
+                            <div class="datetime-row">
+                                <div data-test="end-date-picker">
+                                    <BbDatePicker id="newEndDate" @bind-Value="_formModel.EndDate"
+                                                  Placeholder="Pick a date" MinDate="DateTime.Today" Class="w-full" />
+                                </div>
+                                <div data-test="end-time-picker">
+                                    <BbTimePicker @bind-Value="_formModel.EndTime"
+                                                  Placeholder="Pick a time" Class="w-full" />
+                                </div>
+                            </div>
+                            <ValidationMessage For="@(() => _formModel.EndDate)" />
+                        </div>
+                    </div>
+
+                    @if (_errorMessage is not null)
+                    {
+                        <div data-test="create-error">
+                            <BbAlert Variant="AlertVariant.Danger">@_errorMessage</BbAlert>
+                        </div>
+                    }
+
+                </div>
+            </BbCardContent>
+
+            <BbCardFooter Class="justify-between">
+                    <BbButton Variant="ButtonVariant.Outline" OnClick="HandleCancel" Disabled="@_isSaving">
+                        Cancel
                     </BbButton>
-                </div>
-                <BbButton Variant="ButtonVariant.Outline" OnClick="HandleCancel" Disabled="@_isSaving">
-                    Cancel
-                </BbButton>
-            </div>
+                    <div data-test="create-event-submit">
+                        <BbButton Variant="ButtonVariant.Default" Type="ButtonType.Submit" Disabled="@_isSaving">
+                            @(_isSaving ? "Creating…" : "Create Event")
+                        </BbButton>
+                    </div>
+            </BbCardFooter>
+
         </EditForm>
     </BbCard>
 </div>
@@ -121,8 +155,8 @@
                 Description: _formModel.Description,
                 Type: _formModel.Type,
                 Capacity: _formModel.Capacity,
-                StartDate: _formModel.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
-                EndDate: _formModel.EndDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                StartDate: new DateTimeOffset(_formModel.StartDate!.Value.Date + (_formModel.StartTime ?? TimeSpan.Zero), TimeSpan.Zero),
+                EndDate: new DateTimeOffset(_formModel.EndDate!.Value.Date + (_formModel.EndTime ?? TimeSpan.Zero), TimeSpan.Zero),
                 Location: _formModel.Location,
                 CreatedBy: "organizer@hackmum.org",
                 Hashtag: string.IsNullOrWhiteSpace(_formModel.Hashtag) ? null : _formModel.Hashtag);

@@ -123,3 +123,21 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** `BbDialog` in BlazorBlueprint v3.5.2 only opens via `BbDialogTrigger` nested inside the component tree. The `Open`/`OpenChanged` parameters exist in the compiled binary but are **not wired to internal state** — external parameter changes are silently ignored.
 - **Fix:** Replaced `BbDialog` with `@if (IsOpen)` custom CSS modal overlay. BB form components (BbLabel, BbInput, BbTextarea, BbButton, BbAlert) work perfectly inside the custom modal.
 - **Prevention:** Never use `BbDialog` for programmatic/controlled open state. Use `BbDialogTrigger` (uncontrolled, trigger must be inside BbDialog tree) or replace with `@if (IsOpen)` + custom modal CSS. File issue with BlazorBlueprint for programmatic dialog support.
+
+## [2026-03-29] BlazorBlueprint Tailwind v4 @layer utilities lose to unlayered Blazor CSS
+- **What happened:** CreateEvent form fields were severely misaligned despite using BB Tailwind utility classes (`grid grid-cols-2 gap-4`, `space-y-4`, `flex`, etc.) — everything stacked vertically, fields overflowed the card.
+- **Root cause:** BB v3.5.2 bundles **Tailwind CSS v4.1.16** which uses `@layer utilities { .grid { display: grid; } }`. CSS cascade spec: **unlayered CSS always beats layered CSS** regardless of specificity. Blazor's scoped CSS bundle (`*.styles.css`) and `app.css` are unlayered → they win over BB's Tailwind utilities for any property they also target.
+- **Fix:** Wrote explicit scoped CSS classes in `.razor.css` (which is unlayered) to replace Tailwind utility classes for layout (`display:grid`, `display:flex`, `gap`, `grid-template-columns`). BB Tailwind utilities still work when no competing unlayered CSS targets the same property on the same element (e.g., `mt-6`, `w-full`, `text-2xl` on BB components).
+- **Prevention:** In Blazor projects using BB, don't rely on Tailwind utility classes for layout on elements that have Blazor scoped CSS. Either: (1) use explicit scoped CSS in `.razor.css`, or (2) pass Tailwind utilities via `Class=` parameter on BB components (which renders in the component's own DOM, avoiding Blazor's scoped bundle collision).
+
+## [2026-03-29] Blazor scoped CSS doesn't reach child component root elements
+- **What happened:** `.card-top[b-n9etwsyia6]` targeted `BbCard` but had no effect — BbCard's rendered `<div class="rounded-lg border bg-card...">` lacked the `b-n9etwsyia6` scope attribute.
+- **Root cause:** Blazor CSS isolation adds scope attributes only to HTML elements **directly rendered by the component's own Razor template**. Child component root elements (e.g., BbCard's div) are rendered by the child component, so they don't get the parent's scope attribute.
+- **Fix:** Use BB's `Class=` parameter to pass styling to child components (e.g., `BbCard Class="mt-6"`), or use `::deep` combinator. Don't put scoped CSS class names on BB component tags expecting them to match rendered HTML.
+- **Prevention:** When styling BB (or any) child components from parent scoped CSS, either: (1) wrap in a `<div>` you control, (2) use `::deep`, or (3) pass styling via the component's `Class` parameter.
+
+## [2026-03-29] BlazorBlueprint components reject arbitrary HTML attributes at runtime
+- **What happened:** `InvalidOperationException: Object of type 'BbTimePicker' does not have a property matching the name 'data-test'` — occurred twice across sessions.
+- **Root cause:** BB components don't use `[Parameter(CaptureUnmatchedValues = true)]`, so any unknown attribute (including `data-test`) throws at runtime. **This is invisible at build time** — the Razor compiler doesn't validate component parameter names.
+- **Fix:** Always wrap BB components in `<div data-test="...">` wrappers. Added bUnit render test (`CreateEventRenderTests.cs`) that catches this at test time.
+- **Prevention:** Never put `data-test` or any custom HTML attribute directly on a BB component. Always wrap in a plain HTML element. The bUnit test catches this regression — ensure it runs in CI.
