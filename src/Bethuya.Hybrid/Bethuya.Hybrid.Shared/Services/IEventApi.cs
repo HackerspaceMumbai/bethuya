@@ -12,6 +12,9 @@ public interface IEventApi
     [Get("/api/events/{id}")]
     Task<EventDto> GetByIdAsync(Guid id, CancellationToken ct = default);
 
+    [Get("/api/events/slug/{hashtag}")]
+    Task<EventDto> GetByHashtagAsync(string hashtag, CancellationToken ct = default);
+
     [Post("/api/events")]
     Task<EventDto> CreateAsync([Body] CreateEventDto request, CancellationToken ct = default);
 }
@@ -28,7 +31,8 @@ public sealed record EventDto(
     DateTimeOffset EndDate,
     string? Location,
     string CreatedBy,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? Hashtag);
 
 /// <summary>Payload sent to create a new event draft.</summary>
 public sealed record CreateEventDto(
@@ -39,4 +43,5 @@ public sealed record CreateEventDto(
     DateTimeOffset StartDate,
     DateTimeOffset EndDate,
     string? Location,
-    string CreatedBy);
+    string CreatedBy,
+    string? Hashtag);

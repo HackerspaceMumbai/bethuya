@@ -10,7 +10,8 @@ public sealed record CreateEventRequest(
     DateTimeOffset StartDate,
     DateTimeOffset EndDate,
     string? Location,
-    string CreatedBy);
+    string CreatedBy,
+    string? Hashtag);
 
 public sealed record UpdateEventRequest(
     string Title,
@@ -33,4 +34,5 @@ public sealed record EventResponse(
     DateTimeOffset EndDate,
     string? Location,
     string CreatedBy,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? Hashtag);

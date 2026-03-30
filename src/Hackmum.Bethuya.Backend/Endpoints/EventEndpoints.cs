@@ -1,11 +1,14 @@
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
+using System.Text.RegularExpressions;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
 public static class EventEndpoints
 {
+    private static readonly Regex HashtagPattern = new(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
+
     public static void MapEventEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/events").WithTags("Events");
@@ -25,9 +28,16 @@ public static class EventEndpoints
                 : Results.NotFound();
         });
 
+        group.MapGet("/slug/{hashtag}", async (string hashtag, IEventRepository repo, CancellationToken ct) =>
+        {
+            var evt = await repo.GetByHashtagAsync(hashtag, ct);
+            return evt is not null
+                ? Results.Ok(MapToResponse(evt))
+                : Results.NotFound();
+        });
+
         group.MapPost("/", async (CreateEventRequest request, IEventRepository repo, CancellationToken ct) =>
         {
-            // Validate request
             var errors = new Dictionary<string, string[]>();
 
             if (string.IsNullOrWhiteSpace(request.Title))
@@ -54,6 +64,24 @@ public static class EventEndpoints
                 errors[nameof(request.CreatedBy)] = ["CreatedBy is required."];
             }
 
+            if (!string.IsNullOrEmpty(request.Hashtag))
+            {
+                if (request.Hashtag.Length > 100)
+                {
+                    errors[nameof(request.Hashtag)] = ["Hashtag must be 100 characters or fewer."];
+                }
+                else if (!HashtagPattern.IsMatch(request.Hashtag))
+                {
+                    errors[nameof(request.Hashtag)] = ["Hashtag must start with a letter and contain only letters, digits, and underscores."];
+                }
+                else
+                {
+                    var existing = await repo.GetByHashtagAsync(request.Hashtag, ct);
+                    if (existing is not null)
+                        errors[nameof(request.Hashtag)] = [$"Hashtag '{request.Hashtag}' is already taken."];
+                }
+            }
+
             if (errors.Count > 0)
             {
                 return Results.ValidationProblem(errors);
@@ -68,6 +96,7 @@ public static class EventEndpoints
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
                 Location = request.Location,
+                Hashtag = string.IsNullOrEmpty(request.Hashtag) ? null : request.Hashtag,
                 CreatedBy = request.CreatedBy
             };
 
@@ -81,7 +110,6 @@ public static class EventEndpoints
             var evt = await repo.GetByIdAsync(id, ct);
             if (evt is null) return Results.NotFound();
 
-            // Validate request
             var errors = new Dictionary<string, string[]>();
 
             if (string.IsNullOrWhiteSpace(request.Title))
@@ -140,5 +168,6 @@ public static class EventEndpoints
             evt.EndDate,
             evt.Location,
             evt.CreatedBy,
-            evt.CreatedAt);
+            evt.CreatedAt,
+            evt.Hashtag);
 }

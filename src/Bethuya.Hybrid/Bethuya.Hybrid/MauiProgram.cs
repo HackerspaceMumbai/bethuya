@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using BlazorBlueprint.Components;
 using Bethuya.Hybrid.Shared.Services;
 using Bethuya.Hybrid.Services;
 
@@ -20,6 +21,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IFormFactor, FormFactor>();
 
         builder.Services.AddMauiBlazorWebView();
+        builder.Services.AddBlazorBlueprintComponents();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

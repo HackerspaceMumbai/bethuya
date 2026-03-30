@@ -1,4 +1,7 @@
 @page "/events/{EventId:guid}"
+@page "/events/{Slug}"
+@using Bethuya.Hybrid.Shared.Services
+@inject IEventApi EventApi
 
 <PageTitle>Event Details — Bethuya</PageTitle>
 
@@ -15,7 +18,16 @@
                 @GetStatusDisplayText(agendaStatus)
             </BbBadge>
         </div>
-        <p class="text-sm text-muted-foreground">Event ID: @EventId</p>
+        <p class="text-sm text-muted-foreground">
+            @if (_resolvedHashtag is not null)
+            {
+                <span>#@_resolvedHashtag</span>
+            }
+            else
+            {
+                <span>Event ID: @EventId</span>
+            }
+        </p>
     </div>
 
     @* Schedule Editor — two-column layout *@
@@ -244,9 +256,11 @@
 
 @code {
     [Parameter] public Guid EventId { get; set; }
+    [Parameter] public string? Slug { get; set; }
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private string eventTitle = "Event";
+    private string? _resolvedHashtag;
     private ScheduleStatus agendaStatus = ScheduleStatus.Draft;
     private List<SessionViewModel> sessions = [];
     private SessionViewModel newSession = new();
@@ -254,6 +268,25 @@
     private bool isAiDrafting;
     private string? statusMessage;
     private readonly Dictionary<Guid, SessionViewModel> editSnapshots = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // When navigating to /events/{hashtag}, resolve the event via the slug API
+        if (Slug is not null && EventId == Guid.Empty)
+        {
+            try
+            {
+                var dto = await EventApi.GetByHashtagAsync(Slug);
+                EventId = dto.Id;
+                eventTitle = dto.Title;
+                _resolvedHashtag = dto.Hashtag;
+            }
+            catch
+            {
+                // Event not found; leave defaults so page still renders
+            }
+        }
+    }
 
     // ── View-local enum (mirrors Hackmum.Bethuya.Core.Enums.AgendaStatus) ──
     private enum ScheduleStatus

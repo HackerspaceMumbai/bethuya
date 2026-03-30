@@ -10,6 +10,7 @@ public sealed class EventViewModel
     public string? AgendaStatus { get; set; }
     public int Capacity { get; set; } = 100;
     public string? Location { get; set; }
+    public string? Hashtag { get; set; }
     public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
     public DateOnly EndDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
 }
