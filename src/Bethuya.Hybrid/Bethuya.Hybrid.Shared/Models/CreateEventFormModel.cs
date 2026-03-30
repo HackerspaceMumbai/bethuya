@@ -28,17 +28,27 @@ public sealed class CreateEventFormModel : IValidatableObject
     public string? Hashtag { get; set; }
 
     [Required(ErrorMessage = "Start date is required.")]
-    public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
+    public DateTime? StartDate { get; set; } = DateTime.Today;
+
+    public TimeSpan? StartTime { get; set; } = new TimeSpan(9, 0, 0);
 
     [Required(ErrorMessage = "End date is required.")]
-    public DateOnly EndDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
+    public DateTime? EndDate { get; set; } = DateTime.Today;
+
+    public TimeSpan? EndTime { get; set; } = new TimeSpan(17, 0, 0);
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (EndDate < StartDate)
+        if (StartDate is null || EndDate is null)
+            yield break;
+
+        var startDt = StartDate.Value.Date + (StartTime ?? TimeSpan.Zero);
+        var endDt = EndDate.Value.Date + (EndTime ?? TimeSpan.Zero);
+
+        if (endDt < startDt)
         {
             yield return new ValidationResult(
-                "End date must be on or after the start date.",
+                "End date and time must be on or after the start date and time.",
                 [nameof(EndDate)]);
         }
     }

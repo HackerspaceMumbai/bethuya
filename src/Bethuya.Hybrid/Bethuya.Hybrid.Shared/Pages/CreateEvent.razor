@@ -25,13 +25,13 @@
             <BbCardContent>
                 <div class="form-fields">
 
-                    <div class="title-hashtag-row">
-                        <div class="form-group">
-                            <BbLabel For="newTitle">Title *</BbLabel>
-                            <BbInput id="newTitle" @bind-Value="_formModel.Title" Placeholder="Event title" Class="w-full" />
-                            <ValidationMessage For="@(() => _formModel.Title)" />
-                        </div>
+                    <div class="form-group">
+                        <BbLabel For="newTitle">Title *</BbLabel>
+                        <BbInput id="newTitle" @bind-Value="_formModel.Title" Placeholder="Event title" Class="w-full" />
+                        <ValidationMessage For="@(() => _formModel.Title)" />
+                    </div>
 
+                    <div class="form-row-2col">
                         <div class="form-group">
                             <BbLabel For="newHashtag">Hashtag</BbLabel>
                             <div class="hashtag-inline">
@@ -39,17 +39,8 @@
                                 <BbInput id="newHashtag" @bind-Value="_formModel.Hashtag" Placeholder="CopilotDevDays" Class="w-full" />
                             </div>
                             <p class="field-hint">Optional event shortcode.</p>
-                            <ValidationMessage For="@(() => _formModel.Hashtag)" />
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <BbLabel For="newDescription">Description</BbLabel>
-                        <BbTextarea id="newDescription" @bind-Value="_formModel.Description" Placeholder="Event description" Class="w-full" />
-                        <ValidationMessage For="@(() => _formModel.Description)" />
-                    </div>
-
-                    <div class="form-row-2col">
                         <div class="form-group">
                             <BbLabel For="newType">Event Type</BbLabel>
                             <BbSelect @bind-Value="_formModel.Type">
@@ -67,18 +58,26 @@
                             </BbSelect>
                             <ValidationMessage For="@(() => _formModel.Type)" />
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <BbLabel For="newDescription">Description</BbLabel>
+                        <BbTextarea id="newDescription" @bind-Value="_formModel.Description" Placeholder="Event description" Class="w-full" />
+                        <ValidationMessage For="@(() => _formModel.Description)" />
+                    </div>
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <BbLabel For="newLocation">Venue</BbLabel>
+                            <BbInput id="newLocation" @bind-Value="_formModel.Location" Placeholder="Venue name or address" Class="w-full" />
+                            <ValidationMessage For="@(() => _formModel.Location)" />
+                        </div>
 
                         <div class="form-group">
                             <BbLabel For="newCapacity">Capacity</BbLabel>
                             <InputNumber id="newCapacity" @bind-Value="_formModel.Capacity" class="field-input" />
                             <ValidationMessage For="@(() => _formModel.Capacity)" />
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <BbLabel For="newLocation">Location</BbLabel>
-                        <BbInput id="newLocation" @bind-Value="_formModel.Location" Placeholder="Location" Class="w-full" />
-                        <ValidationMessage For="@(() => _formModel.Location)" />
                     </div>
 
                     <div class="form-row-2col">

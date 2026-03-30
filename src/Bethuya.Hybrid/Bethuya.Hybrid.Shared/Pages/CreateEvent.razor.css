@@ -55,20 +55,6 @@
     }
 }
 
-/* Title/Hashtag Row: 85/15 split */
-.title-hashtag-row {
-    display: grid;
-    grid-template-columns: minmax(0, 70fr) minmax(0, 30fr);
-    gap: 1rem;
-    align-items: flex-start;
-}
-
-@media (max-width: 640px) {
-    .title-hashtag-row {
-        grid-template-columns: 1fr;
-    }
-}
-
 /* Side-by-side date + time pickers */
 .datetime-row {
     display: flex;

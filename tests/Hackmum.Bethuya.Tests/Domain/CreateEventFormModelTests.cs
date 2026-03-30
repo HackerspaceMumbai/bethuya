@@ -83,8 +83,8 @@ public class CreateEventFormModelTests
     public async Task EndDateBeforeStartDate_FailsValidation()
     {
         var model = CreateValidModel();
-        model.StartDate = new DateOnly(2026, 6, 15);
-        model.EndDate = new DateOnly(2026, 6, 14);
+        model.StartDate = new DateTime(2026, 6, 15);
+        model.EndDate = new DateTime(2026, 6, 14);
         var results = ValidateModel(model);
 
         await Assert.That(results).IsNotEmpty();
@@ -95,11 +95,25 @@ public class CreateEventFormModelTests
     public async Task EndDateEqualsStartDate_PassesValidation()
     {
         var model = CreateValidModel();
-        model.StartDate = new DateOnly(2026, 6, 15);
-        model.EndDate = new DateOnly(2026, 6, 15);
+        model.StartDate = new DateTime(2026, 6, 15);
+        model.EndDate = new DateTime(2026, 6, 15);
         var results = ValidateModel(model);
 
         await Assert.That(results).IsEmpty();
+    }
+
+    [Test]
+    public async Task EndDateTimeBeforeStartDateTime_SameDay_FailsValidation()
+    {
+        var model = CreateValidModel();
+        model.StartDate = new DateTime(2026, 6, 15);
+        model.StartTime = new TimeSpan(14, 0, 0);
+        model.EndDate = new DateTime(2026, 6, 15);
+        model.EndTime = new TimeSpan(10, 0, 0);
+        var results = ValidateModel(model);
+
+        await Assert.That(results).IsNotEmpty();
+        await Assert.That(results.Any(r => r.MemberNames.Contains(nameof(CreateEventFormModel.EndDate)))).IsTrue();
     }
 
     [Test]
@@ -162,8 +176,10 @@ public class CreateEventFormModelTests
         Type = "Hackathon",
         Capacity = 50,
         Location = "Microsoft Reactor",
-        StartDate = new DateOnly(2026, 7, 1),
-        EndDate = new DateOnly(2026, 7, 2)
+        StartDate = new DateTime(2026, 7, 1),
+        StartTime = new TimeSpan(9, 0, 0),
+        EndDate = new DateTime(2026, 7, 2),
+        EndTime = new TimeSpan(17, 0, 0)
     };
 
     private static List<ValidationResult> ValidateModel(CreateEventFormModel model)
