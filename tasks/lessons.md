@@ -212,3 +212,29 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root Cause:** Test data persists in the database across test runs. Hardcoded titles like "Test Community Meetup" accumulate duplicates.
 - **Fix:** Use unique titles with embedded GUIDs: `var uniqueTitle = $"E2E Meetup {Guid.NewGuid().ToString("N")[..8]}";` Use `.First` on locators when strict mode is a concern.
 - **Prevention:** Always use unique test data in E2E tests that create persistent resources. Use `.First` on locators when testing against lists that may have prior data.
+
+---
+
+### Lesson: NBomber scenarios must not use `using var` for HttpClient in factory methods
+- **Date:** 2026-03-31
+- **Context:** `ImageUploadScenario.Create()` and `EventApiScenario.CreateListScenario()`/`CreatePostScenario()` declared `using var httpClient` inside the factory method, but the NBomber scenario lambda captured it for later execution.
+- **Root Cause:** `using var` disposes at end of enclosing scope. The factory method returns a `ScenarioProps` — the `HttpClient` is disposed when the method returns, but the lambda still references it. During the actual load test run, every HTTP call uses a disposed `HttpClient` → `ObjectDisposedException`.
+- **Fix:** Declare `HttpClient? httpClient = null;` without `using`. Initialize it in `.WithInit()` hook (runs before scenario execution) and dispose in `.WithClean()` hook (runs after). This ensures the client is alive for the entire test duration and properly cleaned up.
+- **Prevention:** In NBomber scenarios, **never use `using var` for resources captured by the scenario lambda**. Always manage lifecycle via `WithInit`/`WithClean` hooks. This applies to any IDisposable shared across the scenario boundary (HttpClient, database connections, etc.).
+
+---
+
+### Lesson: Run code-review agent and explain-diff skill BEFORE committing — not after
+- **Date:** 2026-03-31
+- **Context:** The `using var` HttpClient bug, misleading RPS comments, and other issues in the load test code were only caught because the user manually ran a code review and sent findings one-by-one. Multiple built-in tools were available that should have caught these proactively.
+- **Root Cause:** Skipped the pre-commit review step. Did not use any of the available analysis tools before pushing code.
+- **Available tools that should have been used:**
+  1. **`code-review` agent** — reviews staged/unstaged changes for bugs, security vulnerabilities, logic errors. Would have caught the `using var` use-after-dispose.
+  2. **`dotnet-diag:optimizing-dotnet-performance` agent** — scans for ~50 .NET anti-patterns across async, memory, collections, I/O. Would have flagged the HttpClient lifecycle issue.
+  3. **`explain-diff` skill** — PR summary & risk callouts (Curator guardrails, AppHost wiring, AI routing). Should run before every PR.
+- **Fix:** Added mandatory pre-commit protocol below.
+- **Prevention — Mandatory Pre-Commit Protocol:**
+  1. **Before every commit:** Run `code-review` agent on staged changes.
+  2. **For .NET code changes:** Run `dotnet-diag:optimizing-dotnet-performance` agent on modified files.
+  3. **Before opening/updating a PR:** Run `/explain-diff` skill for risk callouts.
+  4. **Never rely on the user to send individual review findings** — catch them proactively with the tools available.

@@ -49,28 +49,28 @@ public class CoverImageFlowTests : BethuyaE2ETest
 
         // Upload cover image via BbFileUpload
         var fileInput = Page.Locator("[data-test='cover-image-upload'] input[type='file']");
-        if (await fileInput.CountAsync() > 0)
+        Assert.IsTrue(await fileInput.CountAsync() > 0,
+            "Cover image file input ([data-test='cover-image-upload'] input[type='file']) not found on the page");
+
+        // Create a minimal valid PNG for upload
+        var pngPath = Path.Combine(Path.GetTempPath(), "e2e-test-cover.png");
+        await File.WriteAllBytesAsync(pngPath, CreateMinimalPng());
+
+        try
         {
-            // Create a minimal valid PNG for upload
-            var pngPath = Path.Combine(Path.GetTempPath(), "e2e-test-cover.png");
-            await File.WriteAllBytesAsync(pngPath, CreateMinimalPng());
-
-            try
+            await WithBudgetAsync("File upload to Cloudinary", PerformanceBudgets.FileUploadMs, async () =>
             {
-                await WithBudgetAsync("File upload to Cloudinary", PerformanceBudgets.FileUploadMs, async () =>
-                {
-                    await fileInput.SetInputFilesAsync(pngPath);
+                await fileInput.SetInputFilesAsync(pngPath);
 
-                    // Wait for upload completion — look for preview or success indicator
-                    await Page.WaitForResponseAsync(
-                        response => response.Url.Contains("/api/images/upload") && response.Status == 200,
-                        new() { Timeout = PerformanceBudgets.FileUploadMs });
-                });
-            }
-            finally
-            {
-                File.Delete(pngPath);
-            }
+                // Wait for upload completion — look for preview or success indicator
+                await Page.WaitForResponseAsync(
+                    response => response.Url.Contains("/api/images/upload") && response.Status == 200,
+                    new() { Timeout = PerformanceBudgets.FileUploadMs });
+            });
+        }
+        finally
+        {
+            File.Delete(pngPath);
         }
 
         // Submit and verify redirect within budget

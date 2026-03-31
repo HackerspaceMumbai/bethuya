@@ -69,11 +69,22 @@ public class EventFlowTests : BethuyaE2ETest
     [TestMethod]
     public async Task EventDetail_ShouldShowScheduleEditor()
     {
-        // Navigate to events list and click the first event's view button
-        await GotoWithBudgetAsync("/events");
-        await Assertions.Expect(Page.Locator("[data-test='events-page']")).ToBeVisibleAsync();
+        // Create a deterministic event first so this test works in isolation
+        await GotoWithBudgetAsync("/events/create");
+        var submitBtn = Page.Locator("[data-test='create-event-submit'] button");
+        await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
-        var viewBtn = Page.Locator("[data-test='view-event-btn']").First;
+        var uniqueTitle = $"E2E Detail {Guid.NewGuid().ToString("N")[..8]}";
+        await Page.GetByPlaceholder("Event title").FillAsync(uniqueTitle);
+        await Page.GetByPlaceholder("Event description").FillAsync("Seeded for detail page test");
+        await submitBtn.ClickAsync();
+        await Page.WaitForURLAsync("**/events", new() { Timeout = PerformanceBudgets.FormSubmitMs });
+
+        // Now navigate to the created event's detail page
+        await Assertions.Expect(Page.Locator("[data-test='events-page']")).ToBeVisibleAsync();
+        var viewBtn = Page.Locator("[data-test='event-row']")
+            .Filter(new() { HasText = uniqueTitle })
+            .Locator("[data-test='view-event-btn']");
         await Assertions.Expect(viewBtn).ToBeVisibleAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
         await ClickAndNavigateWithBudgetAsync(viewBtn);
 

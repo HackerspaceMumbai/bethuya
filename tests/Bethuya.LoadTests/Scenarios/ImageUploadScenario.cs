@@ -8,7 +8,7 @@ namespace Bethuya.LoadTests.Scenarios;
 /// <summary>
 /// NBomber scenario: Image upload endpoint under load.
 /// Uses a minimal valid PNG (1x1 pixel) to test the full upload pipeline.
-/// Target: p99 &lt; 180ms @ 2,500 RPS (note: Cloudinary calls may dominate latency).
+/// Target: p99 &lt; 180ms @ 200 RPS (lower than API endpoints due to Cloudinary round-trips).
 /// </summary>
 public static class ImageUploadScenario
 {
@@ -28,22 +28,32 @@ public static class ImageUploadScenario
 
     public static ScenarioProps Create(string baseUrl)
     {
-        using var httpClient = new HttpClient(new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-        });
+        HttpClient? httpClient = null;
 
         return Scenario.Create("image_upload", async context =>
         {
-            var content = new MultipartFormDataContent();
-            var fileContent = new ByteArrayContent(MinimalPng);
+            using var content = new MultipartFormDataContent();
+            using var fileContent = new ByteArrayContent(MinimalPng);
             fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
             content.Add(fileContent, "file", $"loadtest-{context.InvocationNumber}.png");
 
             var request = Http.CreateRequest("POST", $"{baseUrl}/api/images/upload")
                 .WithBody(content);
 
-            return await Http.Send(httpClient, request);
+            return await Http.Send(httpClient!, request);
+        })
+        .WithInit(context =>
+        {
+            httpClient = new HttpClient(new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+            });
+            return Task.CompletedTask;
+        })
+        .WithClean(context =>
+        {
+            httpClient?.Dispose();
+            return Task.CompletedTask;
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
