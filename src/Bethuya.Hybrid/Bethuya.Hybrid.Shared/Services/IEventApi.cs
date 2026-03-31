@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Refit;
 
 namespace Bethuya.Hybrid.Shared.Services;
@@ -53,4 +54,4 @@ public sealed record CreateEventDto(
     string? CoverImageUrl);
 
 /// <summary>Response from the image upload endpoint.</summary>
-public sealed record ImageUploadResponse(string Url);
+public sealed record ImageUploadResponse([property: JsonPropertyName("url")] string Url);

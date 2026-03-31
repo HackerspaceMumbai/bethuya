@@ -132,10 +132,12 @@
                                     <img src="@_formModel.CoverImageUrl" alt="Cover preview" class="cover-preview-img" />
                                 </div>
                                 <div class="cover-preview-actions">
-                                    <span class="cover-preview-filename">
-                                        <LucideIcon Name="image" Size="14" />
-                                        Cover image uploaded
-                                    </span>
+                                    <BbAlert Variant="AlertVariant.Success" AccentBorder>
+                                        <Icon><LucideIcon Name="image" Class="h-4 w-4" /></Icon>
+                                        <ChildContent>
+                                            <BbAlertDescription>Cover image uploaded</BbAlertDescription>
+                                        </ChildContent>
+                                    </BbAlert>
                                     <BbButton Variant="ButtonVariant.Outline"
                                               OnClick="RemoveCoverImage" Disabled="@_isUploading"
                                               data-test="remove-cover-btn">
@@ -255,23 +257,45 @@
 
         var item = files[0];
         _uploadError = null;
+
+        // Read file into memory BEFORE any StateHasChanged — re-rendering
+        // destroys Blazor's JS-side _blazorFilesById map, making
+        // IBrowserFile.OpenReadStream() throw a JSException.
+        using var ms = new MemoryStream();
+        using (var stream = item.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024))
+        {
+            await stream.CopyToAsync(ms);
+        }
+        ms.Position = 0;
+
         _isUploading = true;
         StateHasChanged();
 
         try
         {
-            using var stream = item.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            ms.Position = 0;
-
             var streamPart = new Refit.StreamPart(ms, item.Name, item.ContentType);
             var response = await EventApi.UploadImageAsync(streamPart);
+
+            if (string.IsNullOrWhiteSpace(response?.Url))
+            {
+                _uploadError = "Upload succeeded but no image URL was returned.";
+                return;
+            }
+
             _formModel.CoverImageUrl = response.Url;
         }
-        catch (Exception)
+        catch (Refit.ApiException apiEx)
         {
-            _uploadError = "Failed to upload image. Please try again.";
+            var body = apiEx.Content ?? "no body";
+            _uploadError = $"Upload failed ({(int)apiEx.StatusCode} {apiEx.StatusCode}): {body}";
+        }
+        catch (HttpRequestException httpEx)
+        {
+            _uploadError = $"Cannot reach backend: {httpEx.Message}";
+        }
+        catch (Exception ex)
+        {
+            _uploadError = $"Upload error: {ex.GetType().Name} — {ex.Message}";
         }
         finally
         {

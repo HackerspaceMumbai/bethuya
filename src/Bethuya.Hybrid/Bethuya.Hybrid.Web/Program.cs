@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bethuya.Hybrid.Web.Components;
 using Bethuya.Hybrid.Shared.Services;
 using Bethuya.Hybrid.Web.Auth;
@@ -47,7 +48,11 @@ else
 
 // Refit typed client for Backend Events API (Aspire service discovery)
 builder.Services
-    .AddRefitClient<IEventApi>()
+    .AddRefitClient<IEventApi>(new RefitSettings
+    {
+        ContentSerializer = new SystemTextJsonContentSerializer(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+    })
     .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"));
 
 // CORS — origins from appsettings.json "Cors:AllowedOrigins" (empty by default in production)
