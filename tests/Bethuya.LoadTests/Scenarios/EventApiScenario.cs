@@ -14,17 +14,27 @@ public static class EventApiScenario
 {
     public static ScenarioProps CreateListScenario(string baseUrl)
     {
-        using var httpClient = new HttpClient(new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-        });
+        HttpClient? httpClient = null;
 
         return Scenario.Create("event_list", async context =>
         {
             var request = Http.CreateRequest("GET", $"{baseUrl}/api/events")
                 .WithHeader("Accept", "application/json");
 
-            return await Http.Send(httpClient, request);
+            return await Http.Send(httpClient!, request);
+        })
+        .WithInit(context =>
+        {
+            httpClient = new HttpClient(new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+            });
+            return Task.CompletedTask;
+        })
+        .WithClean(context =>
+        {
+            httpClient?.Dispose();
+            return Task.CompletedTask;
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
@@ -36,10 +46,7 @@ public static class EventApiScenario
 
     public static ScenarioProps CreatePostScenario(string baseUrl)
     {
-        using var httpClient = new HttpClient(new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-        });
+        HttpClient? httpClient = null;
 
         return Scenario.Create("event_create", async context =>
         {
@@ -61,7 +68,20 @@ public static class EventApiScenario
                 .WithHeader("Content-Type", "application/json")
                 .WithBody(new StringContent(json, Encoding.UTF8, "application/json"));
 
-            return await Http.Send(httpClient, request);
+            return await Http.Send(httpClient!, request);
+        })
+        .WithInit(context =>
+        {
+            httpClient = new HttpClient(new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+            });
+            return Task.CompletedTask;
+        })
+        .WithClean(context =>
+        {
+            httpClient?.Dispose();
+            return Task.CompletedTask;
         })
         .WithoutWarmUp()
         .WithLoadSimulations(

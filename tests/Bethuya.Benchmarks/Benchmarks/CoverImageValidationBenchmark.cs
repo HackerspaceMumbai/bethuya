@@ -122,7 +122,8 @@ public class CoverImageValidationBenchmark
             return true;
 
         // GIF: GIF87a or GIF89a
-        if (header[0] == 0x47 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x38
+        if (header.Length >= 6
+            && header[0] == 0x47 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x38
             && (header[4] == 0x37 || header[4] == 0x39) && header[5] == 0x61)
             return true;
 

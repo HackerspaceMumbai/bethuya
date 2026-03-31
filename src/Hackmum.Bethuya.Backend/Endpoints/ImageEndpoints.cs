@@ -50,7 +50,7 @@ public static class ImageEndpoints
             }
 
             stream.Position = 0;
-            var safeFileName = Path.GetFileName(file.FileName); // Strips path components
+            var safeFileName = SanitizeFileName(file.FileName);
             var url = await uploadService.UploadAsync(stream, safeFileName, ct);
             return Results.Ok(new ImageUploadResponse(url));
         }).DisableAntiforgery();
@@ -78,7 +78,8 @@ public static class ImageEndpoints
             return true;
 
         // GIF: GIF87a or GIF89a
-        if (header[0] == 0x47 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x38
+        if (bytesRead >= 6
+            && header[0] == 0x47 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x38
             && (header[4] == 0x37 || header[4] == 0x39) && header[5] == 0x61)
             return true;
 
@@ -89,5 +90,29 @@ public static class ImageEndpoints
             return true;
 
         return false;
+    }
+
+    private static readonly HashSet<string> AllowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+
+    /// <summary>
+    /// Generates a safe filename from a potentially malicious client-supplied name.
+    /// Uses GUID + validated original extension to eliminate path traversal and special chars.
+    /// </summary>
+    private static string SanitizeFileName(string? clientFileName)
+    {
+        var extension = ".png"; // default
+
+        if (!string.IsNullOrWhiteSpace(clientFileName))
+        {
+            // Normalize separators so Path.GetFileName works cross-platform
+            var normalized = clientFileName.Replace('\\', '/');
+            var nameOnly = Path.GetFileName(normalized);
+            var ext = Path.GetExtension(nameOnly).ToLowerInvariant();
+
+            if (AllowedExtensions.Contains(ext))
+                extension = ext;
+        }
+
+        return $"{Guid.NewGuid():N}{extension}";
     }
 }

@@ -179,7 +179,11 @@ PII: All sensitive curation is routed to Foundry Local (on-device). Non-sensitiv
 3. **Record Lessons:** Every mistake or unexpected discovery goes in `tasks/lessons.md` to prevent recurrence.
 4. **Autonomous Fixes:** Agents are authorized to resolve failing tests and CI without manual intervention — but must record reasoning.
 5. **Playwright Visual Proof:** Capture screenshots of UI changes before marking tasks done.
-6. **Diff Reviews:** Always run `/explain-diff` before opening a PR.
+6. **Pre-Commit Review (mandatory):**
+   - Run `code-review` agent on staged changes before every commit.
+   - Run `dotnet-diag:optimizing-dotnet-performance` agent on modified .NET files.
+   - Run `/explain-diff` before opening or updating a PR.
+   - **Never rely on humans to catch code issues** — use available analysis tools proactively.
 
 ---
 

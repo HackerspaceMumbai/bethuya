@@ -2,8 +2,10 @@
 @rendermode InteractiveServer
 @using Bethuya.Hybrid.Shared.Models
 @using Bethuya.Hybrid.Shared.Services
+@using Microsoft.Extensions.Logging
 @inject IEventApi EventApi
 @inject NavigationManager Navigation
+@inject ILogger<CreateEvent> Logger
 
 <PageTitle>Create Event — Bethuya</PageTitle>
 
@@ -242,16 +244,19 @@
         }
         catch (Refit.ApiException apiEx)
         {
-            var body = apiEx.Content ?? "(no body)";
-            _errorMessage = $"API error {(int)apiEx.StatusCode} {apiEx.StatusCode}: {body}";
+            Logger.LogError(apiEx, "API error creating event. Status: {StatusCode}, Body: {Body}",
+                (int)apiEx.StatusCode, apiEx.Content ?? "(no body)");
+            _errorMessage = $"The server returned an error ({(int)apiEx.StatusCode}). Please check your input and try again.";
         }
         catch (HttpRequestException httpEx)
         {
-            _errorMessage = $"Network error: {httpEx.Message}";
+            Logger.LogError(httpEx, "Network error creating event");
+            _errorMessage = "Unable to reach the server. Please check your connection and try again.";
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Unexpected error: {ex.GetType().Name} — {ex.Message}";
+            Logger.LogError(ex, "Unexpected error creating event");
+            _errorMessage = "An unexpected error occurred while creating the event. Please try again.";
         }
         finally
         {

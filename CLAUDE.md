@@ -63,6 +63,7 @@ Post-event drafts → human edit pass → publish with attribution.
 3. Record all lessons in `tasks/lessons.md`
 4. Test-first with TUnit; E2E with Playwright (`data-test` selectors)
 5. Screenshot UI changes before marking done
+6. **Pre-commit review (mandatory):** Run `code-review` agent on staged changes, `dotnet-diag:optimizing-dotnet-performance` on .NET files, `/explain-diff` before PRs. Never rely on humans to catch code issues.
 
 ## Performance Targets
 
