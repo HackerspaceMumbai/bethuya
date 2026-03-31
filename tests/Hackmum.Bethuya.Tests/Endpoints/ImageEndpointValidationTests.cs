@@ -172,9 +172,25 @@ public class ImageEndpointValidationTests : IAsyncDisposable
             .UploadAsync(Arg.Any<Stream>(), Arg.Is("event-cover.jpg"), Arg.Any<CancellationToken>());
     }
 
+    private static readonly Dictionary<string, byte[]> s_magicBytes = new()
+    {
+        ["image/jpeg"] = [0xFF, 0xD8, 0xFF, 0xE0],
+        ["image/png"] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+        ["image/gif"] = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61],
+        // RIFF....WEBP — bytes 4-7 are file size (placeholder)
+        ["image/webp"] = [0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]
+    };
+
     private static MultipartFormDataContent CreateMultipartFile(int sizeBytes, string contentType, string fileName)
     {
-        var fileBytes = new byte[sizeBytes];
+        var fileBytes = new byte[Math.Max(sizeBytes, 12)];
+
+        // Prepend magic bytes so the server-side signature check passes
+        if (s_magicBytes.TryGetValue(contentType, out var header))
+        {
+            Array.Copy(header, fileBytes, header.Length);
+        }
+
         var fileContent = new ByteArrayContent(fileBytes);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 

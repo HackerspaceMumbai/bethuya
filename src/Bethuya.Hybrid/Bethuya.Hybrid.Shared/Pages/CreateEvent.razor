@@ -230,8 +230,8 @@
                 Description: _formModel.Description,
                 Type: _formModel.Type,
                 Capacity: _formModel.Capacity,
-                StartDate: new DateTimeOffset(_formModel.StartDate!.Value.Date + (_formModel.StartTime ?? TimeSpan.Zero), TimeSpan.Zero),
-                EndDate: new DateTimeOffset(_formModel.EndDate!.Value.Date + (_formModel.EndTime ?? TimeSpan.Zero), TimeSpan.Zero),
+                StartDate: new DateTimeOffset(DateTime.SpecifyKind(_formModel.StartDate!.Value.Date + (_formModel.StartTime ?? TimeSpan.Zero), DateTimeKind.Utc), TimeSpan.Zero),
+                EndDate: new DateTimeOffset(DateTime.SpecifyKind(_formModel.EndDate!.Value.Date + (_formModel.EndTime ?? TimeSpan.Zero), DateTimeKind.Utc), TimeSpan.Zero),
                 Location: _formModel.Location,
                 CreatedBy: "organizer@hackmum.org",
                 Hashtag: string.IsNullOrWhiteSpace(_formModel.Hashtag) ? null : _formModel.Hashtag,
@@ -240,9 +240,18 @@
             await EventApi.CreateAsync(dto);
             Navigation.NavigateTo("/events");
         }
-        catch (Exception)
+        catch (Refit.ApiException apiEx)
         {
-            _errorMessage = "Failed to create event. Please try again.";
+            var body = apiEx.Content ?? "(no body)";
+            _errorMessage = $"API error {(int)apiEx.StatusCode} {apiEx.StatusCode}: {body}";
+        }
+        catch (HttpRequestException httpEx)
+        {
+            _errorMessage = $"Network error: {httpEx.Message}";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Unexpected error: {ex.GetType().Name} — {ex.Message}";
         }
         finally
         {

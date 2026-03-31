@@ -241,18 +241,29 @@ dotnet test
 # Build full solution
 dotnet build
 
-# Run Aspire AppHost (local orchestration)
-dotnet run --project AppHost/AppHost
+# Run Aspire AppHost (detached mode — preferred for AI agents)
+aspire start
+# Or with isolated ports for worktrees/parallel instances:
+aspire start --isolated
+
+# Stop Aspire (releases DLL locks before building)
+aspire stop
+
+# List running AppHosts
+aspire ps
+
+# Rebuild a single resource without stopping everything
+aspire resource api rebuild
 
 # Run E2E Playwright tests
 dotnet test tests/
 
 # Watch tests during TDD
 dotnet watch test
-Oh, we need to. I. I. Play.
+
 # Security: check for vulnerable packages
 dotnet list package --vulnerable --include-transitive
-Move to.
+
 # Security: run check-security skill
 # (use Copilot CLI: /check-security)
 ```

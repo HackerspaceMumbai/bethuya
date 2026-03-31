@@ -67,8 +67,14 @@
             @foreach (var evt in filteredEvents)
             {
                 <div data-test="event-row">
-                <BbCard Class="p-4">
-                    <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                <BbCard Class="@($"overflow-hidden {(string.IsNullOrEmpty(evt.CoverImageUrl) ? "p-4" : "p-0")}")">
+                    @if (!string.IsNullOrEmpty(evt.CoverImageUrl))
+                    {
+                        <div class="event-card-cover" style="background-image: url('@evt.CoverImageUrl');">
+                            <div class="event-card-cover-overlay"></div>
+                        </div>
+                    }
+                    <div class="@($"flex flex-col md:flex-row md:justify-between md:items-start gap-4 {(string.IsNullOrEmpty(evt.CoverImageUrl) ? "" : "p-4")}")">
                         <div class="flex-1 min-w-0">
                             <h3 class="text-lg font-semibold mb-1">@evt.Title</h3>
                             <p class="text-sm text-muted-foreground mb-3">@(evt.Description ?? "")</p>
@@ -168,6 +174,7 @@
         Status = dto.Status,
         Capacity = dto.Capacity,
         Location = dto.Location,
+        CoverImageUrl = dto.CoverImageUrl,
         StartDate = DateOnly.FromDateTime(dto.StartDate.DateTime),
         EndDate = DateOnly.FromDateTime(dto.EndDate.DateTime)
     };
