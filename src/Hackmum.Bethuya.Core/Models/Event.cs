@@ -14,6 +14,7 @@ public sealed class Event
     public DateTimeOffset EndDate { get; set; }
     public string? Location { get; set; }
     public string? Hashtag { get; set; }
+    public string? CoverImageUrl { get; set; }
     public required string CreatedBy { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

@@ -1,5 +1,4 @@
 @page "/"
-@rendermode InteractiveServer
 @using Bethuya.Hybrid.Shared.Components.Dashboard
 @using Bethuya.Hybrid.Shared.Services
 @inject IEventApi EventApi
@@ -75,8 +74,6 @@
 
 </main>
 
-
-
 @code {
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -118,6 +115,7 @@
         Status = dto.Status,
         Capacity = dto.Capacity,
         Location = dto.Location,
+        CoverImageUrl = dto.CoverImageUrl,
         StartDate = DateOnly.FromDateTime(dto.StartDate.DateTime),
         EndDate = DateOnly.FromDateTime(dto.EndDate.DateTime)
     };

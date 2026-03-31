@@ -28,6 +28,8 @@
 - Private fields: `_camelCase`; public: `PascalCase`; locals: `camelCase`
 - **Never** add `Version=""` to `<PackageReference>` — all versions in `Directory.Packages.props`
 - **Never** use xUnit or NUnit — always **TUnit**
+- **UI: Blazor Blueprint first** — always use BB components before writing custom CSS. Form-field wrappers: `BbFormFieldInput`, `BbFormFieldSelect`, `BbFormSection`. Standalone (wrap with `BbLabel` + `form-group`): `BbTextarea`, `BbNumericInput`, `BbFileUpload`, `BbDatePicker`, `BbTimePicker`. Custom CSS must have a comment explaining why BB couldn't handle it.
+- Manual HTML/CSS wrappers only when BB lacks a `BbFormField*` wrapper for a component (e.g., `BbDatePicker`/`BbTimePicker` form-field wrappers, inline prefix adornments, remote URL image preview)
 
 ## Domain Agents & Guardrails
 
@@ -61,6 +63,7 @@ Post-event drafts → human edit pass → publish with attribution.
 3. Record all lessons in `tasks/lessons.md`
 4. Test-first with TUnit; E2E with Playwright (`data-test` selectors)
 5. Screenshot UI changes before marking done
+6. **Pre-commit review (mandatory):** Run `code-review` agent on staged changes, `dotnet-diag:optimizing-dotnet-performance` on .NET files, `/explain-diff` before PRs. Never rely on humans to catch code issues.
 
 ## Performance Targets
 

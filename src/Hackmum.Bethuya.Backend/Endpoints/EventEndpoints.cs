@@ -82,6 +82,8 @@ public static class EventEndpoints
                 }
             }
 
+            ValidateCoverImageUrl(request.CoverImageUrl, errors);
+
             if (errors.Count > 0)
             {
                 return Results.ValidationProblem(errors);
@@ -97,7 +99,8 @@ public static class EventEndpoints
                 EndDate = request.EndDate,
                 Location = request.Location,
                 Hashtag = string.IsNullOrEmpty(request.Hashtag) ? null : request.Hashtag,
-                CreatedBy = request.CreatedBy
+                CreatedBy = request.CreatedBy,
+                CoverImageUrl = request.CoverImageUrl
             };
 
             var created = await repo.CreateAsync(evt, ct);
@@ -131,6 +134,8 @@ public static class EventEndpoints
                 errors[nameof(request.EndDate)] = ["End date must be on or after the start date."];
             }
 
+            ValidateCoverImageUrl(request.CoverImageUrl, errors);
+
             if (errors.Count > 0)
             {
                 return Results.ValidationProblem(errors);
@@ -144,6 +149,7 @@ public static class EventEndpoints
             evt.EndDate = request.EndDate;
             evt.Location = request.Location;
             evt.Status = request.Status;
+            evt.CoverImageUrl = request.CoverImageUrl;
 
             await repo.UpdateAsync(evt, ct);
             return Results.Ok(MapToResponse(evt));
@@ -154,6 +160,24 @@ public static class EventEndpoints
             await repo.DeleteAsync(id, ct);
             return Results.NoContent();
         });
+    }
+
+    private static void ValidateCoverImageUrl(string? coverImageUrl, Dictionary<string, string[]> errors)
+    {
+        if (string.IsNullOrEmpty(coverImageUrl))
+            return;
+
+        if (coverImageUrl.Length > 2048)
+        {
+            errors[nameof(coverImageUrl)] = ["Cover image URL must be 2,048 characters or fewer."];
+            return;
+        }
+
+        if (!Uri.TryCreate(coverImageUrl, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            errors[nameof(coverImageUrl)] = ["Cover image URL must be a valid absolute HTTP or HTTPS URL."];
+        }
     }
 
     private static EventResponse MapToResponse(Event evt) =>
@@ -169,5 +193,6 @@ public static class EventEndpoints
             evt.Location,
             evt.CreatedBy,
             evt.CreatedAt,
-            evt.Hashtag);
+            evt.Hashtag,
+            evt.CoverImageUrl);
 }

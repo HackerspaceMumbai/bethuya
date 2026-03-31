@@ -2,7 +2,9 @@
 {
     <div data-test="featured-event-card">
     <BbCard Class="featured-card">
-        <div class="featured-photo" role="img" aria-label="@Event.Title event photo">
+        <div class="featured-photo @(string.IsNullOrEmpty(Event.CoverImageUrl) ? "" : "featured-photo--has-image")"
+             role="img" aria-label="@Event.Title event photo"
+             style="@(string.IsNullOrEmpty(Event.CoverImageUrl) ? "" : $"background-image: url('{Event.CoverImageUrl}');")">
             <div class="featured-photo-overlay" aria-hidden="true"></div>
         </div>
         <BbCardContent Class="featured-body">
