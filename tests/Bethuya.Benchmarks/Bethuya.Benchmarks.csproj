@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <!-- BenchmarkDotNet requires instance methods; suppress CA1822 -->
-    <NoWarn>$(NoWarn);CA1822</NoWarn>
+    <!-- BenchmarkDotNet requires instance methods; suppress CA1822. Benchmark naming uses underscores; suppress CA1707. -->
+    <NoWarn>$(NoWarn);CA1822;CA1707</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -50,3 +50,9 @@ Thumbs.db
 
 # Refit test artifacts
 _refit_test/
+
+# BenchmarkDotNet artifacts
+BenchmarkDotNet.Artifacts/
+
+# NBomber reports
+reports/
