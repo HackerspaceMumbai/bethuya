@@ -146,6 +146,7 @@ public static class Extensions
                 "default-src 'self'; " +
                 "script-src 'self' 'wasm-unsafe-eval'; " +
                 "style-src 'self' 'unsafe-inline'; " +
+                "img-src 'self' https://res.cloudinary.com; " +
                 "connect-src 'self' wss: ws:; " +
                 "object-src 'none'; " +
                 "frame-ancestors 'none'";

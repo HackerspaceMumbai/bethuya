@@ -37,11 +37,11 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.5" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5" />
-    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.0" />
+    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.1" />
     <!-- Aspire hosting for SQL Server (AppHost) -->
-    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.2.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.2.1" />
     <!-- Aspire hosting for Keycloak (AppHost — local OIDC testing) -->
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.2.0-preview.1.26170.3" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.2.1-preview.1.26180.6" />
     
     <!-- ASP.NET Core TestHost for minimal-API endpoint testing -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.5" />

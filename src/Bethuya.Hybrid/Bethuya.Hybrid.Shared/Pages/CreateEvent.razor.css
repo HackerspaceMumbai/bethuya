@@ -99,17 +99,16 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.75rem;
     padding: 0.75rem 1rem;
     background-color: var(--hs-card, #181210);
     border-top: 1px solid var(--hs-border, rgba(212, 168, 48, 0.2));
 }
 
-.cover-preview-filename {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--hs-text-muted, #7a6a57);
+/* Let the alert fill available space beside the remove button */
+::deep .cover-preview-actions > [role="alert"] {
+    flex: 1;
+    margin: 0;
 }
 
 /* ── Upload spinner (async Cloudinary round-trip, not BB's client-side flow) ── */
