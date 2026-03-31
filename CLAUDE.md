@@ -29,7 +29,7 @@
 - **Never** add `Version=""` to `<PackageReference>` — all versions in `Directory.Packages.props`
 - **Never** use xUnit or NUnit — always **TUnit**
 - **UI: Blazor Blueprint first** — always use BB components before writing custom CSS. Form-field wrappers: `BbFormFieldInput`, `BbFormFieldSelect`, `BbFormSection`. Standalone (wrap with `BbLabel` + `form-group`): `BbTextarea`, `BbNumericInput`, `BbFileUpload`, `BbDatePicker`, `BbTimePicker`. Custom CSS must have a comment explaining why BB couldn't handle it.
-- Manual HTML/CSS wrappers only when BB lacks a component (e.g., inline prefix adornments, remote URL image preview, date/time picker form fields)
+- Manual HTML/CSS wrappers only when BB lacks a `BbFormField*` wrapper for a component (e.g., `BbDatePicker`/`BbTimePicker` form-field wrappers, inline prefix adornments, remote URL image preview)
 
 ## Domain Agents & Guardrails
 

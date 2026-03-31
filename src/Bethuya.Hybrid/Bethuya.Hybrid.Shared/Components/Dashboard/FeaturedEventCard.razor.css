@@ -30,6 +30,13 @@
     flex-shrink: 0;
 }
 
+/* When a cover image URL is set via inline style, show it with a darkening overlay */
+.featured-photo--has-image {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
 .featured-photo-overlay {
     position: absolute;
     inset: 0;

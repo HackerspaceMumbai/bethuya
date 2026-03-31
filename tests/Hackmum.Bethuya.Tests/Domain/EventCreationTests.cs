@@ -30,8 +30,8 @@ public class EventCreationTests
             EndDate: new DateTimeOffset(2026, 6, 15, 17, 0, 0, TimeSpan.Zero),
             Location: "HackerspaceMumbai",
             CreatedBy: "org@hackmum.org",
-            Hashtag: null,
-            CoverImageUrl: null
+            Hashtag: "AIWorkshop",
+            CoverImageUrl: "https://res.cloudinary.com/hackmum/image/upload/test.jpg"
         );
 
         // Act - Map the request to an Event model
@@ -44,7 +44,9 @@ public class EventCreationTests
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             Location = request.Location,
-            CreatedBy = request.CreatedBy
+            CreatedBy = request.CreatedBy,
+            Hashtag = request.Hashtag,
+            CoverImageUrl = request.CoverImageUrl
         };
 
         // Assert
@@ -56,6 +58,8 @@ public class EventCreationTests
         await Assert.That(evt.EndDate).IsEqualTo(request.EndDate);
         await Assert.That(evt.Location).IsEqualTo(request.Location);
         await Assert.That(evt.CreatedBy).IsEqualTo(request.CreatedBy);
+        await Assert.That(evt.Hashtag).IsEqualTo(request.Hashtag);
+        await Assert.That(evt.CoverImageUrl).IsEqualTo(request.CoverImageUrl);
         await Assert.That(evt.Status).IsEqualTo(EventStatus.Draft);
         await Assert.That(evt.Id).IsNotEqualTo(Guid.Empty);
     }

@@ -82,6 +82,8 @@ public static class EventEndpoints
                 }
             }
 
+            ValidateCoverImageUrl(request.CoverImageUrl, errors);
+
             if (errors.Count > 0)
             {
                 return Results.ValidationProblem(errors);
@@ -132,6 +134,8 @@ public static class EventEndpoints
                 errors[nameof(request.EndDate)] = ["End date must be on or after the start date."];
             }
 
+            ValidateCoverImageUrl(request.CoverImageUrl, errors);
+
             if (errors.Count > 0)
             {
                 return Results.ValidationProblem(errors);
@@ -156,6 +160,24 @@ public static class EventEndpoints
             await repo.DeleteAsync(id, ct);
             return Results.NoContent();
         });
+    }
+
+    private static void ValidateCoverImageUrl(string? coverImageUrl, Dictionary<string, string[]> errors)
+    {
+        if (string.IsNullOrEmpty(coverImageUrl))
+            return;
+
+        if (coverImageUrl.Length > 2048)
+        {
+            errors[nameof(coverImageUrl)] = ["Cover image URL must be 2,048 characters or fewer."];
+            return;
+        }
+
+        if (!Uri.TryCreate(coverImageUrl, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            errors[nameof(coverImageUrl)] = ["Cover image URL must be a valid absolute HTTP or HTTPS URL."];
+        }
     }
 
     private static EventResponse MapToResponse(Event evt) =>
