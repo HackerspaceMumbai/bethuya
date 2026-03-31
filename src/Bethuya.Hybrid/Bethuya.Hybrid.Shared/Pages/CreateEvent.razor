@@ -25,13 +25,14 @@
             <BbCardContent>
                 <div class="form-fields">
 
-                    <div class="form-group">
-                        <BbLabel For="newTitle">Title *</BbLabel>
-                        <BbInput id="newTitle" @bind-Value="_formModel.Title" Placeholder="Event title" Class="w-full" />
-                        <ValidationMessage For="@(() => _formModel.Title)" />
-                    </div>
+                    <BbFormFieldInput TValue="string"
+                                     @bind-Value="_formModel.Title"
+                                     Label="Title"
+                                     Placeholder="Event title"
+                                     Required="true" />
 
                     <div class="form-row-2col">
+                        @* Hashtag uses a custom # prefix — no BB form field for inline adornments *@
                         <div class="form-group">
                             <BbLabel For="newHashtag">Hashtag</BbLabel>
                             <div class="hashtag-inline">
@@ -41,46 +42,49 @@
                             <p class="field-hint">Optional event shortcode.</p>
                         </div>
 
-                        <div class="form-group">
-                            <BbLabel For="newType">Event Type</BbLabel>
-                            <BbSelect @bind-Value="_formModel.Type">
-                                <BbSelectTrigger>
-                                    <BbSelectValue Placeholder="Select type" />
-                                </BbSelectTrigger>
-                                <BbSelectContent>
-                                    <BbSelectItem TValue="string" Value="@("Workshop")" Text="Workshop">Workshop</BbSelectItem>
-                                    <BbSelectItem TValue="string" Value="@("Meetup")" Text="Meetup">Meetup</BbSelectItem>
-                                    <BbSelectItem TValue="string" Value="@("Hackathon")" Text="Hackathon">Hackathon</BbSelectItem>
-                                    <BbSelectItem TValue="string" Value="@("Conference")" Text="Conference">Conference</BbSelectItem>
-                                    <BbSelectItem TValue="string" Value="@("Panel")" Text="Panel">Panel</BbSelectItem>
-                                    <BbSelectItem TValue="string" Value="@("Social")" Text="Social">Social</BbSelectItem>
-                                </BbSelectContent>
-                            </BbSelect>
-                            <ValidationMessage For="@(() => _formModel.Type)" />
-                        </div>
+                        <BbFormFieldSelect TValue="string"
+                                           @bind-Value="_formModel.Type"
+                                           Label="Event Type"
+                                           Placeholder="Select type">
+                            <BbSelectItem Value="@("Workshop")" Text="Workshop" />
+                            <BbSelectItem Value="@("Meetup")" Text="Meetup" />
+                            <BbSelectItem Value="@("Hackathon")" Text="Hackathon" />
+                            <BbSelectItem Value="@("Conference")" Text="Conference" />
+                            <BbSelectItem Value="@("Panel")" Text="Panel" />
+                            <BbSelectItem Value="@("Social")" Text="Social" />
+                        </BbFormFieldSelect>
                     </div>
 
+                    @* No BbFormFieldTextarea wrapper in BB 3.x — manual label + BbTextarea *@
                     <div class="form-group">
-                        <BbLabel For="newDescription">Description</BbLabel>
-                        <BbTextarea id="newDescription" @bind-Value="_formModel.Description" Placeholder="Event description" Class="w-full" />
+                        <BbLabel For="description">Description</BbLabel>
+                        <BbTextarea Id="description"
+                                    @bind-Value="_formModel.Description"
+                                    Placeholder="Event description"
+                                    MaxLength="2000"
+                                    ShowCharacterCount="true" />
                         <ValidationMessage For="@(() => _formModel.Description)" />
                     </div>
 
                     <div class="form-row-2col">
-                        <div class="form-group">
-                            <BbLabel For="newLocation">Venue</BbLabel>
-                            <BbInput id="newLocation" @bind-Value="_formModel.Location" Placeholder="Venue name or address" Class="w-full" />
-                            <ValidationMessage For="@(() => _formModel.Location)" />
-                        </div>
+                        <BbFormFieldInput TValue="string"
+                                         @bind-Value="_formModel.Location"
+                                         Label="Venue"
+                                         Placeholder="Venue name or address" />
 
+                        @* No BbFormFieldNumericInput wrapper in BB 3.x — manual label + BbNumericInput *@
                         <div class="form-group">
-                            <BbLabel For="newCapacity">Capacity</BbLabel>
-                            <InputNumber id="newCapacity" @bind-Value="_formModel.Capacity" class="field-input" />
+                            <BbLabel For="capacity">Capacity</BbLabel>
+                            <BbNumericInput TValue="int" Id="capacity"
+                                            @bind-Value="_formModel.Capacity"
+                                            Min="1"
+                                            Max="10000" />
                             <ValidationMessage For="@(() => _formModel.Capacity)" />
                         </div>
                     </div>
 
                     <div class="form-row-2col">
+                        @* No BB BbFormFieldDatePicker — using manual label + BbDatePicker *@
                         <div class="form-group">
                             <BbLabel For="newStartDate">Start Date</BbLabel>
                             <div data-test="start-date-picker">
@@ -118,39 +122,64 @@
                         </div>
                     </div>
 
-                    <div class="form-group" data-test="cover-image-section">
-                        <BbLabel>Cover Image</BbLabel>
-                        <div class="cover-upload-area">
-                            @if (_formModel.CoverImageUrl is not null)
-                            {
-                                <div class="cover-preview" data-test="cover-image-preview">
+                    <div data-test="cover-image-section">
+                        @if (_formModel.CoverImageUrl is not null)
+                        {
+                            @* Custom preview for Cloudinary remote URL — BB ShowPreview only supports local files *@
+                            <BbLabel>Cover Image</BbLabel>
+                            <div class="cover-preview" data-test="cover-image-preview">
+                                <div class="cover-preview-frame">
                                     <img src="@_formModel.CoverImageUrl" alt="Cover preview" class="cover-preview-img" />
-                                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                                </div>
+                                <div class="cover-preview-actions">
+                                    <span class="cover-preview-filename">
+                                        <LucideIcon Name="image" Size="14" />
+                                        Cover image uploaded
+                                    </span>
+                                    <BbButton Variant="ButtonVariant.Outline"
                                               OnClick="RemoveCoverImage" Disabled="@_isUploading"
                                               data-test="remove-cover-btn">
-                                        Remove
+                                        <LucideIcon Name="trash-2" Size="16" />
+                                        Remove image
                                     </BbButton>
                                 </div>
-                            }
-                            else
-                            {
-                                <div class="cover-dropzone" data-test="cover-image-dropzone">
-                                    <InputFile OnChange="HandleCoverImageSelected" accept="image/jpeg,image/png,image/webp,image/gif"
-                                               data-test="cover-image-input" />
-                                    <p class="field-hint">JPEG, PNG, WebP, or GIF — max 5 MB</p>
-                                </div>
-                            }
-                            @if (_isUploading)
-                            {
-                                <p class="field-hint" data-test="upload-progress">Uploading…</p>
-                            }
+                            </div>
+                        }
+                        else if (_isUploading)
+                        {
+                            <BbLabel>Cover Image</BbLabel>
+                            <div class="cover-uploading" data-test="upload-progress">
+                                <LucideIcon Name="loader-circle" Size="24" Class="cover-spinner" />
+                                <span>Uploading…</span>
+                            </div>
+                        }
+                        else
+                        {
+                            @* No BbFormFieldFileUpload wrapper in BB 3.x — manual label + BbFileUpload *@
+                            <BbLabel>Cover Image</BbLabel>
+                            <BbFileUpload Files="_coverFiles"
+                                          FilesChanged="HandleCoverFilesChanged"
+                                          Accept="image/jpeg,image/png,image/webp,image/gif"
+                                          MaxFileSize="@(5L * 1024 * 1024)"
+                                          MaxFileCount="1"
+                                          ShowPreview="false"
+                                          OnValidationError="HandleCoverValidationError"
+                                          data-test="cover-image-dropzone">
+                                <DropzoneContent>
+                                    <p>JPEG, PNG, WebP, or GIF — max 5 MB</p>
+                                </DropzoneContent>
+                            </BbFileUpload>
                             @if (_uploadError is not null)
                             {
-                                <div data-test="upload-error">
-                                    <BbAlert Variant="AlertVariant.Danger">@_uploadError</BbAlert>
-                                </div>
+                                <BbAlert Variant="AlertVariant.Danger" Class="mt-2">@_uploadError</BbAlert>
                             }
-                        </div>
+                        }
+                        @if (_uploadError is not null && (_formModel.CoverImageUrl is not null || _isUploading))
+                        {
+                            <div data-test="upload-error">
+                                <BbAlert Variant="AlertVariant.Danger">@_uploadError</BbAlert>
+                            </div>
+                        }
                     </div>
 
                     @if (_errorMessage is not null)
@@ -184,6 +213,7 @@
     private string? _errorMessage;
     private bool _isUploading;
     private string? _uploadError;
+    private IReadOnlyList<FileUploadItem>? _coverFiles;
 
     private async Task HandleValidSubmit()
     {
@@ -217,28 +247,24 @@
         }
     }
 
-    private async Task HandleCoverImageSelected(InputFileChangeEventArgs e)
+    private async Task HandleCoverFilesChanged(IReadOnlyList<FileUploadItem> files)
     {
+        _coverFiles = files;
+        if (files is not { Count: > 0 }) return;
+
+        var item = files[0];
         _uploadError = null;
-        var file = e.File;
-
-        if (file.Size > 5 * 1024 * 1024)
-        {
-            _uploadError = "File size must not exceed 5 MB.";
-            return;
-        }
-
         _isUploading = true;
         StateHasChanged();
 
         try
         {
-            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var stream = item.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
             ms.Position = 0;
 
-            var streamPart = new Refit.StreamPart(ms, file.Name, file.ContentType);
+            var streamPart = new Refit.StreamPart(ms, item.Name, item.ContentType);
             var response = await EventApi.UploadImageAsync(streamPart);
             _formModel.CoverImageUrl = response.Url;
         }
@@ -249,7 +275,13 @@
         finally
         {
             _isUploading = false;
+            _coverFiles = null;
         }
+    }
+
+    private void HandleCoverValidationError(FileValidationError error)
+    {
+        _uploadError = error.Message;
     }
 
     private void RemoveCoverImage(MouseEventArgs _)

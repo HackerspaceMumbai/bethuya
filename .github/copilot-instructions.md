@@ -19,6 +19,7 @@
 - **Private fields:** `_camelCase`; public members: `PascalCase`; locals: `camelCase`
 - **Test selectors:** always `data-test` attributes — never CSS classes
 - **New packages:** add version to `Directory.Packages.props` first, then reference without version in `.csproj`
+- **UI: Blazor Blueprint first** — always use BB components before custom CSS. Form-field wrappers: `BbFormFieldInput`, `BbFormFieldSelect`, `BbFormSection`. Standalone (wrap with `BbLabel` + `form-group`): `BbTextarea`, `BbNumericInput`, `BbFileUpload`, `BbDatePicker`, `BbTimePicker`. Custom CSS must include a comment explaining why BB couldn't handle it.
 
 ## Domain Agents
 | Agent | Domain | Key Constraint |
