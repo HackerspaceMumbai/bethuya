@@ -63,6 +63,9 @@
     <PackageVersion Include="MSTest" Version="4.1.0" />
     <!-- Benchmarking -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+    <!-- Load testing -->
+    <PackageVersion Include="NBomber" Version="6.3.0" />
+    <PackageVersion Include="NBomber.Http" Version="6.2.0" />
     <!-- Microsoft.Extensions.AI for AI provider abstraction -->
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.4.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.4.0" />

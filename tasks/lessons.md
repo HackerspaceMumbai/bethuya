@@ -176,3 +176,39 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
   ```
   Or reference the `Microsoft.Playwright` package and let the test framework handle browser provisioning.
 - **Prevention:** **Always check the project's test framework before installing Playwright.** If the project uses `Microsoft.Playwright` (NuGet), use `playwright.ps1 install` from the build output — never `npx`. The `AGENTS.md` and `CLAUDE.md` files both specify "Playwright for .NET" as the E2E framework. Read them first.
+
+---
+
+### Lesson: Microsoft.Playwright.MSTest is binary-incompatible with MSTest 4.x on .NET 10
+- **Date:** 2026-03-31
+- **Context:** E2E tests using `Microsoft.Playwright.MSTest` 1.52.0 with `MSTest.Sdk/4.1.0` discovered 0 tests.
+- **Root Cause:** `Microsoft.Playwright.MSTest` depends on `MSTest.TestFramework` 2.2.7. The `PageTest` base class is compiled against MSTest 2.x attribute types. MSTest 4.x source generators can't recognize `[TestClass]` from classes inheriting `PageTest` because the attribute types were compiled against MSTest 2.x assemblies. Standalone test classes (no PageTest) are discovered fine.
+- **Fix:** Replace `Microsoft.Playwright.MSTest` with `Microsoft.Playwright` directly. Manage browser lifecycle manually in `[TestInitialize]`/`[TestCleanup]` (create Playwright→Browser→Context→Page, dispose in reverse). Replace `Expect()` (inherited from PageTest) with `Assertions.Expect()` (static from Microsoft.Playwright).
+- **Prevention:** When using MSTest 4.x (`MSTest.Sdk`), never depend on packages compiled against MSTest 2.x base classes. Check NuGet dependency graphs for MSTest.TestFramework version conflicts.
+
+---
+
+### Lesson: .NET 10 SDK requires Microsoft Testing Platform (MTP) mode for `dotnet test`
+- **Date:** 2026-03-31
+- **Context:** `dotnet test` failed with: "Testing with VSTest target is no longer supported by Microsoft.Testing.Platform on .NET 10 SDK"
+- **Root Cause:** .NET 10 removes VSTest adapter support. The `dotnet test` command requires MTP mode to discover and run tests.
+- **Fix:** Add `"test": { "runner": "Microsoft.Testing.Platform" }` to `global.json`. The `TestingPlatformDotnetTestSupport` MSBuild property is NOT needed with MTP mode. The `--timeout` flag uses format like `2m` or `30s` (not milliseconds).
+- **Prevention:** When targeting .NET 10, always configure MTP mode in `global.json` before running `dotnet test`.
+
+---
+
+### Lesson: Blazor InteractiveServer pages need SignalR circuit before form interaction
+- **Date:** 2026-03-31
+- **Context:** E2E tests navigated to `/events/create` and immediately filled form fields, but clicks on submit had no effect.
+- **Root Cause:** `@rendermode InteractiveServer` pages render SSR HTML first, then establish a SignalR circuit. The form HTML is present but not wired up until the circuit connects. Filling fields before the circuit is established results in the form submission being a no-op.
+- **Fix:** Use `WaitUntil = WaitUntilState.NetworkIdle` in `GotoAsync` to wait for SignalR handshake. Additionally, wait for an interactive-only element (e.g., submit button) to be enabled before filling fields: `await Assertions.Expect(submitBtn).ToBeEnabledAsync()`.
+- **Prevention:** In E2E tests for Blazor Server pages, always verify interactivity before form interactions. Click the actual `<button>` inside wrapper divs, not just the wrapper div.
+
+---
+
+### Lesson: Use unique identifiers in E2E test data to avoid strict mode violations
+- **Date:** 2026-03-31
+- **Context:** E2E test `CreateEvent_OnEventsPage_ShouldShowInList` failed with "strict mode violation: resolved to 2 elements" because multiple events had the same title from previous test runs.
+- **Root Cause:** Test data persists in the database across test runs. Hardcoded titles like "Test Community Meetup" accumulate duplicates.
+- **Fix:** Use unique titles with embedded GUIDs: `var uniqueTitle = $"E2E Meetup {Guid.NewGuid().ToString("N")[..8]}";` Use `.First` on locators when strict mode is a concern.
+- **Prevention:** Always use unique test data in E2E tests that create persistent resources. Use `.First` on locators when testing against lists that may have prior data.
