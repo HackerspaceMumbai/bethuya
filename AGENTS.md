@@ -129,6 +129,22 @@ Identity: Use Vogen for all domain IDs (AttendeeId, EventId). Raw primitives are
 - Private fields: `_camelCase`. Public members: `PascalCase`. Locals: `camelCase`.
 - XML doc comments on all public APIs.
 
+### UI — Blazor Blueprint First
+
+- **Always use Blazor Blueprint (BB) components before writing custom CSS or HTML.**
+- **Custom CSS requires a comment explaining why BB couldn't handle it.** Each custom CSS block must have a one-line comment stating what BB lacks (e.g., "BB ShowPreview only supports local IBrowserFile — remote URL preview is custom").
+- **BB form-field wrappers** (wrap label + input + helper text + validation + ARIA):
+  - `BbFormFieldInput<TValue>` — text, email, number, URL inputs
+  - `BbFormFieldSelect<TValue>` — dropdown (Options mode or compositional)
+  - `BbFormSection` — group related fields with title/description
+- **BB standalone components** (no built-in label/validation wrapper — use manual `<div class="form-group">` + `BbLabel` + `ValidationMessage`):
+  - `BbTextarea` — multi-line text with `MaxLength`/`ShowCharacterCount`
+  - `BbNumericInput<TValue>` — numeric with `Min`/`Max`/`Step`/`ShowButtons`
+  - `BbFileUpload` — drag-and-drop file upload with `Accept`/`MaxFileSize`/`MaxFileCount`/`OnValidationError`
+  - `BbDatePicker`, `BbTimePicker` — date/time pickers
+- **Manual `<div class="form-group">` wrappers** are for fields that lack a `BbFormField*` wrapper (textarea, numeric, file upload, date/time pickers, inline adornment inputs like hashtag `#` prefix).
+- Use `data-test` attributes on all interactive elements — never CSS classes for E2E selectors.
+
 ### AI & Privacy
 
 PII: All sensitive curation is routed to Foundry Local (on-device). Non-sensitive orchestration uses Microsoft Foundry.
