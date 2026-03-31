@@ -37,12 +37,14 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.5" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5" />
-    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.0" />
+    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.1" />
     <!-- Aspire hosting for SQL Server (AppHost) -->
-    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.2.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.2.1" />
     <!-- Aspire hosting for Keycloak (AppHost — local OIDC testing) -->
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.2.0-preview.1.26170.3" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.2.1-preview.1.26180.6" />
     
+    <!-- ASP.NET Core TestHost for minimal-API endpoint testing -->
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.5" />
     <!-- Testing — TUnit (not xUnit/NUnit per project standards) -->
     <PackageVersion Include="TUnit" Version="0.50.0" />
     <!-- bUnit component rendering tests (bunit.web = no xUnit dependency, includes TestContext) -->
@@ -61,6 +63,9 @@
     <PackageVersion Include="MSTest" Version="4.1.0" />
     <!-- Benchmarking -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+    <!-- Load testing -->
+    <PackageVersion Include="NBomber" Version="6.3.0" />
+    <PackageVersion Include="NBomber.Http" Version="6.2.0" />
     <!-- Microsoft.Extensions.AI for AI provider abstraction -->
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.4.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.4.0" />
@@ -69,6 +74,8 @@
     <!-- Scalar — API documentation -->
     <PackageVersion Include="Scalar.AspNetCore" Version="2.13.15" />
     <PackageVersion Include="Scalar.Aspire" Version="0.9.15" />
+    <!-- Cloudinary — image upload for event cover pics -->
+    <PackageVersion Include="CloudinaryDotNet" Version="1.26.2" />
     <!-- OpenAPI document generation (.NET built-in) -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
   </ItemGroup>

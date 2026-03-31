@@ -36,6 +36,7 @@ app.UseSecurityDefaults();
 app.UseBethuyaAuthentication();
 
 app.MapEventEndpoints();
+app.MapImageEndpoints();
 app.MapRegistrationEndpoints();
 app.MapAgentEndpoints();
 app.MapApprovalEndpoints();

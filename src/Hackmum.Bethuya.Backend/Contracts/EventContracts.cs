@@ -11,7 +11,8 @@ public sealed record CreateEventRequest(
     DateTimeOffset EndDate,
     string? Location,
     string CreatedBy,
-    string? Hashtag);
+    string? Hashtag,
+    string? CoverImageUrl);
 
 public sealed record UpdateEventRequest(
     string Title,
@@ -21,7 +22,8 @@ public sealed record UpdateEventRequest(
     DateTimeOffset StartDate,
     DateTimeOffset EndDate,
     string? Location,
-    EventStatus Status);
+    EventStatus Status,
+    string? CoverImageUrl);
 
 public sealed record EventResponse(
     Guid Id,
@@ -35,4 +37,5 @@ public sealed record EventResponse(
     string? Location,
     string CreatedBy,
     DateTimeOffset CreatedAt,
-    string? Hashtag);
+    string? Hashtag,
+    string? CoverImageUrl);

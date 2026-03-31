@@ -19,6 +19,7 @@
 - **Private fields:** `_camelCase`; public members: `PascalCase`; locals: `camelCase`
 - **Test selectors:** always `data-test` attributes — never CSS classes
 - **New packages:** add version to `Directory.Packages.props` first, then reference without version in `.csproj`
+- **UI: Blazor Blueprint first** — always use BB components before custom CSS. Form-field wrappers: `BbFormFieldInput`, `BbFormFieldSelect`, `BbFormSection`. Standalone (wrap with `BbLabel` + `form-group`): `BbTextarea`, `BbNumericInput`, `BbFileUpload`, `BbDatePicker`, `BbTimePicker`. Custom CSS must include a comment explaining why BB couldn't handle it.
 
 ## Domain Agents
 | Agent | Domain | Key Constraint |
@@ -42,6 +43,7 @@
 2. Record mistakes/discoveries in `tasks/lessons.md`.
 3. No temporary hacks — fix root causes.
 4. Agents may autonomously fix failing tests/CI (record reasoning).
+5. **Pre-commit review (mandatory):** Run `code-review` agent + `dotnet-diag:optimizing-dotnet-performance` on changes, `/explain-diff` before PRs.
 
 ## Performance Targets
 - Hot path p99 < 180ms @ 2,500 RPS · 0B hot-path allocations · >90% cache hit rate

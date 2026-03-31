@@ -44,3 +44,15 @@ Thumbs.db
 .squad/sessions/
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
+
+# Playwright MCP browser tool artifacts
+.playwright-mcp/
+
+# Refit test artifacts
+_refit_test/
+
+# BenchmarkDotNet artifacts
+BenchmarkDotNet.Artifacts/
+
+# NBomber reports
+reports/

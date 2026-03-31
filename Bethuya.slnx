@@ -13,6 +13,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj" />
+    <Project Path="tests/Bethuya.LoadTests/Bethuya.LoadTests.csproj" />
     <Project Path="tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj" />
     <Project Path="tests/Bethuya.Benchmarks/Bethuya.Benchmarks.csproj" />
   </Folder>

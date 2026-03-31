@@ -129,6 +129,22 @@ Identity: Use Vogen for all domain IDs (AttendeeId, EventId). Raw primitives are
 - Private fields: `_camelCase`. Public members: `PascalCase`. Locals: `camelCase`.
 - XML doc comments on all public APIs.
 
+### UI — Blazor Blueprint First
+
+- **Always use Blazor Blueprint (BB) components before writing custom CSS or HTML.**
+- **Custom CSS requires a comment explaining why BB couldn't handle it.** Each custom CSS block must have a one-line comment stating what BB lacks (e.g., "BB ShowPreview only supports local IBrowserFile — remote URL preview is custom").
+- **BB form-field wrappers** (wrap label + input + helper text + validation + ARIA):
+  - `BbFormFieldInput<TValue>` — text, email, number, URL inputs
+  - `BbFormFieldSelect<TValue>` — dropdown (Options mode or compositional)
+  - `BbFormSection` — group related fields with title/description
+- **BB standalone components** (no built-in label/validation wrapper — use manual `<div class="form-group">` + `BbLabel` + `ValidationMessage`):
+  - `BbTextarea` — multi-line text with `MaxLength`/`ShowCharacterCount`
+  - `BbNumericInput<TValue>` — numeric with `Min`/`Max`/`Step`/`ShowButtons`
+  - `BbFileUpload` — drag-and-drop file upload with `Accept`/`MaxFileSize`/`MaxFileCount`/`OnValidationError`
+  - `BbDatePicker`, `BbTimePicker` — date/time pickers
+- **Manual `<div class="form-group">` wrappers** are for fields that lack a `BbFormField*` wrapper (textarea, numeric, file upload, date/time pickers, inline adornment inputs like hashtag `#` prefix).
+- Use `data-test` attributes on all interactive elements — never CSS classes for E2E selectors.
+
 ### AI & Privacy
 
 PII: All sensitive curation is routed to Foundry Local (on-device). Non-sensitive orchestration uses Microsoft Foundry.
@@ -163,7 +179,11 @@ PII: All sensitive curation is routed to Foundry Local (on-device). Non-sensitiv
 3. **Record Lessons:** Every mistake or unexpected discovery goes in `tasks/lessons.md` to prevent recurrence.
 4. **Autonomous Fixes:** Agents are authorized to resolve failing tests and CI without manual intervention — but must record reasoning.
 5. **Playwright Visual Proof:** Capture screenshots of UI changes before marking tasks done.
-6. **Diff Reviews:** Always run `/explain-diff` before opening a PR.
+6. **Pre-Commit Review (mandatory):**
+   - Run `code-review` agent on staged changes before every commit.
+   - Run `dotnet-diag:optimizing-dotnet-performance` agent on modified .NET files.
+   - Run `/explain-diff` before opening or updating a PR.
+   - **Never rely on humans to catch code issues** — use available analysis tools proactively.
 
 ---
 
@@ -225,18 +245,29 @@ dotnet test
 # Build full solution
 dotnet build
 
-# Run Aspire AppHost (local orchestration)
-dotnet run --project AppHost/AppHost
+# Run Aspire AppHost (detached mode — preferred for AI agents)
+aspire start
+# Or with isolated ports for worktrees/parallel instances:
+aspire start --isolated
+
+# Stop Aspire (releases DLL locks before building)
+aspire stop
+
+# List running AppHosts
+aspire ps
+
+# Rebuild a single resource without stopping everything
+aspire resource api rebuild
 
 # Run E2E Playwright tests
 dotnet test tests/
 
 # Watch tests during TDD
 dotnet watch test
-Oh, we need to. I. I. Play.
+
 # Security: check for vulnerable packages
 dotnet list package --vulnerable --include-transitive
-Move to.
+
 # Security: run check-security skill
 # (use Copilot CLI: /check-security)
 ```
