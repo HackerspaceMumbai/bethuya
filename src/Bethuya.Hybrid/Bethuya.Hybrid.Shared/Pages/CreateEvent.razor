@@ -157,18 +157,19 @@
                         {
                             @* No BbFormFieldFileUpload wrapper in BB 3.x — manual label + BbFileUpload *@
                             <BbLabel>Cover Image</BbLabel>
-                            <BbFileUpload Files="_coverFiles"
-                                          FilesChanged="HandleCoverFilesChanged"
-                                          Accept="image/jpeg,image/png,image/webp,image/gif"
-                                          MaxFileSize="@(5L * 1024 * 1024)"
-                                          MaxFileCount="1"
-                                          ShowPreview="false"
-                                          OnValidationError="HandleCoverValidationError"
-                                          data-test="cover-image-dropzone">
-                                <DropzoneContent>
-                                    <p>JPEG, PNG, WebP, or GIF — max 5 MB</p>
-                                </DropzoneContent>
-                            </BbFileUpload>
+                            <div data-test="cover-image-dropzone">
+                                <BbFileUpload Files="_coverFiles"
+                                              FilesChanged="HandleCoverFilesChanged"
+                                              Accept="image/jpeg,image/png,image/webp,image/gif"
+                                              MaxFileSize="@(5L * 1024 * 1024)"
+                                              MaxFileCount="1"
+                                              ShowPreview="false"
+                                              OnValidationError="HandleCoverValidationError">
+                                    <DropzoneContent>
+                                        <p>JPEG, PNG, WebP, or GIF — max 5 MB</p>
+                                    </DropzoneContent>
+                                </BbFileUpload>
+                            </div>
                             @if (_uploadError is not null)
                             {
                                 <BbAlert Variant="AlertVariant.Danger" Class="mt-2">@_uploadError</BbAlert>
