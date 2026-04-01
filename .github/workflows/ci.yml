@@ -27,7 +27,7 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Test (TUnit)
-        run: dotnet test tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj --no-build --configuration Release --report-trx --results-directory TestResults/
+        run: dotnet test --project tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj --no-build --configuration Release --report-trx --results-directory TestResults/
         continue-on-error: false
 
       - name: Upload test results
@@ -63,7 +63,7 @@ jobs:
         run: pwsh tests/Hackmum.Bethuya.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Run E2E tests
-        run: dotnet test tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj --no-build --configuration Release --report-trx --results-directory TestResults/E2E/
+        run: dotnet test --project tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj --no-build --configuration Release --report-trx --results-directory TestResults/E2E/
 
       - name: Upload E2E results and traces
         if: always()
