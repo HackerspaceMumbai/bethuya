@@ -28,6 +28,23 @@ playwright-cli video-stop recordings/login-flow-2024-01-15.webm
 playwright-cli video-stop recordings/checkout-test-run-42.webm
 ```
 
+### 2. Prefer Tracing for Debugging; Video for Documentation
+
+Use video recording when you need a human-readable visual artifact (demos, reports, stakeholder reviews). Prefer tracing when debugging failures — traces capture DOM snapshots, network, console, and action timing at lower storage cost.
+
+### 3. Clean Up Old Recordings
+
+Video files can be large. Remove recordings older than a set retention period:
+
+```bash
+# Remove .webm files older than 7 days
+find recordings -type f -name "*.webm" -mtime +7 -delete
+```
+
+### 4. Size Recordings Appropriately
+
+Recording adds overhead. For CI pipelines, record only on failure or limit to critical flows. For local development, recordings in the default session resolution are sufficient — avoid unnecessarily wide viewports.
+
 ## Tracing vs Video
 
 | Feature | Video | Tracing |
