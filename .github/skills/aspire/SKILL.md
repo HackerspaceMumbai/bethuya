@@ -30,6 +30,7 @@ This repository uses Aspire to orchestrate its distributed application. Resource
 | Search docs | `aspire docs search <query>` |
 | Get doc page | `aspire docs get <slug>` |
 | List doc pages | `aspire docs list` |
+| Run command in resource context | `aspire exec <resource> -- <command>` (`--workdir`, `--start-resource`) |
 | Environment diagnostics | `aspire doctor` |
 | List resource MCP tools | `aspire mcp tools` |
 | Call resource MCP tool | `aspire mcp call <resource> <tool> --input <json>` |
@@ -98,6 +99,7 @@ aspire mcp call <resource> <tool> --input '{"key":"value"}'   # invoke a tool
 - Use `--isolated` when working in a worktree.
 - **Avoid persistent containers** early in development to prevent state management issues.
 - **Never install the Aspire workload** — it is obsolete.
+- **`aspire exec` is a legacy feature** — enable it first with `aspire config set features.execCommandEnabled true`; it runs commands (e.g., EF Core migrations) inside running resources with injected connection strings and env vars.
 - **For Aspire API reference and documentation, prefer `aspire docs search <query>` and `aspire docs get <slug>`** over searching NuGet package caches or XML doc files. The CLI provides up-to-date content from aspire.dev.
 - Prefer `aspire.dev` and `learn.microsoft.com/microsoft/aspire` for official documentation.
 

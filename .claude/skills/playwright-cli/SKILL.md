@@ -194,7 +194,7 @@ After each command, playwright-cli provides a snapshot of the current browser st
 
 You can also take a snapshot on demand using `playwright-cli snapshot` command.
 
-If `--filename` is not provided, a new snapshot file is created with a timestamp. Default to automatic file naming, use `--filename=` when artifact is a part of the workflow result.
+If `--filename` isn't provided, a new snapshot file is created with a timestamp; use `--filename=` when the artifact is part of the workflow result.
 
 ## Browser Sessions
 

@@ -43,7 +43,13 @@ For conditional responses, request body inspection, response modification, or de
 ```bash
 playwright-cli run-code "async page => {
   await page.route('**/api/login', route => {
-    const body = route.request().postDataJSON();
+    let body;
+    try {
+      body = route.request().postDataJSON();
+    } catch {
+      route.fulfill({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }) });
+      return;
+    }
     if (body.username === 'admin') {
       route.fulfill({ body: JSON.stringify({ token: 'mock-token' }) });
     } else {

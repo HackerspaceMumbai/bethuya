@@ -253,7 +253,7 @@ playwright-cli open https://app.example.com/dashboard
 ```bash
 # Set up authentication state
 playwright-cli open https://example.com
-playwright-cli eval "() => { document.cookie = 'session=abc123'; localStorage.setItem('user', 'john'); }"
+playwright-cli run-code "() => { document.cookie = 'session=abc123'; localStorage.setItem('user', 'john'); }"
 
 # Save state to file
 playwright-cli state-save my-session.json
@@ -269,7 +269,7 @@ playwright-cli open https://example.com
 ## Security Notes
 
 - Never commit storage state files containing auth tokens
-- Add `*.auth-state.json` to `.gitignore`
+- Add `*.auth-state.json`, `storage-state-*.json`, `*auth*.json`, and `*session*.json` to `.gitignore`
 - Delete state files after automation completes
 - Use environment variables for sensitive data
 - By default, sessions run in-memory mode which is safer for sensitive operations

@@ -19,7 +19,7 @@ playwright-cli tracing-stop
 
 ## Trace Output Files
 
-When you start tracing, Playwright creates a `traces/` directory with several files:
+When you start tracing, Playwright CLI creates a `.playwright-cli/traces/` directory (relative to the current working directory) with several files:
 
 ### `trace-{timestamp}.trace`
 
@@ -129,7 +129,7 @@ Traces can consume significant disk space:
 
 ```bash
 # Remove traces older than 7 days
-find .playwright-cli/traces -mtime +7 -delete
+find .playwright-cli/traces -type f -mtime +7 -delete
 ```
 
 ## Limitations

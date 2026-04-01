@@ -26,9 +26,14 @@ playwright-cli run-code "async page => {
   await page.context().setGeolocation({ latitude: 51.5074, longitude: -0.1278 });
 }"
 
-# Clear geolocation override
+# Clear all granted permissions (does NOT reset geolocation coordinates)
 playwright-cli run-code "async page => {
   await page.context().clearPermissions();
+}"
+
+# Clear geolocation coordinates specifically
+playwright-cli run-code "async page => {
+  await page.context().setGeolocation(null);
 }"
 ```
 
