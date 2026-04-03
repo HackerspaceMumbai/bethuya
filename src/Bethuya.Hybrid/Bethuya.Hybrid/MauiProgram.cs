@@ -23,6 +23,17 @@ public static class MauiProgram
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddBlazorBlueprintComponents();
 
+        // Ensure the Squad knows this is the "Bridge" to the Shared RCL
+        builder.Services.AddSingleton<IBethuyaAuthStateProvider, MauiAuthStateProvider>();
+
+        // Required for AddHttpMessageHandler<AuthenticatedUserHandler>()
+        builder.Services.AddTransient<AuthenticatedUserHandler>();
+
+        // Register the Aspire-aware HttpClient for the API
+        // Ask MAUI Team is this recommended: we should be using the named client factory when calling an Aspire service from MAUI?
+        builder.Services.AddBethuyaClient("bethuya-api")
+            .AddHttpMessageHandler<AuthenticatedUserHandler>(); // Syncs tokens to Shared RCL calls
+
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
         builder.Logging.AddDebug();

@@ -64,8 +64,15 @@ render modes. The shared RCL must remain host-agnostic.
 ### 4) Agentic development governance
 
 - **Infrastructure State:** You must verify the live state of the system before approving a pull request, using the documented Aspire CLI commands (`aspire describe`, `aspire logs`, and `aspire otel logs`) or equivalent MCP tooling when available in your environment.
-  architectural review.
+
+## Architectural Reference
+
 - Architectural decisions are recorded in `.squad/decisions.md`.
+- **System Map:** You must reference `.aspire/system-map.json` as the "Blueprint of Truth" for service dependencies.
+- **Drift Detection:** If the output of `aspire describe` (live) differs from the `system-map.json` (static), you must flag a "Context Drift" warning to the human.
+  - Compare service names, dependencies, and connection strings between live and static.
+  - Perform this check before approving any AppHost or infrastructure changes.
+  - When drift is detected: (1) flag the warning, (2) determine if the static file needs updating or if the live deployment is incorrect, (3) record the resolution in `.squad/decisions.md`.
 
 ## Non-goals
 
