@@ -46,6 +46,11 @@
 - Authentication, authorization, encryption, or access control changes
 - Multi-system integration requiring cross-agent coordination
 
+## Policies
+
+- `.squad/policies/rendering-policy.md`
+- `.squad/policies/rcl-boundaries.md`
+
 ## Project Context
 
 - **Owner:** Augustine Correa
