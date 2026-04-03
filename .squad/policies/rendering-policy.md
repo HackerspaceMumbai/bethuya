@@ -1,10 +1,29 @@
-# Rendering Policy (Web Only)
+# Rendering policy (Web only)
 
-- Global default: `InteractiveServer` configured app-wide in `App.razor` (on `Routes` and `HeadOutlet`), ensuring consistent Auth0 authentication and Aspire service-discovery behavior across all pages.
-- Per-page overrides:
-  - `InteractiveServer` required → auth, PII, organizer/agent-control.
-  - `InteractiveWebAssembly` allowed → offline-heavy forms (drafts, multi-step) **only when the flow contains no external OAuth redirects**. If the form can trigger an OAuth redirect (e.g., Auth0 login), the Blazor circuit is destroyed during the redirect and all WASM in-memory and browser-storage state may be lost. In those cases, **save draft data server-side** (e.g., via `IRegistrationDraftService`) before initiating the redirect.
+## Defaults
+
+- Global default: `InteractiveServer` configured app-wide (typically via
+  `Routes.razor` and/or `App.razor` depending on template).
+
+## Per-page overrides
+
+- `InteractiveServer` required:
+  - auth
+  - PII
+  - organizer/admin
+  - agent-control surfaces
+- `InteractiveWebAssembly` allowed:
+  - offline-heavy forms (drafts, multi-step)
+  - only when the flow contains no external OAuth redirect mid-flow
+
+## Redirect safety rule
+
+If a form flow can trigger an external OAuth redirect (for example, Auth0 login),
+persist draft state before the redirect and restore it after return. Do not rely
+on in-memory state.
+
+## Additional rules
+
 - Never place PII flows in WASM.
-- Document any override in the PR description with rationale and data classification.
-
-References: Blazor render modes and prerendering.
+- Document any override in the PR description with rationale and data
+  classification.

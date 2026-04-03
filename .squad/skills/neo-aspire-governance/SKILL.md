@@ -10,7 +10,9 @@ source manual
 # Neo Aspire Governance
 
 ## When to use
+
 Use this skill for any change that touches:
+
 - AppHost composition or service wiring
 - Cross-service communication
 - Auth, PII, or render-mode decisions
@@ -18,14 +20,18 @@ Use this skill for any change that touches:
 - ServiceDefaults, telemetry, resilience
 
 ## Outcomes
+
 This skill produces:
-- A short architectural verdict (approve, request changes, or escalate)
+
+- An architectural verdict (approve, request changes, or escalate)
 - A risk summary (low, medium, high)
 - A checklist of required fixes with file-level pointers
 - Delegation instructions to supporting Neo skills
 
 ## Governance rules (hard gates)
+
 Block or escalate if any of these occur:
+
 - Service-to-service URLs are hardcoded (ports, localhost, environment URLs)
 - A dependency exists in code but not in AppHost
 - Secrets are introduced into source-controlled config
@@ -33,13 +39,16 @@ Block or escalate if any of these occur:
 - Sensitive pages are made WASM-interactive in Blazor Web
 
 ## Delegation
+
 If you need deep verification, delegate as follows:
-- For topology and WithReference consistency:
-  use neo-apphost-consistency.
-- For PR diffs and anti-pattern detection:
-  use neo-aspire-diff-review.
+
+- Topology and `WithReference(...)` consistency:
+  - use `neo-apphost-consistency`
+- Diff review and anti-pattern detection:
+  - use `neo-aspire-diff-review`
 
 ## Review output format
+
 1. Summary (one paragraph)
 2. Risk level (low, medium, high)
 3. Findings (bullets)
