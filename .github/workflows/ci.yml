@@ -63,8 +63,37 @@ jobs:
       - name: Install Playwright browsers
         run: pwsh tests/Hackmum.Bethuya.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
+      - name: Start web app
+        run: |
+          dotnet run --project src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Bethuya.Hybrid.Web.csproj \
+            --no-build --configuration Release \
+            --urls http://localhost:5095 &
+          echo $! > /tmp/webapp.pid
+
+      - name: Wait for web app
+        run: |
+          echo "Waiting for web app on http://localhost:5095..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5095 > /dev/null 2>&1; then
+              echo "Web app is ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 — retrying in 2s..."
+            sleep 2
+          done
+          echo "Web app did not start in time." && exit 1
+
       - name: Run E2E tests
+        env:
+          BETHUYA_BASE_URL: http://localhost:5095
         run: dotnet test --project tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj --no-build --configuration Release
+
+      - name: Stop web app
+        if: always()
+        run: |
+          if [ -f /tmp/webapp.pid ]; then
+            kill $(cat /tmp/webapp.pid) || true
+          fi
 
       - name: Upload E2E results and traces
         if: always()
