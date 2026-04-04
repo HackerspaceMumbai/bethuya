@@ -15,3 +15,4 @@
   - Events.razor now has "New Event" button with calendar-plus icon (data-test="new-event-btn")
   - All submit/cancel buttons have proper data-test wrappers for E2E tests
   - Form resets automatically after successful creation via ResetForm() method
+- **GitHub Copilot SDK "Suggest Dates" button (2026-04-04, retroactive):** Added "✨ Suggest Dates" button to CreateEvent.razor. Button calls `IEventApi.RecommendDates()` (Refit client), displays loading state, auto-fills suggested dates into form on success, shows error message on failure. Styled with Blazor Blueprint components. Custom CSS for button spacing. 2 bUnit UI tests cover button render, click handler, and error state. Build: 0 errors/0 warnings.

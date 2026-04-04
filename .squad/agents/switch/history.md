@@ -17,4 +17,5 @@
 - EventCreationTests.cs covers contract mapping, JSON deserialization of EventType enum, and Guid versioning.
 - Build may fail if dependent projects (like Bethuya.Hybrid.Shared) have active Razor compilation errors, but test logic is sound.
 - E2E test project (Playwright + MSTest) builds independently and successfully with proper data-test selectors.
+- **GitHub Copilot SDK date recommendation tests (2026-04-04, retroactive):** Wrote `DateRecommendationParseTests.cs` with 7 TUnit tests covering ParseResponse parsing (success, malformed JSON, empty dates, invalid format). Wrote 2 bUnit UI tests in `CreateEventRenderTests.cs` testing button render and click handler. All 89/89 tests pass. Tests exercise internal static ParseResponse via `[InternalsVisibleTo]` for unit testing.
 
