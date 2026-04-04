@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using System.Text.RegularExpressions;
 
 namespace Hackmum.Bethuya.Tests.Endpoints;
 
@@ -155,7 +156,7 @@ public class ImageEndpointValidationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Upload_CallsUploadServiceWithFileName()
+    public async Task Upload_CallsUploadServiceWithSanitizedFileName()
     {
         _mockUploadService
             .UploadAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -169,9 +170,16 @@ public class ImageEndpointValidationTests : IAsyncDisposable
         await _client.PostAsync("/api/images/upload", content);
 
         await _mockUploadService.Received(1)
-            .UploadAsync(Arg.Any<Stream>(), Arg.Is("event-cover.jpg"), Arg.Any<CancellationToken>());
+            .UploadAsync(
+                Arg.Any<Stream>(),
+                Arg.Is<string>(name =>
+                    Regex.IsMatch(name, "^[a-f0-9]{32}\\.jpg$")),
+                Arg.Any<CancellationToken>());
     }
 
+    private static readonly Regex s_sanitizedJpgFileNameRegex = new(
+        "^[a-f0-9]{32}\\.jpg$",
+        RegexOptions.Compiled);
     private static readonly Dictionary<string, byte[]> s_magicBytes = new()
     {
         ["image/jpeg"] = [0xFF, 0xD8, 0xFF, 0xE0],
