@@ -391,13 +391,18 @@
             var startDt = _formModel.StartDate?.Date + (_formModel.StartTime ?? TimeSpan.Zero);
             var endDt = _formModel.EndDate?.Date + (_formModel.EndTime ?? TimeSpan.Zero);
 
-            var startOffset = startDt is not null
-                ? new DateTimeOffset(DateTime.SpecifyKind(startDt.Value, DateTimeKind.Utc), TimeSpan.Zero)
-                : DateTimeOffset.UtcNow;
-            var endOffset = endDt is not null
-                ? new DateTimeOffset(DateTime.SpecifyKind(endDt.Value, DateTimeKind.Utc), TimeSpan.Zero)
-                : DateTimeOffset.UtcNow;
+            if (startDt is null || endDt is null)
+            {
+                _errorMessage = "Please choose both a start date and an end date before saving.";
+                return;
+            }
 
+            var startOffset = new DateTimeOffset(
+                DateTime.SpecifyKind(startDt.Value, DateTimeKind.Utc),
+                TimeSpan.Zero);
+            var endOffset = new DateTimeOffset(
+                DateTime.SpecifyKind(endDt.Value, DateTimeKind.Utc),
+                TimeSpan.Zero);
             if (IsEditMode && Guid.TryParse(EditEventId, out var eventId))
             {
                 var updateDto = new UpdateEventDto(
