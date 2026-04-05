@@ -36,7 +36,7 @@ public static class EventEndpoints
                 : Results.NotFound();
         });
 
-        group.MapPost("/", async (CreateEventRequest request, IEventRepository repo, CancellationToken ct) =>
+        group.MapPost("/", async (PlanEventRequest request, IEventRepository repo, CancellationToken ct) =>
         {
             var errors = new Dictionary<string, string[]>();
 

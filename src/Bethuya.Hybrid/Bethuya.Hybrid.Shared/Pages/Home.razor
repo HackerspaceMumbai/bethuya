@@ -32,19 +32,29 @@
                               ReviewUrl="@($"/events/{featuredEvent.Id}")" />
         }
 
-        @* ── Dashboard grid: stats + featured event ── *@
+        @* ── Dashboard grid: stats column + featured event ── *@
         <div class="dashboard-grid">
-            <div class="stats-grid" data-test="stats-row" aria-label="Event statistics">
-                <StatCard Label="Total Events" Value="@events.Count" IconName="calendar" />
-                <StatCard Label="Drafts" Value="@events.Count(e => e.Status == "Draft")" IconName="file-edit" />
-                <StatCard Label="Upcoming" Value="@UpcomingCount" IconName="calendar-clock" />
-                <StatCard Label="Completed" Value="@events.Count(e => e.Status == "Completed")" IconName="circle-check" />
+            <div class="stats-column">
+                <div class="stats-grid" data-test="stats-row" aria-label="Event statistics">
+                    <StatCard Label="Total Events" Value="@events.Count" IconName="calendar" />
+                    <StatCard Label="Drafts" Value="@events.Count(e => e.Status == "Draft")" IconName="file-edit" />
+                    <StatCard Label="Upcoming" Value="@UpcomingCount" IconName="calendar-clock" />
+                    <StatCard Label="Completed" Value="@events.Count(e => e.Status == "Completed")" IconName="circle-check" />
+                </div>
+
+                <div class="plan-event-cta" data-test="plan-event-cta">
+                    <BbButton Variant="ButtonVariant.Default" Class="cta-btn"
+                              OnClick="@(() => Navigation.NavigateTo("/events/plan"))">
+                        <LucideIcon Name="plus" Size="16" />
+                        Plan New Event
+                    </BbButton>
+                </div>
             </div>
 
             <FeaturedEventCard Event="@featuredEvent"
                                OnPanelClick="@(() => Navigation.NavigateTo("/agents"))"
                                OnCurationClick="@(() => Navigation.NavigateTo("/curation"))"
-                               OnCreateClick="@(() => Navigation.NavigateTo("/events/create"))" />
+                               OnEditClick="@(() => { if (featuredEvent is not null) Navigation.NavigateTo($"/events/plan?edit={featuredEvent.Id}"); })" />
         </div>
 
         @* ── Events list ── *@
@@ -55,7 +65,7 @@
             {
                 <div class="empty-state">
                     <p>No events yet.</p>
-                    <p class="empty-hint">Create your first community event to get started!</p>
+                    <p class="empty-hint">Plan your first community event to get started!</p>
                 </div>
             }
             else
@@ -64,7 +74,7 @@
                     @foreach (var evt in events)
                     {
                         <EventCard Event="@evt"
-                                   OnDraftClick="@(e => Navigation.NavigateTo($"/events/{e.Id}"))"
+                                   OnDraftClick="@(e => Navigation.NavigateTo(e.Status == "Draft" ? $"/events/plan?edit={e.Id}" : $"/events/{e.Id}"))"
                                    OnRegistrationsClick="@(e => Navigation.NavigateTo($"/events/{e.Id}/registrations"))" />
                     }
                 </div>
