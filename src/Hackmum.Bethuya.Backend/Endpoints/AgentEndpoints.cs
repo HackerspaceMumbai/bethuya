@@ -1,5 +1,6 @@
 using Hackmum.Bethuya.Agents.Base;
 using Hackmum.Bethuya.Agents.Contracts;
+using Hackmum.Bethuya.AI.CopilotSdk;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
@@ -103,6 +104,28 @@ public static class AgentEndpoints
 
             var response = await reporter.DraftAsync(agentRequest, ct);
             return Results.Ok(response);
+        });
+
+        group.MapPost("/recommend-dates", async (
+            RecommendDatesApiRequest request,
+            IDateRecommendationService dateService,
+            CancellationToken ct) =>
+        {
+            var context = new DateRecommendationContext(
+                Title: request.Title,
+                Type: request.Type,
+                Description: request.Description,
+                Location: request.Location,
+                Capacity: request.Capacity);
+
+            var recommendation = await dateService.RecommendAsync(context, ct);
+
+            return Results.Ok(new RecommendDatesApiResponse(
+                StartDate: recommendation.StartDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                StartTime: recommendation.StartTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+                EndDate: recommendation.EndDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                EndTime: recommendation.EndTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+                Reasoning: recommendation.Reasoning));
         });
     }
 }

@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.AI.Configuration;
+using Hackmum.Bethuya.AI.CopilotSdk;
 using Hackmum.Bethuya.AI.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,13 @@ public static class AIServiceExtensions
             builder.Configuration.GetSection(AIRoutingOptions.SectionName));
 
         builder.Services.AddSingleton<IAIRouter, AIRouter>();
+
+        builder.Services.Configure<CopilotSdkOptions>(
+            builder.Configuration.GetSection(CopilotSdkOptions.SectionName));
+
+        builder.Services.AddSingleton<DateRecommendationService>();
+        builder.Services.AddSingleton<IDateRecommendationService>(sp =>
+            sp.GetRequiredService<DateRecommendationService>());
 
         return builder;
     }

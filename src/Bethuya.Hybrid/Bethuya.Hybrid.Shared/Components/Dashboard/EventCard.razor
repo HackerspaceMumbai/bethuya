@@ -30,12 +30,30 @@
                 Capacity: @Event.Capacity
             </div>
         </div>
+
+        @if (Event.Status == "Draft")
+        {
+            <div class="draft-nudge" data-test="draft-nudge">
+                <LucideIcon Name="triangle-alert" Size="14" />
+                <span>This event is incomplete. Complete details to publish.</span>
+            </div>
+        }
     </BbCardContent>
     <BbCardFooter Class="event-card-foot">
-        <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
-                  OnClick="@(() => OnDraftClick.InvokeAsync(Event))">
-            <span data-test="draft-schedule-btn">Draft Schedule →</span>
-        </BbButton>
+        @if (Event.Status == "Draft")
+        {
+            <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                      OnClick="@(() => OnDraftClick.InvokeAsync(Event))">
+                <span data-test="complete-publish-btn">Complete & Publish →</span>
+            </BbButton>
+        }
+        else
+        {
+            <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                      OnClick="@(() => OnDraftClick.InvokeAsync(Event))">
+                <span data-test="view-schedule-btn">View Schedule →</span>
+            </BbButton>
+        }
         <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
                   OnClick="@(() => OnRegistrationsClick.InvokeAsync(Event))">
             Registrations

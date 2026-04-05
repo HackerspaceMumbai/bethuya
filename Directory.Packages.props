@@ -66,6 +66,8 @@
     <!-- Load testing -->
     <PackageVersion Include="NBomber" Version="6.3.0" />
     <PackageVersion Include="NBomber.Http" Version="6.2.0" />
+    <!-- GitHub Copilot SDK — programmatic control of Copilot CLI (date recommendation service) -->
+    <PackageVersion Include="GitHub.Copilot.SDK" Version="0.2.1" />
     <!-- Microsoft.Extensions.AI for AI provider abstraction -->
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.4.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.4.0" />

@@ -11,12 +11,12 @@ namespace Hackmum.Bethuya.E2E.Tests;
 public class CoverImageFlowTests : BethuyaE2ETest
 {
     [TestMethod]
-    public async Task CreateEvent_WithoutCoverImage_ShouldSucceed()
+    public async Task PlanEvent_WithoutCoverImage_ShouldSucceed()
     {
-        await GotoWithBudgetAsync("/events/create");
+        await GotoWithBudgetAsync("/events/plan");
 
         // Wait for Blazor Server circuit — submit button becomes enabled when interactive
-        var submitBtn = Page.Locator("[data-test='create-event-submit'] button");
+        var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
         // Fill required fields only — no cover image
@@ -35,7 +35,7 @@ public class CoverImageFlowTests : BethuyaE2ETest
     }
 
     [TestMethod]
-    public async Task CreateEvent_WithCoverImage_ShouldShowPreviewAndSucceed()
+    public async Task PlanEvent_WithCoverImage_ShouldShowPreviewAndSucceed()
     {
         // This test requires Cloudinary credentials — skip when not configured
         var cloudinaryUrl = Environment.GetEnvironmentVariable("Cloudinary__CloudUrl")
@@ -46,10 +46,10 @@ public class CoverImageFlowTests : BethuyaE2ETest
             return;
         }
 
-        await GotoWithBudgetAsync("/events/create");
+        await GotoWithBudgetAsync("/events/plan");
 
         // Wait for Blazor Server circuit
-        var submitBtn = Page.Locator("[data-test='create-event-submit'] button");
+        var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
         // Fill required fields
