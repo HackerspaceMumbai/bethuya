@@ -14,3 +14,24 @@
     background: linear-gradient(to bottom, transparent 40%, var(--hs-card) 100%);
     pointer-events: none;
 }
+
+/* ── Draft nudge banner inside event row ── */
+/* BB lacks an inline contextual warning banner — custom CSS for draft status nudge */
+.draft-nudge-banner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--hs-gold);
+    background-color: rgba(212, 168, 48, 0.08);
+    border: 1px solid rgba(212, 168, 48, 0.2);
+    border-radius: 6px;
+}
+
+.draft-nudge-icon {
+    flex-shrink: 0;
+}
