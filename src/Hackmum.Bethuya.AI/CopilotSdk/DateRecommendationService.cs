@@ -188,6 +188,10 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
             {
                 await _client.StopAsync();
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 LogClientStopError(_logger, ex);
