@@ -192,9 +192,14 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
             {
                 throw;
             }
+            catch (ObjectDisposedException ex)
+            {
+                LogClientStopError(_logger, ex);
+            }
             catch (Exception ex)
             {
                 LogClientStopError(_logger, ex);
+                throw;
             }
         }
 

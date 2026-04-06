@@ -643,7 +643,7 @@
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!IsFatalException(ex))
         {
             Logger.LogError(ex, "Unexpected error uploading cover image");
             _uploadError = "Something went wrong during upload. Please try again.";
@@ -670,4 +670,7 @@
     {
         Navigation.NavigateTo("/events");
     }
+
+    private static bool IsFatalException(Exception ex) =>
+        ex is NullReferenceException or InvalidOperationException or ObjectDisposedException;
 }
