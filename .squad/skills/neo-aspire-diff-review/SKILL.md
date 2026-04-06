@@ -38,10 +38,13 @@ Reject if you find:
 
 ### Secrets and sensitive config
 
-Reject if you find:
+MUST REJECT — Critical security violation:
 
 - API keys, client secrets, connection strings committed
 - auth config values that should be user-secrets
+- automated secret-scanning is not enabled in CI
+
+If any secret is exposed in a diff or history, treat it as compromised: rotate credentials immediately and follow incident response steps (revoke, audit access, assess blast radius, and document remediation).
 
 ### Observability regressions
 

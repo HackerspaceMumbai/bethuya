@@ -11,7 +11,8 @@ public interface IBethuyaAuthStateProvider
     /// <param name="ct">A cancellation token for the operation.</param>
     /// <returns>
     /// A task that resolves to the current <see cref="ClaimsPrincipal"/>
-    /// representing the authenticated user.
+    /// representing the authenticated user, or an unauthenticated principal
+    /// if no user is currently signed in.
     /// </returns>
     Task<ClaimsPrincipal> GetCurrentUserAsync(CancellationToken ct = default);
 

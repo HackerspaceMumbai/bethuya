@@ -29,10 +29,6 @@
   server-side persistence implementation in the server app.
 - **Hybrid (MAUI):** Provide SQLite/Preferences draft store via DI.
 
-## Hosts
-
-- Web (Server/WASM): provide IndexedDB draft store for WASM pages.
-- Hybrid (MAUI): provide SQLite/Preferences draft store via DI.
 
 **References:**
 
