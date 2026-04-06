@@ -1,38 +1,36 @@
 using System.Security.Claims;
+using System.Threading;
 
 namespace Bethuya.Hybrid.Shared.Auth;
 
-/// <summary>
-/// Provides the current authentication state for the hybrid application and exposes
-/// notifications for authentication state transitions.
-/// </summary>
-/// <remarks>
-/// Implementations should ensure that consumers always observe a principal that accurately
-/// reflects the current authentication state, including anonymous or signed-out states.
-/// </remarks>
-public interface IBethuyaAuthStateProvider {
+public interface IBethuyaAuthStateProvider
+{
     /// <summary>
-    /// Gets the principal that represents the current user authentication state.
+    /// Asynchronously gets the current authenticated user principal.
     /// </summary>
+    /// <param name="ct">A cancellation token for the operation.</param>
     /// <returns>
-    /// A task that resolves to the current <see cref="ClaimsPrincipal"/>. Implementations should
-    /// return a principal representing the current state, including an unauthenticated principal
-    /// when no user is signed in.
+    /// A task that resolves to the current <see cref="ClaimsPrincipal"/>
+    /// representing the authenticated user, or an unauthenticated principal
+    /// if no user is currently signed in.
     /// </returns>
-    Task<ClaimsPrincipal> GetCurrentUserAsync();
+    Task<ClaimsPrincipal> GetCurrentUserAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Notifies the provider that a user has successfully logged in and that the supplied
-    /// principal should become the current authentication state.
+    /// Notifies the provider that a user has logged in and updates the
+    /// authentication state.
     /// </summary>
     /// <param name="user">
-    /// The authenticated <see cref="ClaimsPrincipal"/> to publish as the current user.
+    /// The <see cref="ClaimsPrincipal"/> for the user who has successfully
+    /// logged in.
     /// </param>
-    Task NotifyUserLoggedIn(ClaimsPrincipal user);
+    /// <param name="ct">A cancellation token for the operation.</param>
+    Task NotifyUserLoggedInAsync(ClaimsPrincipal user, CancellationToken ct = default);
 
     /// <summary>
-    /// Notifies the provider that the current user has logged out and that the authentication
-    /// state should transition to a signed-out or anonymous principal.
+    /// Notifies the provider that the current user has logged out and updates
+    /// the authentication state.
     /// </summary>
-    Task NotifyUserLoggedOut();
+    /// <param name="ct">A cancellation token for the operation.</param>
+    Task NotifyUserLoggedOutAsync(CancellationToken ct = default);
 }
