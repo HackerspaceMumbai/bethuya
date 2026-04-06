@@ -639,6 +639,10 @@
             Logger.LogWarning(ex, "Resilience timeout uploading cover image");
             _uploadError = "The upload took too long. Please try again or use a smaller image.";
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Unexpected error uploading cover image");
