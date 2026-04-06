@@ -17,10 +17,10 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <div data-test="new-event-btn">
-                <BbButton Variant="ButtonVariant.Default" OnClick="@(() => Navigation.NavigateTo("/events/create"))">
+            <div data-test="plan-event-btn">
+                <BbButton Variant="ButtonVariant.Default" OnClick="@(() => Navigation.NavigateTo("/events/plan"))">
                     <LucideIcon Name="calendar-plus" Size="16" />
-                    New Event
+                    Plan Event
                 </BbButton>
             </div>
 
@@ -76,7 +76,9 @@
                     }
                     <div class="@($"flex flex-col md:flex-row md:justify-between md:items-start gap-4 {(string.IsNullOrEmpty(evt.CoverImageUrl) ? "" : "p-4")}")">
                         <div class="flex-1 min-w-0">
-                            <h3 class="text-lg font-semibold mb-1">@evt.Title</h3>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="text-lg font-semibold">@evt.Title</h3>
+                            </div>
                             <p class="text-sm text-muted-foreground mb-3">@(evt.Description ?? "")</p>
 
                             <div class="flex flex-wrap gap-2 mb-3">
@@ -97,15 +99,35 @@
                                 <span>👥 @evt.Capacity</span>
                                 <span>📅 @evt.StartDate.ToString("MMM dd, yyyy")@(evt.StartDate != evt.EndDate ? $" – {evt.EndDate:MMM dd, yyyy}" : "")</span>
                             </div>
+
+                            @if (evt.Status == "Draft")
+                            {
+                                <div class="draft-nudge-banner" data-test="draft-nudge">
+                                    <span class="draft-nudge-icon">⚠</span>
+                                    <span>This event is incomplete. Fill in all details to publish it.</span>
+                                </div>
+                            }
                         </div>
 
                         <div class="flex gap-2 shrink-0">
-                            <div data-test="view-event-btn">
-                                <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
-                                          OnClick="@(() => Navigation.NavigateTo($"/events/{evt.Id}"))">
-                                    Draft Schedule →
-                                </BbButton>
-                            </div>
+                            @if (evt.Status == "Draft")
+                            {
+                                <div data-test="complete-event-btn">
+                                    <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                                              OnClick="@(() => Navigation.NavigateTo($"/events/plan?edit={evt.Id}"))">
+                                        Complete & Publish →
+                                    </BbButton>
+                                </div>
+                            }
+                            else
+                            {
+                                <div data-test="view-event-btn">
+                                    <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small"
+                                              OnClick="@(() => Navigation.NavigateTo($"/events/{evt.Id}"))">
+                                        View Schedule →
+                                    </BbButton>
+                                </div>
+                            }
                             <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
                                       OnClick="@(() => Navigation.NavigateTo($"/events/{evt.Id}/registrations"))">
                                 Registrations

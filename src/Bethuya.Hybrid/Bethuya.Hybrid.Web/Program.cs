@@ -53,7 +53,15 @@ builder.Services
         ContentSerializer = new SystemTextJsonContentSerializer(
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
     })
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"));
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
+    .AddStandardResilienceHandler(options =>
+    {
+        // File uploads can exceed the default 30s timeout
+        options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(2);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(3);
+        // Circuit breaker sampling must be ≥ 2× attempt timeout
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(5);
+    });
 
 // CORS — origins from appsettings.json "Cors:AllowedOrigins" (empty by default in production)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

@@ -69,6 +69,21 @@
     opacity: 0.7;
 }
 
+/* ── Draft nudge banner inside card body ── */
+.draft-nudge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--hs-gold);
+    background-color: rgba(212, 168, 48, 0.1);
+    border: 1px solid rgba(212, 168, 48, 0.25);
+    border-radius: 6px;
+}
+
 ::deep .event-card-foot {
     display: flex;
     gap: 0.5rem;

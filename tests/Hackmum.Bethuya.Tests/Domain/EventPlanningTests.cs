@@ -9,7 +9,7 @@ using TUnit.Core;
 
 namespace Hackmum.Bethuya.Tests.Domain;
 
-public class EventCreationTests
+public class EventPlanningTests
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -18,10 +18,10 @@ public class EventCreationTests
     };
 
     [Test]
-    public async Task CreateEventRequest_WithValidData_MapsToEvent()
+    public async Task PlanEventRequest_WithValidData_MapsToEvent()
     {
         // Arrange
-        var request = new CreateEventRequest(
+        var request = new PlanEventRequest(
             Title: "Community Workshop",
             Description: "Learn about AI agents",
             Type: EventType.Workshop,
@@ -65,7 +65,7 @@ public class EventCreationTests
     }
 
     [Test]
-    public async Task CreateEventRequest_TypeEnum_DeserializesFromString()
+    public async Task PlanEventRequest_TypeEnum_DeserializesFromString()
     {
         // Arrange
         var json = """
@@ -80,7 +80,7 @@ public class EventCreationTests
             """;
 
         // Act
-        var request = JsonSerializer.Deserialize<CreateEventRequest>(json, s_jsonOptions);
+        var request = JsonSerializer.Deserialize<PlanEventRequest>(json, s_jsonOptions);
 
         // Assert
         await Assert.That(request).IsNotNull();
@@ -89,7 +89,7 @@ public class EventCreationTests
     }
 
     [Test]
-    public async Task CreateEventRequest_AllEventTypes_DeserializeCorrectly()
+    public async Task PlanEventRequest_AllEventTypes_DeserializeCorrectly()
     {
         // Arrange & Act & Assert for each EventType
         var types = new[]
@@ -115,7 +115,7 @@ public class EventCreationTests
                 }
                 """;
 
-            var request = JsonSerializer.Deserialize<CreateEventRequest>(json, s_jsonOptions);
+            var request = JsonSerializer.Deserialize<PlanEventRequest>(json, s_jsonOptions);
 
             await Assert.That(request).IsNotNull();
             await Assert.That(request!.Type).IsEqualTo(expectedEnum);

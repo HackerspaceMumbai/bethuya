@@ -1,0 +1,676 @@
+@page "/events/plan"
+@page "/events/create"
+@rendermode InteractiveServer
+@using Bethuya.Hybrid.Shared.Models
+@using Bethuya.Hybrid.Shared.Services
+@using Microsoft.Extensions.Logging
+@inject IEventApi EventApi
+@inject NavigationManager Navigation
+@inject ILogger<PlanEvent> Logger
+
+<PageTitle>@(IsEditMode ? "Edit Event" : "Plan Event") — Bethuya</PageTitle>
+
+<div data-test="plan-event-page" class="plan-event-page">
+
+    <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => Navigation.NavigateTo("/events"))">
+        ← Back to Events
+    </BbButton>
+
+    @if (_isLoadingEvent)
+    {
+        <div data-test="loading-state" class="p-8 text-center">
+            <p>Loading event…</p>
+        </div>
+    }
+    else
+    {
+    <BbCard Class="mt-6">
+        <BbCardHeader>
+            <div class="flex items-center gap-3">
+                <BbCardTitle Class="text-2xl">@(IsEditMode ? "Edit Event" : "Plan Event")</BbCardTitle>
+                <div data-test="event-status-badge">
+                    <BbBadge Variant="@(_formModel.IsDraft ? BadgeVariant.Outline : BadgeVariant.Default)">
+                        @(_formModel.IsDraft ? "Draft" : "Published")
+                    </BbBadge>
+                </div>
+            </div>
+            <BbCardDescription>
+                @(IsEditMode
+                    ? "Complete the details below to publish this event."
+                    : "Fill in the details below to plan a new community event draft.")
+            </BbCardDescription>
+        </BbCardHeader>
+
+        <EditForm EditContext="@_editContext" FormName="plan-event" data-test="plan-event-form">
+            <DataAnnotationsValidator />
+
+            <BbCardContent>
+                <div class="form-fields">
+
+                    <BbFormFieldInput TValue="string"
+                                     @bind-Value="_formModel.Title"
+                                     Label="Title"
+                                     Placeholder="Event title"
+                                     Required="true" />
+
+                    <div class="form-row-2col">
+                        @* Hashtag uses a custom # prefix — no BB form field for inline adornments *@
+                        <div class="form-group">
+                            <BbLabel For="newHashtag">Hashtag</BbLabel>
+                            <div class="hashtag-inline">
+                                <span class="hashtag-prefix">#</span>
+                                <BbInput id="newHashtag" @bind-Value="_formModel.Hashtag" Placeholder="CopilotDevDays" Class="w-full" />
+                            </div>
+                            <p class="field-hint">Optional event shortcode.</p>
+                        </div>
+
+                        <BbFormFieldSelect TValue="string"
+                                           @bind-Value="_formModel.Type"
+                                           Label="Event Type"
+                                           Placeholder="Select type">
+                            <BbSelectItem Value="@("Workshop")" Text="Workshop" />
+                            <BbSelectItem Value="@("Meetup")" Text="Meetup" />
+                            <BbSelectItem Value="@("Hackathon")" Text="Hackathon" />
+                            <BbSelectItem Value="@("Conference")" Text="Conference" />
+                            <BbSelectItem Value="@("Panel")" Text="Panel" />
+                            <BbSelectItem Value="@("Social")" Text="Social" />
+                        </BbFormFieldSelect>
+                    </div>
+
+                    @* No BbFormFieldTextarea wrapper in BB 3.x — manual label + BbTextarea *@
+                    <div class="form-group">
+                        <BbLabel For="description">Description</BbLabel>
+                        <BbTextarea Id="description"
+                                    @bind-Value="_formModel.Description"
+                                    Placeholder="Event description"
+                                    MaxLength="2000"
+                                    ShowCharacterCount="true" />
+                        <ValidationMessage For="@(() => _formModel.Description)" />
+                    </div>
+
+                    <div class="form-row-2col">
+                        <BbFormFieldInput TValue="string"
+                                         @bind-Value="_formModel.Location"
+                                         Label="Venue"
+                                         Placeholder="Venue name or address" />
+
+                        @* No BbFormFieldNumericInput wrapper in BB 3.x — manual label + BbNumericInput *@
+                        <div class="form-group">
+                            <BbLabel For="capacity">Capacity</BbLabel>
+                            <BbNumericInput TValue="int" Id="capacity"
+                                            @bind-Value="_formModel.Capacity"
+                                            Min="1"
+                                            Max="10000" />
+                            <ValidationMessage For="@(() => _formModel.Capacity)" />
+                        </div>
+                    </div>
+
+                    <div class="suggest-dates-row" data-test="suggest-dates-section">
+                        <div data-test="suggest-dates-btn">
+                            <BbButton Variant="ButtonVariant.Outline"
+                                      OnClick="HandleSuggestDates"
+                                      Disabled="@(_isSuggestingDates || string.IsNullOrWhiteSpace(_formModel.Title))">
+                                @if (_isSuggestingDates)
+                                {
+                                    <LucideIcon Name="loader-circle" Size="16" Class="suggest-spinner" />
+                                    <span>Suggesting…</span>
+                                }
+                                else
+                                {
+                                    <LucideIcon Name="sparkles" Size="16" />
+                                    <span>Suggest Dates</span>
+                                }
+                            </BbButton>
+                        </div>
+                        @if (_suggestError is not null)
+                        {
+                            <div data-test="suggest-dates-error">
+                                <BbAlert Variant="AlertVariant.Danger" Class="mt-2">@_suggestError</BbAlert>
+                            </div>
+                        }
+                        @if (_suggestReasoning is not null)
+                        {
+                            <div data-test="suggest-dates-reasoning">
+                                <BbAlert Variant="AlertVariant.Info" Class="mt-2">
+                                    <Icon><LucideIcon Name="sparkles" Class="h-4 w-4" /></Icon>
+                                    <ChildContent>
+                                        <BbAlertDescription>@_suggestReasoning</BbAlertDescription>
+                                    </ChildContent>
+                                </BbAlert>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <BbLabel For="newStartDate">Start Date</BbLabel>
+                            <div data-test="start-date-picker">
+                                <BbDatePicker id="newStartDate" @bind-Value="_formModel.StartDate"
+                                              @bind-Value:after="OnStartDateAfter"
+                                              Placeholder="Pick a date" MinDate="DateTime.Today" Class="w-full" />
+                            </div>
+                            <ValidationMessage For="@(() => _formModel.StartDate)" />
+                        </div>
+
+                        <div class="form-group">
+                            <BbLabel>Start Time</BbLabel>
+                            <div data-test="start-time-picker">
+                                <BbTimePicker @bind-Value="_formModel.StartTime"
+                                              Placeholder="Pick a time" Class="w-full" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <BbLabel For="newEndDate">End Date</BbLabel>
+                            <div data-test="end-date-picker">
+                                <BbDatePicker id="newEndDate" @bind-Value="_formModel.EndDate"
+                                              @bind-Value:after="OnEndDateAfter"
+                                              Placeholder="Pick a date" MinDate="DateTime.Today" Class="w-full" />
+                            </div>
+                            <ValidationMessage For="@(() => _formModel.EndDate)" />
+                        </div>
+
+                        <div class="form-group">
+                            <BbLabel>End Time</BbLabel>
+                            <div data-test="end-time-picker">
+                                <BbTimePicker @bind-Value="_formModel.EndTime"
+                                              Placeholder="Pick a time" Class="w-full" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div data-test="cover-image-section">
+                        @if (_formModel.CoverImageUrl is not null)
+                        {
+                            @* Custom preview for Cloudinary remote URL — BB ShowPreview only supports local files *@
+                            <BbLabel>Cover Image</BbLabel>
+                            <div class="cover-preview" data-test="cover-image-preview">
+                                <div class="cover-preview-frame">
+                                    <img src="@_formModel.CoverImageUrl" alt="Cover preview" class="cover-preview-img" />
+                                </div>
+                                <div class="cover-preview-actions">
+                                    <BbAlert Variant="AlertVariant.Success" AccentBorder>
+                                        <Icon><LucideIcon Name="image" Class="h-4 w-4" /></Icon>
+                                        <ChildContent>
+                                            <BbAlertDescription>Cover image uploaded</BbAlertDescription>
+                                        </ChildContent>
+                                    </BbAlert>
+                                    <BbButton Variant="ButtonVariant.Outline"
+                                              OnClick="RemoveCoverImage" Disabled="@_isUploading"
+                                              data-test="remove-cover-btn">
+                                        <LucideIcon Name="trash-2" Size="16" />
+                                        Remove image
+                                    </BbButton>
+                                </div>
+                            </div>
+                        }
+                        else if (_isUploading)
+                        {
+                            <BbLabel>Cover Image</BbLabel>
+                            <div class="cover-uploading" data-test="upload-progress">
+                                <LucideIcon Name="loader-circle" Size="24" Class="cover-spinner" />
+                                <span>Uploading…</span>
+                            </div>
+                        }
+                        else
+                        {
+                            @* No BbFormFieldFileUpload wrapper in BB 3.x — manual label + BbFileUpload *@
+                            <BbLabel>Cover Image</BbLabel>
+                            <div data-test="cover-image-dropzone">
+                                <BbFileUpload Files="_coverFiles"
+                                              FilesChanged="HandleCoverFilesChanged"
+                                              Accept="image/jpeg,image/png,image/webp,image/gif"
+                                              MaxFileSize="@(5L * 1024 * 1024)"
+                                              MaxFileCount="1"
+                                              ShowPreview="false"
+                                              OnValidationError="HandleCoverValidationError">
+                                    <DropzoneContent>
+                                        <p>JPEG, PNG, WebP, or GIF — max 5 MB</p>
+                                    </DropzoneContent>
+                                </BbFileUpload>
+                            </div>
+                            @if (_uploadError is not null)
+                            {
+                                <BbAlert Variant="AlertVariant.Danger" Class="mt-2">@_uploadError</BbAlert>
+                            }
+                        }
+                        @if (_uploadError is not null && (_formModel.CoverImageUrl is not null || _isUploading))
+                        {
+                            <div data-test="upload-error">
+                                <BbAlert Variant="AlertVariant.Danger">@_uploadError</BbAlert>
+                            </div>
+                        }
+                    </div>
+
+                    <ValidationSummary />
+
+                    @if (_errorMessage is not null)
+                    {
+                        <div data-test="plan-error">
+                            <BbAlert Variant="AlertVariant.Danger">@_errorMessage</BbAlert>
+                        </div>
+                    }
+
+                </div>
+            </BbCardContent>
+
+            <BbCardFooter Class="justify-between">
+                    <BbButton Variant="ButtonVariant.Outline" OnClick="HandleCancel" Disabled="@_isSaving">
+                        Cancel
+                    </BbButton>
+                    <div class="flex gap-2">
+                        <div data-test="save-draft-btn">
+                            <BbButton Variant="ButtonVariant.Outline" OnClick="HandleSaveDraft" Disabled="@_isSaving">
+                                @(_isSaving && _submitMode == "Draft" ? "Saving…" : "Save Draft")
+                            </BbButton>
+                        </div>
+                        <div data-test="publish-event-btn">
+                            <BbButton Variant="ButtonVariant.Default" OnClick="HandlePublish" Disabled="@_isSaving">
+                                @(_isSaving && _submitMode == "Planning" ? "Publishing…" : "Publish Event")
+                            </BbButton>
+                        </div>
+                    </div>
+            </BbCardFooter>
+
+        </EditForm>
+    </BbCard>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "edit")]
+    public string? EditEventId { get; set; }
+
+    private bool IsEditMode => EditEventId is not null;
+
+    private readonly PlanEventFormModel _formModel = new();
+    private EditContext _editContext = default!;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private bool _isUploading;
+    private string? _uploadError;
+    private IReadOnlyList<FileUploadItem>? _coverFiles;
+    private bool _isSuggestingDates;
+    private string? _suggestError;
+    private string? _suggestReasoning;
+    private string _submitMode = "Draft";
+    private bool _endDateExplicitlySet;
+    private bool _isLoadingEvent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _editContext = new EditContext(_formModel);
+
+        if (Guid.TryParse(EditEventId, out var eventId))
+        {
+            _isLoadingEvent = true;
+            try
+            {
+                var dto = await EventApi.GetByIdAsync(eventId);
+                _formModel.Title = dto.Title;
+                _formModel.Description = dto.Description;
+                _formModel.Type = dto.Type;
+                _formModel.Capacity = dto.Capacity;
+                _formModel.Location = dto.Location;
+                _formModel.Hashtag = dto.Hashtag;
+                _formModel.CoverImageUrl = dto.CoverImageUrl;
+                _formModel.Status = dto.Status;
+                _formModel.StartDate = dto.StartDate == default ? null : dto.StartDate.DateTime.Date;
+                _formModel.EndDate = dto.EndDate == default ? null : dto.EndDate.DateTime.Date;
+                _formModel.StartTime = dto.StartDate == default ? null : dto.StartDate.TimeOfDay;
+                _formModel.EndTime = dto.EndDate == default ? null : dto.EndDate.TimeOfDay;
+
+                if (_formModel.EndDate is not null && _formModel.EndDate != _formModel.StartDate)
+                    _endDateExplicitlySet = true;
+
+                // Re-create EditContext so it picks up populated values
+                _editContext = new EditContext(_formModel);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to load event {EventId} for editing", eventId);
+                _errorMessage = "Failed to load event. Please try again.";
+            }
+            finally
+            {
+                _isLoadingEvent = false;
+            }
+        }
+    }
+
+    // Auto-sync: when StartDate changes and user hasn't manually set EndDate, copy it.
+    private void OnStartDateAfter()
+    {
+        if (!_endDateExplicitlySet && _formModel.StartDate is not null)
+        {
+            _formModel.EndDate = _formModel.StartDate;
+        }
+    }
+
+    private void OnEndDateAfter()
+    {
+        _endDateExplicitlySet = true;
+    }
+
+    private async Task HandleSaveDraft()
+    {
+        _submitMode = "Draft";
+        _formModel.Status = "Draft";
+        _errorMessage = null;
+
+        if (!_editContext.Validate())
+            return;
+
+        await SubmitAsync("Draft");
+    }
+
+    private async Task HandlePublish()
+    {
+        _submitMode = "Planning";
+        _formModel.Status = "Planning";
+        _errorMessage = null;
+
+        if (!_editContext.Validate())
+        {
+            // Revert to Draft so badge doesn't falsely show "Published"
+            _formModel.Status = "Draft";
+            return;
+        }
+
+        await SubmitAsync("Planning");
+    }
+
+    private async Task SubmitAsync(string status)
+    {
+        _isSaving = true;
+
+        try
+        {
+            var startDt = _formModel.StartDate?.Date + (_formModel.StartTime ?? TimeSpan.Zero);
+            var endDt = _formModel.EndDate?.Date + (_formModel.EndTime ?? TimeSpan.Zero);
+
+            if (startDt is null || endDt is null)
+            {
+                _errorMessage = "Please choose both a start date and an end date before saving.";
+                return;
+            }
+
+            var startOffset = new DateTimeOffset(
+                DateTime.SpecifyKind(startDt.Value, DateTimeKind.Utc),
+                TimeSpan.Zero);
+            var endOffset = new DateTimeOffset(
+                DateTime.SpecifyKind(endDt.Value, DateTimeKind.Utc),
+                TimeSpan.Zero);
+            if (IsEditMode && Guid.TryParse(EditEventId, out var eventId))
+            {
+                var updateDto = new UpdateEventDto(
+                    Title: _formModel.Title,
+                    Description: _formModel.Description,
+                    Type: _formModel.Type,
+                    Capacity: _formModel.Capacity,
+                    StartDate: startOffset,
+                    EndDate: endOffset,
+                    Location: _formModel.Location,
+                    Status: status,
+                    CoverImageUrl: _formModel.CoverImageUrl);
+
+                await EventApi.UpdateAsync(eventId, updateDto);
+            }
+            else
+            {
+                var dto = new PlanEventDto(
+                    Title: _formModel.Title,
+                    Description: _formModel.Description,
+                    Type: _formModel.Type,
+                    Capacity: _formModel.Capacity,
+                    StartDate: startOffset,
+                    EndDate: endOffset,
+                    Location: _formModel.Location,
+                    CreatedBy: "organizer@hackmum.org",
+                    Hashtag: string.IsNullOrWhiteSpace(_formModel.Hashtag) ? null : _formModel.Hashtag,
+                    CoverImageUrl: _formModel.CoverImageUrl,
+                    Status: status);
+
+                await EventApi.PlanAsync(dto);
+            }
+
+            Navigation.NavigateTo("/events");
+        }
+        catch (Refit.ValidationApiException validationEx)
+        {
+            Logger.LogWarning(validationEx, "Validation error planning event");
+            _errorMessage = FormatValidationErrors(validationEx.Content);
+        }
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            Logger.LogWarning(apiEx, "Bad request planning event. Body: {Body}", apiEx.Content ?? "(no body)");
+            _errorMessage = ParseValidationBody(apiEx.Content)
+                ?? "Some of the event details are invalid. Please review and try again.";
+        }
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            Logger.LogWarning(apiEx, "Event not found for update");
+            _errorMessage = "This event could not be found. It may have been deleted.";
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            Logger.LogError(apiEx, "API error planning event. Status: {StatusCode}, Body: {Body}",
+                (int)apiEx.StatusCode, apiEx.Content ?? "(no body)");
+            _errorMessage = "Something went wrong while saving. Please try again.";
+        }
+        catch (HttpRequestException httpEx)
+        {
+            Logger.LogError(httpEx, "Network error planning event");
+            _errorMessage = "Unable to reach the server. Please check your connection and try again.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Unexpected error planning event");
+            _errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private static string FormatValidationErrors(Refit.ProblemDetails? problem)
+    {
+        if (problem?.Errors is null or { Count: 0 })
+            return "Some of the event details are invalid. Please review and try again.";
+
+        var messages = problem.Errors.SelectMany(kvp => kvp.Value).ToList();
+        return messages.Count == 1
+            ? messages[0]
+            : string.Join(" ", messages);
+    }
+
+    private static string? ParseValidationBody(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return null;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("errors", out var errors))
+            {
+                var messages = new List<string>();
+                foreach (var field in errors.EnumerateObject())
+                {
+                    messages.AddRange(
+                        field.Value.EnumerateArray()
+                            .Select(msg => msg.GetString())
+                            .Where(text => !string.IsNullOrEmpty(text))!);
+                }
+                if (messages.Count > 0)
+                    return string.Join(" ", messages);
+            }
+
+            if (doc.RootElement.TryGetProperty("title", out var title))
+                return title.GetString();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not JSON — ignore
+        }
+
+        return null;
+    }
+
+    private async Task HandleSuggestDates()
+    {
+        _isSuggestingDates = true;
+        _suggestError = null;
+        _suggestReasoning = null;
+        StateHasChanged();
+
+        try
+        {
+            var request = new RecommendDatesRequest(
+                Title: _formModel.Title,
+                Type: _formModel.Type,
+                Description: _formModel.Description,
+                Location: _formModel.Location,
+                Capacity: _formModel.Capacity);
+
+            var response = await EventApi.RecommendDatesAsync(request);
+
+            if (DateOnly.TryParse(response.StartDate, out var startDate))
+            {
+                _formModel.StartDate = startDate.ToDateTime(TimeOnly.MinValue);
+                // AI-suggested dates: auto-sync EndDate but don't mark as explicitly set
+                if (!_endDateExplicitlySet)
+                {
+                    if (DateOnly.TryParse(response.EndDate, out var suggestedEnd))
+                        _formModel.EndDate = suggestedEnd.ToDateTime(TimeOnly.MinValue);
+                    else
+                        _formModel.EndDate = _formModel.StartDate;
+                }
+                else if (DateOnly.TryParse(response.EndDate, out var endDate))
+                {
+                    _formModel.EndDate = endDate.ToDateTime(TimeOnly.MinValue);
+                }
+            }
+
+            if (TimeOnly.TryParse(response.StartTime, out var startTime))
+                _formModel.StartTime = startTime.ToTimeSpan();
+            if (TimeOnly.TryParse(response.EndTime, out var endTime))
+                _formModel.EndTime = endTime.ToTimeSpan();
+
+            _suggestReasoning = response.Reasoning;
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            Logger.LogError(apiEx, "API error recommending dates");
+            _suggestError = $"Date suggestion failed ({(int)apiEx.StatusCode}). Please try again or pick dates manually.";
+        }
+        catch (HttpRequestException httpEx)
+        {
+            Logger.LogError(httpEx, "Network error recommending dates");
+            _suggestError = "Unable to reach the server for date suggestions.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Unexpected error recommending dates");
+            _suggestError = "Date suggestion encountered an error. Please pick dates manually.";
+        }
+        finally
+        {
+            _isSuggestingDates = false;
+        }
+    }
+
+    private async Task HandleCoverFilesChanged(IReadOnlyList<FileUploadItem> files)
+    {
+        _coverFiles = files;
+        if (files is not { Count: > 0 }) return;
+
+        var item = files[0];
+        _uploadError = null;
+
+        // Read file into memory BEFORE any StateHasChanged — re-rendering
+        // destroys Blazor's JS-side _blazorFilesById map, making
+        // IBrowserFile.OpenReadStream() throw a JSException.
+        using var ms = new MemoryStream();
+        using (var stream = item.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024))
+        {
+            await stream.CopyToAsync(ms);
+        }
+        ms.Position = 0;
+
+        _isUploading = true;
+        StateHasChanged();
+
+        try
+        {
+            var streamPart = new Refit.StreamPart(ms, item.Name, item.ContentType);
+            var response = await EventApi.UploadImageAsync(streamPart);
+
+            if (string.IsNullOrWhiteSpace(response?.Url))
+            {
+                _uploadError = "Upload succeeded but no image URL was returned.";
+                return;
+            }
+
+            _formModel.CoverImageUrl = response.Url;
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            Logger.LogError(apiEx, "API error uploading cover image. Status: {StatusCode}, Body: {Body}",
+                (int)apiEx.StatusCode, apiEx.Content ?? "(no body)");
+            _uploadError = "The image could not be uploaded. Please try a different file or try again.";
+        }
+        catch (TimeoutException tex)
+        {
+            Logger.LogWarning(tex, "Timeout uploading cover image");
+            _uploadError = "The upload took too long. Please try again or use a smaller image.";
+        }
+        catch (HttpRequestException httpEx)
+        {
+            Logger.LogError(httpEx, "Network error uploading cover image");
+            _uploadError = "Unable to reach the server. Please check your connection and try again.";
+        }
+        catch (Exception ex) when (ex.GetType().Name.Contains("Timeout", StringComparison.Ordinal))
+        {
+            // Polly TimeoutRejectedException and similar resilience timeouts
+            Logger.LogWarning(ex, "Resilience timeout uploading cover image");
+            _uploadError = "The upload took too long. Please try again or use a smaller image.";
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error uploading cover image");
+            _uploadError = "Something went wrong during upload. Please try again.";
+        }
+        finally
+        {
+            _isUploading = false;
+            _coverFiles = null;
+        }
+    }
+
+    private void HandleCoverValidationError(FileValidationError error)
+    {
+        _uploadError = error.Message;
+    }
+
+    private void RemoveCoverImage(MouseEventArgs _)
+    {
+        _formModel.CoverImageUrl = null;
+        _uploadError = null;
+    }
+
+    private void HandleCancel()
+    {
+        Navigation.NavigateTo("/events");
+    }
+
+    private static bool IsFatalException(Exception ex) =>
+        ex is NullReferenceException or InvalidOperationException or ObjectDisposedException;
+}
