@@ -1,4 +1,4 @@
-/* ── CreateEvent — Custom Layout CSS ──
+/* ── PlanEvent — Custom Layout CSS ──
    BB form-field components (BbFormFieldInput, BbFormFieldTextarea,
    BbFormFieldNumericInput, BbFormFieldSelect, BbFormFieldFileUpload)
    handle label, input, helper text, validation, and ARIA wiring.
@@ -11,7 +11,7 @@
      - Async upload spinner (Cloudinary round-trip, not BB's client-side flow) */
 
 /* Page wrapper: constrain width, center */
-.create-event-page {
+.plan-event-page {
     max-width: 42rem;
     margin-inline: auto;
     padding: 1.5rem 1rem;
@@ -128,6 +128,18 @@
 }
 
 ::deep .cover-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* ── "Suggest Dates" button row (Copilot SDK integration — no BB component for AI action rows) ── */
+
+.suggest-dates-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+::deep .suggest-spinner {
     animation: spin 1s linear infinite;
 }
 
