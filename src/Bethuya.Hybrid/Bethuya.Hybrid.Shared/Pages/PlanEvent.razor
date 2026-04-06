@@ -285,7 +285,7 @@
 
     private bool IsEditMode => EditEventId is not null;
 
-    private PlanEventFormModel _formModel = new();
+    private readonly PlanEventFormModel _formModel = new();
     private EditContext _editContext = default!;
     private bool _isSaving;
     private string? _errorMessage;
@@ -500,12 +500,10 @@
                 var messages = new List<string>();
                 foreach (var field in errors.EnumerateObject())
                 {
-                    foreach (var msg in field.Value.EnumerateArray())
-                    {
-                        var text = msg.GetString();
-                        if (!string.IsNullOrEmpty(text))
-                            messages.Add(text);
-                    }
+                    messages.AddRange(
+                        field.Value.EnumerateArray()
+                            .Select(msg => msg.GetString())
+                            .Where(text => !string.IsNullOrEmpty(text))!);
                 }
                 if (messages.Count > 0)
                     return string.Join(" ", messages);

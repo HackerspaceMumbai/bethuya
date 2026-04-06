@@ -145,24 +145,26 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
         await _clientLock.WaitAsync(ct);
         try
         {
-            if (_client is not null) return _client;
-
-            var opts = new CopilotClientOptions
+            if (_client is null)
             {
-                AutoStart = true,
-                UseStdio = true
-            };
+                var opts = new CopilotClientOptions
+                {
+                    AutoStart = true,
+                    UseStdio = true
+                };
 
-            if (!string.IsNullOrWhiteSpace(_options.Value.GitHubToken))
-            {
-                opts.GitHubToken = _options.Value.GitHubToken;
+                if (!string.IsNullOrWhiteSpace(_options.Value.GitHubToken))
+                {
+                    opts.GitHubToken = _options.Value.GitHubToken;
+                }
+
+                _client = new CopilotClient(opts);
+                await _client.StartAsync(ct);
+
+                LogClientStarted(_logger);
             }
 
-            _client = new CopilotClient(opts);
-            await _client.StartAsync(ct);
-
-            LogClientStarted(_logger);
-            return _client;
+            return _client!;
         }
         catch (Exception ex)
         {
