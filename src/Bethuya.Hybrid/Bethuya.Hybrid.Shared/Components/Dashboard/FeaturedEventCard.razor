@@ -8,8 +8,27 @@
             <div class="featured-photo-overlay" aria-hidden="true"></div>
         </div>
         <BbCardContent Class="featured-body">
-            <h2 class="featured-title">@Event.Title</h2>
-            <p class="featured-desc">@(Event.Description ?? "")</p>
+            <div class="featured-header-row">
+                <h2 class="featured-title">@Event.Title</h2>
+                @if (Event.Status == "Draft")
+                {
+                    <div data-test="featured-draft-badge">
+                        <BbBadge Variant="BadgeVariant.Secondary">Draft</BbBadge>
+                    </div>
+                }
+            </div>
+
+            @if (Event.Status == "Draft")
+            {
+                <div class="featured-draft-nudge" data-test="featured-draft-nudge">
+                    <LucideIcon Name="triangle-alert" Size="14" />
+                    <span>Incomplete — fill in details to publish this event.</span>
+                </div>
+            }
+            else
+            {
+                <p class="featured-desc">@(Event.Description ?? "")</p>
+            }
 
             <div class="featured-meta">
                 <div class="meta-item">
@@ -26,21 +45,27 @@
             </div>
         </BbCardContent>
         <BbCardFooter Class="featured-actions">
-            <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnPanelClick.InvokeAsync())">
-                Panel
-                <LucideIcon Name="bot" Size="14" />
-            </BbButton>
-            <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnCurationClick.InvokeAsync())">
-                Curation
-                <LucideIcon Name="settings" Size="14" />
-            </BbButton>
-            <div data-test="create-event-btn">
-                <BbButton Variant="ButtonVariant.Default" Class="feat-btn feat-btn--gold"
-                          OnClick="@(() => OnCreateClick.InvokeAsync())">
-                    Create New Event
-                    <LucideIcon Name="plus" Size="14" />
+            @if (Event.Status == "Draft")
+            {
+                <div data-test="complete-publish-btn">
+                    <BbButton Variant="ButtonVariant.Default" Class="feat-btn feat-btn--gold"
+                              OnClick="@(() => OnEditClick.InvokeAsync())">
+                        Complete & Publish
+                        <LucideIcon Name="arrow-right" Size="14" />
+                    </BbButton>
+                </div>
+            }
+            else
+            {
+                <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnPanelClick.InvokeAsync())">
+                    Panel
+                    <LucideIcon Name="bot" Size="14" />
                 </BbButton>
-            </div>
+                <BbButton Variant="ButtonVariant.Outline" Class="feat-btn" OnClick="@(() => OnCurationClick.InvokeAsync())">
+                    Curation
+                    <LucideIcon Name="settings" Size="14" />
+                </BbButton>
+            }
         </BbCardFooter>
     </BbCard>
     </div>
@@ -50,14 +75,7 @@ else
     <div data-test="featured-event-card">
     <BbCard Class="featured-card featured-card--empty">
         <BbCardContent Class="empty-content">
-            <p class="empty-text">No upcoming events.</p>
-            <div data-test="create-event-btn">
-                <BbButton Variant="ButtonVariant.Default" Class="feat-btn--gold"
-                          OnClick="@(() => OnCreateClick.InvokeAsync())">
-                    Create New Event
-                    <LucideIcon Name="plus" Size="14" />
-                </BbButton>
-            </div>
+            <p class="empty-text">No upcoming events — plan one below!</p>
         </BbCardContent>
     </BbCard>
     </div>
@@ -67,5 +85,5 @@ else
     [Parameter] public EventViewModel? Event { get; set; }
     [Parameter] public EventCallback OnPanelClick { get; set; }
     [Parameter] public EventCallback OnCurationClick { get; set; }
-    [Parameter] public EventCallback OnCreateClick { get; set; }
+    [Parameter] public EventCallback OnEditClick { get; set; }
 }

@@ -109,6 +109,28 @@
     border-top: none;
 }
 
+/* ── Title + draft badge row ── */
+.featured-header-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+/* ── Draft nudge inside featured card ── */
+/* BB lacks an inline warning banner — custom CSS for draft status nudge */
+.featured-draft-nudge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--hs-gold);
+    background-color: rgba(212, 168, 48, 0.1);
+    border: 1px solid rgba(212, 168, 48, 0.25);
+    border-radius: 6px;
+}
+
 ::deep .feat-btn {
     font-size: 0.82rem;
     font-weight: 600;
