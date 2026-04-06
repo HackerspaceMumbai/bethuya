@@ -55,3 +55,51 @@ When triaging, the Lead should ask:
 7. **Issue-labeled work** — when a `squad:{member}` label is applied to an issue, route to that member. The Lead handles all `squad` (base label) triage.
 8. **@copilot routing** — when evaluating issues, check @copilot's capability profile in `team.md`. Route 🟢 good-fit tasks to `squad:copilot`. Flag 🟡 needs-review tasks for PR review. Keep 🔴 not-suitable tasks with squad members.
 9. **AppHost modifications** — if a task involves AppHost modifications (e.g., editing `.AppHost` project files, changing service orchestration, updating resource declarations), Neo takes exclusive lock. All other agents must pause until Neo confirms resource availability via the Aspire MCP list_resources tool.
+
+## Anvil (Evidence-First) Policy — Bethuya
+
+Burke’s Anvil is our evidence-first execution and verification loop.
+When used, it must produce an evidence bundle (build/tests/lint and reviewer verdicts). [3](https://github.com/HackerspaceMumbai/bethuya/tree/main/.github/workflows)[4](https://github.com/HackerspaceMumbai/bethuya/blob/main/.claude/skills/aspire/SKILL.md)
+
+### 1) When Anvil is REQUIRED (Hard Rule)
+
+Anvil evidence is REQUIRED for any of the following:
+
+- Authentication / authorization / roles / permissions changes
+- Any security-sensitive boundary change (PII handling, access control, secrets, encryption)
+- Infrastructure / Aspire AppHost wiring changes
+- Dependency upgrades (Directory.Packages.props, toolchain, CI workflow changes)
+- Refactors touching 3+ files
+- Any change explicitly marked "high risk" by Neo or Morpheus
+- Any change where agents disagree and Neo/Morpheus requests proof
+
+### 2) Who MAY run Anvil (Authority)
+
+Primary Anvil executors (implementation owners):
+- Trinity (Frontend Dev)
+- Tank (Backend Dev)
+
+Conditional Anvil executor (verification runs):
+
+- Morpheus (Security Engineer) — may re-run Anvil to independently verify security-critical changes
+
+Validator-only (not primary Anvil runners):
+
+- Switch (Tester) — validates evidence and test outcomes; re-runs Anvil only under the exception rule below
+- Neo (Lead) — requires evidence; does not routinely run Anvil
+- Scribe (Session Logger) — records evidence links; does not execute Anvil
+- Ralph (Work Monitor) — monitor only; does not execute Anvil
+- @copilot — may propose scoped changes; Anvil execution + evidence must be produced by Trinity/Tank
+
+### 3) Switch Exception Rule (Verification-Only Re-run)
+
+Switch may run Anvil ONLY for verification, and ONLY when:
+
+- The evidence bundle is missing/incomplete, OR
+- Failures are suspected flaky/nondeterministic and need independent reproduction, OR
+- Neo or Morpheus explicitly requests an independent verification re-run.
+
+If Switch runs Anvil under this exception:
+
+- It must be verification-only (no feature edits, no behavior changes).
+- Output must include the evidence bundle summary and commit hash (or explain why no commit was produced).

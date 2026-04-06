@@ -11,12 +11,12 @@ namespace Hackmum.Bethuya.E2E.Tests;
 public class CoverImageFlowTests : BethuyaE2ETest
 {
     [TestMethod]
-    public async Task CreateEvent_WithoutCoverImage_ShouldSucceed()
+    public async Task PlanEvent_WithoutCoverImage_ShouldSucceed()
     {
-        await GotoWithBudgetAsync("/events/create");
+        await GotoWithBudgetAsync("/events/plan");
 
         // Wait for Blazor Server circuit — submit button becomes enabled when interactive
-        var submitBtn = Page.Locator("[data-test='create-event-submit'] button");
+        var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
         // Fill required fields only — no cover image
@@ -35,22 +35,31 @@ public class CoverImageFlowTests : BethuyaE2ETest
     }
 
     [TestMethod]
-    public async Task CreateEvent_WithCoverImage_ShouldShowPreviewAndSucceed()
+    public async Task PlanEvent_WithCoverImage_ShouldShowPreviewAndSucceed()
     {
-        await GotoWithBudgetAsync("/events/create");
+        // This test requires Cloudinary credentials — skip when not configured
+        var cloudinaryUrl = Environment.GetEnvironmentVariable("Cloudinary__CloudUrl")
+            ?? Environment.GetEnvironmentVariable("CLOUDINARY_URL");
+        if (string.IsNullOrEmpty(cloudinaryUrl))
+        {
+            Assert.Inconclusive("Skipping: Cloudinary credentials not configured (set CLOUDINARY_URL or Cloudinary__CloudUrl).");
+            return;
+        }
+
+        await GotoWithBudgetAsync("/events/plan");
 
         // Wait for Blazor Server circuit
-        var submitBtn = Page.Locator("[data-test='create-event-submit'] button");
+        var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
         // Fill required fields
         await Page.GetByPlaceholder("Event title").FillAsync("Cover Image Event");
         await Page.GetByPlaceholder("Event description").FillAsync("Event with a cover image upload");
 
-        // Upload cover image via BbFileUpload
-        var fileInput = Page.Locator("[data-test='cover-image-upload'] input[type='file']");
+        // Locate the BbFileUpload file input — wrapper uses data-test='cover-image-dropzone'
+        var fileInput = Page.Locator("[data-test='cover-image-dropzone'] input[type='file']");
         Assert.IsTrue(await fileInput.CountAsync() > 0,
-            "Cover image file input ([data-test='cover-image-upload'] input[type='file']) not found on the page");
+            "Cover image file input ([data-test='cover-image-dropzone'] input[type='file']) not found on the page");
 
         // Create a minimal valid PNG for upload
         var pngPath = Path.Combine(Path.GetTempPath(), "e2e-test-cover.png");
@@ -62,10 +71,10 @@ public class CoverImageFlowTests : BethuyaE2ETest
             {
                 await fileInput.SetInputFilesAsync(pngPath);
 
-                // Wait for upload completion — look for preview or success indicator
-                await Page.WaitForResponseAsync(
-                    response => response.Url.Contains("/api/images/upload") && response.Status == 200,
-                    new() { Timeout = PerformanceBudgets.FileUploadMs });
+                // Upload is server-side (Refit → backend → Cloudinary); wait for the
+                // preview to appear in the UI rather than watching browser network traffic.
+                await Assertions.Expect(Page.Locator("[data-test='cover-image-preview']"))
+                    .ToBeVisibleAsync(new() { Timeout = PerformanceBudgets.FileUploadMs });
             });
         }
         finally

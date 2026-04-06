@@ -50,6 +50,10 @@
 
 - `.squad/policies/rendering-policy.md`
 - `.squad/policies/rcl-boundaries.md`
+## Team Protocol
+
+- **Cross-Platform Rule:** Any UI component shared between Web and MAUI must be placed in `Bethuya.Shared`.
+- **State of Truth:** The Aspire Dashboard is the final authority on whether a feature is "Done."
 
 ## Project Context
 

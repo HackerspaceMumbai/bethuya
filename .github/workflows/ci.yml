@@ -45,6 +45,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: build-and-test
 
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          SA_PASSWORD: "BethuyaCI-Dev2025"
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,8 +73,92 @@ jobs:
       - name: Install Playwright browsers
         run: pwsh tests/Hackmum.Bethuya.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
+      - name: Wait for SQL Server
+        run: |
+          echo "Waiting for SQL Server on port 1433..."
+          for i in $(seq 1 30); do
+            if nc -z -w 1 localhost 1433 2>/dev/null; then
+              echo "Port 1433 is open — allowing 10s for SQL Server to initialise..."
+              sleep 10
+              break
+            fi
+            echo "Attempt $i/30 — retrying in 3s..."
+            sleep 3
+          done
+
+      - name: Start backend API
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__BethuyaDb: "Server=localhost,1433;Database=BethuyaE2EDb;User Id=sa;Password=BethuyaCI-Dev2025;TrustServerCertificate=True;Encrypt=False"
+        run: |
+          dotnet run --project src/Hackmum.Bethuya.Backend/Hackmum.Bethuya.Backend.csproj \
+            --no-build --no-launch-profile --configuration Release \
+            --urls http://localhost:5247 &
+          echo $! > /tmp/backend.pid
+
+      - name: Wait for backend API
+        run: |
+          echo "Waiting for backend API on http://localhost:5247..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5247/health > /dev/null 2>&1; then
+              echo "Backend API is ready."
+              break
+            fi
+            echo "Attempt $i/30 — retrying in 2s..."
+            sleep 2
+          done
+
+      - name: Start web app
+        env:
+          services__backend__http__0: http://localhost:5247
+        run: |
+          dotnet run --project src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Bethuya.Hybrid.Web.csproj \
+            --no-build --configuration Release \
+            --urls http://localhost:5095 &
+          echo $! > /tmp/webapp.pid
+
+      - name: Wait for web app
+        run: |
+          echo "Waiting for web app on http://localhost:5095..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5095 > /dev/null 2>&1; then
+              echo "Web app is ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 — retrying in 2s..."
+            sleep 2
+          done
+          echo "Web app did not start in time." && exit 1
+
+      - name: Warm up web app (prime .NET JIT)
+        run: |
+          for page in / /events /events/create; do
+            curl -sf --max-time 30 "http://localhost:5095${page}" > /dev/null || true
+          done
+          sleep 3
+
       - name: Run E2E tests
+        env:
+          BETHUYA_BASE_URL: http://localhost:5095
+          BETHUYA_BUDGET_PAGE_LOAD_MS: 30000
+          BETHUYA_BUDGET_NAVIGATION_MS: 15000
+          BETHUYA_BUDGET_FORM_SUBMIT_MS: 30000
+          BETHUYA_BUDGET_INTERACTIVE_READY_MS: 15000
         run: dotnet test --project tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj --no-build --configuration Release
+
+      - name: Stop backend API
+        if: always()
+        run: |
+          if [ -f /tmp/backend.pid ]; then
+            kill $(cat /tmp/backend.pid) || true
+          fi
+
+      - name: Stop web app
+        if: always()
+        run: |
+          if [ -f /tmp/webapp.pid ]; then
+            kill $(cat /tmp/webapp.pid) || true
+          fi
 
       - name: Upload E2E results and traces
         if: always()

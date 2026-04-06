@@ -2,7 +2,7 @@ using Hackmum.Bethuya.Core.Enums;
 
 namespace Hackmum.Bethuya.Backend.Contracts;
 
-public sealed record CreateEventRequest(
+public sealed record PlanEventRequest(
     string Title,
     string? Description,
     EventType Type,
@@ -12,7 +12,8 @@ public sealed record CreateEventRequest(
     string? Location,
     string CreatedBy,
     string? Hashtag,
-    string? CoverImageUrl);
+    string? CoverImageUrl,
+    EventStatus Status = EventStatus.Draft);
 
 public sealed record UpdateEventRequest(
     string Title,
