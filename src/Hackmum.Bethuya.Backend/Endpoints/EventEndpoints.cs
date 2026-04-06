@@ -100,6 +100,7 @@ public static class EventEndpoints
                 Location = request.Location,
                 Hashtag = string.IsNullOrEmpty(request.Hashtag) ? null : request.Hashtag,
                 CreatedBy = request.CreatedBy,
+                Status = request.Status,
                 CoverImageUrl = request.CoverImageUrl
             };
 
