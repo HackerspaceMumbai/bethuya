@@ -15,3 +15,4 @@ When a test run (e.g., `dotnet test` using TUnit) returns a non-zero exit code:
 3. **Restart Resource:** Neo triggers a targeted restart of the service:
    - `aspire resource restart <resource-name>`
 4. **Final Check:** Wait for the resource to be healthy (`aspire wait <resource-name>`) before re-running the TUnit suite.
+5. **Failure Limit:** Stop the self-healing loop after 2 consecutive failures to prevent infinite loops and resource thrashing.

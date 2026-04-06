@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+﻿﻿using Microsoft.Extensions.Logging;
 using BlazorBlueprint.Components;
 using Bethuya.Hybrid.Shared.Services;
 using Bethuya.Hybrid.Services;
@@ -30,7 +30,7 @@ public static class MauiProgram
         builder.Services.AddTransient<AuthenticatedUserHandler>();
 
         // Register the Aspire-aware HttpClient for the API
-        // Ask MAUI Team is this recommended: we should be using the named client factory when calling an Aspire service from MAUI?
+        // TODO: Validate this pattern with MAUI team (see issue #XXX)
         builder.Services.AddBethuyaClient("bethuya-api")
             .AddHttpMessageHandler<AuthenticatedUserHandler>(); // Syncs tokens to Shared RCL calls
 

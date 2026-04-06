@@ -32,19 +32,30 @@ Treat these as server-interactive only:
 - auth and login
 - organizer/admin surfaces
 - agent-control panels
-- any pages that show or process PII
+- any pages that show, collect, or process PII
+
+PII handling requirement:
+
+- If a multi-step form handles PII, do not keep drafts only in WASM storage.
+- Either host the page as `InteractiveServer` with server-side draft persistence, or sync every PII draft change immediately to the server via a draft API (for example `IRegistrationDraftService`) before any sensitive processing or external redirects.
 
 ### 3) Offline-heavy forms may use WASM in Web
 
 Allowed:
 
 - multi-step forms that must survive connectivity loss
-- local drafts with later sync using browser storage (IndexedDB) in the WASM host
+- local drafts with later sync using browser storage (`IndexedDB`) in the `WASM` host, only for non-PII data
 
 Not allowed:
 
 - moving sensitive flows to WASM
-- placing IndexedDB logic in the shared RCL
+- storing PII drafts only in `IndexedDB` or the shared RCL
+- placing `IndexedDB` logic in the shared RCL
+
+Rule note:
+
+- `WASM` + local storage is allowed only for non-PII drafts.
+- Any form that collects or processes PII must either sync drafts immediately to the server (for example via `IRegistrationDraftService`) or run as `InteractiveServer` so persistence stays server-side.
 
 ### 4) RCL boundaries
 
