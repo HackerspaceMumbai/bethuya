@@ -86,6 +86,14 @@ jobs:
             sleep 3
           done
 
+      - name: Create E2E database schema
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__BethuyaDb: "Server=localhost,1433;Database=BethuyaE2EDb;User Id=sa;Password=BethuyaCI-Dev2025;TrustServerCertificate=True;Encrypt=False"
+        run: |
+          dotnet run --project src/Bethuya.MigrationService/Bethuya.MigrationService.csproj \
+            --no-build --no-launch-profile --configuration Release
+
       - name: Start backend API
         env:
           ASPNETCORE_ENVIRONMENT: Development
