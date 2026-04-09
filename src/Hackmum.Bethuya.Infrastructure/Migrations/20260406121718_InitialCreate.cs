@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -233,12 +233,16 @@ namespace Hackmum.Bethuya.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_FairnessBudgets", x => x.Id);
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FairnessBudgets", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_FairnessBudgets_AttendanceProposals_EventId",
+                        name: "FK_FairnessBudgets_Events_EventId",
                         column: x => x.EventId,
-                        principalTable: "AttendanceProposals",
-                        principalColumn: "Id");
-                    table.ForeignKey(
+                        principalTable: "Events",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });                    table.ForeignKey(
                         name: "FK_FairnessBudgets_Events_EventId",
                         column: x => x.EventId,
                         principalTable: "Events",

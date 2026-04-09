@@ -44,7 +44,11 @@
                     <BbInput @bind-Value="newEmail" Placeholder="Email" />
                     <BbTextarea @bind-Value="newBio" Placeholder="Short bio (optional)" />
                     <BbInput @bind-Value="newInterests" Placeholder="Interests (comma-separated)" />
-                    <BbButton Variant="ButtonVariant.Default" OnClick="Register">Submit Registration</BbButton>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="consentCheckbox" @bind="consentGiven" required data-test="consent-checkbox" />
+                        <label for="consentCheckbox" class="text-sm">I consent to the collection and processing of my email for event registration. See our <a href="/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</label>
+                    </div>
+                    <BbButton Variant="ButtonVariant.Default" OnClick="Register" Disabled="@(!consentGiven)">Submit Registration</BbButton>
                 </div>
             </BbCard>
         </div>
@@ -60,11 +64,13 @@
     private string newEmail = "";
     private string newBio = "";
     private string newInterests = "";
+    private bool consentGiven = false;
 
+    // User must provide explicit consent before registration (PII compliance for Email)
     private void Register()
     {
-        if (string.IsNullOrWhiteSpace(newName) || string.IsNullOrWhiteSpace(newEmail)) return;
-
+        if (string.IsNullOrWhiteSpace(newName) || string.IsNullOrWhiteSpace(newEmail) || !consentGiven) return;
+        if (!newEmail.Contains('@') || !newEmail.Contains('.')) return;
         registrations.Add(new RegistrationViewModel
         {
             FullName = newName,
@@ -78,6 +84,7 @@
         newEmail = "";
         newBio = "";
         newInterests = "";
+        consentGiven = false;
     }
 
     private static BadgeVariant GetStatusVariant(string status) => status switch

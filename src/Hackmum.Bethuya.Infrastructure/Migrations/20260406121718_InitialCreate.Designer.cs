@@ -301,8 +301,7 @@ namespace Hackmum.Bethuya.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Summary")
-                        .HasMaxLength(5000)
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(5000);
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");

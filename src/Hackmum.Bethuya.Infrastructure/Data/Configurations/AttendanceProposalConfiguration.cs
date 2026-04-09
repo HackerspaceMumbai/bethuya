@@ -33,8 +33,8 @@ internal sealed class AttendanceProposalConfiguration : IEntityTypeConfiguration
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(p => p.Budget)
-            .WithOne()
-            .HasForeignKey<FairnessBudget>(f => f.EventId)
+            .WithOne(fb => fb.AttendanceProposal)
+            .HasForeignKey<FairnessBudget>(fb => fb.AttendanceProposalId)
             .OnDelete(DeleteBehavior.NoAction);
     }
 }

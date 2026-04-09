@@ -35,9 +35,10 @@ public sealed class BethuyaAppFixture : IAsyncInitializer, IAsyncDisposable
 
     /// <summary>Gets the SQL Server connection string for the BethuyaDb database.</summary>
     public async Task<string> GetSqlConnectionStringAsync() =>
-        await _app!.GetConnectionStringAsync("BethuyaDb")
-        ?? throw new InvalidOperationException("BethuyaDb connection string not found in Aspire resources.");
-
+        _app is null
+            ? throw new InvalidOperationException("Fixture not initialized — InitializeAsync must complete before use.")
+            : await _app.GetConnectionStringAsync("BethuyaDb")
+              ?? throw new InvalidOperationException("BethuyaDb connection string not found in Aspire resources.");
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
