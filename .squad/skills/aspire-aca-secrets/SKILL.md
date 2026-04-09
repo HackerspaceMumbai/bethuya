@@ -1,12 +1,12 @@
 ---
-name: "aspire-secrets"
-description: "Safe patterns for secrets in Aspire AppHost — avoiding the AddParameter(secret: true) Azure deployment bug"
-domain: "aspire, deployment, secrets"
+name: "aspire-aca-secrets"
+description: "Safe patterns for secrets in Aspire AppHost when deploying to Azure Container Apps — avoiding the AddParameter(secret: true) deployment bug"
+domain: "aspire, azure, deployment, secrets"
 confidence: "high"
 source: "earned — production deployment failure"
 ---
 
-# Aspire Secrets: Safe Patterns for Azure Deployment
+# Aspire Secrets: Safe Patterns for Azure Container Apps Deployment
 
 ## Context
 
@@ -17,6 +17,8 @@ When using .NET Aspire's `builder.AddParameter()` with the `secret: true` flag, 
 [ERR] Unsupported value type System.Boolean
 ```
 
+**Scope:** This bug is **Azure Container Apps specific**. Deployments to other cloud providers (AWS, GCP, etc.) are not affected by this issue.
+
 This occurs when:
 - Using `builder.AddParameter("name", secret: true)` in AppHost.cs
 - Running `azd up`, `azd deploy`, or `aspire deploy`
@@ -25,7 +27,7 @@ This occurs when:
 ## The Bug
 
 ```csharp
-// ❌ BROKEN for Azure deployment
+// ❌ BROKEN for Azure Container Apps deployment
 var apiKey = builder.AddParameter("api-key", secret: true);
 ```
 
@@ -39,7 +41,7 @@ The `secret: true` flag:
 ### Simple Fix: Remove `secret: true`
 
 ```csharp
-// ✅ WORKS for both local and Azure deployment
+// ✅ WORKS for both local and Azure Container Apps deployment
 var apiKey = builder.AddParameter("api-key");
 ```
 
@@ -122,7 +124,7 @@ if (keyVault is not null)
 
 ## Examples
 
-### Before (Broken)
+### Before (Broken for Azure Container Apps)
 
 ```csharp
 var cloudinaryApiKey = builder.AddParameter("cloudinary-api-key", secret: true);     // ❌ Breaks Azure deploy
@@ -155,17 +157,18 @@ var backend = builder.AddProject<Projects.Backend>("backend")
 
 ## Anti-Patterns
 
-❌ **Never use `AddParameter(secret: true)` for Azure Container Apps deployments**
+❌ **Never use `AddParameter(secret: true)` when targeting Azure Container Apps**
 - Causes deployment failure
 - Provides no actual security benefit
 - The `secret` flag only affects manifest metadata, not encryption or protection
+- **This is Azure-specific** — other cloud providers are unaffected
 
 ❌ **Don't use plain parameters for production secrets without Key Vault**
 - Parameters are passed as environment variables (visible in container logs, process listings)
 - No secret rotation capability
 - No access control or audit logging
 
-✅ **Do use Key Vault for production secrets**
+✅ **Do use Key Vault for production secrets on Azure**
 - Secrets stored securely with Azure-managed encryption
 - Access control via Azure RBAC or access policies
 - Audit logging for secret access
@@ -173,7 +176,8 @@ var backend = builder.AddProject<Projects.Backend>("backend")
 
 ## Summary
 
-- **Bug:** `AddParameter(secret: true)` breaks Azure deployment with `System.Boolean` error
+- **Bug:** `AddParameter(secret: true)` breaks Azure Container Apps deployment with `System.Boolean` error
+- **Scope:** Azure-specific — non-Azure cloud deployments (AWS, GCP) are unaffected
 - **Quick fix:** Remove `secret: true` — parameters work fine without it
 - **Production pattern:** Use Key Vault `AddSecret` for actual secret management in Azure
 - **Local dev:** Use `dotnet user-secrets` — works with both parameters and Key Vault reference patterns
