@@ -25,3 +25,14 @@
   - E2E: `tests/Hackmum.Bethuya.E2E/Tests/EventFlowTests.cs`, `tests/Hackmum.Bethuya.E2E/Tests/CoverImageFlowTests.cs`
   - CI: `.github/workflows/ci.yml:135`
   - Navigation callers: `Home.razor`, `Events.razor`, `FeaturedEventCard.razor`
+- **AI coding primitives updated (2026-04-09):** Augustine updated README.md, AGENTS.md, and .github/copilot-instructions.md with core Bethuya conventions. Key architectural guardrails absorbed:
+  - **Vogen IDs only** — raw Guid/int is build-breaking offense. AttendeeId, EventId, UserId are Vogen structs. Non-negotiable.
+  - **Central Package Management enforced** — all versions in Directory.Packages.props, never `Version=""` in .csproj files.
+  - **No EF Core migrations until formal release** — Augustine''s directive. Delete Migrations/ folder if present; never regenerate before a formal milestone.
+  - **Aspire-first orchestration** — file-based resource definition, local-to-cloud parity (Azure Container Apps target).
+  - **Scalar API docs mandatory** — every new endpoint must be verifiable via Scalar UI in Aspire Dashboard.
+  - **Refit for all HTTP** — no raw HttpClient; use shared interfaces in Bethuya.Hybrid.Shared.
+  - **InteractiveServer global default** — use global render mode assignment on Routes in App.razor (not per-page), sensitive pages: InteractiveServer; public: InteractiveAuto.
+  - **File-scoped namespaces, primary constructors, collection expressions** — enforce C# 14 idioms.
+  - **Nullable enabled, TreatWarningsAsErrors** — fix all warnings, never suppress without documented justification.
+  - **0 B hot-path allocations via Vogen** — performance target: p99 < 180ms @ 2,500 RPS, >90% cache hit rate.

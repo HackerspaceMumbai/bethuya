@@ -357,6 +357,37 @@ Bethuya showcases state‑of‑the‑art developer AI:
 
 ***
 
+## 🤖 Squad — Persistent AI Agent Team
+
+Bethuya is built **with** an AI team, not just *by* one. **Squad** is a [GitHub Copilot CLI](https://github.com/features/copilot/cli/)-powered multi-agent orchestration framework that runs a persistent team of specialized AI agents alongside every developer session.
+
+| Agent | Role | Domain |
+|---|---|---|
+| **Neo** | Lead / System Architect | Aspire topology, architecture decisions, cross-agent gating |
+| **Trinity** | Frontend Dev | Blazor UI, Blazor Blueprint components, render modes |
+| **Tank** | Backend Dev | APIs, service wiring, data flow, dependency injection |
+| **Switch** | Tester | TUnit tests, Playwright E2E, quality gates |
+| **Morpheus** | Security Engineer | Auth, PII routing, render mode enforcement |
+| **Scribe** | Session Logger | Decision ledger, memory, session logs (silent) |
+
+Each agent has a **charter** (identity, authority, and hard boundaries) and a **history** (project learnings that compound across sessions). Decisions flow through a drop-box pattern into `.squad/decisions.md` — the team's shared brain.
+
+**How it works:**
+- Describe work in natural language; Squad routes it to the right agent(s), in parallel.
+- Agents write code, tests, docs, and decisions — humans review and approve.
+- The `routing.md` table governs who owns what. Neo gates architecture; Morpheus gates security; Tank owns the backend; Trinity owns the UI.
+- **Ralph** (Work Monitor) watches the GitHub issue board and keeps the pipeline moving autonomously.
+
+**Governance files:**
+- `.github/agents/squad.agent.md` — coordinator rules, routing, reviewer gating, rejection lockout
+- `.squad/agents/{name}/charter.md` — per-agent identity and authority scope
+- `.squad/decisions.md` — append-only shared decision ledger
+- `.squad/routing.md` — work assignment table
+
+> Activate Squad via **Copilot CLI** — address an agent by name (e.g., *"Tank, review the endpoint wiring"*) or describe work and let the coordinator route it. Squad lives in `.squad/`.
+
+***
+
 ## 🧪 Verification driven AI‑Assisted **TDD + Playwright** feedback Loop
 
 * **Unit/Domain tests** (TDD first): `dotnet watch test src/Hackmum.Bethuya.Tests` (using **TUnit**). Every feature begins with a TUnit test.

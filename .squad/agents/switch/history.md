@@ -28,3 +28,12 @@
   - Key TUnit patterns: `IAsyncInitializer`, `[ClassDataSource<T>(Shared = SharedType.PerTestSession)]`, `[Before(Test)]` hook pattern, `await Assert.That(...).IsEqualTo(...)`.
   - BP reference map: BP3=wait-for-healthy, BP5=no-cross-test-state, BP6=contract-duplication-as-safety-net.
 
+- **AI coding primitives updated (2026-04-09):** Augustine updated README.md, AGENTS.md, and .github/copilot-instructions.md. Key testing/E2E conventions absorbed:
+  - **TUnit ONLY** — never xUnit, never NUnit. Unit/integration tests use TUnit. Assertions: `await Assert.That(value).IsEqualTo(expected)` (async by default). Attribute: `[Test]`, not `[Fact]` or `[TestMethod]`.
+  - **E2E Playwright with data-test selectors** — MSTest for Playwright tests (E2E, not unit). Always use `data-test` attributes, never CSS classes. Enables stable selectors across layout changes.
+  - **Test-first mandate** — every feature begins with TUnit test. No code accepted without passing integration test.
+  - **Visual proof required** — Playwright screenshots required for all major UI changes (e.g., registration flow) before marking tasks done.
+  - **TUnit patterns:** `IAsyncInitializer`, `[ClassDataSource<T>(Shared = SharedType.PerTestSession)]`, `[Before(Test)]` hooks, async assertions.
+  - **No cross-test state pollution** — BP5: `ResetAsync()` in `[Before(Test)]` hooks ensures test isolation.
+  - **Contract duplication as safety net** — BP6: duplicate contract types in test projects (not imported) to catch breaking changes at compile-time.
+  - **Central Package Management** — all test package versions in Directory.Packages.props; never `Version=""` in .csproj.
