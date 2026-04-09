@@ -105,3 +105,11 @@ dotnet_separate_import_directive_groups = false
 dotnet_diagnostic.CA1716.severity = none
 # CA1711: Identifiers should not have incorrect suffix — suppressed
 dotnet_diagnostic.CA1711.severity = none
+
+# ──────────────────────────────────────────────
+# EF Core Migrations — auto-generated, exempt from style rules
+# ──────────────────────────────────────────────
+[**/Migrations/**.cs]
+generated_code = true
+csharp_style_namespace_declarations = block_scoped:none
+dotnet_diagnostic.IDE0161.severity = none

@@ -10,12 +10,14 @@
     <Project Path="src/Hackmum.Bethuya.AI/Hackmum.Bethuya.AI.csproj" />
     <Project Path="src/Hackmum.Bethuya.Backend/Hackmum.Bethuya.Backend.csproj" />
     <Project Path="src/Hackmum.Bethuya.Infrastructure/Hackmum.Bethuya.Infrastructure.csproj" />
+    <Project Path="src/Bethuya.MigrationService/Bethuya.MigrationService.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj" />
     <Project Path="tests/Bethuya.LoadTests/Bethuya.LoadTests.csproj" />
     <Project Path="tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj" />
     <Project Path="tests/Bethuya.Benchmarks/Bethuya.Benchmarks.csproj" />
+    <Project Path="tests/Bethuya.IntegrationTests/Bethuya.IntegrationTests.csproj" />
   </Folder>
   <Project Path="AppHost/AppHost/AppHost.csproj" />
   <Project Path="ServiceDefaults/ServiceDefaults.csproj" Id="8ddc89f8-756d-45a6-abd4-5856ee6bea70" />

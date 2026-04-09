@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" />
+    <PackageReference Include="Aspire.Hosting.Azure.KeyVault" />
     <PackageReference Include="Aspire.Hosting.Azure.Sql" />
     <PackageReference Include="Aspire.Hosting.Keycloak" />
     <PackageReference Include="Scalar.Aspire" />
@@ -17,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hackmum.Bethuya.Backend\Hackmum.Bethuya.Backend.csproj" />
     <ProjectReference Include="..\..\src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj" />
+    <ProjectReference Include="..\..\src\Bethuya.MigrationService\Bethuya.MigrationService.csproj" />
   </ItemGroup>
 
 </Project>

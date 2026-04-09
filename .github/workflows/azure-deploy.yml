@@ -1,0 +1,83 @@
+name: Azure Deploy
+
+# Deploys to Azure after CI passes on main, or on manual trigger.
+# Uses OIDC federated credentials — no long-lived secrets stored in GitHub.
+#
+# Required GitHub repository SECRETS:
+#   AZURE_CLIENT_ID          — app registration with GitHub OIDC federated credential
+#   AZURE_TENANT_ID          — Azure AD tenant ID
+#   AZURE_SUBSCRIPTION_ID    — target Azure subscription
+#
+# Required GitHub repository VARIABLES:
+#   AZURE_ENV_NAME           — azd environment name, e.g. "production"
+#   AZURE_LOCATION           — Azure region, e.g. "eastus"
+#
+# Required GitHub repository SECRETS for app parameters (first deploy only — azd then stores in Key Vault):
+#   CLOUDINARY_CLOUD_NAME    — Cloudinary cloud name
+#   CLOUDINARY_API_KEY       — Cloudinary API key
+#   CLOUDINARY_API_SECRET    — Cloudinary API secret
+#   AZURE_OPENAI_ENDPOINT    — Azure OpenAI endpoint URL
+#   AZURE_OPENAI_API_KEY     — Azure OpenAI API key
+#   OPENAI_API_KEY           — OpenAI API key (optional fallback)
+#
+# Setup:
+#   1. Create an app registration in Azure AD
+#   2. Add a federated credential: Entity = Branch, Branch = main, Repo = <org/repo>
+#   3. Assign Contributor + User Access Administrator on subscription (or resource group)
+#   4. Add the secrets/variables above to your GitHub repo settings
+#   5. Run `azd env new production` locally and commit the .azure/ folder (without secrets)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # Required for OIDC token exchange
+  contents: read
+
+jobs:
+  deploy:
+    name: Provision & Deploy
+    runs-on: ubuntu-latest
+    environment: production   # Uses GitHub environment protection rules
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install azd
+        uses: azure/setup-azd@v2
+
+      - name: Log in to Azure (OIDC)
+        run: |
+          azd auth login \
+            --client-id "${{ secrets.AZURE_CLIENT_ID }}" \
+            --federated-credential-provider github \
+            --tenant-id "${{ secrets.AZURE_TENANT_ID }}"
+
+      - name: Provision infrastructure
+        run: azd provision --no-prompt
+        env:
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          # App parameters — azd stores these in Key Vault after first provision
+          AZURE_CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          AZURE_CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          AZURE_CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          AZURE_AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Deploy application
+        run: azd deploy --no-prompt
+        env:
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

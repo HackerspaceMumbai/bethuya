@@ -56,3 +56,7 @@ BenchmarkDotNet.Artifacts/
 
 # NBomber reports
 reports/
+
+# VS Code C# Dev Kit cache
+*.lscache
+
