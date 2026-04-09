@@ -24,3 +24,11 @@
   - Navigation updated in Events.razor and Home.razor to point to `/events/plan`
   - CSS class renamed `.create-event-page` → `.plan-event-page`
   - Build: 0 errors, 0 warnings (frontend). Test file `EventPlanningTests.cs` has stale `CreateEventRequest` ref from Tank's backend rename — Switch's scope.
+- **AI coding primitives updated (2026-04-09):** Augustine updated README.md, AGENTS.md, and .github/copilot-instructions.md. Key UI/frontend conventions absorbed:
+  - **Blazor Blueprint components ALWAYS first** — never custom CSS until BB components are exhausted. BbFormFieldInput, BbFormFieldSelect, BbFormSection for wrapped fields. BbTextarea, BbNumericInput, BbFileUpload, BbDatePicker, BbTimePicker require manual form-group + BbLabel wrapper.
+  - **BB components don''t accept data-test directly** — wrap in `<div data-test="...">` to place test attribute on container, not on BB component itself.
+  - **Custom CSS requires explanatory comment** — each custom CSS block must state why BB couldn''t handle it (e.g., "BB ShowPreview only supports local IBrowserFile — remote URL preview is custom").
+  - **data-test selectors for all E2E** — never CSS classes. Enables stable Playwright selectors.
+  - **InteractiveServer for sensitive pages** — auth/PII pages MUST use `@rendermode InteractiveServer` (global assignment on Routes in App.razor, not per-page).
+  - **File-scoped namespaces, primary constructors, collection expressions** — C# 14 idioms enforced.
+  - **Nullable enabled, TreatWarningsAsErrors** — fix all warnings; never suppress without documented justification.
