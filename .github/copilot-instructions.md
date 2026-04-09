@@ -7,7 +7,10 @@
 
 ## Tech Stack Quick-Reference
 - **Runtime:** .NET 10 / C# 14
-- **Orchestration:** .NET Aspire 13
+- **Orchestration:** Aspire 13
+- **Identity:** **Vogen** structs for `AttendeeId`, `EventId`, and `UserId`.
+- **API Documentation:** **Scalar** integration for real-time contract testing.
+- **Communication:** **Refit** shared interfaces for all service-to-service calls.
 - **UI:** Blazor Blueprint UI (`BlazorBlueprint.Components`)
 - **Tests:** **TUnit** (unit/integration) · **Playwright** (E2E) · BenchmarkDotNet (perf)
 - **AI Agents:** Microsoft Agent Framework

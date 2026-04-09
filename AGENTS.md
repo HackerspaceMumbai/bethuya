@@ -102,7 +102,7 @@ Route AI calls by data sensitivity:
 
 ---
 
-## Coding Standards
+## Coding Standards (Strict Enforcement)
 
 ### General
 
@@ -112,13 +112,11 @@ Route AI calls by data sensitivity:
 - **Code style:** Enforced in build (`<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>`).
 - Suppressed globally: `CA1716` (reserved keywords), `CA1711` (name suffixes) — do not add others without discussion.
 
-### API & Communication
+### Identity & Data [API & Communication]
 
-Documentation: All APIs MUST be defined via Scalar. Use the Aspire.Hosting.Scalar integration for service discovery.
-
-Contracts: Never use raw HttpClient. Always use Refit interfaces shared in Bethuya.Shared.
-
-Identity: Use Vogen for all domain IDs (AttendeeId, EventId). Raw primitives are prohibited.
+- **Vogen Only:** Raw `Guid` or `int` for IDs is a build-breaking offense. Use Vogen value objects. **Raw primitives are prohibited.**
+- **Refit Only:** No raw `HttpClient`. Use shared interfaces in `Bethuya.Hybrid.Shared`.
+- **Scalar Docs:** Every new endpoint must be verifiable via the Scalar UI in the Aspire Dashboard.
 
 ### C# Style
 
@@ -147,7 +145,8 @@ Identity: Use Vogen for all domain IDs (AttendeeId, EventId). Raw primitives are
 
 ### AI & Privacy
 
-PII: All sensitive curation is routed to Foundry Local (on-device). Non-sensitive orchestration uses Microsoft Foundry.
+- **PII Guardrail:** All attendee data must be routed via **Foundry Local**. Non-sensitive orchestration uses Microsoft Foundry.
+- **Render Mode:** Sensitive registration/auth pages MUST use `@rendermode InteractiveServer`.
 
 ### Packages
 
@@ -157,14 +156,14 @@ PII: All sensitive curation is routed to Foundry Local (on-device). Non-sensitiv
 ### Testing
 
 - **Unit/integration tests:** Use **TUnit** — not xUnit, not NUnit.
-- **Test-first:** Every feature begins with a TUnit test.
-- **E2E:** Use **Playwright for .NET**. Always use `data-test` selectors (not CSS classes) for stability.
+- **Test-first:** Every feature begins with a TUnit test. **No code is accepted without a passing TUnit integration test.**
+- **Visual Proof E2E:** Playwright screenshots are required for ALL major use cases like registration flow. Use **Playwright for .NET**. Always use `data-test` selectors (not CSS classes) for stability.
 - **Performance:** Use BenchmarkDotNet for micro-benchmarks; NBomber for load tests.
 
 ### Performance Targets
 
 | Metric | Target |
-|---|---|
+| --- | --- |
 | Hot path latency (p99) | < 180ms @ 2,500 RPS |
 | Memory allocation (hot path) | 0 B (enforced via Vogen and BenchmarkDotNet). |
 | Cache hit rate | > 90% |
