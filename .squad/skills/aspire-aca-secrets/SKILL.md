@@ -10,7 +10,7 @@ source: "earned — production deployment failure (three separate root causes di
 
 ## Context
 
-`aspire deploy` / `azd deploy` calls `BaseContainerAppContext.ProcessValue()` to serialize each resource's environment variables and args into bicep. This method handles strings, ParameterResource, EndpointReference, and other Aspire types — **but not raw `System.Boolean` values**. Either of the two root causes below can trigger:
+`aspire deploy` / `azd deploy` calls `BaseContainerAppContext.ProcessValue()` to serialize each resource's environment variables and args into bicep. This method handles strings, ParameterResource, EndpointReference, and other Aspire types — **but not raw `System.Boolean` values**. Any of the root causes below can trigger:
 
 ```
 [ERR] Unsupported value type System.Boolean
@@ -94,30 +94,6 @@ if (!builder.ExecutionContext.IsPublishMode)
 if (devResource is not null)
     myProject.WithReference(devResource);
 ```
-
----
-
-## Root Cause 3: Dev-Only Tool Containers (e.g. Scalar)
-
-`builder.AddScalarApiReference()` (from `Scalar.Aspire`) registers a `scalar` container resource. With `AddAzureContainerAppEnvironment` active, this container gets serialized to ACA bicep and its internal boolean env vars trigger `ProcessValue`.
-
-You can confirm this is the source when you see `scalar:http` in the Aspire log line:
-```
-HTTP endpoints will use HTTPS (port 443) in Azure Container Apps: backend:http, web:http, scalar:http
-```
-
-### Fix: Guard with `IsPublishMode`
-
-```csharp
-// ✅ Scalar — dev only; API docs UI is not deployed to Azure.
-if (!builder.ExecutionContext.IsPublishMode)
-{
-    builder.AddScalarApiReference()
-        .WithApiReference(backend);
-}
-```
-
-After fix, `scalar:http` disappears from the log and manifest generation succeeds.
 
 ---
 
