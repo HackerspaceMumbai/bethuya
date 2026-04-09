@@ -36,15 +36,29 @@ Reject if you find:
 - dependencies not declared as references
 - manual container wiring outside AppHost
 
+
 ### Secrets and sensitive config
 
 MUST REJECT — Critical security violation:
 
 - API keys, client secrets, connection strings committed
 - auth config values that should be user-secrets
-- automated secret-scanning is not enabled in CI
+- If secrets are detected in the diff AND CI secret-scanning is not enabled, reject the PR.
+- If no secrets are detected, but CI secret-scanning is not enabled, mark as warning and recommend enabling scanning.
+- If a PR disables CI secret-scanning (e.g., removes or disables secret scanning config in CI), immediately reject and flag for security review. Detect by checking for changes/removal in CI config files (e.g., GitHub Actions, Azure Pipelines).
 
 If any secret is exposed in a diff or history, treat it as compromised: rotate credentials immediately and follow incident response steps (revoke, audit access, assess blast radius, and document remediation).
+
+Reference the CI requirements section for repository-level checks.
+## CI requirements
+
+Repository-level checks for all PRs:
+
+- Automated secret-scanning must be enabled in CI (e.g., GitHub Advanced Security, TruffleHog, or similar).
+- If secret-scanning is disabled or removed in a PR, immediately reject the PR and flag for security review.
+- If secret-scanning is not enabled but no secrets are detected in the diff, mark as warning and recommend enabling scanning.
+
+To detect disabling of CI scanning in a PR, check for changes to CI configuration files (e.g., .github/workflows, azure-pipelines.yml) that remove or disable secret-scanning steps or tools.
 
 ### Observability regressions
 
