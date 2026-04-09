@@ -238,3 +238,29 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
   2. **For .NET code changes:** Run `dotnet-diag:optimizing-dotnet-performance` agent on modified files.
   3. **Before opening/updating a PR:** Run `/explain-diff` skill for risk callouts.
   4. **Never rely on the user to send individual review findings** — catch them proactively with the tools available.
+
+## [2026-04-06] azd + Aspire azure.yaml: `host` must be `containerapp`, not `apphost`
+- **What happened:** `azd up` and `azd infra gen` failed with "Aspire services must be configured to target the container app host at this time."
+- **Root cause:** In azd's `importer.go`, when an Aspire AppHost is detected (`IsAspireHost: true`), the service config's `Host` field is checked against `ContainerAppTarget` (the string `"containerapp"`). If `host: apphost` is used instead, the check fails. Without any `services` section, azd falls back to looking for `infra/main.bicep`.
+- **Fix:** Change `host: apphost` to `host: containerapp` in azure.yaml.
+- **Prevention:** The correct azure.yaml for an Aspire project is:
+  ```yaml
+  name: bethuya
+  services:
+    app:
+      language: dotnet
+      project: AppHost/AppHost/AppHost.csproj
+      host: containerapp   # NOT host: apphost
+  ```
+
+## [2026-04-06] EF Core auto-generated migration files violate IDE0161 (block-scoped namespace)
+- **What happened:** `azd up` failed generating the Aspire manifest because `dotnet run --publisher manifest` built the Infrastructure project, which now contained the auto-generated Migrations directory. The generated `.cs` files use `namespace Foo { }` block syntax, violating `IDE0161` (enforced as error via `TreatWarningsAsErrors`).
+- **Root cause:** `dotnet ef migrations add` generates C# files using block-scoped namespaces. There is no flag to emit file-scoped namespaces. These files are regenerated on every `dotnet ef migrations add`, so manual fixes get overwritten.
+- **Fix:** Added to `.editorconfig`:
+  ```
+  [**/Migrations/**.cs]
+  generated_code = true
+  csharp_style_namespace_declarations = block_scoped:none
+  dotnet_diagnostic.IDE0161.severity = none
+  ```
+- **Prevention:** Always add this `.editorconfig` rule before creating the first EF Core migration. It persists across all future migration additions without requiring manual intervention.

@@ -42,6 +42,20 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 <!-- Add new tasks here -->
 
+## [2026-07-24] Aspire Secrets Audit + aspire-secrets Skill
+- **Status:** done
+- **Agent/Owner:** Tank (DevOps & Infrastructure)
+- **Description:** Audited all `AddParameter()` calls in `AppHost/AppHost/AppHost.cs` for correct use of `secret: true`. Created `copilot/skills/aspire-secrets/SKILL.md` skill to guide future additions.
+- **Acceptance:** ✅ AppHost.cs audit complete — `cloudinary-api-key` and `cloudinary-api-secret` already marked `secret: true`; `cloudinary-cloud-name` correctly has no secret flag (public CDN identifier). ✅ `aspire-secrets` skill created with before/after examples, checklist, and user-secrets setup guide. ✅ Build: 0 errors, 0 warnings.
+
+## [2026-04-06] Azure Deployment Readiness
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Prepared Bethuya for Azure deployment with azd + Aspire. Added `azure.yaml` (azd entry point), Azure Key Vault provisioning, AI provider parameters, `Bethuya.MigrationService` (EF Core migrations worker with WaitForCompletion dependency), Azure Monitor / Application Insights telemetry, always-on health check endpoints for Azure Container Apps probes, and `azure-deploy.yml` GitHub Actions workflow using OIDC federated credentials. Fixed `AllowedHosts` from "localhost" to "*" in production appsettings.
+- **Acceptance:** ✅ `azure.yaml` created. ✅ Key Vault (`AddAzureKeyVault("vault")`) + AI parameters added to AppHost. ✅ `/health` + `/alive` endpoints exposed in all environments. ✅ Azure Monitor enabled (conditional on `APPLICATIONINSIGHTS_CONNECTION_STRING`). ✅ `AllowedHosts: "*"` in backend + web appsettings.json. ✅ `Bethuya.MigrationService` created + wired to AppHost with `WaitForCompletion`. ✅ `azure-deploy.yml` OIDC workflow created. ✅ Build: 0 errors, 0 warnings.
+- **Pre-deploy prerequisite:** `dotnet ef migrations add InitialCreate --project src/Hackmum.Bethuya.Infrastructure --startup-project src/Hackmum.Bethuya.Backend`
+
+
 ## [2026-07-24] AI-Powered Date Recommendation via GitHub Copilot SDK
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
