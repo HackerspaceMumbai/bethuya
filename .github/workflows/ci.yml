@@ -75,20 +75,39 @@ jobs:
 
       - name: Wait for SQL Server
         run: |
-          echo "Waiting for SQL Server on port 1433..."
-          for i in $(seq 1 30); do
-            if nc -z -w 1 localhost 1433 2>/dev/null; then
-              echo "Port 1433 is open — allowing 10s for SQL Server to initialise..."
-              sleep 10
-              break
-            fi
-            echo "Attempt $i/30 — retrying in 3s..."
-            sleep 3
-          done
+          echo "Waiting for SQL Server to accept connections..."
+          SQLCMD=""
+          if [ -f /opt/mssql-tools18/bin/sqlcmd ]; then
+            SQLCMD="/opt/mssql-tools18/bin/sqlcmd -C"
+          elif [ -f /opt/mssql-tools/bin/sqlcmd ]; then
+            SQLCMD="/opt/mssql-tools/bin/sqlcmd"
+          fi
+          if [ -z "$SQLCMD" ]; then
+            echo "sqlcmd not found — falling back to nc + sleep..."
+            for i in $(seq 1 30); do
+              if nc -z -w 1 localhost 1433 2>/dev/null; then
+                echo "Port 1433 open — sleeping 15s for SQL Server to initialise..."
+                sleep 15
+                break
+              fi
+              echo "Attempt $i/30 — retrying in 3s..."
+              sleep 3
+            done
+          else
+            for i in $(seq 1 30); do
+              if $SQLCMD -S localhost,1433 -U sa -P "BethuyaCI-Dev2025" -Q "SELECT 1" -l 3 > /dev/null 2>&1; then
+                echo "SQL Server is accepting connections."
+                break
+              fi
+              echo "Attempt $i/30 — retrying in 3s..."
+              sleep 3
+            done
+          fi
 
       - name: Create E2E database schema
         env:
           ASPNETCORE_ENVIRONMENT: Development
+          DOTNET_ENVIRONMENT: Development
           ConnectionStrings__BethuyaDb: "Server=localhost,1433;Database=BethuyaE2EDb;User Id=sa;Password=BethuyaCI-Dev2025;TrustServerCertificate=True;Encrypt=False"
         run: |
           dotnet run --project src/Bethuya.MigrationService/Bethuya.MigrationService.csproj \
@@ -110,11 +129,12 @@ jobs:
           for i in $(seq 1 30); do
             if curl -sf http://localhost:5247/health > /dev/null 2>&1; then
               echo "Backend API is ready."
-              break
+              exit 0
             fi
             echo "Attempt $i/30 — retrying in 2s..."
             sleep 2
           done
+          echo "Backend API did not start in time." && exit 1
 
       - name: Start web app
         env:
