@@ -1,10 +1,10 @@
 # **🏛️ Bethuya — The Agentic Community Event Intelligence Platform**
 
-> *HackerspaceMumbai • Debuting at GitHub Copilot Dev Days • Built initially for AI Dev Days • Maintained for the Community*
+> *HackerspaceMumbai • Debuting at GitHub Copilot Dev Days • Maintained for the Community*
 
 **Bethuya** is an **AI‑augmented, Agent-first, .NET-built,  Aspire–orchestrated** platform for planning, curating, running, and reporting community events.
 
-> **Principle:** AI **drafts**, humans **approve**, community **owns**.\
+> **Principle:** AI **drafts**, humans **approve**, community **owns**.
 > **Reality:** Demo‑ready today, **backbone of HackerspaceMumbai** tomorrow.
 
 ***
@@ -16,6 +16,29 @@
 * **Run** — *Facilitator Agent* suggests prompts, Q\&A, and captures notes (organizer‑controlled).
 * **Report** — *Reporter Agent* drafts summaries, highlights, and action items.
 * **Approve** — **Human‑in‑the‑loop** diffs, approvals, and a full audit trail.
+
+***
+
+## 🚀 Critical "Hero" Launch Stack
+
+### ⚡ .NET Aspire 13 (Stability Hero)
+
+Bethuya utilizes **file-based orchestration** (`AddExecutable`) to demonstrate maximum decoupling between the API, Web, and Data layers. This ensures local-to-cloud parity as we push to Azure Container Apps.
+
+### 📜 Scalar & Refit (Contract Hero)
+
+* **Scalar:** The "Ground Truth" for all API definitions, integrated directly into the Aspire Dashboard.
+* **Refit:** Every internal call between the Blazor Hybrid frontend and the Minimal API is strictly type-safe via Refit interfaces.
+
+### 🛡️ Vogen & Performance (Reliability Hero)
+
+* **Vogen:** "Zero-Gaps" identity handling. Every `AttendeeId` and `EventId` is a Vogen value object to ensure **0 B allocation** on the registration hot path.
+* **Targets:** p99 latency **< 180ms** at 2,500 RPS.
+
+### 🤖 Microsoft Foundry & Agent Framework
+
+* **Foundry Local:** All registrant PII remains on-device for secure pre-processing before curation.
+* **Microsoft Agent Framework:** Orchestrates the **@curator** and **@planner** agents for the April 18 debut.
 
 ***
 
@@ -116,9 +139,9 @@ Accessible, headless primitives for a high-performance shadcn/ui inspired fronte
 
 | Metric | Target | Verification Tool |
 | :--- | :--- | :--- |
-| **Hot Path Latency (p99)** | < 180ms @ 2,500 RPS | [cite_start]NBomber / TUnit |
-| **Memory Allocation** | 0 B on Hot Path | [cite_start]BenchmarkDotNet |
-| **Visual Accuracy** | 100% Match | [cite_start]Playwright Visual Regression|
+| **Hot Path Latency (p99)** | < 180ms @ 2,500 RPS | []NBomber / TUnit |
+| **Memory Allocation** | 0 B on Hot Path | []BenchmarkDotNet |
+| **Visual Accuracy** | 100% Match | []Playwright Visual Regression|
 
 ## 🔄 Development Protocol
 
@@ -211,14 +234,25 @@ Summary, highlights, action items → human edits → publish (attribution).
 
 ***
 
+## Domain Modeling Principles
+
+### Strong Domain Primitives (No Primitives in Core Domain)
+
+Bethuya uses **Vogen** to generate strong Value Objects for all core domain concepts
+(e.g., EventId, AttendeeId, EmailAddress).
+
+❌ No raw `string`, `int`, or `Guid` in core domain models  
+✅ All identifiers and value concepts MUST be explicit value objects
+
+This ensures correctness, explainability, and safety in an agent-first system.
+
 ## 🔌 Provider Routing (Privacy‑aware)
 
 We route AI calls by sensitivity:
 
 1. **Foundry Local** — default for attendee curation/sensitive data (on‑device, OpenAI‑compatible API; Windows/macOS). [\[devblogs.m...rosoft.com\]](https://devblogs.microsoft.com/foundry/unlock-instant-on-device-ai-with-foundry-local/), [\[github.com\]](https://github.com/microsoft/Foundry-Local)
 2. **Ollama** — local LLMs.
-3. **Azure OpenAI** — enterprise boundary for non‑sensitive/public drafts.
-4. **OpenAI** — optional, non‑sensitive public content.
+3. **Microsoft Foundry** — enterprise boundary for non‑sensitive/public drafts.
 
 > **Foundry Local** chooses optimized model variants for your hardware and runs fully offline once models are cached. [\[github.com\]](https://github.com/microsoft/Foundry-Local), [\[clemenssiebler.com\]](https://clemenssiebler.com/posts/running-slm-locally-azure-foundry-local/)
 
