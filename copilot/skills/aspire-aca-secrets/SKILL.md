@@ -52,7 +52,7 @@ grep -n "AddParameter.*secret:" AppHost/AppHost/AppHost.cs
 
 **Known affected packages:**
 - `Aspire.Hosting.Keycloak` preview versions set `KC_HEALTH_ENABLED = true` (boolean, not the string `"true"`).
-- `Scalar.Aspire` — `AddScalarApiReference()` registers a Scalar UI container resource that gets published to ACA.
+- `Scalar.Aspire` — `AddScalarApiReference()` registers a Scalar UI container resource that gets published to ACA. **Diagnostic:** before fix, Aspire logs `scalar:http` in `HTTP endpoints will use HTTPS in Azure Container Apps: backend:http, web:http, scalar:http`.
 
 **Real-world impact:** Neither Keycloak nor Scalar should ever deploy to ACA in production. Keycloak is replaced by Entra ID; Scalar API docs are embedded in the API project's own container.
 
