@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+﻿﻿using Microsoft.Extensions.Logging;
 using BlazorBlueprint.Components;
 using Bethuya.Hybrid.Shared.Services;
 using Bethuya.Hybrid.Services;
@@ -22,6 +22,17 @@ public static class MauiProgram
 
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddBlazorBlueprintComponents();
+
+        // Ensure the Squad knows this is the "Bridge" to the Shared RCL
+        builder.Services.AddSingleton<IBethuyaAuthStateProvider, MauiAuthStateProvider>();
+
+        // Required for AddHttpMessageHandler<AuthenticatedUserHandler>()
+        builder.Services.AddTransient<AuthenticatedUserHandler>();
+
+        // Register the Aspire-aware HttpClient for the API
+        // TODO: Validate this pattern with MAUI team (see issue #XXX)
+        builder.Services.AddBethuyaClient("bethuya-api")
+            .AddHttpMessageHandler<AuthenticatedUserHandler>(); // Syncs tokens to Shared RCL calls
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
