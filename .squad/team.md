@@ -46,6 +46,10 @@
 - Authentication, authorization, encryption, or access control changes
 - Multi-system integration requiring cross-agent coordination
 
+## Policies
+
+- `.squad/policies/rendering-policy.md`
+- `.squad/policies/rcl-boundaries.md`
 ## Team Protocol
 
 - **Cross-Platform Rule:** Any UI component shared between Web and MAUI must be placed in `Bethuya.Shared`.

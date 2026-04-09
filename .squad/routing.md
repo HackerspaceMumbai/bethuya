@@ -54,6 +54,7 @@ When triaging, the Lead should ask:
 6. **Anticipate downstream work.** If a feature is being built, spawn the tester to write test cases from requirements simultaneously.
 7. **Issue-labeled work** — when a `squad:{member}` label is applied to an issue, route to that member. The Lead handles all `squad` (base label) triage.
 8. **@copilot routing** — when evaluating issues, check @copilot's capability profile in `team.md`. Route 🟢 good-fit tasks to `squad:copilot`. Flag 🟡 needs-review tasks for PR review. Keep 🔴 not-suitable tasks with squad members.
+9. **AppHost modifications** — if a task involves AppHost modifications (e.g., editing `.AppHost` project files, changing service orchestration, updating resource declarations), Neo takes exclusive lock. All other agents must pause until Neo confirms resource availability via the Aspire MCP list_resources tool.
 
 ## Anvil (Evidence-First) Policy — Bethuya
 

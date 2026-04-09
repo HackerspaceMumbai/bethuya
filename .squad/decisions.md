@@ -177,6 +177,13 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 - Document architectural decisions here
 - Keep history focused on work, decisions focused on direction
 
+## Standing policies
+
+The following policy documents are canonical and must be followed by all agents
+and contributors:
+
+- Rendering policy (Web only): `.squad/policies/rendering-policy.md`
+- Shared RCL boundaries: `.squad/policies/rcl-boundaries.md`
 ## Reusable “Decision Entry Template”
 
 ---
