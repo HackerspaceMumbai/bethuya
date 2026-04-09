@@ -1,10 +1,10 @@
-name neo-apphost-consistency
-description >
+name: neo-apphost-consistency
+description: >
   Verify AppHost is the source of truth: services exist in AppHost, dependencies
   are explicit, and service discovery patterns are consistent.
-domain architecture
-confidence high
-source manual
+domain: architecture
+confidence: high
+source: manual
 
 # Neo AppHost Consistency
 
