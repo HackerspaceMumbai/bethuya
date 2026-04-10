@@ -2,6 +2,8 @@
 @using Bethuya.Hybrid.Shared.Components.Dashboard
 @using Bethuya.Hybrid.Shared.Services
 @inject IEventApi EventApi
+@inject IProfileApi ProfileApi
+@inject ICurrentUserService CurrentUser
 
 <PageTitle>Dashboard — Bethuya</PageTitle>
 
@@ -90,6 +92,7 @@
     private List<EventViewModel> events = [];
     private bool isLoading = true;
     private string? errorMessage;
+    private bool _shouldRedirectToProfile;
 
     private int UpcomingCount => events.Count(e =>
         e.StartDate >= DateOnly.FromDateTime(DateTime.Now) &&
@@ -101,6 +104,26 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Check profile completion before loading dashboard data
+        if (CurrentUser.IsAuthenticated)
+        {
+            try
+            {
+                var status = await ProfileApi.GetCompletionStatusAsync();
+                _shouldRedirectToProfile = !status.IsProfileComplete;
+            }
+            catch
+            {
+                // If profile check fails, continue to dashboard
+            }
+        }
+
+        if (_shouldRedirectToProfile)
+        {
+            isLoading = false;
+            return;
+        }
+
         try
         {
             var dtos = await EventApi.GetAllAsync();
@@ -114,6 +137,15 @@
         {
             isLoading = false;
         }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _shouldRedirectToProfile)
+        {
+            Navigation.NavigateTo("/registration/mandatory");
+        }
+        return Task.CompletedTask;
     }
 
     private static EventViewModel MapToViewModel(EventDto dto) => new()

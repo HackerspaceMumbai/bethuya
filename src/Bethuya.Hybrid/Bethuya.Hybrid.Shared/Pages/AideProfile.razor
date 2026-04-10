@@ -1,0 +1,295 @@
+@page "/registration/aide"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Bethuya.Hybrid.Shared.Services
+@using BlazorBlueprint.Components
+@using BlazorBlueprint.Primitives
+@inject IProfileApi ProfileApi
+@inject NavigationManager Navigation
+
+<PageTitle>Diversity &amp; Inclusion Profile — Bethuya</PageTitle>
+
+<main class="profile-page" aria-label="Diversity and inclusion profile">
+    <div class="profile-container">
+
+        <header class="profile-header">
+            <h1 class="profile-title">Diversity &amp; Inclusion Profile</h1>
+            <p class="profile-subtitle">
+                These fields are entirely optional and help us ensure our events are accessible,
+                inclusive, and equitable. All responses are confidential and used only in aggregate.
+            </p>
+            <p class="profile-consent-note">
+                You can <a href="/" class="skip-link-text">skip for now</a> and come back later.
+            </p>
+        </header>
+
+        <EditForm Model="@_model" OnValidSubmit="@HandleValidSubmit" FormName="aide-profile">
+            <DataAnnotationsValidator />
+
+            <BbFormSection Title="Identity" Description="Help us understand the diversity of our community.">
+
+                <div class="space-y-4">
+                    <BbFormFieldSelect @bind-Value="_model.GenderIdentity"
+                                       Label="Gender Identity"
+                                       Options="@_genderOptions" />
+
+                    @if (_model.GenderIdentity == "Prefer to self-describe")
+                    {
+                        <BbFormFieldInput @bind-Value="_model.SelfDescribeGender"
+                                          Label="Self-describe your gender"
+                                          Placeholder="Please describe" />
+                    }
+
+                    <BbFormFieldSelect @bind-Value="_model.AgeRange"
+                                       Label="Age Range"
+                                       Options="@_ageRangeOptions" />
+
+                    <BbFormFieldInput @bind-Value="_model.Ethnicity"
+                                      Label="Ethnicity / Heritage"
+                                      Placeholder="e.g. South Asian, East Asian, African, European…" />
+
+                    <BbFormFieldSelect @bind-Value="_model.LgbtqIdentity"
+                                       Label="LGBTQ+ Identity"
+                                       Options="@_lgbtqOptions" />
+
+                    <BbFormFieldSelect @bind-Value="_model.Religion"
+                                       Label="Religion / Faith"
+                                       Options="@_religionOptions" />
+
+                    <BbFormFieldInput @bind-Value="_model.Caste"
+                                      Label="Caste / Social Group (India)"
+                                      Placeholder="e.g. SC, ST, OBC, General — optional" />
+                </div>
+
+            </BbFormSection>
+
+            <BbFormSection Title="Accessibility &amp; Needs" Description="We want every attendee to participate fully.">
+
+                <div class="space-y-4">
+                    <BbFormFieldSelect @bind-Value="_model.Disability"
+                                       Label="Disability or Long-term Condition"
+                                       Options="@_disabilityOptions" />
+
+                    @if (_model.Disability is not "" and not "None" and not "Prefer not to say")
+                    {
+                        <div class="form-group">
+                            <BbLabel For="disability-details">Accessibility requirements or accommodations needed</BbLabel>
+                            <div data-test="disability-details-wrapper">
+                                <BbTextarea @bind-Value="_model.DisabilityDetails"
+                                            Id="disability-details"
+                                            Placeholder="Please describe any accommodations that would help you participate fully."
+                                            MaxLength="1000"
+                                            ShowCharacterCount="true"
+                                            Class="w-full" />
+                            </div>
+                        </div>
+                    }
+
+                    <BbFormFieldInput @bind-Value="_model.DietaryRequirements"
+                                      Label="Dietary Requirements"
+                                      Placeholder="e.g. Vegetarian, Vegan, Halal, Gluten-free, Nut allergy…" />
+
+                    <BbFormFieldSelect @bind-Value="_model.Neurodiversity"
+                                       Label="Neurodiversity"
+                                       Options="@_neurodiversityOptions" />
+
+                    <BbFormFieldInput @bind-Value="_model.AdditionalSupport"
+                                      Label="Additional Support Needs"
+                                      Placeholder="Any other support you need to participate fully" />
+                </div>
+
+            </BbFormSection>
+
+            <BbFormSection Title="Background &amp; Context" Description="Helps us make events accessible to all backgrounds.">
+
+                <div class="space-y-4">
+                    <BbFormFieldSelect @bind-Value="_model.SocioeconomicBackground"
+                                       Label="Socioeconomic Background"
+                                       Options="@_socioeconomicOptions" />
+
+                    <BbFormFieldSelect @bind-Value="_model.EducationalBackground"
+                                       Label="Highest Education Level"
+                                       Options="@_educationOptions" />
+
+                    <BbFormFieldSelect @bind-Value="_model.ParentalStatus"
+                                       Label="Parental / Caregiving Status"
+                                       Options="@_parentalOptions" />
+
+                    <BbFormFieldInput @bind-Value="_model.ModeOfTransportation"
+                                      Label="Primary Mode of Transportation"
+                                      Placeholder="e.g. Public transport, Private vehicle, Walking / cycling" />
+
+                    <BbFormFieldInput @bind-Value="_model.Neighborhood"
+                                      Label="Neighbourhood / Area"
+                                      Placeholder="e.g. Andheri, Bandra, Pune" />
+                </div>
+
+            </BbFormSection>
+
+            <BbFormSection Title="Language &amp; Discovery" Description="Helps us communicate effectively.">
+
+                <div class="space-y-4">
+                    <BbFormFieldInput @bind-Value="_model.LanguageProficiency"
+                                      Label="Languages Spoken"
+                                      Placeholder="e.g. English, Hindi, Marathi, Tamil" />
+
+                    <BbFormFieldSelect @bind-Value="_model.HowDidYouHear"
+                                       Label="How did you hear about us?"
+                                       Options="@_howDidYouHearOptions" />
+                </div>
+
+            </BbFormSection>
+
+            @if (_errorMessage is not null)
+            {
+                <div data-test="aide-error">
+                    <BbAlert Variant="AlertVariant.Danger">
+                        <BbAlertDescription>@_errorMessage</BbAlertDescription>
+                    </BbAlert>
+                </div>
+            }
+
+            <div class="profile-actions">
+                <button type="submit" class="bb-button bb-button-default" disabled="@_isSaving" data-test="save-aide-btn">
+                    @if (_isSaving)
+                    {
+                        <span>Saving…</span>
+                    }
+                    else
+                    {
+                        <span>Save Profile</span>
+                    }
+                </button>
+
+                <a href="/" class="skip-link-text" data-test="skip-aide-link">Skip for now</a>
+            </div>
+
+        </EditForm>
+
+    </div>
+</main>
+
+@code {
+    private readonly AideProfileModel _model = new();
+    private bool _isSaving;
+    private string? _errorMessage;
+
+    private static IReadOnlyList<SelectOption<string>> Opts(params string[] values) =>
+        [new SelectOption<string>("", "Prefer not to say"), ..values.Select(v => new SelectOption<string>(v, v))];
+
+    private static readonly IReadOnlyList<SelectOption<string>> _genderOptions = [
+        new("", "Prefer not to say"),
+        new("Man", "Man"),
+        new("Woman", "Woman"),
+        new("Non-binary", "Non-binary"),
+        new("Transgender", "Transgender"),
+        new("Genderqueer", "Genderqueer"),
+        new("Prefer to self-describe", "Prefer to self-describe"),
+    ];
+
+    private static readonly IReadOnlyList<SelectOption<string>> _ageRangeOptions = Opts(
+        "Under 18", "18–24", "25–34", "35–44", "45–54", "55–64", "65+");
+
+    private static readonly IReadOnlyList<SelectOption<string>> _lgbtqOptions = Opts(
+        "Yes", "No", "Questioning");
+
+    private static readonly IReadOnlyList<SelectOption<string>> _religionOptions = Opts(
+        "No religion", "Hindu", "Muslim", "Christian", "Sikh", "Buddhist", "Jain", "Jewish", "Other");
+
+    private static readonly IReadOnlyList<SelectOption<string>> _disabilityOptions = Opts(
+        "None", "Physical / mobility", "Visual impairment", "Hearing impairment",
+        "Cognitive / learning", "Mental health", "Other");
+
+    private static readonly IReadOnlyList<SelectOption<string>> _neurodiversityOptions = Opts(
+        "None identified", "ADHD", "Autism spectrum", "Dyslexia", "Other");
+
+    private static readonly IReadOnlyList<SelectOption<string>> _socioeconomicOptions = Opts(
+        "Working class", "Lower middle class", "Middle class", "Upper middle class", "Upper class");
+
+    private static readonly IReadOnlyList<SelectOption<string>> _educationOptions = Opts(
+        "No formal education", "Secondary school", "Higher secondary (10+2)",
+        "Diploma / Certificate", "Bachelor's degree", "Master's degree", "Doctorate", "Self-taught / Bootcamp");
+
+    private static readonly IReadOnlyList<SelectOption<string>> _parentalOptions = Opts(
+        "No dependants", "Parent / guardian", "Carer for adult family member");
+
+    private static readonly IReadOnlyList<SelectOption<string>> _howDidYouHearOptions = [
+        new("", "Select an option"),
+        new("Friend or colleague", "Friend or colleague"),
+        new("Social media", "Social media"),
+        new("Meetup.com", "Meetup.com"),
+        new("Search engine", "Search engine"),
+        new("Newsletter", "Newsletter / email"),
+        new("Previous event", "Previous event"),
+        new("Other", "Other"),
+    ];
+
+    private async Task HandleValidSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            static string? N(string s) => string.IsNullOrEmpty(s) ? null : s;
+
+            await ProfileApi.SaveAideProfileAsync(new SaveAideProfileDto(
+                N(_model.GenderIdentity),
+                N(_model.SelfDescribeGender),
+                N(_model.AgeRange),
+                N(_model.Ethnicity),
+                N(_model.SelfDescribeEthnicity),
+                N(_model.Disability),
+                N(_model.DisabilityDetails),
+                N(_model.DietaryRequirements),
+                N(_model.LgbtqIdentity),
+                N(_model.ParentalStatus),
+                N(_model.Religion),
+                N(_model.Caste),
+                N(_model.Neighborhood),
+                N(_model.ModeOfTransportation),
+                N(_model.SocioeconomicBackground),
+                N(_model.Neurodiversity),
+                N(_model.CaregivingResponsibilities),
+                N(_model.LanguageProficiency),
+                N(_model.EducationalBackground),
+                N(_model.HowDidYouHear),
+                N(_model.AdditionalSupport)));
+
+            Navigation.NavigateTo("/");
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Failed to save your profile. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private sealed class AideProfileModel
+    {
+        public string GenderIdentity { get; set; } = "";
+        public string SelfDescribeGender { get; set; } = "";
+        public string AgeRange { get; set; } = "";
+        public string Ethnicity { get; set; } = "";
+        public string SelfDescribeEthnicity { get; set; } = "";
+        public string Disability { get; set; } = "";
+        public string DisabilityDetails { get; set; } = "";
+        public string DietaryRequirements { get; set; } = "";
+        public string LgbtqIdentity { get; set; } = "";
+        public string ParentalStatus { get; set; } = "";
+        public string Religion { get; set; } = "";
+        public string Caste { get; set; } = "";
+        public string Neighborhood { get; set; } = "";
+        public string ModeOfTransportation { get; set; } = "";
+        public string SocioeconomicBackground { get; set; } = "";
+        public string Neurodiversity { get; set; } = "";
+        public string CaregivingResponsibilities { get; set; } = "";
+        public string LanguageProficiency { get; set; } = "";
+        public string EducationalBackground { get; set; } = "";
+        public string HowDidYouHear { get; set; } = "";
+        public string AdditionalSupport { get; set; } = "";
+    }
+}

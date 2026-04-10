@@ -15,6 +15,7 @@ public sealed class BethuyaDbContext(DbContextOptions<BethuyaDbContext> options)
     public DbSet<FairnessBudget> FairnessBudgets => Set<FairnessBudget>();
     public DbSet<Decision> Decisions => Set<Decision>();
     public DbSet<EventReport> EventReports => Set<EventReport>();
+    public DbSet<AttendeeProfile> AttendeeProfiles => Set<AttendeeProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

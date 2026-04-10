@@ -265,7 +265,26 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
   ```
 - **Prevention:** Always add this `.editorconfig` rule before creating the first EF Core migration. It persists across all future migration additions without requiring manual intervention.
 
-## [2026-04-09] EF Core `MigrateAsync` without migrations doesn't create the database
+## [2026-07-25] BbFormFieldSelect<T> Options attribute vs child element syntax
+
+- **What happened:** `AideProfile.razor` used `<Options>` as a child element inside `<BbFormFieldSelect>`, causing build error RZ10012.
+- **Root cause:** `Options` is a component *parameter* of type `IEnumerable<SelectOption<T>>`, not a child element. It must be passed as a C# attribute value, not markup.
+- **Fix:** `Options="@_genderOptions"` where `_genderOptions` is an `IReadOnlyList<SelectOption<string>>`. Constructor: `new SelectOption<string>(value, displayText)`.
+- **Prevention:** Always define option lists as `IReadOnlyList<SelectOption<T>>` fields and pass via `Options="@field"` attribute. `@using BlazorBlueprint.Primitives` is required for `SelectOption<T>`.
+
+## [2026-07-25] BbButton type="submit" fails at build — use native <button> for form submission
+
+- **What happened:** `<BbButton type="submit">` caused CS0103: "The name 'submit' does not exist".
+- **Root cause:** BB components don't support arbitrary HTML attributes. `type="submit"` is interpreted as a C# expression — `submit` is evaluated as a variable, not an HTML string.
+- **Fix:** Use `<button type="submit" class="bb-button bb-button-default" ...>`. Native HTML button with BB styling classes works identically.
+- **Prevention:** Never write HTML attribute names on BB component tags. For form submission, always use native `<button type="submit">`.
+
+## [2026-07-25] EnsureCreatedAsync will not add new tables to an existing dev database
+
+- **What happened:** Adding `AttendeeProfiles` table won't appear in existing dev databases — `EnsureCreatedAsync` is a no-op when the DB exists.
+- **Root cause:** `EnsureCreatedAsync` only creates the schema on first run. It does not diff or alter an existing schema.
+- **Fix:** Developers must drop and recreate their local dev database after adding new entities.
+- **Prevention:** Every new `DbSet` should have an EF Core migration added. Note in PR description that existing dev DBs must be dropped. Long-term: replace `EnsureCreatedAsync` with `MigrateAsync`.
 - **What happened:** CI E2E job (Playwright) failed with SQL error 18456 State 38 — `Login failed for user 'sa'. Reason: Failed to open the explicitly specified database 'BethuyaE2EDb'`. SQL Server was running; the database just didn't exist.
 - **Root cause:** Deleting the Migrations folder (per no-migrations directive) made `GetPendingMigrationsAsync` return 0, so `MigrateAsync` was never called, so EF never created the database. The CI workflow also didn't run MigrationService — it started the backend directly, which can't create the schema.
 - **Fix:** (1) Changed `MigrationWorker` from `MigrateAsync` to `EnsureCreatedAsync` — creates the database and all tables from the current EF model without any migration tracking. (2) Added a "Create E2E database schema" step in ci.yml that runs MigrationService (with the E2E connection string) before starting the backend API.
