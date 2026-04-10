@@ -40,6 +40,7 @@ app.MapImageEndpoints();
 app.MapRegistrationEndpoints();
 app.MapAgentEndpoints();
 app.MapApprovalEndpoints();
+app.MapProfileEndpoints();
 
 app.MapDefaultEndpoints();
 

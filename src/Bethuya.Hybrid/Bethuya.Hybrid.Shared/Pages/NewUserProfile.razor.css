@@ -1,0 +1,55 @@
+/* ── New user mandatory profile page ── */
+
+.profile-page {
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+.profile-container {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.profile-header {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.profile-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--foreground);
+}
+
+.profile-subtitle {
+    font-size: 0.9375rem;
+    color: var(--muted-foreground, var(--foreground));
+    opacity: 0.75;
+}
+
+/* ── Two-column name row ── */
+.name-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 480px) {
+    .name-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Action bar ── */
+.profile-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+}

@@ -1,0 +1,175 @@
+@page "/registration/mandatory"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Bethuya.Hybrid.Shared.Services
+@using BlazorBlueprint.Components
+@inject IProfileApi ProfileApi
+@inject NavigationManager Navigation
+
+<PageTitle>Complete Your Profile — Bethuya</PageTitle>
+
+<main class="profile-page" aria-label="Complete your profile">
+    <div class="profile-container">
+
+        <header class="profile-header">
+            <h1 class="profile-title">Welcome to Bethuya!</h1>
+            <p class="profile-subtitle">
+                Please complete your profile before continuing.
+                This information helps us run better community events.
+            </p>
+        </header>
+
+        <EditForm Model="@_model" OnValidSubmit="@HandleValidSubmit" FormName="mandatory-profile">
+            <DataAnnotationsValidator />
+
+            <BbFormSection Title="Your Details" Description="Required information for event participation.">
+
+                <div class="space-y-4">
+                    <div class="name-row">
+                        <BbFormFieldInput @bind-Value="_model.FirstName"
+                                          Label="First Name"
+                                          Placeholder="Enter your first name"
+                                          Required="true" />
+                        <BbFormFieldInput @bind-Value="_model.LastName"
+                                          Label="Last Name"
+                                          Placeholder="Enter your last name"
+                                          Required="true" />
+                    </div>
+
+                    <BbFormFieldInput @bind-Value="_model.Email"
+                                      Label="Email Address"
+                                      Placeholder="you@example.com"
+                                      InputType="InputType.Email"
+                                      Required="true" />
+
+                    <BbFormFieldInput @bind-Value="_model.MobileNumber"
+                                      Label="Mobile Number"
+                                      Placeholder="+91 98765 43210"
+                                      InputType="InputType.Tel" />
+
+                    <BbFormFieldInput @bind-Value="_model.OccupationStatus"
+                                      Label="Occupation / Role"
+                                      Placeholder="e.g. Software Engineer, Student, Freelancer" />
+                </div>
+
+            </BbFormSection>
+
+            <BbFormSection Title="Location" Description="Helps us find venues accessible to you.">
+
+                <div class="space-y-4">
+                    <BbFormFieldInput @bind-Value="_model.City"
+                                      Label="City"
+                                      Placeholder="Mumbai" />
+
+                    <div class="name-row">
+                        <BbFormFieldInput @bind-Value="_model.State"
+                                          Label="State / Province"
+                                          Placeholder="Maharashtra" />
+                        <BbFormFieldInput @bind-Value="_model.PostalCode"
+                                          Label="Postal Code"
+                                          Placeholder="400001" />
+                    </div>
+
+                    <BbFormFieldInput @bind-Value="_model.Country"
+                                      Label="Country"
+                                      Placeholder="India" />
+                </div>
+
+            </BbFormSection>
+
+            @if (_errorMessage is not null)
+            {
+                <div data-test="profile-error">
+                    <BbAlert Variant="AlertVariant.Danger">
+                        <BbAlertDescription>@_errorMessage</BbAlertDescription>
+                    </BbAlert>
+                </div>
+            }
+
+            <div class="profile-actions">
+                <button type="submit" class="bb-button bb-button-default" disabled="@_isSaving" data-test="save-profile-btn">
+                    @if (_isSaving)
+                    {
+                        <span>Saving…</span>
+                    }
+                    else
+                    {
+                        <span>Save &amp; Continue</span>
+                    }
+                </button>
+            </div>
+
+        </EditForm>
+
+    </div>
+</main>
+
+@code {
+    private readonly MandatoryProfileModel _model = new();
+    private bool _isSaving;
+    private string? _errorMessage;
+
+    private async Task HandleValidSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            await ProfileApi.SaveMandatoryProfileAsync(new SaveMandatoryProfileDto(
+                _model.FirstName!,
+                _model.LastName!,
+                _model.Email!,
+                _model.MobileNumber,
+                _model.OccupationStatus,
+                _model.City,
+                _model.State,
+                _model.PostalCode,
+                _model.Country));
+
+            Navigation.NavigateTo("/registration/aide");
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Failed to save your profile. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private sealed class MandatoryProfileModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "First name is required.")]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? FirstName { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Last name is required.")]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? LastName { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Email address is required.")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string? Email { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(30)]
+        public string? MobileNumber { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string? OccupationStatus { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? City { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? State { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(20)]
+        public string? PostalCode { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string? Country { get; set; }
+    }
+}

@@ -20,6 +20,7 @@ public static class InfrastructureServiceExtensions
         builder.Services.AddScoped<IEventRepository, EventRepository>();
         builder.Services.AddScoped<IRegistrationRepository, RegistrationRepository>();
         builder.Services.AddScoped<IDecisionRepository, DecisionRepository>();
+        builder.Services.AddScoped<IAttendeeProfileRepository, AttendeeProfileRepository>();
 
         builder.Services.Configure<CloudinaryOptions>(
             builder.Configuration.GetSection(CloudinaryOptions.SectionName));

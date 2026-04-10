@@ -62,6 +62,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Description:** Added "✨ Suggest Dates" button to CreateEvent page that calls the GitHub Copilot SDK (.NET) to recommend optimal event dates. Backend service wraps `CopilotClient` with system prompt containing HackerspaceMumbai community event patterns (Eventbrite + Meetup seed data). Architecture: CreateEvent.razor → Refit IEventApi → POST /api/agents/recommend-dates → DateRecommendationService → CopilotClient session. Supports auto-fill of date/time fields, loading/error/reasoning states, graceful degradation.
 - **Acceptance:** ✅ `GitHub.Copilot.SDK` v0.2.1 NuGet added. ✅ CommunityEventPatterns seed data with Eventbrite/Meetup patterns. ✅ DateRecommendationService with singleton CopilotClient + session-per-request. ✅ POST /api/agents/recommend-dates endpoint in AgentEndpoints. ✅ Refit DTOs + method in IEventApi. ✅ "Suggest Dates" button with loading spinner, reasoning display, error handling. ✅ 7 TUnit ParseResponse tests + 2 bUnit UI tests. ✅ Build: 0 errors, 0 warnings. ✅ Tests: 89/89 pass.
 
+## [2026-07-25] New User Profile — First-Login Detection & AIDE Registration Flow
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Ported the Visage project's first-login detection and attendee profile flow to Bethuya. On first login, users are redirected to `/registration/mandatory` (name, email, location, occupation) and then `/registration/aide` (optional accessibility, inclusivity, diversity, equity fields). Flow checks profile completion via `GET /api/profile/completion-status` and redirects from `Home.razor`. Mirrors Visage's `User.cs`, `MandatoryRegistration.razor`, and `ProfileCompletionStatusDto` patterns.
+- **Acceptance:** ✅ `AttendeeProfile.cs` domain entity (mandatory + 21 AIDE fields). ✅ `IAttendeeProfileRepository` + `AttendeeProfileRepository` (EF Core). ✅ `AttendeeProfileConfiguration` (unique index on UserId). ✅ `DbSet<AttendeeProfile>` in `BethuyaDbContext`. ✅ DI registration. ✅ `ProfileContracts.cs` (backend contracts). ✅ `ProfileEndpoints.cs` (3 endpoints: completion-status, POST profile, POST aide). ✅ `IProfileApi.cs` (Refit + shared DTOs). ✅ `NewUserProfile.razor` + `AideProfile.razor` pages (InteractiveServer, Authorize). ✅ `Home.razor` profile check + redirect. ✅ CSS for both pages. ✅ Build: 0 errors, 0 warnings. ✅ Tests: 100/100 pass.
+
 ---
 
 ## Completed Tasks
