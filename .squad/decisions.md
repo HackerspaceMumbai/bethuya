@@ -23,19 +23,28 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ## Active Decisions
 
-### 2026-04-09 — Rename aspire-secrets → aspire-aca-secrets skill, fix inverted guidance
+
+### 2026-04-09 — Aspire ACA Secrets Skill Scope Correction
 
 **Author:** Tank (Backend Dev)
 
-**Context:** Copilot skill guidance was inverted, directing agents to ADD `secret: true` to AddParameter calls. This parameter causes "Unsupported value type System.Boolean" failures in Azure Container Apps deployment. Root cause required skill rename and guidance correction.
+**Context:** The `aspire-secrets` skill contained inverted guidance in the copilot version, instructing agents to ADD `secret: true` to parameters — the exact bug we fixed by removing it. This would cause future agents to re-introduce the Azure Container Apps deployment bug.
 
 **Decision:**
-- Renamed both skills from `aspire-secrets` → `aspire-aca-secrets`
+- Renamed skill folders from `aspire-secrets` to `aspire-aca-secrets` to clarify Azure Container Apps scope
 - Scoped skill descriptions to Azure Container Apps (not generic Aspire)
+- Completely rewrote skill guidance:
+  - DO NOT use `AddParameter(secret: true)` for Azure Container Apps (breaks deployment)
+  - DO use Key Vault for production secret management
 - Fixed copilot skill guidance: now directs to REMOVE `secret: true` and use AddSecret pattern
 - Updated `.squad/` metadata and routing references
+- Deleted old `aspire-secrets` folders (both copilot and squad)
 
-**Files:** `copilot/skills/aspire-aca-secrets/`, `.squad/skills/`
+**Files Changed:**
+- Created: `copilot/skills/aspire-aca-secrets/SKILL.md`
+- Created: `.squad/skills/aspire-aca-secrets/SKILL.md`
+- Deleted: `copilot/skills/aspire-secrets/`
+- Deleted: `.squad/skills/aspire-secrets/`
 
 **Impact:** Agents now receive correct guidance; deployment failures eliminated; skills scoped to specific platform context.
 
@@ -170,6 +179,54 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 - ✅ Consistent UX across create flows
 - ✅ Testable via `data-test="notification"`
 - ✅ Pattern reusable for other dialogs (edit, delete, etc.)
+
+### 2026-04-11 — Switch Verification: CI Playwright E2E Failure Is Test-Harness Drift, Not SQL Race
+
+**Requested by:** Augustine Correa
+
+**Decision:** Reject SQL-race root-cause hypothesis for CI run 24238142180. Verified actual failure is E2E harness drift.
+
+**Findings:**
+
+1. **Stale selector:** Home.razor exposes `data-test="plan-event-cta"` but test expects `plan-event-btn`
+2. **Wrong navigation wait:** Test uses `Page.WaitForURLAsync(...until Load)` for Blazor client-side routing (doesn't guarantee full page-load)
+3. **Wrong draft expectation:** Draft events render `complete-event-btn`, not `view-event-btn`
+
+**Evidence:** CI run 24238142180 shows transient SQL startup warning, but backend becomes healthy and web app renders. Failure deterministically matches test harness contracts, not backend crashes.
+
+**Direction:** Tank to fix E2E tests to follow live UI contracts and Blazor routing patterns.
+
+---
+
+### 2026-04-11 — Tank Direction: Fix CI Playwright E2E in Test Harness, Not Backend Wiring
+
+**Requested by:** Augustine Correa
+
+**Decision:** Treat CI failure as test-harness drift. Do not change backend/database wiring.
+
+**Implementation:**
+- Keep backend/database startup unchanged
+- Fix `tests/Hackmum.Bethuya.E2E` to match live selector contracts
+- Update wait strategies for Blazor client-side routing
+- Re-run build/test validation against updated E2E harness
+
+**Files Updated:**
+- `tests/Hackmum.Bethuya.E2E/BethuyaE2ETest.cs`
+- `tests/Hackmum.Bethuya.E2E/Tests/EventFlowTests.cs`
+- `tests/Hackmum.Bethuya.E2E/Tests/CoverImageFlowTests.cs`
+
+---
+
+
+### 2026-04-09 — User Directive: No EF Migrations Until Formal Release
+
+**By:** Augustine Correa (via Copilot)
+
+**Decision:** Do NOT include EF Core migrations in the solution until a formal release milestone. Delete existing broken Migrations folder from Infrastructure project.
+
+**Rationale:** Faster iteration pre-release takes priority over migration scaffolding.
+
+---
 
 ## Governance
 

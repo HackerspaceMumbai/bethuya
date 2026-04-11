@@ -34,3 +34,4 @@
   - **Nullable enabled, TreatWarningsAsErrors** — fix all warnings; never suppress without documented justification.
   - **File-scoped namespaces, primary constructors, collection expressions** — C# 14 style enforced.
   - **0 B hot-path allocations** — Vogen + BenchmarkDotNet ensure p99 < 180ms @ 2,500 RPS, >90% cache hit.
+- CI Playwright failure `24238142180` (2026-04-11) was not caused by the transient SQL State 38 startup log. The actual break was E2E harness drift: home CTA selector changed to `plan-event-cta`, Blazor redirects need URL+DOM waits instead of page-load waits, and event-detail coverage must publish first so `view-event-btn` exists.

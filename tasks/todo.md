@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-04-11] Fix CI Playwright E2E harness drift
+- **Status:** done
+- **Agent/Owner:** Tank
+- **Description:** Investigate the failing GitHub Actions Playwright E2E job, verify whether the break is infrastructure or test-harness drift, and fix the selector/navigation assertions so they match the current Blazor UI contracts.
+- **Acceptance:** ✅ Root cause identified from CI evidence. ✅ E2E tests updated to use the real dashboard selector, client-side navigation waits, and published-event detail flow. ✅ Relevant validation run successfully. ✅ Tank history and lessons updated.
+
 ## [2026-03-21] Repair Squad Setup and Implement Extensible Identity System
 - **Status:** done
 - **Agent/Owner:** Squad Coordinator
