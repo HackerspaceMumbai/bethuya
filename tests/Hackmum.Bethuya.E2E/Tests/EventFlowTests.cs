@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 
 namespace Hackmum.Bethuya.E2E.Tests;
@@ -16,7 +15,7 @@ public class EventFlowTests : BethuyaE2ETest
         await GotoWithBudgetAsync("/");
 
         // Wait for Blazor interactive rendering within budget
-        var createBtn = Page.Locator("[data-test='plan-event-btn']").First;
+        var createBtn = Page.Locator("[data-test='plan-event-cta'] button").First;
         await WithBudgetAsync("Blazor interactive ready", PerformanceBudgets.InteractiveReadyMs, async () =>
         {
             await Assertions.Expect(createBtn).ToBeVisibleAsync();
@@ -24,10 +23,11 @@ public class EventFlowTests : BethuyaE2ETest
         });
 
         // Click and assert navigation to /events/plan
-        await ClickAndNavigateWithBudgetAsync(createBtn);
-        await Assertions.Expect(Page.Locator("[data-test='plan-event-page']"))
-            .ToBeVisibleAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
-        await Assertions.Expect(Page).ToHaveURLAsync(new Regex("/events/plan$"));
+        await createBtn.ClickAsync();
+        await WaitForClientSideNavigationAsync(
+            "/events/plan$",
+            Page.Locator("[data-test='plan-event-page']"),
+            PerformanceBudgets.NavigationMs);
     }
 
     [TestMethod]
@@ -36,16 +36,20 @@ public class EventFlowTests : BethuyaE2ETest
         await GotoWithBudgetAsync("/events");
 
         // Click the plan event button — navigates to /events/plan
-        var planEventBtn = Page.Locator("[data-test='plan-event-btn']");
+        var planEventBtn = Page.Locator("[data-test='plan-event-btn'] button");
         await WithBudgetAsync("Blazor interactive ready", PerformanceBudgets.InteractiveReadyMs, async () =>
         {
             await Assertions.Expect(planEventBtn).ToBeVisibleAsync();
             await Assertions.Expect(planEventBtn).ToBeEnabledAsync();
         });
-        await ClickAndNavigateWithBudgetAsync(planEventBtn);
+        await planEventBtn.ClickAsync();
+        await WaitForClientSideNavigationAsync(
+            "/events/plan$",
+            Page.Locator("[data-test='plan-event-page']"),
+            PerformanceBudgets.NavigationMs);
 
         // Wait for the plan form to be interactive (Blazor Server circuit)
-        var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
+        var submitBtn = Page.Locator("[data-test='publish-event-btn'] button");
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
         // Use unique title to avoid strict mode violations from previous test runs
@@ -53,15 +57,14 @@ public class EventFlowTests : BethuyaE2ETest
         await Page.GetByPlaceholder("Event title").FillAsync(uniqueTitle);
         await Page.GetByPlaceholder("Event description").FillAsync("A test event for E2E testing");
 
-        // Submit the form and assert redirect within budget
-        await WithBudgetAsync("Form submit + redirect", PerformanceBudgets.FormSubmitMs, async () =>
-        {
-            await submitBtn.ClickAsync();
-            await Page.WaitForURLAsync("**/events", new() { Timeout = PerformanceBudgets.FormSubmitMs });
-        });
+        // Publish and assert client-side redirect within budget
+        await submitBtn.ClickAsync();
+        await WaitForClientSideNavigationAsync(
+            "/events$",
+            Page.Locator("[data-test='events-page']"),
+            PerformanceBudgets.FormSubmitMs);
 
         // Verify events page loaded with event (use .First to avoid strict mode if multiple matches)
-        await Assertions.Expect(Page.Locator("[data-test='events-page']")).ToBeVisibleAsync();
         var eventRow = Page.Locator("[data-test='event-row']").Filter(new() { HasText = uniqueTitle }).First;
         await Assertions.Expect(eventRow).ToBeVisibleAsync();
     }
@@ -69,24 +72,30 @@ public class EventFlowTests : BethuyaE2ETest
     [TestMethod]
     public async Task EventDetail_ShouldShowScheduleEditor()
     {
-        // Create a deterministic event first so this test works in isolation
+        // Create a deterministic published event first so the list renders a view button
         await GotoWithBudgetAsync("/events/plan");
-        var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
+        var submitBtn = Page.Locator("[data-test='publish-event-btn'] button");
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
         var uniqueTitle = $"E2E Detail {Guid.NewGuid().ToString("N")[..8]}";
         await Page.GetByPlaceholder("Event title").FillAsync(uniqueTitle);
         await Page.GetByPlaceholder("Event description").FillAsync("Seeded for detail page test");
         await submitBtn.ClickAsync();
-        await Page.WaitForURLAsync("**/events", new() { Timeout = PerformanceBudgets.FormSubmitMs });
+        await WaitForClientSideNavigationAsync(
+            "/events$",
+            Page.Locator("[data-test='events-page']"),
+            PerformanceBudgets.FormSubmitMs);
 
         // Now navigate to the created event's detail page
-        await Assertions.Expect(Page.Locator("[data-test='events-page']")).ToBeVisibleAsync();
         var viewBtn = Page.Locator("[data-test='event-row']")
             .Filter(new() { HasText = uniqueTitle })
-            .Locator("[data-test='view-event-btn']");
+            .Locator("[data-test='view-event-btn'] button");
         await Assertions.Expect(viewBtn).ToBeVisibleAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
-        await ClickAndNavigateWithBudgetAsync(viewBtn);
+        await viewBtn.ClickAsync();
+        await WaitForClientSideNavigationAsync(
+            "/events/[0-9a-fA-F-]{36}$",
+            Page.Locator("[data-test='schedule-editor']"),
+            PerformanceBudgets.NavigationMs);
 
         // Verify event detail page has the schedule editor
         await Assertions.Expect(Page.Locator("[data-test='schedule-editor']"))
