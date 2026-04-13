@@ -18,6 +18,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddBlazorBlueprintComponents();
+builder.AddSocialProfileConnectionAuthentication();
 
 // Add device-specific services used by the Bethuya.Hybrid.Shared project
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
@@ -32,11 +33,10 @@ builder.Configuration.GetSection(BethuyaAuthOptions.SectionName).Bind(authOption
 
 if (authOptions.Provider == AuthProviderType.None)
 {
-    // Dev mode: fake auth state + null user service
+    // Dev mode: fake auth state + shared development principal
     builder.Services.AddScoped<AuthenticationStateProvider, DevelopmentAuthenticationStateProvider>();
-    builder.Services.AddScoped<ICurrentUserService, NullCurrentUserService>();
-    builder.Services.AddCascadingAuthenticationState();
-    builder.Services.AddAuthorization();
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<ICurrentUserService, ClaimsCurrentUserService>();
 }
 else
 {
@@ -112,6 +112,7 @@ app.MapStaticAssets();
 
 // Auth endpoints (login/logout/user-info) — only functional when a provider is configured
 app.MapBethuyaAuthEndpoints();
+app.MapSocialProfileConnectionEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

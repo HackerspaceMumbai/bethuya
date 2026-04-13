@@ -4,6 +4,42 @@ using Scalar.Aspire;
 var builder = DistributedApplication.CreateBuilder(args);
 builder.AddAzureContainerAppEnvironment("bethuya-env");
 
+const int webHttpsPort = 7400;
+const int webHttpPort = 5095;
+const string gitHubCallbackPath = "/oauth/github/callback";
+const string linkedInCallbackPath = "/oauth/linkedin/callback";
+
+var gitHubClientId = GetAppHostSetting(
+    "SocialConnections:GitHub:ClientId",
+    "Parameters:oauth-github-clientid",
+    "oauth-github-clientid");
+var gitHubClientSecret = GetAppHostSetting(
+    "SocialConnections:GitHub:ClientSecret",
+    "Parameters:oauth-github-clientsecret",
+    "oauth-github-clientsecret");
+var linkedInClientId = GetAppHostSetting(
+    "SocialConnections:LinkedIn:ClientId",
+    "Parameters:oauth-linkedin-clientid",
+    "oauth-linkedin-clientid");
+var linkedInClientSecret = GetAppHostSetting(
+    "SocialConnections:LinkedIn:ClientSecret",
+    "Parameters:oauth-linkedin-clientsecret",
+    "oauth-linkedin-clientsecret");
+
+string GetAppHostSetting(params string[] keys)
+{
+    foreach (var key in keys)
+    {
+        var value = builder.Configuration[key];
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+    }
+
+    return string.Empty;
+}
+
 
 
 var sql = builder.AddAzureSqlServer("sql")
@@ -68,9 +104,34 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
 if (keyVault is not null)
     backend.WithReference(keyVault);
 
-var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web")
+var webStaticAssetsManifest = Path.GetFullPath(Path.Combine(
+    AppContext.BaseDirectory,
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "src",
+    "Bethuya.Hybrid",
+    "Bethuya.Hybrid.Web",
+    "obj",
+    "Debug",
+    "net10.0",
+    "staticwebassets.development.json"));
+
+var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileName: null)
     .WithReference(backend)
     .WaitFor(backend)
+    .WithHttpEndpoint(port: webHttpPort)
+    .WithHttpsEndpoint(port: webHttpsPort)
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest)
+    .WithEnvironment("SocialConnections__GitHub__ClientId", gitHubClientId)
+    .WithEnvironment("SocialConnections__GitHub__ClientSecret", gitHubClientSecret)
+    .WithEnvironment("SocialConnections__GitHub__CallbackPath", gitHubCallbackPath)
+    .WithEnvironment("SocialConnections__LinkedIn__ClientId", linkedInClientId)
+    .WithEnvironment("SocialConnections__LinkedIn__ClientSecret", linkedInClientSecret)
+    .WithEnvironment("SocialConnections__LinkedIn__CallbackPath", linkedInCallbackPath)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
     .PublishAsAzureContainerApp((infra, app) =>

@@ -16,6 +16,84 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-04-13] Align social connect card actions across empty and connected states
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Keep LinkedIn and GitHub social-connect buttons aligned on `/registration/social` before and after verified account data renders, so the cards remain visually balanced and professional even when one provider is connected and the other is not.
+- **Acceptance:** ✅ Both social cards now reserve a consistent details area for status + profile metadata, so reconnect buttons stay aligned across mixed states. ✅ Connected and disconnected states use the same structural wrapper and placeholder metadata line to keep the layout stable. ✅ `dotnet test --project .\tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` passed (128/128). ✅ The running Aspire `web` resource was rebuilt successfully.
+
+## [2026-04-12] Split mandatory onboarding and social verification into separate steps
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Refactor first-login onboarding so required attendee details save on `/registration/mandatory`, verified GitHub/LinkedIn OAuth runs on a dedicated `/registration/social` page, and the user only moves to `/registration/aide` after the social step is saved.
+- **Acceptance:** ✅ Mandatory profile save no longer depends on social identities in the shared/backend contracts. ✅ Added dedicated social profile read/write API endpoints and a `/registration/social` onboarding page that survives OAuth roundtrips without losing saved mandatory details. ✅ Home now redirects incomplete users to `/registration/mandatory` or `/registration/social` based on the next missing step. ✅ Updated onboarding render/auth regression tests for the three-step flow. ✅ `dotnet build Bethuya.slnx --no-restore -v minimal` passed. ✅ `dotnet test --project .\tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` passed (127/127).
+
+## [2026-04-12] Refactor social OAuth for stable AppHost-managed callbacks
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Refactor social connect so AppHost owns the GitHub/LinkedIn OAuth settings, the web app uses a stable externally configured callback URL, and the server-side OAuth roundtrip works reliably under Aspire instead of depending on dynamic launch-profile ports or per-project user secrets.
+- **Acceptance:** ✅ AppHost now owns the social OAuth values and injects them into `web` using the existing AppHost secret keys (`oauth-github-clientid` / `oauth-github-clientsecret`, plus `Parameters:` variants, with nested `SocialConnections:*` keys also supported). ✅ The web app now runs on stable HTTPS `https://localhost:7400`, and GitHub callback configuration matches `/oauth/github/callback`. ✅ `Bethuya.Hybrid.Web` no longer depends on its own `UserSecretsId` for social config. ✅ `https://localhost:7400/authentication/social/github/start?returnUrl=%2Fregistration%2Fmandatory` now returns a real GitHub OAuth `302` with `redirect_uri=https://localhost:7400/oauth/github/callback`. ✅ AppHost build and test validation succeeded.
+
+## [2026-04-12] Improve social connect messaging and card alignment
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Make the LinkedIn/GitHub onboarding errors provider-specific and place them adjacent to the social connect cards, strengthen the visual treatment of failed social sign-in states, align the connect buttons across cards, and ensure the web project reads the shared user-secrets store for local social OAuth config.
+- **Acceptance:** ✅ Social callback errors now preserve the provider name and render a prominent inline social error block beside the social cards. ✅ LinkedIn and GitHub connect actions now use consistent bottom alignment within equal-height cards. ✅ `dotnet build` for `Bethuya.Hybrid.Web` passed and `dotnet test --project tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` passed (123/123). ✅ `web` resource rebuild completed successfully. ⚠️ Social secret ownership was later moved fully to AppHost in the stable callback refactor.
+
+## [2026-04-12] Restore local styling and static asset delivery
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Fix the local web app so shared and scoped CSS assets are actually served again after the AppHost launch-profile changes, and verify the styled site renders from the normal local URLs.
+- **Acceptance:** ✅ `web` now runs under AppHost with explicit `ASPNETCORE_ENVIRONMENT=Development` and `ASPNETCORE_STATICWEBASSETS` so shared/static CSS is served with real content instead of zero-byte responses. ✅ Full AppHost restart applied the updated resource config. ✅ Live CSS endpoint `https://localhost:7112/_content/Bethuya.Hybrid.Shared/bethuya-theme.css` returned its full stylesheet content again, and both `backend` and `web` are `Running` + `Healthy` on `7092` / `7112`.
+
+## [2026-04-12] Prevent web startup failure when social connect is unconfigured
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Stop the web app and Aspire health checks from failing when GitHub or LinkedIn social-connect OAuth settings are blank locally by only registering those providers when they are configured.
+- **Acceptance:** ✅ Social OAuth handlers are only registered when their `ClientId` and `ClientSecret` are configured, so blank local `SocialConnections` settings no longer crash auth middleware. ✅ The AppHost now runs `web` without importing its launch profile and declares the proxied HTTP/HTTPS endpoints explicitly, preventing fixed-port conflicts with Aspire's external endpoint proxy. ✅ After `aspire start --isolated`, the `web` resource reached `Running` + `Healthy`, and its current isolated health endpoint returned `200 Healthy`.
+
+## [2026-04-12] Replace typed social profile fields with verified GitHub and LinkedIn connect
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Replace manual LinkedIn/GitHub profile entry on the mandatory onboarding page with verified OAuth-based connect buttons, populate the form from provider callbacks, and persist the verified social identity values through the shared contracts, backend validation, and attendee profile model.
+- **Acceptance:** ✅ Added GitHub and LinkedIn social connection auth options and callback endpoints in `Bethuya.Hybrid.Web`. ✅ Mandatory onboarding now renders verified connect actions instead of freeform social URL inputs and hydrates connected state from callback query values. ✅ Shared DTOs, backend validation, and persistence model/configuration now store verified GitHub and LinkedIn identity data. ✅ `dotnet build` for `Bethuya.Hybrid.Web` passed and `dotnet test --project tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` passed (122/122) using isolated output paths.
+
+## [2026-04-12] Expand mandatory onboarding profile fields
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Add Visage-aligned mandatory profile fields for government photo ID type + last four digits, employment status with conditional company/institute requirements, and LinkedIn/GitHub profiles across UI, contracts, persistence, and tests.
+- **Acceptance:** ✅ Added government-approved photo ID type + last-4 capture, employment-status radio selection, conditional company/institute fields, and LinkedIn/GitHub profile fields to the mandatory onboarding form. ✅ Backend contracts, endpoint validation, and attendee profile persistence now store the new data. ✅ `dotnet build` for `Bethuya.Hybrid.Web` passed and `dotnet test --project tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` passed (121/121) using isolated output paths.
+
+## [2026-04-12] Restore onboarding select dropdowns on AIDE profile
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Fix the onboarding layout so Blazor Blueprint select menus on `/registration/aide` can render their popup content again, then rebuild and rerun the shared test project.
+- **Acceptance:** ✅ Restored `BbPortalHost` and `BbDialogProvider` in `OnboardingLayout.razor`, which is required for Blazor Blueprint popup/select content. ✅ The onboarding layout still builds cleanly. ✅ `dotnet build` for `Bethuya.Hybrid.Web` and `dotnet test --project tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` both passed using isolated output paths.
+
+## [2026-04-11] Improve onboarding shell and first-login flow clarity
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Perform a frontend UX review of onboarding and adjacent dashboard/navigation states, then ship safe improvements to hide privileged navigation during onboarding, strengthen branded onboarding CTAs, and clarify the redirect/setup experience for new users.
+- **Acceptance:** Registration routes render in a focused onboarding shell that suppresses sidebar navigation even for elevated local dev users. Organizer-only and curator-only nav entries are role-aware in the shared nav. Mandatory and AIDE onboarding steps now use branded cards, reassurance copy, and stronger primary actions. Dashboard redirect UX clearly hands incomplete users into setup. Evidence captured: screenshots (`tasks/artifacts/onboarding-*.png`), `dotnet build Bethuya.slnx --no-restore` ✅, `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` ✅ (118/118).
+
+## [2026-04-11] Harden Onboarding Identity Boundary: Role-Based Navigation Visibility
+- **Status:** done
+- **Agent/Owner:** Morpheus (Security Engineer)
+- **Description:** Audit and harden role-based navigation visibility during onboarding to prevent new users seeing admin/organizer-only nav links. Implement minimal safe hardening with explicit render modes.
+- **Acceptance:** ✅ `NavMenu.razor` wrapped "AI Agents" and "Curation" sections in `<AuthorizeView Roles="Admin,Organizer,Curator">`. ✅ `Home.razor` now has explicit `@rendermode InteractiveServer`. ✅ NewUserProfile/AideProfile already protected (verified: `@rendermode InteractiveServer` + `[Authorize]`). ✅ Onboarding trust boundary hardened: new users (Attendee role) never see organizer/curator nav links. ✅ No regressions: all other pages maintain intended visibility. ⚠️ Future `/agents` and `/curation` page implementations MUST include `@rendermode InteractiveServer` + role-based `[Authorize]` policies (documented in decisions.md follow-ups).
+
+## [2026-04-11] Cover onboarding and nav regression risk with automated checks
+- **Status:** done
+- **Agent/Owner:** Switch (Tester)
+- **Description:** Review first-login onboarding and nav UX regression risks, fix the highest-confidence navigation issue, and add automated checks around redirect + mandatory/AIDE profile flows.
+- **Acceptance:** ✅ Added `OnboardingNavigationRenderTests` covering home redirect, organizer-tool visibility for anonymous/attendee/organizer/curator states, focused onboarding-shell rendering for both registration routes, mandatory profile submit, and onboarding accessibility/primary-action contracts across both profile steps. ✅ Fixed onboarding profile navigation to use `/registration/mandatory` and wired shared layout imports so onboarding pages compile with `OnboardingLayout`. ✅ Latest verification rerun: `dotnet test --project .\tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` passed (118/118). ⚠️ Broader Playwright coverage is still environment-blocked when no app is listening on `https://localhost:7112`, and Cloudinary-dependent coverage remains inconclusive without credentials.
+
+## [2026-04-11] Fix local onboarding auth wiring for registration flow
+- **Status:** done
+- **Agent/Owner:** Tank (Backend Dev)
+- **Description:** Repair the local `Authentication:Provider=None` path so `/registration/mandatory` no longer throws missing auth services, and make the new-user onboarding API flow work locally or record the remaining blocker with evidence.
+- **Acceptance:** ✅ `Authentication:Provider=None` now registers a shared development authentication scheme for both web and backend startup via `ServiceDefaults/Auth`. ✅ `/registration/mandatory` and `/registration/aide` render without the missing `IAuthenticationService` exception. ✅ Backend profile endpoints resolve the shared development user and accept mandatory + AIDE profile saves locally. ✅ Added auth regression tests for a protected web route and profile endpoints (103/103 TUnit tests passed). ✅ Runtime evidence gathered with live Aspire resources: `GET https://localhost:7112/registration/mandatory` returned 200, `GET/POST https://localhost:7092/api/profile*` returned 200. ⚠️ Remaining unrelated blocker for full suite: `dotnet test --solution Bethuya.slnx --no-build` still fails in existing Playwright E2E coverage (network-changed/timeouts and missing Cloudinary credentials).
+
 ## [2026-03-21] Repair Squad Setup and Implement Extensible Identity System
 - **Status:** done
 - **Agent/Owner:** Squad Coordinator

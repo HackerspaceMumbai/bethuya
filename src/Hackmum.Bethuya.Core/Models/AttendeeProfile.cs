@@ -19,7 +19,15 @@ public sealed class AttendeeProfile
     public required string LastName { get; set; }
     public required string Email { get; set; }
     public string? MobileNumber { get; set; }
+    public required string GovernmentPhotoIdType { get; set; }
+    public required string GovernmentIdLastFour { get; set; }
     public string? OccupationStatus { get; set; }
+    public string? CompanyName { get; set; }
+    public string? EducationInstitute { get; set; }
+    public required string LinkedInMemberId { get; set; }
+    public string? LinkedInProfileUrl { get; set; }
+    public required string GitHubLogin { get; set; }
+    public required string GitHubProfileUrl { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public string? PostalCode { get; set; }

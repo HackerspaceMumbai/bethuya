@@ -1,4 +1,4 @@
-/* ── AIDE profile page ── */
+/* ── Social connection onboarding step ── */
 
 .profile-page {
     min-height: 100vh;
@@ -40,18 +40,10 @@
     font-size: 0.9375rem;
     color: var(--muted-foreground, var(--foreground));
     opacity: 0.75;
-    max-width: 42rem;
+    max-width: 44rem;
     margin: 0 auto;
 }
 
-.profile-consent-note {
-    font-size: 0.875rem;
-    color: var(--muted-foreground, var(--foreground));
-    opacity: 0.75;
-    text-align: center;
-}
-
-/* BB cards handle the content blocks; this CSS arranges the optional step into a scannable onboarding layout. */
 .profile-progress {
     display: flex;
     align-items: center;
@@ -74,7 +66,7 @@
 
 .profile-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.85fr);
+    grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.9fr);
     gap: 1.5rem;
     align-items: start;
 }
@@ -117,21 +109,126 @@
     line-height: 1.5;
 }
 
-/* ── Skip link ── */
-.skip-link-text {
-    font-size: 0.9rem;
-    color: var(--primary);
-    text-decoration: underline;
-    text-underline-offset: 2px;
+.social-connection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: stretch;
 }
 
-/* ── Action bar with skip ── */
+.social-connection-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(212, 168, 48, 0.12);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.social-connection-card__content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.85rem;
+    flex: 1;
+}
+
+.social-connection-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 4.5rem;
+    width: 100%;
+}
+
+.social-connection-status {
+    color: var(--foreground);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.social-connection-status--pending {
+    color: var(--muted-foreground, var(--foreground));
+    opacity: 0.82;
+}
+
+.social-connection-meta {
+    color: var(--muted-foreground, var(--foreground));
+    font-size: 0.85rem;
+    line-height: 1.5;
+    word-break: break-word;
+    margin: 0;
+}
+
+.social-connection-meta--placeholder {
+    opacity: 0;
+    user-select: none;
+    pointer-events: none;
+}
+
+.social-connection-action {
+    margin-top: auto;
+    padding-top: 0.4rem;
+    width: 100%;
+}
+
+.social-connection-button {
+    appearance: none;
+    width: 100%;
+    min-height: 2.75rem;
+    border-radius: calc(var(--radius) + 2px);
+    border: 1px solid rgba(212, 168, 48, 0.32);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--foreground);
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0.8rem 1rem;
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.social-connection-button:hover,
+.social-connection-button:focus-visible {
+    border-color: rgba(212, 168, 48, 0.6);
+    background: rgba(212, 168, 48, 0.08);
+    transform: translateY(-1px);
+}
+
+.social-connection-button:focus-visible {
+    outline: 3px solid rgba(212, 168, 48, 0.2);
+    outline-offset: 3px;
+}
+
+.social-connection-error {
+    margin-top: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: calc(var(--radius) + 2px);
+    border: 1px solid rgba(229, 62, 62, 0.55);
+    background: linear-gradient(180deg, rgba(80, 16, 16, 0.55), rgba(44, 10, 10, 0.88));
+    box-shadow: 0 18px 34px rgba(120, 18, 18, 0.2);
+}
+
+.social-connection-error__eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #ffb7b7;
+}
+
+.social-connection-error__message {
+    margin: 0;
+    color: #fff0f0;
+    font-size: 0.98rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
 .profile-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding-top: 0.5rem;
+    padding-top: 0.75rem;
     flex-wrap: wrap;
 }
 
@@ -184,27 +281,29 @@
 }
 
 .profile-primary-button:disabled {
-    cursor: wait;
-    opacity: 0.75;
+    cursor: not-allowed;
+    opacity: 0.65;
     transform: none;
     box-shadow: none;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 960px) {
     .profile-layout {
         grid-template-columns: 1fr;
     }
 
     .profile-sidebar {
         position: static;
-        order: -1;
     }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
+    .social-connection-grid {
+        grid-template-columns: 1fr;
+    }
+
     .profile-actions {
         align-items: stretch;
-        padding-top: 0.75rem;
     }
 
     .profile-primary-button {

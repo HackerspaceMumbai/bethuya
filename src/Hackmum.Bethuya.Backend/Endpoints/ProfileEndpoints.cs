@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
@@ -26,6 +27,7 @@ public static class ProfileEndpoints
             {
                 return Results.Ok(new ProfileCompletionStatusResponse(
                     IsProfileComplete: false,
+                    IsSocialConnectionsComplete: false,
                     IsAideProfileComplete: false,
                     ProfileCompletedAt: null,
                     AideProfileCompletedAt: null));
@@ -33,9 +35,34 @@ public static class ProfileEndpoints
 
             return Results.Ok(new ProfileCompletionStatusResponse(
                 profile.IsProfileComplete,
+                IsSocialProfileComplete(profile),
                 profile.IsAideProfileComplete,
                 profile.ProfileCompletedAt,
                 profile.AideProfileCompletedAt));
+        });
+
+        group.MapGet("/social", async (
+            ClaimsPrincipal user,
+            IAttendeeProfileRepository repo,
+            CancellationToken ct) =>
+        {
+            var userId = GetUserId(user);
+            if (userId is null) return Results.Unauthorized();
+
+            var profile = await repo.GetByUserIdAsync(userId, ct);
+            if (profile is null)
+            {
+                return Results.Ok(new SocialProfileResponse(null, false, false, null, null, null, null));
+            }
+
+            return Results.Ok(new SocialProfileResponse(
+                profile.OccupationStatus,
+                IsLinkedInRequired(profile.OccupationStatus),
+                IsGitHubRequired(profile.OccupationStatus),
+                profile.LinkedInMemberId,
+                profile.LinkedInProfileUrl,
+                profile.GitHubLogin,
+                profile.GitHubProfileUrl));
         });
 
         group.MapPost("/", async (
@@ -44,6 +71,12 @@ public static class ProfileEndpoints
             IAttendeeProfileRepository repo,
             CancellationToken ct) =>
         {
+            var validationErrors = ValidateMandatoryRequest(request);
+            if (validationErrors.Count > 0)
+            {
+                return Results.ValidationProblem(validationErrors);
+            }
+
             var userId = GetUserId(user);
             if (userId is null) return Results.Unauthorized();
 
@@ -57,15 +90,17 @@ public static class ProfileEndpoints
                     FirstName = request.FirstName,
                     LastName = request.LastName,
                     Email = request.Email,
-                    MobileNumber = request.MobileNumber,
-                    OccupationStatus = request.OccupationStatus,
-                    City = request.City,
-                    State = request.State,
-                    PostalCode = request.PostalCode,
-                    Country = request.Country,
+                    GovernmentPhotoIdType = request.GovernmentPhotoIdType,
+                    GovernmentIdLastFour = request.GovernmentIdLastFour,
+                    LinkedInMemberId = string.Empty,
+                    LinkedInProfileUrl = null,
+                    GitHubLogin = string.Empty,
+                    GitHubProfileUrl = string.Empty,
                     IsProfileComplete = true,
                     ProfileCompletedAt = DateTimeOffset.UtcNow
                 };
+
+                ApplyMandatoryFields(profile, request);
 
                 try
                 {
@@ -88,6 +123,44 @@ public static class ProfileEndpoints
 
             return Results.Ok(new ProfileCompletionStatusResponse(
                 profile.IsProfileComplete,
+                IsSocialProfileComplete(profile),
+                profile.IsAideProfileComplete,
+                profile.ProfileCompletedAt,
+                profile.AideProfileCompletedAt));
+        });
+
+        group.MapPost("/social", async (
+            SaveSocialProfileRequest request,
+            ClaimsPrincipal user,
+            IAttendeeProfileRepository repo,
+            CancellationToken ct) =>
+        {
+            var userId = GetUserId(user);
+            if (userId is null) return Results.Unauthorized();
+
+            var profile = await repo.GetByUserIdAsync(userId, ct);
+
+            if (profile is null || !profile.IsProfileComplete)
+            {
+                return Results.BadRequest("Mandatory profile must be completed first.");
+            }
+
+            var validationErrors = ValidateSocialRequest(request, profile.OccupationStatus);
+            if (validationErrors.Count > 0)
+            {
+                return Results.ValidationProblem(validationErrors);
+            }
+
+            profile.LinkedInMemberId = request.LinkedInMemberId ?? string.Empty;
+            profile.LinkedInProfileUrl = request.LinkedInProfileUrl;
+            profile.GitHubLogin = request.GitHubLogin ?? string.Empty;
+            profile.GitHubProfileUrl = request.GitHubProfileUrl ?? string.Empty;
+
+            await repo.UpdateAsync(profile, ct);
+
+            return Results.Ok(new ProfileCompletionStatusResponse(
+                profile.IsProfileComplete,
+                IsSocialProfileComplete(profile),
                 profile.IsAideProfileComplete,
                 profile.ProfileCompletedAt,
                 profile.AideProfileCompletedAt));
@@ -139,6 +212,7 @@ public static class ProfileEndpoints
 
             return Results.Ok(new ProfileCompletionStatusResponse(
                 profile.IsProfileComplete,
+                IsSocialProfileComplete(profile),
                 profile.IsAideProfileComplete,
                 profile.ProfileCompletedAt,
                 profile.AideProfileCompletedAt));
@@ -159,7 +233,15 @@ public static class ProfileEndpoints
         profile.LastName = request.LastName;
         profile.Email = request.Email;
         profile.MobileNumber = request.MobileNumber;
+        profile.GovernmentPhotoIdType = request.GovernmentPhotoIdType;
+        profile.GovernmentIdLastFour = request.GovernmentIdLastFour;
         profile.OccupationStatus = request.OccupationStatus;
+        profile.CompanyName = string.Equals(request.OccupationStatus, "Employee", StringComparison.Ordinal)
+            ? request.CompanyName
+            : null;
+        profile.EducationInstitute = string.Equals(request.OccupationStatus, "Student", StringComparison.Ordinal)
+            ? request.EducationInstitute
+            : null;
         profile.City = request.City;
         profile.State = request.State;
         profile.PostalCode = request.PostalCode;
@@ -171,5 +253,99 @@ public static class ProfileEndpoints
             profile.ProfileCompletedAt = DateTimeOffset.UtcNow;
         }
     }
+
+    private static Dictionary<string, string[]> ValidateMandatoryRequest(SaveMandatoryProfileRequest request)
+    {
+        var validationResults = new List<ValidationResult>();
+        Validator.TryValidateObject(request, new ValidationContext(request), validationResults, validateAllProperties: true);
+
+        var errors = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var result in validationResults)
+        {
+            var members = result.MemberNames.Any() ? result.MemberNames : [string.Empty];
+            foreach (var member in members)
+            {
+                if (!errors.TryGetValue(member, out var memberErrors))
+                {
+                    memberErrors = [];
+                    errors[member] = memberErrors;
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+                {
+                    memberErrors.Add(result.ErrorMessage);
+                }
+            }
+        }
+
+        return errors.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToArray(), StringComparer.Ordinal);
+    }
+
+    private static Dictionary<string, string[]> ValidateSocialRequest(SaveSocialProfileRequest request, string? occupationStatus)
+    {
+        var validationResults = new List<ValidationResult>();
+        Validator.TryValidateObject(request, new ValidationContext(request), validationResults, validateAllProperties: true);
+
+        var errors = validationResults
+            .SelectMany(result => (result.MemberNames.Any() ? result.MemberNames : [string.Empty])
+                .Select(member => new { member, result.ErrorMessage }))
+            .Where(item => !string.IsNullOrWhiteSpace(item.ErrorMessage))
+            .GroupBy(item => item.member, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(item => item.ErrorMessage!).ToArray(),
+                StringComparer.Ordinal);
+
+        if (IsLinkedInRequired(occupationStatus) && string.IsNullOrWhiteSpace(request.LinkedInMemberId))
+        {
+            errors[nameof(SaveSocialProfileRequest.LinkedInMemberId)] =
+            [
+                "LinkedIn is required for full-time employed applicants. Connecting GitHub as well improves your chances for selection."
+            ];
+        }
+
+        if (IsGitHubRequired(occupationStatus))
+        {
+            var githubErrors = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(request.GitHubLogin))
+            {
+                githubErrors.Add("GitHub is required for students. Connecting LinkedIn as well improves your chances for selection.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.GitHubProfileUrl))
+            {
+                githubErrors.Add("Verified GitHub profile URL is required when GitHub is required.");
+            }
+
+            if (githubErrors.Count > 0)
+            {
+                errors[nameof(SaveSocialProfileRequest.GitHubLogin)] = githubErrors.ToArray();
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.GitHubLogin) && string.IsNullOrWhiteSpace(request.GitHubProfileUrl))
+        {
+            errors[nameof(SaveSocialProfileRequest.GitHubProfileUrl)] =
+            [
+                "Verified GitHub profile URL is required when GitHub is connected."
+            ];
+        }
+
+        return errors;
+    }
+
+    private static bool IsSocialProfileComplete(AttendeeProfile profile)
+        => (!IsLinkedInRequired(profile.OccupationStatus) || !string.IsNullOrWhiteSpace(profile.LinkedInMemberId))
+            && (!IsGitHubRequired(profile.OccupationStatus) || (!string.IsNullOrWhiteSpace(profile.GitHubLogin) && !string.IsNullOrWhiteSpace(profile.GitHubProfileUrl)));
+
+    private static bool IsLinkedInRequired(string? occupationStatus)
+        => string.Equals(occupationStatus, "Employee", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Full time employed", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Full-time employed", StringComparison.Ordinal);
+
+    private static bool IsGitHubRequired(string? occupationStatus)
+        => string.Equals(occupationStatus, "Student", StringComparison.Ordinal);
 }
 

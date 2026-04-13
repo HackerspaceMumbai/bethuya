@@ -1,113 +1,211 @@
 @page "/registration/mandatory"
 @rendermode InteractiveServer
+@layout OnboardingLayout
 @attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
 @using Bethuya.Hybrid.Shared.Services
 @using BlazorBlueprint.Components
+@using BlazorBlueprint.Primitives
 @inject IProfileApi ProfileApi
 @inject NavigationManager Navigation
 
 <PageTitle>Complete Your Profile — Bethuya</PageTitle>
 
-<main class="profile-page" aria-label="Complete your profile">
+<section class="profile-page" aria-label="Complete your profile">
     <div class="profile-container">
 
         <header class="profile-header">
-            <h1 class="profile-title">Welcome to Bethuya!</h1>
+            <p class="profile-step">Step 1 of 3 · Required details</p>
+            <h1 class="profile-title">Let's set up your Bethuya profile</h1>
             <p class="profile-subtitle">
-                Please complete your profile before continuing.
-                This information helps us run better community events.
+                We just need the essentials before you enter the community dashboard.
+                These details help organizers run events safely and communicate clearly with you.
             </p>
+            <div class="profile-progress" aria-hidden="true">
+                <span class="profile-progress__dot profile-progress__dot--active"></span>
+                <span class="profile-progress__dot"></span>
+                <span class="profile-progress__dot"></span>
+            </div>
         </header>
 
-        <EditForm Model="@_model" OnValidSubmit="@HandleValidSubmit" FormName="mandatory-profile">
-            <DataAnnotationsValidator />
+        <div class="profile-layout">
+            <section class="profile-main">
+                <EditForm Model="@_model" OnValidSubmit="@HandleValidSubmit" FormName="mandatory-profile">
+                    <DataAnnotationsValidator />
 
-            <BbFormSection Title="Your Details" Description="Required information for event participation.">
+                    <BbCard Class="profile-form-card">
+                        <BbCardHeader>
+                            <BbCardTitle>Required attendee details</BbCardTitle>
+                            <BbCardDescription>
+                                Complete this once so Bethuya can personalise registration, reminders, and venue logistics. Use a government-issued photo ID that also serves as address proof.
+                            </BbCardDescription>
+                        </BbCardHeader>
+                        <BbCardContent Class="profile-form-card__content">
+                            <BbFormSection Title="Your Details" Description="Required information for event participation.">
 
-                <div class="space-y-4">
-                    <div class="name-row">
-                        <BbFormFieldInput @bind-Value="_model.FirstName"
-                                          Label="First Name"
-                                          Placeholder="Enter your first name"
-                                          Required="true" />
-                        <BbFormFieldInput @bind-Value="_model.LastName"
-                                          Label="Last Name"
-                                          Placeholder="Enter your last name"
-                                          Required="true" />
+                                <div class="space-y-4">
+                                    <div class="name-row">
+                                        <BbFormFieldSelect @bind-Value="_model.GovernmentPhotoIdType"
+                                                           Label="Government-approved photo ID"
+                                                           Options="@_governmentPhotoIdOptions"
+                                                           Placeholder="Select an ID type" />
+                                        <BbFormFieldInput @bind-Value="_model.GovernmentIdLastFour"
+                                                          Label="Last 4 digits of ID"
+                                                          Placeholder="1234" />
+                                    </div>
+
+                                    <div class="name-row">
+                                        <BbFormFieldInput @bind-Value="_model.FirstName"
+                                                          Label="First Name"
+                                                          Placeholder="Enter your first name"
+                                                          Required="true" />
+                                        <BbFormFieldInput @bind-Value="_model.LastName"
+                                                          Label="Last Name"
+                                                          Placeholder="Enter your last name"
+                                                          Required="true" />
+                                    </div>
+
+                                    <BbFormFieldInput @bind-Value="_model.Email"
+                                                      Label="Email Address"
+                                                      Placeholder="you@example.com"
+                                                      Required="true" />
+
+                                    <BbFormFieldInput @bind-Value="_model.MobileNumber"
+                                                      Label="Mobile Number"
+                                                      Placeholder="+91 98765 43210" />
+
+                                    <BbFormFieldRadioGroup @bind-Value="_model.OccupationStatus"
+                                                           Label="Current employment status"
+                                                           InputClass="employment-radio-group">
+                                        <BbRadioGroupItem Value="@("Employee")" Label="Full-time employed" />
+                                        <BbRadioGroupItem Value="@("Student")" Label="Student" />
+                                        <BbRadioGroupItem Value="@("Self-employed")" Label="Self-employed" />
+                                        <BbRadioGroupItem Value="@("Founder")" Label="Founder" />
+                                        <BbRadioGroupItem Value="@("Freelancer")" Label="Freelancer" />
+                                        <BbRadioGroupItem Value="@("Seeking opportunities")" Label="Seeking opportunities" />
+                                        <BbRadioGroupItem Value="@("Other")" Label="Other" />
+                                    </BbFormFieldRadioGroup>
+
+                                    @if (IsEmployee)
+                                    {
+                                        <BbFormFieldInput @bind-Value="_model.CompanyName"
+                                                          Label="Name of company"
+                                                          Placeholder="Your current employer" />
+                                    }
+
+                                    @if (IsStudent)
+                                    {
+                                        <BbFormFieldInput @bind-Value="_model.EducationInstitute"
+                                                          Label="Name of education institute"
+                                                          Placeholder="Your school, college, or university" />
+                                    }
+                                </div>
+
+                            </BbFormSection>
+
+                            <BbFormSection Title="Location" Description="Enter the same location that appears on your selected government-issued photo ID address proof.">
+
+                                <div class="space-y-4">
+                                    <BbFormFieldInput @bind-Value="_model.City"
+                                                      Label="City"
+                                                      Placeholder="Mumbai" />
+
+                                    <div class="name-row">
+                                        <BbFormFieldInput @bind-Value="_model.State"
+                                                          Label="State / Province"
+                                                          Placeholder="Maharashtra" />
+                                        <BbFormFieldInput @bind-Value="_model.PostalCode"
+                                                          Label="Postal Code"
+                                                          Placeholder="400001" />
+                                    </div>
+
+                                    <BbFormFieldInput @bind-Value="_model.Country"
+                                                      Label="Country"
+                                                      Placeholder="India" />
+                                </div>
+
+                            </BbFormSection>
+
+                            @if (_errorMessage is not null)
+                            {
+                                <div data-test="profile-error">
+                                    <BbAlert Variant="AlertVariant.Danger">
+                                        <BbAlertDescription>@_errorMessage</BbAlertDescription>
+                                    </BbAlert>
+                                </div>
+                            }
+                        </BbCardContent>
+                    </BbCard>
+
+                    <div class="profile-actions">
+                        <div class="profile-actions-copy">
+                            <p class="profile-actions-title">You're almost done.</p>
+                            <p class="profile-actions-hint">We'll save these required details first, then you'll verify your GitHub and LinkedIn accounts before the optional AIDE step.</p>
+                        </div>
+                        <button type="submit" class="profile-primary-button" disabled="@_isSaving" data-test="save-profile-btn">
+                            @if (_isSaving)
+                            {
+                                <span>Saving…</span>
+                            }
+                            else
+                            {
+                                <span>Save &amp; Continue</span>
+                            }
+                        </button>
                     </div>
+                </EditForm>
+            </section>
 
-                    <BbFormFieldInput @bind-Value="_model.Email"
-                                      Label="Email Address"
-                                      Placeholder="you@example.com"
-                                      InputType="InputType.Email"
-                                      Required="true" />
+            <aside class="profile-sidebar" aria-label="Why we ask for this information">
+                <BbCard Class="profile-info-card">
+                    <BbCardHeader>
+                        <BbCardTitle>What happens next</BbCardTitle>
+                        <BbCardDescription>You are three short steps away from the dashboard.</BbCardDescription>
+                    </BbCardHeader>
+                    <BbCardContent>
+                        <ol class="profile-checklist">
+                            <li>Save your required contact and location details.</li>
+                            <li>Verify your GitHub and LinkedIn accounts on the next step.</li>
+                            <li>Optionally add accessibility and inclusion preferences, then enter Bethuya.</li>
+                        </ol>
+                    </BbCardContent>
+                </BbCard>
 
-                    <BbFormFieldInput @bind-Value="_model.MobileNumber"
-                                      Label="Mobile Number"
-                                      Placeholder="+91 98765 43210"
-                                      InputType="InputType.Tel" />
-
-                    <BbFormFieldInput @bind-Value="_model.OccupationStatus"
-                                      Label="Occupation / Role"
-                                      Placeholder="e.g. Software Engineer, Student, Freelancer" />
-                </div>
-
-            </BbFormSection>
-
-            <BbFormSection Title="Location" Description="Helps us find venues accessible to you.">
-
-                <div class="space-y-4">
-                    <BbFormFieldInput @bind-Value="_model.City"
-                                      Label="City"
-                                      Placeholder="Mumbai" />
-
-                    <div class="name-row">
-                        <BbFormFieldInput @bind-Value="_model.State"
-                                          Label="State / Province"
-                                          Placeholder="Maharashtra" />
-                        <BbFormFieldInput @bind-Value="_model.PostalCode"
-                                          Label="Postal Code"
-                                          Placeholder="400001" />
-                    </div>
-
-                    <BbFormFieldInput @bind-Value="_model.Country"
-                                      Label="Country"
-                                      Placeholder="India" />
-                </div>
-
-            </BbFormSection>
-
-            @if (_errorMessage is not null)
-            {
-                <div data-test="profile-error">
-                    <BbAlert Variant="AlertVariant.Danger">
-                        <BbAlertDescription>@_errorMessage</BbAlertDescription>
-                    </BbAlert>
-                </div>
-            }
-
-            <div class="profile-actions">
-                <button type="submit" class="bb-button bb-button-default" disabled="@_isSaving" data-test="save-profile-btn">
-                    @if (_isSaving)
-                    {
-                        <span>Saving…</span>
-                    }
-                    else
-                    {
-                        <span>Save &amp; Continue</span>
-                    }
-                </button>
-            </div>
-
-        </EditForm>
+                <BbCard Class="profile-info-card">
+                    <BbCardHeader>
+                        <BbCardTitle>Why we ask</BbCardTitle>
+                    </BbCardHeader>
+                    <BbCardContent>
+                        <ul class="profile-bullets">
+                            <li>So organizers can contact you about approvals, schedules, and venue changes.</li>
+                            <li>So Bethuya can recommend event experiences that fit your context.</li>
+                            <li>So accessibility planning starts from real attendee needs, not assumptions.</li>
+                        </ul>
+                    </BbCardContent>
+                </BbCard>
+            </aside>
+        </div>
 
     </div>
-</main>
+</section>
 
 @code {
     private readonly MandatoryProfileModel _model = new();
     private bool _isSaving;
     private string? _errorMessage;
+
+    private bool IsEmployee => string.Equals(_model.OccupationStatus, "Employee", StringComparison.Ordinal);
+    private bool IsStudent => string.Equals(_model.OccupationStatus, "Student", StringComparison.Ordinal);
+
+    private static readonly IReadOnlyList<SelectOption<string?>> _governmentPhotoIdOptions =
+    [
+        new("", "Select an ID type"),
+        new("Aadhaar Card", "Aadhaar Card"),
+        new("Passport", "Passport"),
+        new("Driving Licence", "Driving Licence"),
+        new("Voter ID", "Voter ID"),
+        new("Other Government ID", "Other Government ID")
+    ];
 
     private async Task HandleValidSubmit()
     {
@@ -121,13 +219,17 @@
                 _model.LastName!,
                 _model.Email!,
                 _model.MobileNumber,
+                _model.GovernmentPhotoIdType!,
+                _model.GovernmentIdLastFour!,
                 _model.OccupationStatus,
+                IsEmployee ? _model.CompanyName : null,
+                IsStudent ? _model.EducationInstitute : null,
                 _model.City,
                 _model.State,
                 _model.PostalCode,
                 _model.Country));
 
-            Navigation.NavigateTo("/registration/aide");
+            Navigation.NavigateTo("/registration/social");
         }
         catch (Exception)
         {
@@ -139,37 +241,69 @@
         }
     }
 
-    private sealed class MandatoryProfileModel
+    private sealed class MandatoryProfileModel : IValidatableObject
     {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "First name is required.")]
-        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        [Required(ErrorMessage = "First name is required.")]
+        [MaxLength(100)]
         public string? FirstName { get; set; }
 
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Last name is required.")]
-        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        [Required(ErrorMessage = "Last name is required.")]
+        [MaxLength(100)]
         public string? LastName { get; set; }
 
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Email address is required.")]
-        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Enter a valid email address.")]
-        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        [Required(ErrorMessage = "Email address is required.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [MaxLength(200)]
         public string? Email { get; set; }
 
-        [System.ComponentModel.DataAnnotations.MaxLength(30)]
+        [MaxLength(30)]
         public string? MobileNumber { get; set; }
 
-        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        [Required(ErrorMessage = "Government-approved photo ID type is required.")]
+        [MaxLength(100)]
+        public string? GovernmentPhotoIdType { get; set; }
+
+        [Required(ErrorMessage = "Last 4 digits of the ID are required.")]
+        [RegularExpression(@"^\d{4}$", ErrorMessage = "Enter exactly 4 digits for the ID.")]
+        public string? GovernmentIdLastFour { get; set; }
+
+        [Required(ErrorMessage = "Current employment status is required.")]
+        [MaxLength(200)]
         public string? OccupationStatus { get; set; }
 
-        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        [MaxLength(200)]
+        public string? CompanyName { get; set; }
+
+        [MaxLength(200)]
+        public string? EducationInstitute { get; set; }
+
+        [MaxLength(100)]
         public string? City { get; set; }
 
-        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        [MaxLength(100)]
         public string? State { get; set; }
 
-        [System.ComponentModel.DataAnnotations.MaxLength(20)]
+        [MaxLength(20)]
         public string? PostalCode { get; set; }
 
-        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        [MaxLength(100)]
         public string? Country { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (string.Equals(OccupationStatus, "Employee", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(CompanyName))
+            {
+                yield return new ValidationResult(
+                    "Company name is required when employment status is Employee.",
+                    [nameof(CompanyName)]);
+            }
+
+            if (string.Equals(OccupationStatus, "Student", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(EducationInstitute))
+            {
+                yield return new ValidationResult(
+                    "Education institute is required when employment status is Student.",
+                    [nameof(EducationInstitute)]);
+            }
+        }
     }
 }

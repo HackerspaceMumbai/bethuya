@@ -1,0 +1,402 @@
+@page "/registration/social"
+@rendermode InteractiveServer
+@layout OnboardingLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Components
+@using Bethuya.Hybrid.Shared.Services
+@using BlazorBlueprint.Components
+@inject IProfileApi ProfileApi
+@inject NavigationManager Navigation
+
+<PageTitle>Verify Social Profiles — Bethuya</PageTitle>
+
+<section class="profile-page" aria-label="Verify your social profiles">
+    <div class="profile-container">
+
+        <header class="profile-header">
+            <p class="profile-step">Step 2 of 3 · Verified social accounts</p>
+            <h1 class="profile-title">Connect the accounts you actually use</h1>
+            <p class="profile-subtitle">
+                Sign in to GitHub and LinkedIn so Bethuya stores verified identities instead of typed handles.
+                This step is separate on purpose, so your saved profile details stay intact through the OAuth redirect.
+                Connect both if you can because having both verified accounts improves your chances for selection.
+            </p>
+            <div class="profile-progress" aria-hidden="true">
+                <span class="profile-progress__dot"></span>
+                <span class="profile-progress__dot profile-progress__dot--active"></span>
+                <span class="profile-progress__dot"></span>
+            </div>
+        </header>
+
+        <div class="profile-layout">
+            <section class="profile-main">
+                <BbCard Class="profile-form-card">
+                    <BbCardHeader>
+                        <BbCardTitle>Verified social profiles</BbCardTitle>
+                        <BbCardDescription>
+                            @GetCompletionInstruction()
+                        </BbCardDescription>
+                    </BbCardHeader>
+                    <BbCardContent Class="profile-form-card__content">
+                        <div class="social-connection-grid">
+                            <BbCard Class="social-connection-card">
+                                <BbCardHeader>
+                                    <BbCardTitle>LinkedIn</BbCardTitle>
+                                    <BbCardDescription>@GetLinkedInCardDescription()</BbCardDescription>
+                                </BbCardHeader>
+                                <BbCardContent Class="social-connection-card__content">
+                                    <div class="social-connection-details">
+                                        @if (IsLinkedInConnected)
+                                        {
+                                            <p class="social-connection-status" data-test="linkedin-connected-status">
+                                                Connected as <strong>@_model.LinkedInMemberId</strong>
+                                            </p>
+                                        }
+                                        else
+                                        {
+                                            <p class="social-connection-status social-connection-status--pending" data-test="linkedin-pending-status">
+                                                Not connected yet.
+                                            </p>
+                                        }
+
+                                        <p class="@GetLinkedInMetaClass()" data-test="linkedin-meta">
+                                            @GetLinkedInMetaText()
+                                        </p>
+                                    </div>
+
+                                    <div class="social-connection-action" data-test="connect-linkedin-btn">
+                                        <button type="button" class="social-connection-button" @onclick="@(() => BeginSocialConnect("linkedin"))">
+                                            @(IsLinkedInConnected ? "Reconnect LinkedIn" : "Connect LinkedIn")
+                                        </button>
+                                    </div>
+                                </BbCardContent>
+                            </BbCard>
+
+                            <BbCard Class="social-connection-card">
+                                <BbCardHeader>
+                                    <BbCardTitle>GitHub</BbCardTitle>
+                                    <BbCardDescription>@GetGitHubCardDescription()</BbCardDescription>
+                                </BbCardHeader>
+                                <BbCardContent Class="social-connection-card__content">
+                                    <div class="social-connection-details">
+                                        @if (IsGitHubConnected)
+                                        {
+                                            <p class="social-connection-status" data-test="github-connected-status">
+                                                Connected as <strong>@_model.GitHubLogin</strong>
+                                            </p>
+                                        }
+                                        else
+                                        {
+                                            <p class="social-connection-status social-connection-status--pending" data-test="github-pending-status">
+                                                Not connected yet.
+                                            </p>
+                                        }
+
+                                        <p class="@GetGitHubMetaClass()" data-test="github-meta">
+                                            @GetGitHubMetaText()
+                                        </p>
+                                    </div>
+
+                                    <div class="social-connection-action" data-test="connect-github-btn">
+                                        <button type="button" class="social-connection-button" @onclick="@(() => BeginSocialConnect("github"))">
+                                            @(IsGitHubConnected ? "Reconnect GitHub" : "Connect GitHub")
+                                        </button>
+                                    </div>
+                                </BbCardContent>
+                            </BbCard>
+                        </div>
+
+                        @if (_socialErrorMessage is not null)
+                        {
+                            <div class="social-connection-error" data-test="social-connect-error">
+                                <p class="social-connection-error__eyebrow">Social connection needs attention</p>
+                                <p class="social-connection-error__message">@_socialErrorMessage</p>
+                            </div>
+                        }
+
+                        @if (_errorMessage is not null)
+                        {
+                            <div data-test="social-profile-error">
+                                <BbAlert Variant="AlertVariant.Danger">
+                                    <BbAlertDescription>@_errorMessage</BbAlertDescription>
+                                </BbAlert>
+                            </div>
+                        }
+                    </BbCardContent>
+                </BbCard>
+
+                <div class="profile-actions">
+                    <div class="profile-actions-copy">
+                        <p class="profile-actions-title">Verified before you continue.</p>
+                        <p class="profile-actions-hint">@GetActionHint()</p>
+                    </div>
+                    <button type="button" class="profile-primary-button" disabled="@(_isSaving || _isLoading || !CanContinue)" @onclick="HandleContinue" data-test="save-social-btn">
+                        @if (_isSaving)
+                        {
+                            <span>Saving…</span>
+                        }
+                        else
+                        {
+                            <span>Save &amp; Continue</span>
+                        }
+                    </button>
+                </div>
+            </section>
+
+            <aside class="profile-sidebar" aria-label="How Bethuya uses verified social accounts">
+                <BbCard Class="profile-info-card">
+                    <BbCardHeader>
+                        <BbCardTitle>Why this step exists</BbCardTitle>
+                        <BbCardDescription>We verify once instead of asking you to type identities we cannot trust.</BbCardDescription>
+                    </BbCardHeader>
+                    <BbCardContent>
+                        <ol class="profile-checklist">
+                            <li>OAuth confirms the account is really yours.</li>
+                            <li>Your saved mandatory profile is already safe before any redirect happens.</li>
+                            <li>Returning from GitHub or LinkedIn drops you right back into this step.</li>
+                            <li>Both verified accounts strengthen your selection profile, even when only one is required.</li>
+                        </ol>
+                    </BbCardContent>
+                </BbCard>
+
+                <BbCard Class="profile-info-card">
+                    <BbCardHeader>
+                        <BbCardTitle>What happens next</BbCardTitle>
+                    </BbCardHeader>
+                    <BbCardContent>
+                        <ul class="profile-bullets">
+                            <li>Save the account required for your current status.</li>
+                            <li>Connect both whenever possible to improve your chances for selection.</li>
+                            <li>Optionally add accessibility and inclusion context.</li>
+                            <li>Enter Bethuya with your profile fully set up.</li>
+                        </ul>
+                    </BbCardContent>
+                </BbCard>
+            </aside>
+        </div>
+
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "linkedinMemberId")]
+    public string? LinkedInMemberIdQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "linkedinProfileUrl")]
+    public string? LinkedInProfileUrlQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "githubLogin")]
+    public string? GitHubLoginQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "githubProfileUrl")]
+    public string? GitHubProfileUrlQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "socialError")]
+    public string? SocialErrorQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "socialProvider")]
+    public string? SocialProviderQuery { get; set; }
+
+    private readonly SocialProfileModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string? _socialErrorMessage;
+
+    private bool IsLinkedInConnected => !string.IsNullOrWhiteSpace(_model.LinkedInMemberId);
+    private bool IsGitHubConnected => !string.IsNullOrWhiteSpace(_model.GitHubLogin) && !string.IsNullOrWhiteSpace(_model.GitHubProfileUrl);
+    private bool IsLinkedInRequired => _model.IsLinkedInRequired;
+    private bool IsGitHubRequired => _model.IsGitHubRequired;
+    private bool CanContinue => (!IsLinkedInRequired || IsLinkedInConnected) && (!IsGitHubRequired || IsGitHubConnected);
+
+    protected override void OnParametersSet()
+    {
+        ApplyQueryValues();
+        _socialErrorMessage = ResolveSocialErrorMessage();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var status = await ProfileApi.GetCompletionStatusAsync();
+            if (!status.IsProfileComplete)
+            {
+                Navigation.NavigateTo("/registration/mandatory", replace: true);
+                return;
+            }
+
+            var socialProfile = await ProfileApi.GetSocialProfileAsync();
+            _model.OccupationStatus = socialProfile.OccupationStatus;
+            _model.IsLinkedInRequired = socialProfile.IsLinkedInRequired;
+            _model.IsGitHubRequired = socialProfile.IsGitHubRequired;
+            _model.LinkedInMemberId = socialProfile.LinkedInMemberId;
+            _model.LinkedInProfileUrl = socialProfile.LinkedInProfileUrl;
+            _model.GitHubLogin = socialProfile.GitHubLogin;
+            _model.GitHubProfileUrl = socialProfile.GitHubProfileUrl;
+
+            ApplyQueryValues();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Failed to load your social connections. Please refresh and try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleContinue()
+    {
+        if (!CanContinue)
+        {
+            _errorMessage = GetRequiredConnectionError();
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            await ProfileApi.SaveSocialProfileAsync(new SaveSocialProfileDto(
+                _model.LinkedInMemberId!,
+                _model.LinkedInProfileUrl,
+                _model.GitHubLogin!,
+                _model.GitHubProfileUrl!));
+
+            Navigation.NavigateTo("/registration/aide");
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Failed to save your verified social profiles. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void BeginSocialConnect(string provider)
+        => Navigation.NavigateTo($"/authentication/social/{provider}/start?returnUrl=%2Fregistration%2Fsocial", forceLoad: true);
+
+    private void ApplyQueryValues()
+    {
+        if (!string.IsNullOrWhiteSpace(LinkedInMemberIdQuery))
+        {
+            _model.LinkedInMemberId = LinkedInMemberIdQuery;
+        }
+
+        if (!string.IsNullOrWhiteSpace(LinkedInProfileUrlQuery))
+        {
+            _model.LinkedInProfileUrl = LinkedInProfileUrlQuery;
+        }
+
+        if (!string.IsNullOrWhiteSpace(GitHubLoginQuery))
+        {
+            _model.GitHubLogin = GitHubLoginQuery;
+        }
+
+        if (!string.IsNullOrWhiteSpace(GitHubProfileUrlQuery))
+        {
+            _model.GitHubProfileUrl = GitHubProfileUrlQuery;
+        }
+    }
+
+    private string GetLinkedInMetaClass()
+        => string.IsNullOrWhiteSpace(_model.LinkedInProfileUrl)
+            ? "social-connection-meta social-connection-meta--placeholder"
+            : "social-connection-meta";
+
+    private string GetLinkedInMetaText()
+        => string.IsNullOrWhiteSpace(_model.LinkedInProfileUrl)
+            ? "Verified LinkedIn profile details appear here after you connect."
+            : _model.LinkedInProfileUrl!;
+
+    private string GetGitHubMetaClass()
+        => string.IsNullOrWhiteSpace(_model.GitHubProfileUrl)
+            ? "social-connection-meta social-connection-meta--placeholder"
+            : "social-connection-meta";
+
+    private string GetGitHubMetaText()
+        => string.IsNullOrWhiteSpace(_model.GitHubProfileUrl)
+            ? "Verified GitHub profile details appear here after you connect."
+            : _model.GitHubProfileUrl!;
+
+    private string GetCompletionInstruction()
+        => (IsGitHubRequired, IsLinkedInRequired) switch
+        {
+            (true, false) => "GitHub is required for students. LinkedIn is strongly recommended because connecting both improves your chances for selection.",
+            (false, true) => "LinkedIn is required for full-time employed applicants. GitHub is strongly recommended because connecting both improves your chances for selection.",
+            _ => "Connect both if you can. Verified GitHub and LinkedIn accounts improve your chances for selection, even when only one is required."
+        };
+
+    private string GetLinkedInCardDescription()
+        => IsLinkedInRequired
+            ? "Required for full-time employed applicants. Sign in to LinkedIn so we can capture your verified member ID."
+            : "Recommended for everyone. Sign in to LinkedIn so we can capture your verified member ID."
+        ;
+
+    private string GetGitHubCardDescription()
+        => IsGitHubRequired
+            ? "Required for students. Sign in to GitHub so we can capture your verified profile URL."
+            : "Recommended for everyone. Sign in to GitHub so we can capture your verified profile URL.";
+
+    private string GetActionHint()
+        => (IsGitHubRequired, IsLinkedInRequired) switch
+        {
+            (true, false) => "Connect GitHub to continue. We still strongly recommend LinkedIn too because having both verified accounts improves your chances for selection.",
+            (false, true) => "Connect LinkedIn to continue. We still strongly recommend GitHub too because having both verified accounts improves your chances for selection.",
+            _ => "Connect both accounts if you can. Even when only one is required, having both verified accounts improves your chances for selection."
+        };
+
+    private string GetRequiredConnectionError()
+        => (IsGitHubRequired, IsLinkedInRequired) switch
+        {
+            (true, false) => "GitHub is required for students. LinkedIn is still recommended because both verified accounts improve your chances for selection.",
+            (false, true) => "LinkedIn is required for full-time employed applicants. GitHub is still recommended because both verified accounts improve your chances for selection.",
+            _ => "Connect the required social account before continuing. Connecting both is strongly recommended because both verified accounts improve your chances for selection."
+        };
+
+    private string? ResolveSocialErrorMessage()
+    {
+        if (string.IsNullOrWhiteSpace(SocialErrorQuery))
+        {
+            return null;
+        }
+
+        var providerName = SocialProviderQuery?.Trim().ToLowerInvariant() switch
+        {
+            "github" => "GitHub",
+            "linkedin" => "LinkedIn",
+            _ => "This social provider"
+        };
+
+        return SocialErrorQuery switch
+        {
+            "social-provider-not-configured" => $"{providerName} is not configured for local onboarding yet.",
+            "social-connect-failed" => $"{providerName} sign-in did not complete. Please try connecting {providerName} again.",
+            "github-connect-incomplete" => "GitHub sign-in succeeded, but we couldn't read the verified GitHub profile details.",
+            "linkedin-connect-incomplete" => "LinkedIn sign-in succeeded, but we couldn't read the verified LinkedIn member details.",
+            _ => $"{providerName} couldn't complete the social profile connection. Please try again."
+        };
+    }
+
+    private sealed class SocialProfileModel
+    {
+        public string? OccupationStatus { get; set; }
+
+        public bool IsLinkedInRequired { get; set; }
+
+        public bool IsGitHubRequired { get; set; }
+
+        public string? LinkedInMemberId { get; set; }
+
+        public string? LinkedInProfileUrl { get; set; }
+
+        public string? GitHubLogin { get; set; }
+
+        public string? GitHubProfileUrl { get; set; }
+    }
+}
