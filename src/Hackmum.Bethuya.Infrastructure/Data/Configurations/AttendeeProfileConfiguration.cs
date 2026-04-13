@@ -29,7 +29,15 @@ internal sealed class AttendeeProfileConfiguration : IEntityTypeConfiguration<At
             .HasMaxLength(200);
 
         builder.Property(p => p.MobileNumber).HasMaxLength(30);
+        builder.Property(p => p.GovernmentPhotoIdType).IsRequired().HasMaxLength(100);
+        builder.Property(p => p.GovernmentIdLastFour).IsRequired().HasMaxLength(4);
         builder.Property(p => p.OccupationStatus).HasMaxLength(200);
+        builder.Property(p => p.CompanyName).HasMaxLength(200);
+        builder.Property(p => p.EducationInstitute).HasMaxLength(200);
+        builder.Property(p => p.LinkedInMemberId).IsRequired().HasMaxLength(100);
+        builder.Property(p => p.LinkedInProfileUrl).HasMaxLength(500);
+        builder.Property(p => p.GitHubLogin).IsRequired().HasMaxLength(100);
+        builder.Property(p => p.GitHubProfileUrl).IsRequired().HasMaxLength(500);
         builder.Property(p => p.City).HasMaxLength(100);
         builder.Property(p => p.State).HasMaxLength(100);
         builder.Property(p => p.PostalCode).HasMaxLength(20);

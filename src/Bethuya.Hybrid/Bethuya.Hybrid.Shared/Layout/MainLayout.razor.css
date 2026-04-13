@@ -20,6 +20,13 @@ main {
     padding-top: 1.5rem;
 }
 
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
 @media (min-width: 641px) {
     .page {
         flex-direction: row;

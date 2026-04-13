@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using ServiceDefaults.Auth;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -24,6 +25,11 @@ public static class BethuyaAuthenticationExtensions
 
         if (authOptions.Provider == AuthProviderType.None)
         {
+            builder.Services.AddAuthentication(DevelopmentAuthenticationDefaults.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(
+                    DevelopmentAuthenticationDefaults.SchemeName,
+                    _ => { });
+            builder.Services.AddCascadingAuthenticationState();
             return builder;
         }
 
@@ -56,6 +62,10 @@ public static class BethuyaAuthenticationExtensions
 
         if (authOptions.Provider == AuthProviderType.None)
         {
+            builder.Services.AddAuthentication(DevelopmentAuthenticationDefaults.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(
+                    DevelopmentAuthenticationDefaults.SchemeName,
+                    _ => { });
             return builder;
         }
 
@@ -78,14 +88,6 @@ public static class BethuyaAuthenticationExtensions
     /// </summary>
     public static WebApplication UseBethuyaAuthentication(this WebApplication app)
     {
-        var authOptions = new BethuyaAuthOptions();
-        app.Configuration.GetSection(BethuyaAuthOptions.SectionName).Bind(authOptions);
-
-        if (authOptions.Provider == AuthProviderType.None)
-        {
-            return app;
-        }
-
         app.UseAuthentication();
         app.UseAuthorization();
 
@@ -95,7 +97,22 @@ public static class BethuyaAuthenticationExtensions
     /// <summary>Maps login and logout endpoints for the OIDC flow.</summary>
     public static IEndpointRouteBuilder MapBethuyaAuthEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        var authOptions = new BethuyaAuthOptions();
+        endpoints.ServiceProvider.GetRequiredService<IConfiguration>()
+            .GetSection(BethuyaAuthOptions.SectionName)
+            .Bind(authOptions);
+
         var group = endpoints.MapGroup("/authentication");
+
+        if (authOptions.Provider == AuthProviderType.None)
+        {
+            group.MapGet("/login", (string? returnUrl) =>
+                Results.Redirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl));
+
+            group.MapPost("/logout", () => Results.Redirect("/"));
+
+            return endpoints;
+        }
 
         group.MapGet("/login", async (string? returnUrl, HttpContext context) =>
         {

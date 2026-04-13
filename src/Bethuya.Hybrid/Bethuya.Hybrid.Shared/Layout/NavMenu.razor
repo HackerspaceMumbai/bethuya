@@ -1,3 +1,7 @@
+
+@using Bethuya.Hybrid.Shared.Auth
+@using Microsoft.AspNetCore.Components.Authorization
+
 <nav class="sidebar-nav" aria-label="Main navigation">
     <div class="brand-row">
         <a class="brand-link" href="" aria-label="Hackerspace Mumbai — Dashboard">
@@ -36,29 +40,36 @@
             </div>
         </div>
 
-        <div class="nav-section">
-            <div class="nav-section-label">AI Agents</div>
-            <div class="nav-item">
-                <NavLink class="nav-link" href="agents" Match="NavLinkMatch.Prefix">
-                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="11"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/>
-                    </svg>
-                    AI Agents
-                </NavLink>
+        @* Privileged links stay scoped to the roles that can actually access each surface. *@
+        <AuthorizeView Roles="@OrganizerToolsRoles" Context="privilegedContext">
+            <div class="nav-section">
+                <div class="nav-section-label">Organizer Tools</div>
+                <AuthorizeView Roles="@AgentWorkflowRoles" Context="agentContext">
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="agents" Match="NavLinkMatch.Prefix">
+                            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="11"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/>
+                            </svg>
+                            Agent Workflows
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Roles="@CurationRoles" Context="curationContext">
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="curation" Match="NavLinkMatch.Prefix">
+                            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>
+                            </svg>
+                            Attendee Curation
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
             </div>
-            <div class="nav-item">
-                <NavLink class="nav-link" href="curation" Match="NavLinkMatch.Prefix">
-                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>
-                    </svg>
-                    Curation
-                </NavLink>
-            </div>
-        </div>
+        </AuthorizeView>
 
         <div class="nav-section nav-section--bottom">
             <div class="nav-item">
-                <NavLink class="nav-link" href="profile" Match="NavLinkMatch.Prefix">
+                <NavLink class="nav-link" href="registration/mandatory" Match="NavLinkMatch.Prefix" data-test="nav-profile-link">
                     <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                     </svg>
@@ -68,3 +79,9 @@
         </div>
     </div>
 </nav>
+
+@code {
+    private const string OrganizerToolsRoles = $"{BethuyaRoles.Admin},{BethuyaRoles.Organizer},{BethuyaRoles.Curator}";
+    private const string AgentWorkflowRoles = $"{BethuyaRoles.Admin},{BethuyaRoles.Organizer}";
+    private const string CurationRoles = $"{BethuyaRoles.Admin},{BethuyaRoles.Curator}";
+}

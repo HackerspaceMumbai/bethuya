@@ -1,4 +1,5 @@
 @page "/"
+@rendermode InteractiveServer
 @using Bethuya.Hybrid.Shared.Components.Dashboard
 @using Bethuya.Hybrid.Shared.Services
 @inject IEventApi EventApi
@@ -24,6 +25,30 @@
                 <BbAlertDescription>@errorMessage</BbAlertDescription>
             </BbAlert>
         </div>
+    }
+    else if (_redirectRoute is not null)
+    {
+        <section class="onboarding-redirect" aria-label="Complete your profile" data-test="onboarding-redirect">
+            <BbCard Class="onboarding-redirect-card">
+                <BbCardHeader>
+                    <BbCardTitle>Finish setup before you explore Bethuya</BbCardTitle>
+                    <BbCardDescription>
+                        We’re taking you to the three-step onboarding flow now so your dashboard, registrations, verified social identities, and accessibility preferences start in the right place.
+                    </BbCardDescription>
+                </BbCardHeader>
+                <BbCardContent Class="onboarding-redirect-card__content">
+                    <ol class="onboarding-redirect-list">
+                        <li>Add your required attendee details.</li>
+                        <li>Verify your GitHub and LinkedIn accounts.</li>
+                        <li>Optionally share accessibility and inclusion context, then return to the dashboard.</li>
+                    </ol>
+                    <BbButton Variant="ButtonVariant.Default" Class="onboarding-redirect-button"
+                              OnClick="@(() => Navigation.NavigateTo(_redirectRoute!))">
+                        Continue setup
+                    </BbButton>
+                </BbCardContent>
+            </BbCard>
+        </section>
     }
     else
     {
@@ -92,7 +117,7 @@
     private List<EventViewModel> events = [];
     private bool isLoading = true;
     private string? errorMessage;
-    private bool _shouldRedirectToProfile;
+    private string? _redirectRoute;
 
     private int UpcomingCount => events.Count(e =>
         e.StartDate >= DateOnly.FromDateTime(DateTime.Now) &&
@@ -110,7 +135,12 @@
             try
             {
                 var status = await ProfileApi.GetCompletionStatusAsync();
-                _shouldRedirectToProfile = !status.IsProfileComplete;
+                _redirectRoute = status.IsProfileComplete switch
+                {
+                    false => "/registration/mandatory",
+                    true when !status.IsSocialConnectionsComplete => "/registration/social",
+                    _ => null
+                };
             }
             catch
             {
@@ -118,7 +148,7 @@
             }
         }
 
-        if (_shouldRedirectToProfile)
+        if (_redirectRoute is not null)
         {
             isLoading = false;
             return;
@@ -141,9 +171,9 @@
 
     protected override Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _shouldRedirectToProfile)
+        if (firstRender && _redirectRoute is not null)
         {
-            Navigation.NavigateTo("/registration/mandatory");
+            Navigation.NavigateTo(_redirectRoute, replace: true);
         }
         return Task.CompletedTask;
     }

@@ -2,14 +2,14 @@
 
 .profile-page {
     min-height: 100vh;
-    padding: 2rem 1rem;
+    padding: 2rem 0;
     display: flex;
     justify-content: center;
 }
 
 .profile-container {
     width: 100%;
-    max-width: 640px;
+    max-width: 1040px;
     display: flex;
     flex-direction: column;
     gap: 2rem;
@@ -22,8 +22,16 @@
     gap: 0.5rem;
 }
 
+.profile-step {
+    color: var(--primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
 .profile-title {
-    font-size: 1.75rem;
+    font-size: clamp(1.9rem, 2.6vw, 2.6rem);
     font-weight: 700;
     color: var(--foreground);
 }
@@ -32,6 +40,150 @@
     font-size: 0.9375rem;
     color: var(--muted-foreground, var(--foreground));
     opacity: 0.75;
+    max-width: 42rem;
+    margin: 0 auto;
+}
+
+/* BB cards handle content blocks; this CSS arranges onboarding copy and form into a responsive editorial layout. */
+.profile-progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.profile-progress__dot {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.profile-progress__dot--active {
+    width: 2.75rem;
+    background: linear-gradient(90deg, rgba(212, 168, 48, 1), rgba(191, 147, 28, 1));
+}
+
+.profile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.9fr);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.profile-main {
+    min-width: 0;
+}
+
+.profile-form-card {
+    background: rgba(15, 14, 12, 0.88);
+    border: 1px solid rgba(212, 168, 48, 0.14);
+}
+
+.profile-form-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.profile-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: sticky;
+    top: 1.25rem;
+}
+
+.profile-info-card {
+    background: rgba(15, 14, 12, 0.84);
+    border: 1px solid rgba(212, 168, 48, 0.12);
+}
+
+.profile-checklist,
+.profile-bullets {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.75rem;
+    color: var(--muted-foreground, var(--foreground));
+    line-height: 1.5;
+}
+
+.social-connection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: stretch;
+}
+
+.social-connection-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(212, 168, 48, 0.12);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.social-connection-card__content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.85rem;
+    flex: 1;
+}
+
+.social-connection-status {
+    color: var(--foreground);
+    line-height: 1.5;
+}
+
+.social-connection-status--pending {
+    color: var(--muted-foreground, var(--foreground));
+    opacity: 0.82;
+}
+
+.social-connection-meta {
+    color: var(--muted-foreground, var(--foreground));
+    font-size: 0.85rem;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.social-connection-action {
+    margin-top: auto;
+    padding-top: 0.4rem;
+}
+
+.social-connection-error {
+    margin-top: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: calc(var(--radius) + 2px);
+    border: 1px solid rgba(229, 62, 62, 0.55);
+    background: linear-gradient(180deg, rgba(80, 16, 16, 0.55), rgba(44, 10, 10, 0.88));
+    box-shadow: 0 18px 34px rgba(120, 18, 18, 0.2);
+}
+
+.social-connection-error__eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #ffb7b7;
+}
+
+.social-connection-error__message {
+    margin: 0;
+    color: #fff0f0;
+    font-size: 0.98rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.employment-radio-group {
+    display: grid;
+    gap: 0.75rem;
 }
 
 /* ── Two-column name row ── */
@@ -41,15 +193,98 @@
     gap: 1rem;
 }
 
-@media (max-width: 480px) {
-    .name-row {
+/* ── Action bar ── */
+.profile-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.profile-actions-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-width: 24rem;
+}
+
+.profile-actions-title {
+    color: var(--foreground);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.profile-actions-hint {
+    color: var(--muted-foreground, var(--foreground));
+    font-size: 0.85rem;
+    line-height: 1.5;
+    opacity: 0.82;
+}
+
+.profile-primary-button {
+    appearance: none;
+    border: 1px solid rgba(212, 168, 48, 0.65);
+    border-radius: calc(var(--radius) + 2px);
+    background: linear-gradient(135deg, rgba(212, 168, 48, 1), rgba(191, 147, 28, 1));
+    color: #120f0a;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    min-width: 13rem;
+    padding: 0.95rem 1.5rem;
+    box-shadow: 0 16px 36px rgba(212, 168, 48, 0.24);
+    transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.profile-primary-button:hover:not(:disabled),
+.profile-primary-button:focus-visible:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 20px 40px rgba(212, 168, 48, 0.32);
+    filter: brightness(1.03);
+}
+
+.profile-primary-button:focus-visible {
+    outline: 3px solid rgba(212, 168, 48, 0.35);
+    outline-offset: 3px;
+}
+
+.profile-primary-button:disabled {
+    cursor: wait;
+    opacity: 0.75;
+    transform: none;
+    box-shadow: none;
+}
+
+@media (max-width: 760px) {
+    .profile-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-sidebar {
+        position: static;
+        order: -1;
+    }
+
+    .social-connection-grid {
         grid-template-columns: 1fr;
     }
 }
 
-/* ── Action bar ── */
-.profile-actions {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: 0.5rem;
+@media (max-width: 640px) {
+    .profile-actions {
+        align-items: stretch;
+    }
+
+    .profile-primary-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .name-row {
+        grid-template-columns: 1fr;
+    }
 }

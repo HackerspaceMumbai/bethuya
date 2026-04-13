@@ -1,0 +1,28 @@
+@inherits LayoutComponentBase
+@using BlazorBlueprint.Primitives.Services
+
+<div class="onboarding-shell" data-test="onboarding-layout">
+    <header class="onboarding-header">
+        <div class="onboarding-header__inner">
+            <a class="onboarding-brand" href="/" aria-label="Bethuya home">
+                <span class="onboarding-brand__eyebrow">HackerspaceMumbai</span>
+                <span class="onboarding-brand__title">Bethuya onboarding</span>
+                <span class="onboarding-brand__subtitle">A focused, secure setup flow for first-time attendees.</span>
+            </a>
+
+            <div class="onboarding-header__meta">
+                <span class="onboarding-chip">Secure profile setup</span>
+                <LoginDisplay />
+            </div>
+        </div>
+    </header>
+
+    <main class="onboarding-main">
+        <article class="onboarding-content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<BbPortalHost />
+<BbDialogProvider />

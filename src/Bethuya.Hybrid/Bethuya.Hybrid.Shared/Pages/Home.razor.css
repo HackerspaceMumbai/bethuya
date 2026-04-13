@@ -61,6 +61,48 @@
     justify-content: center;
 }
 
+/* BB has the card primitives, but this custom CSS turns the redirect state into a focused onboarding handoff. */
+.onboarding-redirect {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0 1rem;
+}
+
+.onboarding-redirect-card {
+    width: min(100%, 48rem);
+    border: 1px solid rgba(212, 168, 48, 0.18);
+    background:
+        radial-gradient(circle at top right, rgba(212, 168, 48, 0.14), transparent 18rem),
+        rgba(15, 14, 12, 0.92);
+}
+
+.onboarding-redirect-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.onboarding-redirect-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.7rem;
+    color: var(--hs-text-muted);
+    line-height: 1.5;
+}
+
+::deep .onboarding-redirect-button {
+    align-self: flex-start;
+    min-width: 12rem;
+    font-weight: 700;
+}
+
+@media (max-width: 640px) {
+    ::deep .onboarding-redirect-button {
+        width: 100%;
+    }
+}
+
 /* ── Events section ── */
 .events-section {
     padding-top: 0.5rem;

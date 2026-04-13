@@ -18,6 +18,53 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-04-12] External OAuth must live on its own saved onboarding step
+
+- **What happened:** The first version put mandatory profile fields and GitHub/LinkedIn connect on the same Blazor page. After the OAuth redirect returned, the Blazor circuit restarted and all unsaved required form data was gone.
+- **Root cause:** External OAuth is a full-page roundtrip, not an in-circuit UI action. Keeping required unsaved form state on the same page made the flow inherently fragile.
+- **Fix:** Split onboarding into three steps: save mandatory details first, perform verified social connect on `/registration/social`, then continue to optional AIDE. The backend/shared contracts were split so mandatory save and social save are independent.
+- **Prevention:** Never couple external OAuth callbacks to unsaved mandatory Blazor form state. Either persist the draft explicitly before redirect or, preferably for onboarding, move the OAuth interaction onto its own saved step.
+
+## [2026-04-12] Custom onboarding layouts must include Blazor Blueprint portal hosts
+
+- **What happened:** The AIDE page rendered its select fields, but clicking them did not show any options.
+- **Root cause:** `AideProfile.razor` was moved onto `OnboardingLayout.razor`, but that custom layout did not render `BbPortalHost` and `BbDialogProvider`. Blazor Blueprint select/popover content depends on those layout-level hosts.
+- **Fix:** Added `BbPortalHost` and `BbDialogProvider` back to `OnboardingLayout.razor`.
+- **Prevention:** Any custom layout that hosts Blazor Blueprint interactive overlays (selects, dialogs, popovers) must include the same portal/dialog host components as `MainLayout`, or the trigger will render while the popup content silently fails to appear.
+
+## [2026-04-11] Focused onboarding works best as its own layout, not a hidden sidebar variant
+
+- **What happened:** The first pass mixed onboarding-specific chrome into `MainLayout` while also creating a dedicated `OnboardingLayout`, which left dead route-check logic behind and muddied the intended shell for sensitive setup pages.
+- **Root cause:** It is tempting to toggle dashboard chrome with route checks inside the shared layout, but explicit `@layout` usage on onboarding routes already provides a cleaner and more durable boundary.
+- **Fix:** Kept onboarding pages on a dedicated `OnboardingLayout`, removed the unreachable onboarding branch from `MainLayout`, and deleted the orphaned onboarding nav partial so the code matches the UX intent.
+- **Prevention:** When a flow truly needs different chrome, prefer a dedicated layout over conditionals inside the default layout. It keeps auth-sensitive UX easier to reason about, test, and review.
+
+## [2026-04-11] Onboarding Nav Visibility Security Hardening — Layout Suppression is the Right Pattern
+
+- **What happened:** New users during onboarding could see navigation links to organizer-only features (`/agents`, `/curation`) even though the pages themselves were authorization-protected. This created trust boundary confusion and poor UX during sensitive profile-completion flow.
+- **Root cause:** `NavMenu.razor` rendered all nav sections unconditionally. Initial attempt used `<AuthorizeView Roles="...">` but this **fails in dev mode because the dev principal carries all roles**. AuthorizeView is role-dependent; the dev principal (`DevelopmentAuthenticationDefaults.CreatePrincipal()`) includes Admin, Organizer, Curator, AND Attendee roles by design, making all role checks pass uniformly.
+- **Fix:** Created `OnboardingLayout.razor` as a focused shell for onboarding routes and kept `NewUserProfile.razor` / `AideProfile.razor` on that explicit layout. This is a **structural code choice, not role-dependent** — the layout applies uniformly regardless of user identity and cannot be bypassed. Secondary hardening: `NavMenu.razor` still scopes organizer and curator links with separate `<AuthorizeView>` role checks for non-onboarding routes. Added `@rendermode InteractiveServer` to `Home.razor` for server-only dashboard logic.
+- **Prevention:** When securing onboarding flows: layout suppression (structural choice) is more secure than role-gating (role-dependent). In dev mode, role-gating is ineffective because the dev principal has all roles. Use layouts to structurally separate onboarding navigation from main navigation; use role-gating as a secondary layer for defense-in-depth. Always verify security patterns work in dev mode before shipping — dev principal role blocker is a common gotcha.
+- **Why this pattern:** Layout suppression works uniformly in dev and prod; it's not role-dependent and cannot be bypassed by user claims. Defense-in-depth: main nav still has AuthorizeView for additional protection. Dev testing now accurately represents prod UX (no organizer nav visible on onboarding routes regardless of dev principal roles).
+
+
+- **What happened:** Running `Hackmum.Bethuya.E2E` without the Bethuya web app listening on `https://localhost:7112` caused nearly the whole suite to fail with `net::ERR_CONNECTION_REFUSED`.
+- **Root cause:** `BethuyaE2ETest` hardcodes `BETHUYA_BASE_URL`/`https://localhost:7112` and navigates directly with Playwright; it does not boot AppHost or the web app for the test run.
+- **Fix:** Kept the onboarding regression coverage at the bUnit/TUnit layer for this change and recorded the missing live-host requirement as the blocker for broader E2E verification.
+- **Prevention:** Before relying on Playwright coverage, start the target web app (or wire the suite to provision it automatically) and set `BETHUYA_BASE_URL` explicitly for the running instance.
+
+## [2026-04-11] Dev-mode Blazor auth needs a real authentication scheme, not only an AuthenticationStateProvider
+- **What happened:** Navigating to `/registration/mandatory` in local mode threw `InvalidOperationException: Unable to find the required 'IAuthenticationService' service`.
+- **Root cause:** The web app used `DevelopmentAuthenticationStateProvider` to make Blazor components think the user was authenticated, but `Authentication:Provider=None` skipped `AddAuthentication(...)` entirely. `[Authorize]` pages and authorization middleware still require a real `IAuthenticationService` in DI. The backend had the same gap for profile endpoints.
+- **Fix:** Added a shared development authentication scheme and handler in `ServiceDefaults/Auth`, enabled it for both web and backend when `Authentication:Provider=None`, switched the web app to `ClaimsCurrentUserService` in dev mode, and added regression tests for protected routes and profile endpoints.
+- **Prevention:** If local dev mode must exercise `[Authorize]` pages or authenticated APIs, always register a concrete authentication scheme and middleware on every participating app, even when the identity provider is disabled.
+
+## [2026-04-11] BbFormFieldInput rejects InputType and crashes Razor page rendering
+- **What happened:** After the auth DI fix, `/registration/mandatory` still failed to render and threw a component parameter exception for `BbFormFieldInput`.
+- **Root cause:** `BbFormFieldInput<TValue>` in the current Blazor Blueprint package does not expose an `InputType` parameter, so adding `InputType="InputType.Email"` / `InputType="InputType.Tel"` causes runtime rendering failure instead of a compile-time error.
+- **Fix:** Removed the unsupported `InputType` attributes from `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/NewUserProfile.razor` and re-verified the page over HTTP.
+- **Prevention:** When using Blazor Blueprint wrappers, only pass parameters already proven in repo usage or package docs; unsupported attributes fail at runtime for Razor components.
+
 ## [2026-03-26] ALL fixes were committed to main; worktree branch never received them
 - **What happened:** Every bug fix was committed and verified on `main`. The running application was in a worktree on branch `copilot/worktree-2026-03-24T09-26-45`. Fixes had zero effect on the user's running app for the entire session.
 - **Root cause:** Git worktrees share a `.git` but each is on an independent branch. Commits to `main` are invisible to any other worktree branch until explicitly merged.

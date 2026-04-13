@@ -7,6 +7,10 @@
 
 ## Learnings
 
+- `Authentication:Provider=None` still needs a concrete auth scheme in both `ServiceDefaults/Auth/BethuyaAuthenticationExtensions.cs` and the ASP.NET Core pipeline; a Blazor `AuthenticationStateProvider` alone does not satisfy `[Authorize]` pages or backend `ClaimsPrincipal` injection.
+- Shared dev-auth files for local onboarding now live in `ServiceDefaults/Auth/DevelopmentAuthenticationDefaults.cs` and `ServiceDefaults/Auth/DevelopmentAuthenticationHandler.cs`; web wiring is in `src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Program.cs`, backend wiring is in `src/Hackmum.Bethuya.Backend/Program.cs`, and regression coverage is in `tests/Hackmum.Bethuya.Tests/Auth/DevelopmentAuthenticationTests.cs`.
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/NewUserProfile.razor` cannot pass `InputType` to `BbFormFieldInput`; unsupported Blazor Blueprint wrapper parameters fail at runtime, not compile time.
+
 - Bethuya uses central package management in `Directory.Packages.props`, warnings-as-errors, and shared auth abstractions in `Bethuya.Hybrid.Shared`.
 - Auth is fully provider-pluggable on `main` via `Authentication:Provider` (None/Entra/Auth0/Keycloak). Code lives in `ServiceDefaults/Auth/` (extensions, options, provider enum) and `src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Auth/` (state providers, user service).
 - `Aspire.Hosting.Keycloak` is preview-only for Aspire 13.x. Used version `13.1.2-preview.1.26125.13` — pinned in `Directory.Packages.props`.

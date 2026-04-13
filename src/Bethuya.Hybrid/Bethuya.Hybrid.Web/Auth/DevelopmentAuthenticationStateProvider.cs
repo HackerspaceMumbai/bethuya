@@ -1,6 +1,5 @@
-using System.Security.Claims;
-using Bethuya.Hybrid.Shared.Auth;
 using Microsoft.AspNetCore.Components.Authorization;
+using ServiceDefaults.Auth;
 
 namespace Bethuya.Hybrid.Web.Auth;
 
@@ -11,25 +10,8 @@ namespace Bethuya.Hybrid.Web.Auth;
 /// </summary>
 internal sealed class DevelopmentAuthenticationStateProvider : AuthenticationStateProvider
 {
-    private static readonly AuthenticationState DevState = CreateDevState();
+    private static readonly AuthenticationState DevState = new(DevelopmentAuthenticationDefaults.CreatePrincipal());
 
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
         => Task.FromResult(DevState);
-
-    private static AuthenticationState CreateDevState()
-    {
-        var claims = new List<Claim>
-        {
-            new("sub", "dev-user-001"),
-            new("name", "Dev User"),
-            new("email", "dev@bethuya.local"),
-            new("role", BethuyaRoles.Admin),
-            new("role", BethuyaRoles.Organizer),
-            new("role", BethuyaRoles.Curator),
-            new("role", BethuyaRoles.Attendee),
-        };
-
-        var identity = new ClaimsIdentity(claims, authenticationType: "Development", nameType: "name", roleType: "role");
-        return new AuthenticationState(new ClaimsPrincipal(identity));
-    }
 }
