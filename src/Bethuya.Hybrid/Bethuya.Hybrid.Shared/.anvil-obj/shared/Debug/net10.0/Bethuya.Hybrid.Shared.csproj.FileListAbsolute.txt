@@ -1,0 +1,9 @@
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\EmbeddedAttribute.cs
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\ValidatableTypeAttribute.cs
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\Bethuya.Hybrid.Shared.csproj.AssemblyReference.cache
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\rpswa.dswa.cache.json
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\Bethuya.Hybrid.Shared.GeneratedMSBuildEditorConfig.editorconfig
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\Bethuya.Hybrid.Shared.AssemblyInfoInputs.cache
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\Bethuya.Hybrid.Shared.AssemblyInfo.cs
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\Bethuya.Hybrid.Shared.csproj.CoreCompileInputs.cache
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\.anvil-obj\shared\Debug\net10.0\Bethuya.Hybrid.Shared.sourcelink.json

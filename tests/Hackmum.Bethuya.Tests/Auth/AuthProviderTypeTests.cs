@@ -15,7 +15,7 @@ public class AuthProviderTypeTests
     public async Task AllProviders_AreDistinct()
     {
         var values = Enum.GetValues<AuthProviderType>();
-        await Assert.That(values).HasCount().EqualTo(4);
+        await Assert.That(values.Length).IsEqualTo(4);
         await Assert.That(values.Distinct().Count()).IsEqualTo(4);
     }
 

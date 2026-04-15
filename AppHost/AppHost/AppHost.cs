@@ -25,6 +25,16 @@ var linkedInClientSecret = GetAppHostSetting(
     "SocialConnections:LinkedIn:ClientSecret",
     "Parameters:oauth-linkedin-clientsecret",
     "oauth-linkedin-clientsecret");
+var linkedInScope0 = GetAppHostSettingOrDefault(
+    "openid",
+    "SocialConnections:LinkedIn:Scopes:0",
+    "Parameters:oauth-linkedin-scope-0",
+    "oauth-linkedin-scope-0");
+var linkedInScope1 = GetAppHostSettingOrDefault(
+    "profile",
+    "SocialConnections:LinkedIn:Scopes:1",
+    "Parameters:oauth-linkedin-scope-1",
+    "oauth-linkedin-scope-1");
 
 string GetAppHostSetting(params string[] keys)
 {
@@ -38,6 +48,12 @@ string GetAppHostSetting(params string[] keys)
     }
 
     return string.Empty;
+}
+
+string GetAppHostSettingOrDefault(string defaultValue, params string[] keys)
+{
+    var value = GetAppHostSetting(keys);
+    return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
 }
 
 
@@ -132,6 +148,8 @@ var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileNa
     .WithEnvironment("SocialConnections__LinkedIn__ClientId", linkedInClientId)
     .WithEnvironment("SocialConnections__LinkedIn__ClientSecret", linkedInClientSecret)
     .WithEnvironment("SocialConnections__LinkedIn__CallbackPath", linkedInCallbackPath)
+    .WithEnvironment("SocialConnections__LinkedIn__Scopes__0", linkedInScope0)
+    .WithEnvironment("SocialConnections__LinkedIn__Scopes__1", linkedInScope1)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
     .PublishAsAzureContainerApp((infra, app) =>

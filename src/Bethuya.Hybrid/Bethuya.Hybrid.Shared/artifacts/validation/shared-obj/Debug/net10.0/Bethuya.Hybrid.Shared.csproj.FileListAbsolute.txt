@@ -1,0 +1,2 @@
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\artifacts\validation\shared-obj\Debug\net10.0\EmbeddedAttribute.cs
+D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\artifacts\validation\shared-obj\Debug\net10.0\ValidatableTypeAttribute.cs

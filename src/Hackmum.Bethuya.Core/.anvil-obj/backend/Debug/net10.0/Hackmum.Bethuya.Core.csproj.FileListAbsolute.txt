@@ -1,0 +1,5 @@
+D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.Core\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.Core.GeneratedMSBuildEditorConfig.editorconfig
+D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.Core\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.Core.AssemblyInfoInputs.cache
+D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.Core\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.Core.AssemblyInfo.cs
+D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.Core\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.Core.csproj.CoreCompileInputs.cache
+D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.Core\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.Core.sourcelink.json

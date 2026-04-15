@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\Hackmum.Bethuya.AI\Hackmum.Bethuya.AI.csproj" />
     <ProjectReference Include="..\..\src\Hackmum.Bethuya.Backend\Hackmum.Bethuya.Backend.csproj" />
     <ProjectReference Include="..\..\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj" />
     <ProjectReference Include="..\..\ServiceDefaults\ServiceDefaults.csproj" />
   </ItemGroup>
 

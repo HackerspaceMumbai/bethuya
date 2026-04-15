@@ -1,0 +1,108 @@
+is_global = true
+build_property.RefitInternalNamespace = Bethuya.Hybrid.Shared
+build_property.TargetFramework = net10.0
+build_property.TargetFrameworkIdentifier = .NETCoreApp
+build_property.TargetFrameworkVersion = v10.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows,browser
+build_property.RootNamespace = Bethuya.Hybrid.Shared
+build_property.RootNamespace = Bethuya.Hybrid.Shared
+build_property.ProjectDir = D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = D:\Projects\bethuya.worktrees\newuser-signin\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 10.0
+build_property.EnableCodeStyleSeverity = 
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Components/Auth/LoginDisplay.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBdXRoXExvZ2luRGlzcGxheS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Components/Auth/RedirectToLogin.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBdXRoXFJlZGlyZWN0VG9Mb2dpbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/EventDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXZlbnREZXRhaWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/Profile.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUHJvZmlsZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/Registrations.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUmVnaXN0cmF0aW9ucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Routes.razor]
+build_metadata.AdditionalFiles.TargetPath = Um91dGVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Components/Dashboard/AiInsightsBanner.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xEYXNoYm9hcmRcQWlJbnNpZ2h0c0Jhbm5lci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-mj5ij6fa7b
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Components/Dashboard/EventCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xEYXNoYm9hcmRcRXZlbnRDYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-y4zzvoyw9a
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Components/Dashboard/FeaturedEventCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xEYXNoYm9hcmRcRmVhdHVyZWRFdmVudENhcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-3x6h1n3hmc
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Components/Dashboard/StatCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xEYXNoYm9hcmRcU3RhdENhcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-reaxkasq7q
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Components/Notification.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xOb3RpZmljYXRpb24ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-q45s4frgtl
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0XE1haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-e85087iv27
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0XE5hdk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-r38340q2lz
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/OnboardingLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0XE9uYm9hcmRpbmdMYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-991zd6jubo
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/AideProfile.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWlkZVByb2ZpbGUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-4fxsks35at
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/Events.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXZlbnRzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-m4hfgxrksg
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/Home.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSG9tZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-a0gxw0f23v
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/NewUserProfile.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTmV3VXNlclByb2ZpbGUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-pqb4v6tu9t
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/PlanEvent.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUGxhbkV2ZW50LnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-911sutknk6
+
+[D:/Projects/bethuya.worktrees/newuser-signin/src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/SocialProfileConnections.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU29jaWFsUHJvZmlsZUNvbm5lY3Rpb25zLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-phlmtnpjjx

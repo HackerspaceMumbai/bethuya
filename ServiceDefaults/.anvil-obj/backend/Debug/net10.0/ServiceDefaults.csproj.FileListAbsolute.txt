@@ -1,0 +1,6 @@
+D:\Projects\bethuya.worktrees\newuser-signin\ServiceDefaults\.anvil-obj\backend\Debug\net10.0\ServiceDefaults.csproj.AssemblyReference.cache
+D:\Projects\bethuya.worktrees\newuser-signin\ServiceDefaults\.anvil-obj\backend\Debug\net10.0\ServiceDefaults.GeneratedMSBuildEditorConfig.editorconfig
+D:\Projects\bethuya.worktrees\newuser-signin\ServiceDefaults\.anvil-obj\backend\Debug\net10.0\ServiceDefaults.AssemblyInfoInputs.cache
+D:\Projects\bethuya.worktrees\newuser-signin\ServiceDefaults\.anvil-obj\backend\Debug\net10.0\ServiceDefaults.AssemblyInfo.cs
+D:\Projects\bethuya.worktrees\newuser-signin\ServiceDefaults\.anvil-obj\backend\Debug\net10.0\ServiceDefaults.csproj.CoreCompileInputs.cache
+D:\Projects\bethuya.worktrees\newuser-signin\ServiceDefaults\.anvil-obj\backend\Debug\net10.0\ServiceDefaults.sourcelink.json

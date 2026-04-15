@@ -23,6 +23,8 @@ internal static class SocialProfileConnectionDefaults
 /// <summary>Registers and maps verified social profile connection flows for onboarding.</summary>
 public static class SocialProfileConnectionExtensions
 {
+    private static readonly string[] DefaultLinkedInOidcScopes = ["openid", "profile"];
+
     public static WebApplicationBuilder AddSocialProfileConnectionAuthentication(this WebApplicationBuilder builder)
     {
         var options = new SocialProfileConnectionOptions();
@@ -75,7 +77,8 @@ public static class SocialProfileConnectionExtensions
 
                         using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
                         context.RunClaimActions(payload.RootElement);
-                    }
+                    },
+                    OnRemoteFailure = context => HandleSocialRemoteFailureAsync(context, "github")
                 };
             });
         }
@@ -84,6 +87,9 @@ public static class SocialProfileConnectionExtensions
         {
             authenticationBuilder.AddOAuth(SocialProfileConnectionDefaults.LinkedInScheme, oauth =>
             {
+                var scopes = ResolveLinkedInScopes(options.LinkedIn);
+                var usesOpenIdConnect = UsesLinkedInOpenIdConnect(scopes);
+
                 oauth.SignInScheme = SocialProfileConnectionDefaults.ExternalCookieScheme;
                 oauth.ClientId = options.LinkedIn.ClientId;
                 oauth.ClientSecret = options.LinkedIn.ClientSecret;
@@ -92,34 +98,27 @@ public static class SocialProfileConnectionExtensions
                     : options.LinkedIn.CallbackPath;
                 oauth.AuthorizationEndpoint = "https://www.linkedin.com/oauth/v2/authorization";
                 oauth.TokenEndpoint = "https://www.linkedin.com/oauth/v2/accessToken";
-                oauth.UserInformationEndpoint = "https://api.linkedin.com/v2/me?projection=(id,vanityName)";
+                oauth.UserInformationEndpoint = usesOpenIdConnect
+                    ? "https://api.linkedin.com/v2/userinfo"
+                    : "https://api.linkedin.com/v2/me?projection=(id,vanityName)";
                 oauth.SaveTokens = false;
                 oauth.Scope.Clear();
-
-                var scopes = options.LinkedIn.Scopes.Length > 0 ? options.LinkedIn.Scopes : ["r_liteprofile"];
                 foreach (var scope in scopes)
                 {
                     oauth.Scope.Add(scope);
                 }
 
-                oauth.ClaimActions.MapJsonKey("urn:linkedin:member_id", "id");
-                oauth.ClaimActions.MapJsonKey("urn:linkedin:vanity_name", "vanityName");
+                oauth.ClaimActions.MapJsonKey("urn:linkedin:member_id", usesOpenIdConnect ? "sub" : "id");
+
+                if (!usesOpenIdConnect)
+                {
+                    oauth.ClaimActions.MapJsonKey("urn:linkedin:vanity_name", "vanityName");
+                }
 
                 oauth.Events = new OAuthEvents
                 {
-                    OnCreatingTicket = async context =>
-                    {
-                        using var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
-                        request.Headers.Accept.ParseAdd("application/json");
-                        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", context.AccessToken);
-                        request.Headers.Add("X-RestLi-Protocol-Version", "2.0.0");
-
-                        using var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
-                        response.EnsureSuccessStatusCode();
-
-                        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
-                        context.RunClaimActions(payload.RootElement);
-                    }
+                    OnCreatingTicket = context => CreateLinkedInTicketAsync(context, usesOpenIdConnect),
+                    OnRemoteFailure = context => HandleSocialRemoteFailureAsync(context, "linkedin")
                 };
             });
         }
@@ -264,5 +263,91 @@ public static class SocialProfileConnectionExtensions
         return returnUrl[0] == '/' && !returnUrl.StartsWith("//", StringComparison.Ordinal)
             ? returnUrl
             : "/registration/social";
+    }
+
+    private static string[] ResolveLinkedInScopes(SocialOAuthOptions options)
+    {
+        var configuredScopes = options.Scopes
+            .Where(static scope => !string.IsNullOrWhiteSpace(scope))
+            .Select(static scope => scope.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return configuredScopes.Length > 0 ? configuredScopes : DefaultLinkedInOidcScopes;
+    }
+
+    private static bool UsesLinkedInOpenIdConnect(IEnumerable<string> scopes)
+        => scopes.Contains("openid", StringComparer.OrdinalIgnoreCase);
+
+    private static async Task CreateLinkedInTicketAsync(OAuthCreatingTicketContext context, bool usesOpenIdConnect)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+        request.Headers.Accept.ParseAdd("application/json");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", context.AccessToken);
+
+        if (!usesOpenIdConnect)
+        {
+            request.Headers.Add("X-RestLi-Protocol-Version", "2.0.0");
+        }
+
+        using var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"LinkedIn user information request failed with status code {(int)response.StatusCode}.",
+                null,
+                response.StatusCode);
+        }
+
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted));
+        context.RunClaimActions(payload.RootElement);
+    }
+
+    private static Task HandleSocialRemoteFailureAsync(RemoteFailureContext context, string provider)
+    {
+        var errorCode = ResolveRemoteFailureErrorCode(provider, context);
+        var returnUrl = ExtractReturnUrl(context.Properties?.RedirectUri);
+
+        context.HandleResponse();
+        context.Response.Redirect(BuildReturnUrl(returnUrl, errorCode, provider));
+        return Task.CompletedTask;
+    }
+
+    private static string ResolveRemoteFailureErrorCode(string provider, RemoteFailureContext context)
+    {
+        var providerError = context.Request.Query["error"].ToString();
+        var failureMessage = context.Failure?.Message ?? string.Empty;
+
+        if (provider.Equals("linkedin", StringComparison.OrdinalIgnoreCase) &&
+            (providerError.Equals("unauthorized_scope_error", StringComparison.OrdinalIgnoreCase) ||
+             failureMessage.Contains("unauthorized_scope_error", StringComparison.OrdinalIgnoreCase) ||
+             failureMessage.Contains("scope", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "social-provider-scope-not-authorized";
+        }
+
+        if (providerError.Equals("access_denied", StringComparison.OrdinalIgnoreCase))
+        {
+            return "social-connect-cancelled";
+        }
+
+        return "social-connect-failed";
+    }
+
+    private static string? ExtractReturnUrl(string? redirectUri)
+    {
+        if (string.IsNullOrWhiteSpace(redirectUri))
+        {
+            return null;
+        }
+
+        var queryIndex = redirectUri.IndexOf('?', StringComparison.Ordinal);
+        if (queryIndex < 0 || queryIndex == redirectUri.Length - 1)
+        {
+            return null;
+        }
+
+        var query = QueryHelpers.ParseQuery(redirectUri[(queryIndex + 1)..]);
+        return query.TryGetValue("returnUrl", out var returnUrl) ? returnUrl.ToString() : null;
     }
 }

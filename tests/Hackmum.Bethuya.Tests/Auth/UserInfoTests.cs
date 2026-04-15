@@ -16,7 +16,7 @@ public class UserInfoTests
         await Assert.That(userInfo.UserId).IsEqualTo("user-123");
         await Assert.That(userInfo.Email).IsEqualTo("test@bethuya.dev");
         await Assert.That(userInfo.Name).IsEqualTo("Test User");
-        await Assert.That(userInfo.Roles).HasCount().EqualTo(2);
+        await Assert.That(userInfo.Roles.Length).IsEqualTo(2);
         await Assert.That(userInfo.Roles).Contains(BethuyaRoles.Organizer);
         await Assert.That(userInfo.Roles).Contains(BethuyaRoles.Attendee);
     }

@@ -8,5 +8,7 @@
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <NoWarn>$(NoWarn);CA1716;CA1711</NoWarn>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**\artifacts\**</DefaultItemExcludes>
+    <DefaultItemExcludesInProjectFolder>$(DefaultItemExcludesInProjectFolder);artifacts\**</DefaultItemExcludesInProjectFolder>
   </PropertyGroup>
 </Project>
