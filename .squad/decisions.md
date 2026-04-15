@@ -537,3 +537,47 @@ For /registration/social, prefer regression tests that lock reading order and pr
 
 - **Approved by:** Augustine Correa
 - **Date approved:** 2026-04-15
+
+---
+
+### 2026-04-15T10:44:07Z — Gate LinkedIn connect on URL entry and clarify stacked GitHub cue
+
+**Author:** Augustine Correa (user directive) + Trinity (Frontend Dev) + Switch (Tester)
+
+**Context:**
+- `/registration/social` kept the LinkedIn URL field visible and locked it after verification
+- However, the connect action could still launch with a blank URL
+- In the stacked-card layout, some users missed that GitHub continued below the larger LinkedIn card
+
+**Decision:**
+- Disable the LinkedIn connect/reconnect CTA until the current unverified state has a non-empty trimmed public LinkedIn profile URL
+- Keep the verified LinkedIn lock state unchanged so the member-ID completion boundary still comes from LinkedIn, not from typed text
+- Add a compact stack-intro cue above the cards that explicitly tells users GitHub verification continues below LinkedIn
+
+**Rationale:**
+This removes the normal blank-url path that could lead to a locked empty LinkedIn URL after verification, without weakening the verified-member-ID rule. The intro cue improves scanability in the stacked layout without adding noisy chrome or pushing sensitive logic into client-only behavior.
+
+**Implementation (Trinity):**
+- **Commit:** `1ee6bcb2e84998d323ea4a5a5a1f63af0d115a30`
+- **Files:** `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/SocialProfileConnections.razor`, `SocialProfileConnections.razor.css`
+
+**Evidence:**
+- **Build:** ✅ Shared UI build passed
+- **Live Verification:** `/registration/social` markup and UI structure verified ✅
+- **Screenshot:** `artifacts/social-connect-ui.png` captured and verified ✅
+- **Code Review:** Passed ✅
+- **Anvil Verification:** Passed with no new regressions ✅
+- **Performance Review:** No actionable issues ✅
+
+**Test Coverage (Switch):**
+- Updated `tests/Hackmum.Bethuya.Tests/UI/OnboardingNavigationRenderTests.cs`
+- Regression coverage: disabled-until-URL, enabled-after-URL, verified-lock/reconnect, GitHub-below cue
+- Full execution blocked by pre-existing auth compile failures (`HasCount` references)
+
+**Known Blockers:**
+- Pre-existing `HasCount` compile failures in auth tests
+- MSB3021/MSB3027 locked-assembly issues while Aspire `web` is running
+
+**Status:**
+- **Approved by:** Augustine Correa
+- **Date approved:** 2026-04-15
