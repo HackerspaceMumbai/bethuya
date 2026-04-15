@@ -37,3 +37,4 @@
   - **No cross-test state pollution** — BP5: `ResetAsync()` in `[Before(Test)]` hooks ensures test isolation.
   - **Contract duplication as safety net** — BP6: duplicate contract types in test projects (not imported) to catch breaking changes at compile-time.
   - **Central Package Management** — all test package versions in Directory.Packages.props; never `Version=""` in .csproj.
+- **Stacked social cards regression tests (2026-04-15):** Updated OnboardingNavigationRenderTests.cs with regression coverage for stacked LinkedIn/GitHub cards on /registration/social. Tests lock reading order (LinkedIn first), LinkedIn public-profile URL field ownership, LinkedIn editable/locked behavior preservation, and GitHub status/meta/CTA semantics. Commit e8dccdc607d683fdec3539a56a4f7f642d3eec53. Full test execution blocked by unrelated pre-existing auth compile errors.

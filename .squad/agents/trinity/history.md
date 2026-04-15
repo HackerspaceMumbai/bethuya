@@ -40,3 +40,4 @@
   - Keep the LinkedIn URL field and lock-after-verification behavior intact inside the first card; do not flatten it to match GitHub.
   - Use supporting GitHub copy plus capped CTA width to keep the simpler second card from feeling sparse in the stacked layout.
   - Preserve the existing truthful loading/error placeholders inside each card so state changes do not make the stack jump or lie.
+- **Stacked social cards (2026-04-15):** Stacked LinkedIn and GitHub verification cards vertically on /registration/social. LinkedIn card owns the public-profile URL field and preserves lock-after-verify behavior. GitHub card gains supportive copy to balance the stack. Commit e8dccdc607d683fdec3539a56a4f7f642d3eec53. Scoped code review clean; performance no regressions. Aspire web rebuild succeeded. Test execution blocked by pre-existing auth test compile failures (HasCount in UserInfoTests.cs and AuthProviderTypeTests.cs).

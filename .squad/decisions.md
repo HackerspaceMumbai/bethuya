@@ -483,3 +483,57 @@ Example 1 — Standard “Anvil Required” entry
 ```
 
 ---
+## 2026-04-15 — Stack asymmetric social verification cards
+
+**Author:** Trinity
+
+**Area:** /registration/social
+
+### Decision
+
+Stack the LinkedIn and GitHub verification cards vertically on the left column instead of keeping them side-by-side.
+
+### Why
+
+LinkedIn now carries more behavior than GitHub on this step: it owns the extra public-profile URL field and locks that field after verified connect. Keeping both providers in equal-width horizontal cards made the LinkedIn card feel cramped and the GitHub card feel underfilled, even though both states were technically correct.
+
+### Guardrails Kept
+
+- LinkedIn URL stays visible in every state.
+- Loading and load-error states still disable edits/connect actions until saved state is known.
+- GitHub remains the lighter card, but gains supportive copy so the stack still reads as intentional.
+
+### Evidence
+
+- **Commit:** e8dccdc607d683fdec3539a56a4f7f642d3eec53
+- **Code review:** Scoped review clean
+- **Performance:** No actionable regressions detected
+- **Build:** Aspire web rebuild succeeded
+
+### Status
+
+- **Approved by:** Augustine Correa
+- **Date approved:** 2026-04-15
+
+---
+
+## 2026-04-15 — Stacked social-card regression coverage (Switch)
+
+**Author:** Switch
+
+**Scope:** Test coverage for /registration/social stacked layout
+
+### Decision
+
+For /registration/social, prefer regression tests that lock reading order and provider-owned semantics over equal-height or alignment assumptions.
+
+### Key Checks
+
+- LinkedIn renders first, owns the only public-profile URL field
+- LinkedIn preserves its editable/locked behavior
+- GitHub keeps its own status, meta, and CTA copy without inheriting LinkedIn-only affordances
+
+### Status
+
+- **Approved by:** Augustine Correa
+- **Date approved:** 2026-04-15
