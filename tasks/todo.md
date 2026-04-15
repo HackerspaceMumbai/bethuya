@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-04-15] Guard LinkedIn connect on `/registration/social`
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Disable the LinkedIn connect/reconnect action until a meaningful LinkedIn public profile URL is present when LinkedIn is still unverified, prevent blank locked URL states through the normal onboarding path, and add a clear visual cue that the stacked GitHub card continues below LinkedIn without weakening the verified-member-ID completion rule.
+- **Acceptance:** ✅ LinkedIn connect now stays disabled until the unverified card has a non-empty trimmed public profile URL, while verified LinkedIn still keeps the field locked and the reconnect action available. ✅ Added an intentional stack-intro cue so users can see GitHub continues below the LinkedIn card, and verified the new markers on the live `https://localhost:7400/registration/social` page plus `artifacts\social-connect-ui.png`. ⚠️ Targeted `OnboardingNavigationRenderTests` execution is still blocked by the repository’s pre-existing auth-test compile failures (`HasCount` usage in `Auth\UserInfoTests.cs` and `Auth\AuthProviderTypeTests.cs`); separate test attempts that rebuild the web host are additionally blocked when the running `web` resource locks copied assemblies.
+
 ## [2026-04-15] Restack social verification cards on `/registration/social`
 - **Status:** done
 - **Agent/Owner:** Trinity (Frontend Dev)

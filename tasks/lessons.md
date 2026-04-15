@@ -18,6 +18,13 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-04-15] Social OAuth CTAs must be gated by the provider-owned input state
+
+- **What happened:** The LinkedIn onboarding card let users press “Connect LinkedIn” before entering any public profile URL, which made it possible to return from verification with the field locked but blank.
+- **Root cause:** The CTA only respected loading/saving/error guards; it did not also require the LinkedIn card’s own supporting URL input to contain a meaningful trimmed value before launch.
+- **Fix:** Added explicit LinkedIn CTA gating based on the normalized URL, kept reconnect available after verified connect, and updated the helper copy/tests so the blank-path state is no longer reachable through normal use.
+- **Prevention:** When an OAuth card depends on a user-supplied supporting field, gate the launch action on the normalized value instead of relying on post-return validation or placeholder copy.
+
 ## [2026-04-15] Asymmetric verification cards need structural rhythm, not forced alignment
 
 - **What happened:** The LinkedIn card on `/registration/social` grew taller than GitHub once it carried the verified-member status plus the editable/lockable LinkedIn URL field, so the side-by-side layout started to look accidental and visually strained.
@@ -371,3 +378,10 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** The previous coverage was optimized for equal-height card rhythm and placeholder spacing, which is brittle once one card legitimately owns an extra field and longer copy.
 - **Fix:** Assert stable DOM order, per-card ownership of the LinkedIn URL field, and provider-specific CTA/status copy instead of relying on visual symmetry assumptions.
 - **Prevention:** When cards intentionally diverge, test the user-visible semantics each card owns and the reading order they appear in; leave pixel-perfect layout proof to screenshots, not unit-style render tests.
+
+## [2026-04-15] Tall stacked onboarding cards need explicit continuation copy
+
+- **What happened:** On shorter viewports, the taller LinkedIn card can push the GitHub card below the fold, so correct DOM order alone is not enough to tell users another required card still follows.
+- **Root cause:** The stacked layout solved card asymmetry, but discoverability still depended on scroll affordance instead of durable visible copy.
+- **Fix:** Add regression coverage for visible stack text that mentions GitHub and that it continues below, alongside the CTA gating tests.
+- **Prevention:** When one stacked card can legitimately dominate the viewport, require an explicit continuation cue and test it semantically rather than relying on screenshots.

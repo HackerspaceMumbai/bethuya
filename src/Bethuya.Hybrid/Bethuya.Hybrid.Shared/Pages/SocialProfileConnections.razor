@@ -39,6 +39,11 @@
                     </BbCardHeader>
                     <BbCardContent Class="profile-form-card__content">
                         <div class="social-connection-grid social-connection-grid--stacked" data-test="social-connection-stack">
+                            <div class="social-connection-stack-intro" data-test="social-stack-cue">
+                                <p class="social-connection-stack-intro__eyebrow">Two verification cards</p>
+                                <p class="social-connection-stack-intro__text">LinkedIn comes first. GitHub verification continues directly below in this same stack.</p>
+                            </div>
+
                             <BbCard Class="social-connection-card">
                                 @{
                                     var linkedInError = GetProviderSocialErrorMessage("linkedin");
@@ -86,7 +91,7 @@
                                     </div>
 
                                     <div class="social-connection-action" data-test="connect-linkedin-btn">
-                                        <button type="button" class="social-connection-button" disabled="@AreSocialControlsDisabled" @onclick="@(() => BeginSocialConnect("linkedin"))">
+                                        <button type="button" class="social-connection-button" disabled="@(!CanStartLinkedInConnect)" @onclick="@(() => BeginSocialConnect("linkedin"))">
                                             @(IsLinkedInConnected ? "Reconnect LinkedIn" : "Connect LinkedIn")
                                         </button>
                                     </div>
@@ -293,6 +298,8 @@
     private bool IsGitHubRequired => _model.IsGitHubRequired;
     private bool HasLoadError => _loadErrorMessage is not null;
     private bool AreSocialControlsDisabled => _isLoading || _isSaving || HasLoadError;
+    private bool HasLinkedInProfileUrlForConnect => !string.IsNullOrWhiteSpace(GetNormalizedLinkedInProfileUrl());
+    private bool CanStartLinkedInConnect => !AreSocialControlsDisabled && (IsLinkedInConnected || HasLinkedInProfileUrlForConnect);
     private bool CanContinue => !AreSocialControlsDisabled && (!IsLinkedInRequired || IsLinkedInConnected) && (!IsGitHubRequired || IsGitHubConnected);
 
     protected override void OnParametersSet()
@@ -349,10 +356,10 @@
             var linkedInProfileUrl = GetNormalizedLinkedInProfileUrl();
 
             await ProfileApi.SaveSocialProfileAsync(new SaveSocialProfileDto(
-                _model.LinkedInMemberId!,
+                _model.LinkedInMemberId,
                 linkedInProfileUrl,
-                _model.GitHubLogin!,
-                _model.GitHubProfileUrl!));
+                _model.GitHubLogin,
+                _model.GitHubProfileUrl));
 
             Navigation.NavigateTo("/registration/aide");
         }
@@ -367,7 +374,16 @@
     }
 
     private void BeginSocialConnect(string provider)
-        => Navigation.NavigateTo($"/authentication/social/{provider}/start?returnUrl={Uri.EscapeDataString(BuildSocialReturnUrl())}", forceLoad: true);
+    {
+        if (string.Equals(provider, "linkedin", StringComparison.Ordinal) && !CanStartLinkedInConnect)
+        {
+            _actionErrorMessage = "Add your public LinkedIn profile URL before connecting LinkedIn.";
+            return;
+        }
+
+        _actionErrorMessage = null;
+        Navigation.NavigateTo($"/authentication/social/{provider}/start?returnUrl={Uri.EscapeDataString(BuildSocialReturnUrl())}", forceLoad: true);
+    }
 
     private void ApplyQueryValues()
     {
@@ -424,7 +440,9 @@
                 ? "Refresh this page before editing the LinkedIn URL."
                 : IsLinkedInConnected
                     ? "Locked after LinkedIn verification on this step."
-                    : "Enter the exact public LinkedIn profile URL carefully before you connect. Bethuya locks this field after LinkedIn verification on this step.";
+                    : HasLinkedInProfileUrlForConnect
+                        ? "Enter the exact public LinkedIn profile URL carefully before you connect. Bethuya locks this field after LinkedIn verification on this step."
+                        : "Add your public LinkedIn profile URL to enable LinkedIn connect. Bethuya locks this field after LinkedIn verification on this step.";
 
     private bool HasGeneralSocialError => _socialErrorMessage is not null && GetNormalizedSocialProvider() is null;
 

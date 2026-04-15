@@ -121,6 +121,33 @@
     gap: 1.25rem;
 }
 
+/* Blazor Blueprint does not offer a built-in stacked-card continuation cue, so this intro highlights that GitHub continues below LinkedIn. */
+.social-connection-stack-intro {
+    border: 1px solid rgba(212, 168, 48, 0.16);
+    border-radius: calc(var(--radius) + 2px);
+    background: linear-gradient(180deg, rgba(212, 168, 48, 0.08), rgba(255, 255, 255, 0.02));
+    padding: 0.9rem 1rem;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.social-connection-stack-intro__eyebrow {
+    margin: 0;
+    color: var(--primary);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.social-connection-stack-intro__text {
+    margin: 0;
+    color: var(--foreground);
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
 .social-connection-card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(212, 168, 48, 0.12);
