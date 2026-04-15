@@ -16,6 +16,48 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-04-15] Restack social verification cards on `/registration/social`
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Rework the `/registration/social` card layout so LinkedIn and GitHub stack vertically, preserve LinkedIn URL edit/lock behavior across truthful async states, keep the CTA/right-column hierarchy polished, and add targeted regression coverage for the stacked presentation.
+- **Acceptance:** ✅ LinkedIn and GitHub now render in a single intentional vertical stack on the live `/registration/social` page while preserving the existing loading, error, mixed, connected, and disconnected state contract. ✅ GitHub gained richer support copy so the simpler card still feels complete beside the LinkedIn URL workflow. ✅ Updated targeted onboarding render tests to assert the stacked wrapper and GitHub support copy. ✅ `aspire` rebuild for `web` succeeded and live HTML at `https://localhost:7400/registration/social` includes the new stacked class/copy markers. ⚠️ `dotnet test --project .\tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore --filter "FullyQualifiedName~SocialProfileConnections|FullyQualifiedName~OnboardingNavigationRenderTests"` remains blocked by pre-existing unrelated auth-test compile failures (`HasCount` usage in `Auth\UserInfoTests.cs` and `Auth\AuthProviderTypeTests.cs`).
+
+## [2026-04-15] Add stacked social-card regression coverage
+- **Status:** done
+- **Agent/Owner:** Switch (Tester)
+- **Description:** Update targeted `/registration/social` regression coverage so the asymmetric LinkedIn and GitHub cards stay semantically stable if Trinity stacks them vertically, with LinkedIn retaining its editable/locked URL field behavior and GitHub keeping clear standalone CTA copy.
+- **Acceptance:** ✅ Replaced the older “aligned cards” assertions with focused bUnit checks that lock LinkedIn-first card order, the single LinkedIn URL field, and GitHub-only status/meta/CTA semantics without depending on brittle visual measurements. ✅ Recorded the regression pattern for the squad in `.squad/decisions/inbox/switch-social-card-stack-regression.md`. ⚠️ `dotnet test --project .\tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore --filter "FullyQualifiedName~SocialProfileConnections"` is still blocked by pre-existing unrelated auth-test compile failures (`HasCount` usage in `Auth\UserInfoTests.cs` and `Auth\AuthProviderTypeTests.cs`), so the updated social tests could not be executed end-to-end in this worktree.
+
+## [2026-04-15] Patch transitive System.Security.Cryptography.Xml vulnerability
+- **Status:** done
+- **Agent/Owner:** Tank (Backend Dev)
+- **Description:** Trace the package path pulling `System.Security.Cryptography.Xml` 9.0.0 into `Bethuya.MigrationService`, apply the smallest central-package fix that removes the vulnerable version without weakening NU1901 gating, and validate the AppHost restore/build path as far as existing blockers allow.
+- **Acceptance:** ✅ Traced the transitive path as `Bethuya.MigrationService` → `ServiceDefaults` → `Microsoft.Identity.Web` 3.8.4 → `Microsoft.Identity.Web.TokenCache` / `Microsoft.AspNetCore.DataProtection` → `System.Security.Cryptography.Xml`. ✅ Pinned `System.Security.Cryptography.Xml` to `10.0.6` centrally in `Directory.Packages.props` without suppressing NU1901. ✅ `dotnet restore` now succeeds for both `src\Bethuya.MigrationService\Bethuya.MigrationService.csproj` and `AppHost\AppHost\AppHost.csproj`, and the resolved package graph shows `System.Security.Cryptography.Xml` `10.0.6`. ⚠️ `dotnet build AppHost\AppHost\AppHost.csproj --no-restore` still fails on the repository’s pre-existing duplicate assembly-attribute errors in `Hackmum.Bethuya.Core`, `Hackmum.Bethuya.AI`, `ServiceDefaults`, and `Bethuya.Hybrid.Shared`, with no remaining NU1901 failures.
+
+## [2026-04-14] Prepare LinkedIn social onboarding validation coverage
+- **Status:** done
+- **Agent/Owner:** Switch (Tester)
+- **Description:** Review the in-flight `/registration/social` LinkedIn URL UX changes and update targeted tests so Switch can validate alignment, editable/locked URL states, caution copy, and the required full-time-employed flow as soon as Trinity/Tank finish landing their work.
+- **Acceptance:** ✅ Added targeted bUnit coverage for the LinkedIn URL field’s editable and locked states, the mixed LinkedIn/GitHub card structure used to keep actions aligned, and the employee-required flow when only a typed LinkedIn URL is present. ✅ File diagnostics are clean for the touched UI/auth test files and `SocialProfileConnections.razor`. ⚠️ `dotnet test --project .\tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore` is still blocked by the repository’s pre-existing duplicate generated-assembly-attribute errors in `Hackmum.Bethuya.Core`, `Hackmum.Bethuya.AI`, `ServiceDefaults`, and `Bethuya.Hybrid.Shared`.
+
+## [2026-04-14] Refine LinkedIn onboarding URL UX
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Replace the LinkedIn post-connect meta copy on `/registration/social` with a real public profile URL field that stays editable until LinkedIn verification succeeds, then locks without disturbing the card rhythm or onboarding layout.
+- **Acceptance:** ✅ LinkedIn card now keeps a Blazor Blueprint URL field visible through empty, connected, loading, mixed, and load-error states, while only the verified LinkedIn member ID satisfies completion. ✅ The URL stays editable before verified connect, trims into the OAuth return/save flow, and locks once LinkedIn verification succeeds. ✅ Social card actions stay aligned by reserving stable status/feedback regions and disabling controls during blocking load failures. ✅ Added targeted bUnit coverage for loading-state gating and truthful load-error behavior. ⚠️ `dotnet test --project .\tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore --filter "FullyQualifiedName~SocialProfileConnections|FullyQualifiedName~DevelopmentAuthenticationTests"` is still blocked by the repository's pre-existing duplicate generated-assembly-attribute errors in `Hackmum.Bethuya.Core`, `Hackmum.Bethuya.AI`, `ServiceDefaults`, and `Bethuya.Hybrid.Shared`.
+
+## [2026-04-14] Verify LinkedIn social save contract supports typed profile URLs
+- **Status:** done
+- **Agent/Owner:** Tank (Backend Dev)
+- **Description:** Confirm whether the existing social profile save contract already persists a user-entered LinkedIn profile URL independently from the verified LinkedIn member ID, and add the smallest regression coverage needed without weakening the member-ID verification boundary.
+- **Acceptance:** Existing backend/shared contracts are either confirmed as sufficient or patched surgically; regression tests prove a LinkedIn profile URL can be stored alongside a verified member ID while a typed URL alone still fails the LinkedIn-required validation.
+
+## [2026-04-14] Fix LinkedIn OAuth scope mismatch and graceful callback handling
+- **Status:** done
+- **Agent/Owner:** Tank (Backend Dev)
+- **Description:** Investigate the LinkedIn onboarding OAuth failure on `/oauth/linkedin/callback`, determine whether the local app now needs OpenID Connect scopes instead of `r_liteprofile`, update the social-connect flow accordingly, and make remote LinkedIn failures return users to `/registration/social` with actionable provider-specific guidance instead of the developer exception page.
+- **Acceptance:** ✅ LinkedIn onboarding now defaults to the OpenID Connect `openid profile` scopes through AppHost-managed runtime config, while the web auth flow still supports explicit legacy scope overrides when needed. ✅ Existing social-connect error handling continues to route LinkedIn scope failures back to `/registration/social` with actionable provider guidance instead of leaving the user on a callback exception page. ✅ Added targeted auth coverage for LinkedIn scope defaults and callback error redirects, and file diagnostics for the touched sources are clean. ⚠️ Full `dotnet build` / `dotnet test` remains blocked by a pre-existing duplicate assembly-attribute generation issue in `ServiceDefaults` and `Bethuya.Hybrid.Shared`.
+
 ## [2026-04-13] Align social connect card actions across empty and connected states
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

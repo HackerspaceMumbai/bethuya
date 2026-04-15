@@ -38,15 +38,30 @@
                         </BbCardDescription>
                     </BbCardHeader>
                     <BbCardContent Class="profile-form-card__content">
-                        <div class="social-connection-grid">
+                        <div class="social-connection-grid social-connection-grid--stacked" data-test="social-connection-stack">
                             <BbCard Class="social-connection-card">
+                                @{
+                                    var linkedInError = GetProviderSocialErrorMessage("linkedin");
+                                }
                                 <BbCardHeader>
                                     <BbCardTitle>LinkedIn</BbCardTitle>
                                     <BbCardDescription>@GetLinkedInCardDescription()</BbCardDescription>
                                 </BbCardHeader>
                                 <BbCardContent Class="social-connection-card__content">
                                     <div class="social-connection-details">
-                                        @if (IsLinkedInConnected)
+                                        @if (_isLoading)
+                                        {
+                                            <p class="social-connection-status social-connection-status--pending" data-test="linkedin-loading-status">
+                                                Loading your saved LinkedIn status…
+                                            </p>
+                                        }
+                                        else if (HasLoadError)
+                                        {
+                                            <p class="social-connection-status social-connection-status--pending" data-test="linkedin-load-error-status">
+                                                We couldn&apos;t load your saved LinkedIn status.
+                                            </p>
+                                        }
+                                        else if (IsLinkedInConnected)
                                         {
                                             <p class="social-connection-status" data-test="linkedin-connected-status">
                                                 Connected as <strong>@_model.LinkedInMemberId</strong>
@@ -58,28 +73,66 @@
                                                 Not connected yet.
                                             </p>
                                         }
+                                    </div>
 
-                                        <p class="@GetLinkedInMetaClass()" data-test="linkedin-meta">
-                                            @GetLinkedInMetaText()
-                                        </p>
+                                    <div class="social-connection-linkedin-field" data-test="linkedin-profile-url-field">
+                                        <BbFormFieldInput TValue="string"
+                                                          @bind-Value="_model.LinkedInProfileUrl"
+                                                          Label="Public LinkedIn profile URL"
+                                                          HelperText="@GetLinkedInUrlHelperText()"
+                                                          Placeholder="https://www.linkedin.com/in/your-handle"
+                                                          Type="InputType.Url"
+                                                          Disabled="@(IsLinkedInConnected || AreSocialControlsDisabled)" />
                                     </div>
 
                                     <div class="social-connection-action" data-test="connect-linkedin-btn">
-                                        <button type="button" class="social-connection-button" @onclick="@(() => BeginSocialConnect("linkedin"))">
+                                        <button type="button" class="social-connection-button" disabled="@AreSocialControlsDisabled" @onclick="@(() => BeginSocialConnect("linkedin"))">
                                             @(IsLinkedInConnected ? "Reconnect LinkedIn" : "Connect LinkedIn")
                                         </button>
+                                    </div>
+
+                                    <div class="social-connection-feedback">
+                                        @if (linkedInError is not null)
+                                        {
+                                            <div class="social-connection-error" data-test="social-connect-error">
+                                                <p class="social-connection-error__eyebrow">Social connection needs attention</p>
+                                                <p class="social-connection-error__provider">LinkedIn needs attention</p>
+                                                <p class="social-connection-error__message">@linkedInError</p>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <p class="social-connection-feedback__placeholder" aria-hidden="true">
+                                                LinkedIn connection feedback appears here when needed.
+                                            </p>
+                                        }
                                     </div>
                                 </BbCardContent>
                             </BbCard>
 
                             <BbCard Class="social-connection-card">
+                                @{
+                                    var gitHubError = GetProviderSocialErrorMessage("github");
+                                }
                                 <BbCardHeader>
                                     <BbCardTitle>GitHub</BbCardTitle>
                                     <BbCardDescription>@GetGitHubCardDescription()</BbCardDescription>
                                 </BbCardHeader>
                                 <BbCardContent Class="social-connection-card__content">
                                     <div class="social-connection-details">
-                                        @if (IsGitHubConnected)
+                                        @if (_isLoading)
+                                        {
+                                            <p class="social-connection-status social-connection-status--pending" data-test="github-loading-status">
+                                                Loading your saved GitHub status…
+                                            </p>
+                                        }
+                                        else if (HasLoadError)
+                                        {
+                                            <p class="social-connection-status social-connection-status--pending" data-test="github-load-error-status">
+                                                We couldn&apos;t load your saved GitHub status.
+                                            </p>
+                                        }
+                                        else if (IsGitHubConnected)
                                         {
                                             <p class="social-connection-status" data-test="github-connected-status">
                                                 Connected as <strong>@_model.GitHubLogin</strong>
@@ -95,18 +148,39 @@
                                         <p class="@GetGitHubMetaClass()" data-test="github-meta">
                                             @GetGitHubMetaText()
                                         </p>
+
+                                        <p class="social-connection-support" data-test="github-support">
+                                            @GetGitHubSupportText()
+                                        </p>
                                     </div>
 
                                     <div class="social-connection-action" data-test="connect-github-btn">
-                                        <button type="button" class="social-connection-button" @onclick="@(() => BeginSocialConnect("github"))">
+                                        <button type="button" class="social-connection-button" disabled="@AreSocialControlsDisabled" @onclick="@(() => BeginSocialConnect("github"))">
                                             @(IsGitHubConnected ? "Reconnect GitHub" : "Connect GitHub")
                                         </button>
+                                    </div>
+
+                                    <div class="social-connection-feedback">
+                                        @if (gitHubError is not null)
+                                        {
+                                            <div class="social-connection-error" data-test="social-connect-error">
+                                                <p class="social-connection-error__eyebrow">Social connection needs attention</p>
+                                                <p class="social-connection-error__provider">GitHub needs attention</p>
+                                                <p class="social-connection-error__message">@gitHubError</p>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <p class="social-connection-feedback__placeholder" aria-hidden="true">
+                                                GitHub connection feedback appears here when needed.
+                                            </p>
+                                        }
                                     </div>
                                 </BbCardContent>
                             </BbCard>
                         </div>
 
-                        @if (_socialErrorMessage is not null)
+                        @if (HasGeneralSocialError)
                         {
                             <div class="social-connection-error" data-test="social-connect-error">
                                 <p class="social-connection-error__eyebrow">Social connection needs attention</p>
@@ -114,11 +188,20 @@
                             </div>
                         }
 
-                        @if (_errorMessage is not null)
+                        @if (HasLoadError)
                         {
                             <div data-test="social-profile-error">
                                 <BbAlert Variant="AlertVariant.Danger">
-                                    <BbAlertDescription>@_errorMessage</BbAlertDescription>
+                                    <BbAlertDescription>@_loadErrorMessage</BbAlertDescription>
+                                </BbAlert>
+                            </div>
+                        }
+
+                        @if (_actionErrorMessage is not null)
+                        {
+                            <div data-test="social-profile-error">
+                                <BbAlert Variant="AlertVariant.Danger">
+                                    <BbAlertDescription>@_actionErrorMessage</BbAlertDescription>
                                 </BbAlert>
                             </div>
                         }
@@ -200,14 +283,17 @@
     private readonly SocialProfileModel _model = new();
     private bool _isLoading = true;
     private bool _isSaving;
-    private string? _errorMessage;
+    private string? _loadErrorMessage;
+    private string? _actionErrorMessage;
     private string? _socialErrorMessage;
 
     private bool IsLinkedInConnected => !string.IsNullOrWhiteSpace(_model.LinkedInMemberId);
     private bool IsGitHubConnected => !string.IsNullOrWhiteSpace(_model.GitHubLogin) && !string.IsNullOrWhiteSpace(_model.GitHubProfileUrl);
     private bool IsLinkedInRequired => _model.IsLinkedInRequired;
     private bool IsGitHubRequired => _model.IsGitHubRequired;
-    private bool CanContinue => (!IsLinkedInRequired || IsLinkedInConnected) && (!IsGitHubRequired || IsGitHubConnected);
+    private bool HasLoadError => _loadErrorMessage is not null;
+    private bool AreSocialControlsDisabled => _isLoading || _isSaving || HasLoadError;
+    private bool CanContinue => !AreSocialControlsDisabled && (!IsLinkedInRequired || IsLinkedInConnected) && (!IsGitHubRequired || IsGitHubConnected);
 
     protected override void OnParametersSet()
     {
@@ -239,7 +325,7 @@
         }
         catch (Exception)
         {
-            _errorMessage = "Failed to load your social connections. Please refresh and try again.";
+            _loadErrorMessage = "We couldn't load this onboarding step. Refresh the page before continuing.";
         }
         finally
         {
@@ -251,18 +337,20 @@
     {
         if (!CanContinue)
         {
-            _errorMessage = GetRequiredConnectionError();
+            _actionErrorMessage = GetRequiredConnectionError();
             return;
         }
 
         _isSaving = true;
-        _errorMessage = null;
+        _actionErrorMessage = null;
 
         try
         {
+            var linkedInProfileUrl = GetNormalizedLinkedInProfileUrl();
+
             await ProfileApi.SaveSocialProfileAsync(new SaveSocialProfileDto(
                 _model.LinkedInMemberId!,
-                _model.LinkedInProfileUrl,
+                linkedInProfileUrl,
                 _model.GitHubLogin!,
                 _model.GitHubProfileUrl!));
 
@@ -270,7 +358,7 @@
         }
         catch (Exception)
         {
-            _errorMessage = "Failed to save your verified social profiles. Please try again.";
+            _actionErrorMessage = "Failed to save your verified social profiles. Please try again.";
         }
         finally
         {
@@ -279,7 +367,7 @@
     }
 
     private void BeginSocialConnect(string provider)
-        => Navigation.NavigateTo($"/authentication/social/{provider}/start?returnUrl=%2Fregistration%2Fsocial", forceLoad: true);
+        => Navigation.NavigateTo($"/authentication/social/{provider}/start?returnUrl={Uri.EscapeDataString(BuildSocialReturnUrl())}", forceLoad: true);
 
     private void ApplyQueryValues()
     {
@@ -304,25 +392,71 @@
         }
     }
 
-    private string GetLinkedInMetaClass()
-        => string.IsNullOrWhiteSpace(_model.LinkedInProfileUrl)
-            ? "social-connection-meta social-connection-meta--placeholder"
-            : "social-connection-meta";
-
-    private string GetLinkedInMetaText()
-        => string.IsNullOrWhiteSpace(_model.LinkedInProfileUrl)
-            ? "Verified LinkedIn profile details appear here after you connect."
-            : _model.LinkedInProfileUrl!;
-
     private string GetGitHubMetaClass()
-        => string.IsNullOrWhiteSpace(_model.GitHubProfileUrl)
+        => _isLoading || HasLoadError
+            ? "social-connection-meta"
+            : string.IsNullOrWhiteSpace(_model.GitHubProfileUrl)
             ? "social-connection-meta social-connection-meta--placeholder"
             : "social-connection-meta";
 
     private string GetGitHubMetaText()
-        => string.IsNullOrWhiteSpace(_model.GitHubProfileUrl)
+        => _isLoading
+            ? "Loading saved GitHub profile details…"
+            : HasLoadError
+                ? "Refresh this page to reload your saved GitHub profile details."
+                : string.IsNullOrWhiteSpace(_model.GitHubProfileUrl)
             ? "Verified GitHub profile details appear here after you connect."
             : _model.GitHubProfileUrl!;
+
+    private string GetGitHubSupportText()
+        => _isLoading
+            ? "We will restore the verified GitHub profile URL for this card as soon as your saved state finishes loading."
+            : HasLoadError
+                ? "Reload this step before reconnecting so Bethuya can confirm whether GitHub was already saved."
+                : IsGitHubConnected
+                    ? "GitHub already supplied the verified profile URL Bethuya will keep on this step."
+                    : "GitHub supplies the verified profile URL for you, so this card stays simpler even though the proof still matters.";
+
+    private string GetLinkedInUrlHelperText()
+        => _isLoading
+            ? "Loading your saved LinkedIn state…"
+            : HasLoadError
+                ? "Refresh this page before editing the LinkedIn URL."
+                : IsLinkedInConnected
+                    ? "Locked after LinkedIn verification on this step."
+                    : "Enter the exact public LinkedIn profile URL carefully before you connect. Bethuya locks this field after LinkedIn verification on this step.";
+
+    private bool HasGeneralSocialError => _socialErrorMessage is not null && GetNormalizedSocialProvider() is null;
+
+    private string BuildSocialReturnUrl()
+    {
+        Dictionary<string, string?> query = [];
+        var linkedInProfileUrl = GetNormalizedLinkedInProfileUrl();
+
+        if (!string.IsNullOrWhiteSpace(_model.LinkedInMemberId))
+        {
+            query["linkedinMemberId"] = _model.LinkedInMemberId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(linkedInProfileUrl))
+        {
+            query["linkedinProfileUrl"] = linkedInProfileUrl;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_model.GitHubLogin))
+        {
+            query["githubLogin"] = _model.GitHubLogin;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_model.GitHubProfileUrl))
+        {
+            query["githubProfileUrl"] = _model.GitHubProfileUrl;
+        }
+
+        return query.Count == 0
+            ? "/registration/social"
+            : $"/registration/social?{string.Join("&", query.Select(static pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value ?? string.Empty)}"))}";
+    }
 
     private string GetCompletionInstruction()
         => (IsGitHubRequired, IsLinkedInRequired) switch
@@ -344,12 +478,16 @@
             : "Recommended for everyone. Sign in to GitHub so we can capture your verified profile URL.";
 
     private string GetActionHint()
-        => (IsGitHubRequired, IsLinkedInRequired) switch
-        {
-            (true, false) => "Connect GitHub to continue. We still strongly recommend LinkedIn too because having both verified accounts improves your chances for selection.",
-            (false, true) => "Connect LinkedIn to continue. We still strongly recommend GitHub too because having both verified accounts improves your chances for selection.",
-            _ => "Connect both accounts if you can. Even when only one is required, having both verified accounts improves your chances for selection."
-        };
+        => _isLoading
+            ? "Loading your saved social connections before you continue."
+            : HasLoadError
+                ? "Refresh the page to reload your saved social connections before you continue."
+                : (IsGitHubRequired, IsLinkedInRequired) switch
+                {
+                    (true, false) => "Connect GitHub to continue. We still strongly recommend LinkedIn too because having both verified accounts improves your chances for selection.",
+                    (false, true) => "Connect LinkedIn to continue. We still strongly recommend GitHub too because having both verified accounts improves your chances for selection.",
+                    _ => "Connect both accounts if you can. Even when only one is required, having both verified accounts improves your chances for selection."
+                };
 
     private string GetRequiredConnectionError()
         => (IsGitHubRequired, IsLinkedInRequired) switch
@@ -377,11 +515,31 @@
         {
             "social-provider-not-configured" => $"{providerName} is not configured for local onboarding yet.",
             "social-connect-failed" => $"{providerName} sign-in did not complete. Please try connecting {providerName} again.",
+            "social-connect-cancelled" => $"{providerName} sign-in was cancelled before Bethuya could verify the account.",
+            "social-provider-scope-not-authorized" => "LinkedIn sign-in is blocked because your LinkedIn app is not approved for the scopes Bethuya requested. Enable the \"Sign in with LinkedIn using OpenID Connect\" product for openid/profile access, or explicitly configure the legacy r_liteprofile scope, and keep https://localhost:7400/oauth/linkedin/callback registered as an allowed redirect URL.",
             "github-connect-incomplete" => "GitHub sign-in succeeded, but we couldn't read the verified GitHub profile details.",
             "linkedin-connect-incomplete" => "LinkedIn sign-in succeeded, but we couldn't read the verified LinkedIn member details.",
             _ => $"{providerName} couldn't complete the social profile connection. Please try again."
         };
     }
+
+    private string? GetProviderSocialErrorMessage(string provider)
+        => string.Equals(GetNormalizedSocialProvider(), provider, StringComparison.Ordinal)
+            ? _socialErrorMessage
+            : null;
+
+    private string? GetNormalizedSocialProvider()
+        => SocialProviderQuery?.Trim().ToLowerInvariant() switch
+        {
+            "github" => "github",
+            "linkedin" => "linkedin",
+            _ => null
+        };
+
+    private string? GetNormalizedLinkedInProfileUrl()
+        => string.IsNullOrWhiteSpace(_model.LinkedInProfileUrl)
+            ? null
+            : _model.LinkedInProfileUrl.Trim();
 
     private sealed class SocialProfileModel
     {

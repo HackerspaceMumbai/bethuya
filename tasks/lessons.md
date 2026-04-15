@@ -18,6 +18,27 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-04-15] Asymmetric verification cards need structural rhythm, not forced alignment
+
+- **What happened:** The LinkedIn card on `/registration/social` grew taller than GitHub once it carried the verified-member status plus the editable/lockable LinkedIn URL field, so the side-by-side layout started to look accidental and visually strained.
+- **Root cause:** The earlier equal-height card treatment was optimized for button alignment, but the two providers no longer have symmetric content or behavior after LinkedIn gained the extra URL workflow.
+- **Fix:** Restacked the provider cards vertically, kept the truthful loading/error state contract inside each card, and gave the lighter GitHub card supportive copy so the stack still reads as balanced.
+- **Prevention:** When onboarding providers diverge in required fields or security behavior, prefer a deliberate vertical stack over forcing horizontal symmetry that makes one card look empty and the other cramped.
+
+## [2026-04-15] Shared auth packages can trip vulnerability gates in worker projects
+
+- **What happened:** `Bethuya.MigrationService` failed restore on NU1901 for `System.Security.Cryptography.Xml` even though the worker did not reference that package directly.
+- **Root cause:** The worker references `ServiceDefaults`, which carries `Microsoft.Identity.Web`; that shared auth package graph pulled `Microsoft.Identity.Web.TokenCache` / `Microsoft.AspNetCore.DataProtection`, which in turn restored the vulnerable `System.Security.Cryptography.Xml` version transitively.
+- **Fix:** Traced the path from `project.assets.json` and the resolved package graph, then used central transitive pinning in `Directory.Packages.props` to move `System.Security.Cryptography.Xml` to `10.0.6` without suppressing NU1901.
+- **Prevention:** When a shared infrastructure project brings auth packages into non-auth apps, inspect the transitive graph before suppressing package warnings; prefer a central patched pin over weakening the vulnerability gate.
+
+## [2026-04-14] New LinkedIn self-serve apps expect OIDC scopes by default
+
+- **What happened:** Local LinkedIn onboarding failed with `unauthorized_scope_error` because the app rejected `r_liteprofile` during the OAuth callback.
+- **Root cause:** Bethuya's runtime config still defaulted LinkedIn to the legacy `r_liteprofile` scope, but newer self-serve LinkedIn apps are commonly provisioned with the “Sign in with LinkedIn using OpenID Connect” product that authorizes `openid` and `profile` instead.
+- **Fix:** Defaulted AppHost-managed LinkedIn scopes to `openid` + `profile`, kept the web auth flow compatible with explicit legacy scope overrides, and preserved actionable redirect messaging for scope-authorization failures.
+- **Prevention:** For local LinkedIn setup, enable the OpenID Connect product first and treat `r_liteprofile` as an explicit legacy override rather than the default.
+
 ## [2026-04-12] External OAuth must live on its own saved onboarding step
 
 - **What happened:** The first version put mandatory profile fields and GitHub/LinkedIn connect on the same Blazor page. After the OAuth redirect returned, the Blazor circuit restarted and all unsaved required form data was gone.
@@ -336,3 +357,17 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** Deleting the Migrations folder (per no-migrations directive) made `GetPendingMigrationsAsync` return 0, so `MigrateAsync` was never called, so EF never created the database. The CI workflow also didn't run MigrationService — it started the backend directly, which can't create the schema.
 - **Fix:** (1) Changed `MigrationWorker` from `MigrateAsync` to `EnsureCreatedAsync` — creates the database and all tables from the current EF model without any migration tracking. (2) Added a "Create E2E database schema" step in ci.yml that runs MigrationService (with the E2E connection string) before starting the backend API.
 - **Prevention:** When no EF migrations exist, `MigrateAsync` is a no-op — it does NOT create the database. Use `EnsureCreatedAsync` for pre-migration / no-migration scenarios. `EnsureCreatedAsync` creates the DB + full schema from the model. Caveat: when migrations are eventually added at formal release, the existing `EnsureCreated`-provisioned database will need to be dropped/recreated (it has no `__EFMigrationsHistory` table).
+
+## [2026-04-15] Sensitive onboarding cards must render truthful loading and load-error states
+
+- **What happened:** The `/registration/social` LinkedIn URL WIP rendered the same "not connected yet" affordances before the saved social state had loaded, which made the page look disconnected even while the server roundtrip was still in flight.
+- **Root cause:** The shared card layout reserved stable space for empty and connected states, but async hydration was still falling through to the default disconnected UI. That leaked the wrong story into a sensitive onboarding step and left connect actions clickable before the host had confirmed the saved state.
+- **Fix:** Keep the card skeleton stable, but swap in explicit loading/error copy and disable OAuth/edit controls until the server has either hydrated the saved state or surfaced a blocking load error.
+- **Prevention:** For async onboarding surfaces, never let loading reuse the disconnected state. Preserve layout rhythm with placeholders, but make status text truthful and gate primary actions until the saved state is known.
+
+## [2026-04-15] Asymmetric onboarding cards need semantic tests, not symmetry assumptions
+
+- **What happened:** The social onboarding step now gives LinkedIn more content and behavior than GitHub, so older “aligned cards” assertions were no longer the best regression net for the intended stacked layout.
+- **Root cause:** The previous coverage was optimized for equal-height card rhythm and placeholder spacing, which is brittle once one card legitimately owns an extra field and longer copy.
+- **Fix:** Assert stable DOM order, per-card ownership of the LinkedIn URL field, and provider-specific CTA/status copy instead of relying on visual symmetry assumptions.
+- **Prevention:** When cards intentionally diverge, test the user-visible semantics each card owns and the reading order they appear in; leave pixel-perfect layout proof to screenshots, not unit-style render tests.

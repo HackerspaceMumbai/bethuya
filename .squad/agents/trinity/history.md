@@ -36,3 +36,7 @@
   - Keep the LinkedIn public profile URL field visible in every state, but disable edits and OAuth buttons until saved social data has loaded or a blocking load error has been surfaced.
   - Reserve card status and feedback space so GitHub and LinkedIn actions stay aligned even when only one provider is connected or a provider-specific error appears.
   - Trim the typed LinkedIn URL when carrying it through the OAuth return URL and final save, but never treat that typed URL as completion without the verified LinkedIn member ID.
+- **Asymmetric social cards should stack once provider behavior diverges (2026-04-15):** `/registration/social` reads more intentionally when LinkedIn and GitHub are stacked vertically instead of forced into equal-width columns.
+  - Keep the LinkedIn URL field and lock-after-verification behavior intact inside the first card; do not flatten it to match GitHub.
+  - Use supporting GitHub copy plus capped CTA width to keep the simpler second card from feeling sparse in the stacked layout.
+  - Preserve the existing truthful loading/error placeholders inside each card so state changes do not make the stack jump or lie.

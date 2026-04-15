@@ -111,15 +111,19 @@
 
 .social-connection-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
     align-items: stretch;
+}
+
+/* Blazor Blueprint cards do not provide this mixed-content stack layout, so custom spacing keeps asymmetric social cards intentional. */
+.social-connection-grid--stacked {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
 }
 
 .social-connection-card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(212, 168, 48, 0.12);
-    height: 100%;
     display: flex;
     flex-direction: column;
 }
@@ -136,7 +140,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    min-height: 4.5rem;
+    min-height: 5rem;
+    width: 100%;
+}
+
+/* BB handles the field styling; this wrapper keeps the LinkedIn URL field full-width inside the flex card layout. */
+.social-connection-linkedin-field {
     width: 100%;
 }
 
@@ -165,10 +174,34 @@
     pointer-events: none;
 }
 
+.social-connection-support {
+    color: var(--muted-foreground, var(--foreground));
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0;
+    max-width: 40rem;
+    opacity: 0.88;
+}
+
 .social-connection-action {
-    margin-top: auto;
-    padding-top: 0.4rem;
+    margin-top: 0.1rem;
+    padding-top: 0.15rem;
     width: 100%;
+    max-width: 22rem;
+}
+
+.social-connection-feedback {
+    width: 100%;
+    min-height: 5.5rem;
+}
+
+.social-connection-feedback__placeholder {
+    display: block;
+    min-height: 100%;
+    margin: 0;
+    opacity: 0;
+    user-select: none;
+    pointer-events: none;
 }
 
 .social-connection-button {
@@ -197,13 +230,29 @@
     outline-offset: 3px;
 }
 
+.social-connection-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+    transform: none;
+}
+
+.social-connection-button:disabled:hover,
+.social-connection-button:disabled:focus-visible {
+    border-color: rgba(212, 168, 48, 0.32);
+    background: rgba(255, 255, 255, 0.02);
+}
+
 .social-connection-error {
-    margin-top: 1rem;
     padding: 1rem 1.1rem;
     border-radius: calc(var(--radius) + 2px);
     border: 1px solid rgba(229, 62, 62, 0.55);
     background: linear-gradient(180deg, rgba(80, 16, 16, 0.55), rgba(44, 10, 10, 0.88));
     box-shadow: 0 18px 34px rgba(120, 18, 18, 0.2);
+    width: 100%;
+}
+
+.profile-form-card__content > .social-connection-error {
+    margin-top: 0.25rem;
 }
 
 .social-connection-error__eyebrow {
@@ -213,6 +262,14 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: #ffb7b7;
+}
+
+.social-connection-error__provider {
+    margin: 0 0 0.3rem;
+    color: #fff7d1;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.4;
 }
 
 .social-connection-error__message {
@@ -298,12 +355,12 @@
 }
 
 @media (max-width: 720px) {
-    .social-connection-grid {
-        grid-template-columns: 1fr;
-    }
-
     .profile-actions {
         align-items: stretch;
+    }
+
+    .social-connection-action {
+        max-width: none;
     }
 
     .profile-primary-button {

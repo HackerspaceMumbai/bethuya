@@ -291,8 +291,11 @@ public class OnboardingNavigationRenderTests
         await Assert.That(cut.Markup).Contains("dev-user");
         await Assert.That(cut.Markup).Contains("Reconnect LinkedIn");
         await Assert.That(cut.Markup).Contains("Reconnect GitHub");
-        await Assert.That(cut.Markup).Contains("social-connection-details");
         await Assert.That(cut.Markup).Contains("GitHub is required for students.");
+
+        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
+        await Assert.That(linkedInUrlInput.GetAttribute("value")).IsEqualTo("https://www.linkedin.com/in/dev-user");
+        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
     }
 
     [Test]
@@ -317,7 +320,7 @@ public class OnboardingNavigationRenderTests
     }
 
     [Test]
-    public async Task SocialProfileConnections_DisconnectedState_ReservesMetaSpaceForAlignedButtons()
+    public async Task SocialProfileConnections_DisconnectedState_KeepsLinkedInFirstWithItsOwnUrlFieldAndGitHubCta()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Dev User");
@@ -329,10 +332,200 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cards = cut.FindAll(".social-connection-card");
+        var linkedInCard = cards[0];
+        var gitHubCard = cards[1];
 
+        await Assert.That(cards.Count).IsEqualTo(2);
+        await Assert.That(cut.FindAll(".social-connection-card input[type='url']").Count).IsEqualTo(1);
         await Assert.That(cut.Markup).Contains("social-connection-meta--placeholder");
-        await Assert.That(cut.Markup).Contains("Verified GitHub profile details appear here after you connect.");
-        await Assert.That(cut.Markup).Contains("Verified LinkedIn profile details appear here after you connect.");
+        await Assert.That(cut.Markup).Contains("Enter the exact public LinkedIn profile URL carefully before you connect.");
+        await Assert.That(linkedInCard.TextContent).Contains("LinkedIn");
+        await Assert.That(linkedInCard.TextContent).Contains("Public LinkedIn profile URL");
+        await Assert.That(linkedInCard.TextContent).Contains("Connect LinkedIn");
+        await Assert.That(gitHubCard.TextContent).Contains("GitHub");
+        await Assert.That(gitHubCard.TextContent).Contains("Verified GitHub profile details appear here after you connect.");
+        await Assert.That(gitHubCard.TextContent).Contains("Connect GitHub");
+        await Assert.That(gitHubCard.TextContent).DoesNotContain("Public LinkedIn profile URL");
+
+        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
+        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsFalse();
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_LoadingState_DisablesEditableControlsUntilSavedStateHydrates()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+
+        var statusSource = new TaskCompletionSource<ProfileCompletionStatusDto>();
+        var socialSource = new TaskCompletionSource<SocialProfileDto>();
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => statusSource.Task);
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => socialSource.Task);
+        ctx.Services.AddSingleton(profileApi);
+
+        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
+        var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
+        var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
+        var saveButton = cut.Find("[data-test='save-social-btn']");
+
+        await Assert.That(cut.Markup).Contains("Loading your saved LinkedIn status…");
+        await Assert.That(cut.Markup).Contains("Loading saved GitHub profile details…");
+        await Assert.That(cut.Markup).Contains("Loading your saved social connections before you continue.");
+        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
+        await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
+        await Assert.That(gitHubButton.HasAttribute("disabled")).IsTrue();
+        await Assert.That(saveButton.HasAttribute("disabled")).IsTrue();
+
+        statusSource.SetResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null));
+        socialSource.SetResult(new SocialProfileDto("Student", false, true, null, null, "dev-user", "https://github.com/dev-user"));
+
+        cut.WaitForAssertion(() =>
+        {
+            var hydratedInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
+            var hydratedGitHubButton = cut.Find("[data-test='connect-github-btn'] button");
+            if (!cut.Markup.Contains("Connected as", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected the hydrated UI to show a connected account.");
+            }
+
+            if (hydratedInput.HasAttribute("disabled"))
+            {
+                throw new InvalidOperationException("Expected the LinkedIn URL field to become editable after hydration.");
+            }
+
+            if (hydratedGitHubButton.HasAttribute("disabled"))
+            {
+                throw new InvalidOperationException("Expected the GitHub connect button to re-enable after hydration.");
+            }
+        });
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_LoadFailure_KeepsCardsTruthfulAndDisablesActions()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<SocialProfileDto>(new InvalidOperationException("boom")));
+        ctx.Services.AddSingleton(profileApi);
+
+        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
+        var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
+        var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
+        var saveButton = cut.Find("[data-test='save-social-btn']");
+        var linkedInStatus = cut.Find("[data-test='linkedin-load-error-status']");
+        var loadError = cut.Find("[data-test='social-profile-error']");
+        var gitHubMeta = cut.Find("[data-test='github-meta']");
+
+        await Assert.That(loadError.TextContent).Contains("We couldn't load this onboarding step. Refresh the page before continuing.");
+        await Assert.That(linkedInStatus.TextContent).Contains("We couldn't load your saved LinkedIn status.");
+        await Assert.That(gitHubMeta.TextContent).Contains("Refresh this page to reload your saved GitHub profile details.");
+        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
+        await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
+        await Assert.That(gitHubButton.HasAttribute("disabled")).IsTrue();
+        await Assert.That(saveButton.HasAttribute("disabled")).IsTrue();
+        await profileApi.DidNotReceive().SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_LinkedInConnectedWithoutProfileUrl_DisablesUrlField()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, "yrZCpj2Z12", null, "dev-user", "https://github.com/dev-user")));
+        ctx.Services.AddSingleton(profileApi);
+
+        var cut = ctx.RenderComponent<SocialProfileConnections>();
+
+        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
+
+        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("Locked after LinkedIn verification on this step.");
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_LinkedInConnectedWhileGitHubPending_KeepsLinkedInReconnectSeparateFromGitHubCta()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, "yrZCpj2Z12", "https://www.linkedin.com/in/dev-user", null, null)));
+        ctx.Services.AddSingleton(profileApi);
+
+        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cards = cut.FindAll(".social-connection-card");
+        var linkedInCard = cards[0];
+        var gitHubCard = cards[1];
+
+        await Assert.That(cards.Count).IsEqualTo(2);
+        await Assert.That(cut.FindAll(".social-connection-details").Count).IsEqualTo(2);
+        await Assert.That(cut.FindAll(".social-connection-action").Count).IsEqualTo(2);
+        await Assert.That(cut.FindAll(".social-connection-feedback").Count).IsEqualTo(2);
+        await Assert.That(linkedInCard.TextContent).Contains("Reconnect LinkedIn");
+        await Assert.That(linkedInCard.TextContent).Contains("Public LinkedIn profile URL");
+        await Assert.That(linkedInCard.TextContent).Contains("Locked after LinkedIn verification on this step.");
+        await Assert.That(gitHubCard.TextContent).Contains("GitHub");
+        await Assert.That(gitHubCard.TextContent).Contains("Not connected yet.");
+        await Assert.That(gitHubCard.TextContent).Contains("Verified GitHub profile details appear here after you connect.");
+        await Assert.That(gitHubCard.TextContent).Contains("Connect GitHub");
+        await Assert.That(gitHubCard.TextContent).DoesNotContain("Public LinkedIn profile URL");
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_LinkedInScopeError_ShowsActionableProviderMessage()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, null, null, null, null)));
+        ctx.Services.AddSingleton(profileApi);
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/social?socialError=social-provider-scope-not-authorized&socialProvider=linkedin");
+
+        var cut = ctx.RenderComponent<SocialProfileConnections>();
+
+        await Assert.That(cut.Markup).Contains("LinkedIn needs attention");
+        await Assert.That(cut.Markup).Contains("Enable the \"Sign in with LinkedIn using OpenID Connect\" product");
+        await Assert.That(cut.Markup).Contains("https://localhost:7400/oauth/linkedin/callback");
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_EmployeeWithTypedLinkedInUrlButNoVerifiedMemberId_StillShowsRequiredError()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, null, null, "dev-user", "https://github.com/dev-user")));
+        ctx.Services.AddSingleton(profileApi);
+
+        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/dev-user/");
+
+        await InvokeAsync(cut.Instance, "HandleContinue");
+
+        await Assert.That(cut.Markup).Contains("LinkedIn is required for full-time employed applicants.");
+        await profileApi.DidNotReceive().SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -356,9 +549,61 @@ public class OnboardingNavigationRenderTests
         await profileApi.Received(1).SaveSocialProfileAsync(
             Arg.Is<SaveSocialProfileDto>(request =>
                 request.LinkedInMemberId == null &&
+                request.LinkedInProfileUrl == null &&
                 request.GitHubLogin == "dev-user" &&
                 request.GitHubProfileUrl == "https://github.com/dev-user"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_OptionalLinkedInUrl_RemainsEditableAndSavesTypedValue()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SocialProfileDto("Student", false, true, null, null, "dev-user", "https://github.com/dev-user")));
+        profileApi.SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, false, DateTimeOffset.UtcNow, null)));
+        ctx.Services.AddSingleton(profileApi);
+
+        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
+        linkedInUrlInput.Change("https://www.linkedin.com/in/future-speaker");
+
+        await InvokeAsync(cut.Instance, "HandleContinue");
+
+        await profileApi.Received(1).SaveSocialProfileAsync(
+            Arg.Is<SaveSocialProfileDto>(request =>
+                request.LinkedInMemberId == null &&
+                request.LinkedInProfileUrl == "https://www.linkedin.com/in/future-speaker" &&
+                request.GitHubLogin == "dev-user" &&
+                request.GitHubProfileUrl == "https://github.com/dev-user"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_LinkedInUrl_IsPreservedWhenStartingSocialConnect()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SocialProfileDto("Student", false, true, null, null, null, null)));
+        ctx.Services.AddSingleton(profileApi);
+
+        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
+        linkedInUrlInput.Change("https://www.linkedin.com/in/future-speaker");
+
+        cut.Find("[data-test='connect-github-btn'] button").Click();
+
+        var navigation = ctx.Services.GetRequiredService<NavigationManager>();
+        await Assert.That(navigation.Uri).Contains("returnUrl=%2Fregistration%2Fsocial%3FlinkedinProfileUrl%3Dhttps%253A%252F%252Fwww.linkedin.com%252Fin%252Ffuture-speaker");
     }
 
     [Test]
