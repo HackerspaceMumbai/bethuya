@@ -69,6 +69,13 @@ Forbidden in RCL:
 - HttpContext usage
 - auth provider wiring
 
+### 5) Async onboarding states must stay truthful
+
+- Keep card/page structure stable across empty, loading, connected, mixed, and error states.
+- Do not reuse "not connected" copy while async host data is still loading.
+- Disable OAuth launches and draft edits when a blocking load error means the saved state is unknown.
+- Prefer reserving layout space with placeholders so actions stay aligned while status text changes honestly.
+
 ## Testing requirements
 
 - Prefer `data-test` selectors for stable Playwright tests.

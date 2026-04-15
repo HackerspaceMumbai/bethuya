@@ -23,6 +23,50 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ## Active Decisions
 
+### 2026-04-15 — Pin transitive `System.Security.Cryptography.Xml` on the .NET 10 servicing line
+
+**Author:** Tank (Backend Dev) + Morpheus (Security Engineer approval)
+
+**Context:**
+- `Bethuya.MigrationService` and AppHost restore were failing on NU1901 for transitive `System.Security.Cryptography.Xml` 9.0.0.
+- Dependency chain: `Bethuya.MigrationService` → `ServiceDefaults` → `Microsoft.Identity.Web` 3.8.4 → `Microsoft.AspNetCore.DataProtection` / `Microsoft.Identity.Web.TokenCache` → vulnerable package.
+- Repository targets `.NET 10`, so correct servicing line is `10.0.6+`, not `.NET 9` `9.0.15`.
+
+**Decision:**
+- Applied central transitive pin in `Directory.Packages.props`: `System.Security.Cryptography.Xml` `10.0.6`
+- Fix placed at the shared infrastructure boundary, not scattered across leaf projects
+- Kept NU1901 gate and warnings-as-errors intact; no suppressions
+
+**Security Rationale (Morpheus):**
+- Central transitive pinning is the correct immediate remediation mechanism
+- Minimum safe version for .NET 10 repo is `10.0.6` (active advisory fix on .NET 10 train)
+- Pinning at package-management boundary keeps trust boundary clean
+- Central pin removes vulnerable package without scattering provider-specific references
+
+**Verification:**
+- **Anvil used:** Yes
+- **Commit:** `6b6fe863873dc57ba314b564e6617ca03ebc5bbc` (base)
+- **Evidence summary:**
+  - Restore: ✅ `dotnet restore Bethuya.MigrationService` and `AppHost` both **PASS** (no NU1901)
+  - Package resolution: ✅ `System.Security.Cryptography.Xml` → `10.0.6`
+  - Vulnerability scan: ✅ **CLEAN** with pin present
+  - Build: ⚠️ Pre-existing duplicate assembly-attribute errors (CS0579) in `Hackmum.Bethuya.Core`, `Hackmum.Bethuya.AI`, `ServiceDefaults`, `Bethuya.Hybrid.Shared` remain unrelated to this fix
+  - Reviewers: ✅ Code review clean; Morpheus approved security boundary
+
+**Regressions:** None from the dependency pin; only pre-existing build blockers remain.
+
+**Rollback:** `git checkout -- Directory.Packages.props tasks\todo.md tasks\lessons.md .squad\agents\tank\history.md && git clean -f -- .squad\decisions\inbox\*crypto-xml*`
+
+**Follow-ups:**
+- [ ] Evaluate `Microsoft.Identity.Web` upgrade to remove future need for this central pin
+- [ ] Fix pre-existing duplicate assembly-attribute build failures
+
+**Status:**
+- **Approved by:** Neo (implicit via workflow), Morpheus (security)
+- **Date approved:** 2026-04-15
+
+---
+
 ### 2026-04-11 — Harden Onboarding Identity Boundary: Layout-Based Nav Suppression
 
 **Author:** Morpheus (Security Engineer)
@@ -94,10 +138,110 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 **Status:**
 - **Approved by:** Morpheus (self-approved; layout suppression is structurally secure)
 - **Date approved:** 2026-04-11
-- **Implementation date:** 2026-04-11
-- **Implementation date:** 2026-04-11
 
+---
 
+### 2026-04-14 — Default LinkedIn onboarding to OIDC scopes
+
+**Author:** Tank (Backend Dev)
+
+**Context:** Local onboarding hit `unauthorized_scope_error` at LinkedIn callback because the app was requesting legacy `r_liteprofile`.
+
+**Decision:**
+- Default LinkedIn onboarding to `openid` + `profile` OIDC scopes for current self-serve path
+- Keep web social auth code compatible with explicit legacy scope overrides for older LinkedIn apps
+- Treat LinkedIn scope authorization failures as actionable onboarding errors that redirect to `/registration/social`
+
+**Impact:** New local LinkedIn setups must provision "Sign in with LinkedIn using OpenID Connect" product and register `https://localhost:7400/oauth/linkedin/callback`. Legacy apps can override `SocialConnections:LinkedIn:Scopes` via AppHost-managed config.
+
+**Status:** Implemented
+
+---
+
+### 2026-04-11 — Make `Authentication:Provider=None` a real local auth mode for onboarding
+
+**Author:** Tank (Backend Dev)
+
+**Context:** Local new-user onboarding was broken because `/registration/mandatory` hit `[Authorize]` without any registered `IAuthenticationService`, and backend profile endpoints had no authenticated user in `Provider=None` mode.
+
+**Decision:**
+- Treat `Authentication:Provider=None` as a local development auth mode by registering shared development authentication scheme/handler for both web and backend
+- Keep shared development principal in `ServiceDefaults/Auth` so Blazor auth state, `[Authorize]` pages, and backend `ClaimsPrincipal` resolve the same user shape
+- Remove unsupported `InputType` parameters from `NewUserProfile.razor` (crashed Blazor Blueprint rendering)
+
+**Verification:**
+- **Anvil used:** Yes
+- **Commit:** `1a5b79dee64f5b8394a55dac8772b9a5e9777015`
+- **Evidence summary:**
+  - Build: ✅ `dotnet build Bethuya.slnx`
+  - Tests: ✅ 103 passed (including DevelopmentAuthenticationTests)
+  - Runtime: ✅ `GET /registration/mandatory` → 200 without `IAuthenticationService` errors; profile endpoints return 200 for completion-status and save
+  - Regressions: Existing Playwright suite still fails independently (network/Cloudinary unrelated)
+- **Reviewers:** Code review clean; performance review negligible allocations
+
+**Rollback:** `git checkout -- ServiceDefaults/Auth/BethuyaAuthenticationExtensions.cs ... && git clean -fd -- ServiceDefaults/Auth/Development*.cs`
+
+**Follow-ups:**
+- [ ] Decide whether `Provider=None` needs `app.Environment.IsDevelopment()` hardening
+- [ ] Re-run Playwright suite after broader E2E environment fixes
+
+**Status:**
+- **Approved by:** Neo (implicit), Morpheus (security review)
+- **Date approved:** 2026-04-11
+
+---
+
+### 2026-04-11 — Focus onboarding into its own shell
+
+**Author:** Trinity
+
+**Context:** New-user setup is auth-sensitive, contains PII, and felt cluttered because dashboard navigation leaked into the experience.
+
+**Decision:** Use dedicated `OnboardingLayout` for `/registration/mandatory` and `/registration/aide`, keep shared `MainLayout` dashboard-only, make privileged nav links role-specific instead of broad "privileged" bundle.
+
+**Rationale:** Keeps first-login momentum high, reduces trust-breaking clutter, aligns visible navigation with pages each role can access.
+
+**Evidence:**
+- Build: ✅ `dotnet build Bethuya.slnx --no-restore`
+- Tests: ✅ All pass
+- Verification: Screenshots in `tasks/artifacts/onboarding-mandatory.png` and `tasks/artifacts/onboarding-aide.png`
+
+**Status:** Implemented
+
+---
+
+### 2026-04-11 — Social onboarding loading stability
+
+**Author:** Trinity
+
+**Context:** `/registration/social` mixes saved server state, provider callbacks, and editable LinkedIn URL input. Async hydration defaulted to "not connected yet" copy before host confirmed saved state.
+
+**Decision:**
+- Keep social card layout fixed across empty, loading, connected, mixed, and error states
+- During async hydration or blocking load failure, disable LinkedIn URL field and both OAuth launch buttons so UI does not imply false disconnected state
+- Continue treating typed LinkedIn URL as supporting metadata; completion depends on verified LinkedIn member ID from LinkedIn
+
+**Rationale:** Keeps sensitive onboarding flow honest; users see whether Bethuya is loading, disconnected, or unable to load state. Provides reusable testing contract for future async onboarding surfaces.
+
+**Status:** Implemented
+
+---
+
+### 2026-04-11 — Onboarding/nav regression coverage choice
+
+**Author:** Switch
+
+**Context:** Onboarding flow changed recently; sidebar exposed a `Profile` link. Needed cheap reliable regression guard for redirect and submit-flow breakage.
+
+**Decision:** Ship bUnit/TUnit coverage for first-login redirect, sidebar profile destination, mandatory profile submit, AIDE conditional rendering, and AIDE save navigation. Fixed sidebar `Profile` link to use `/registration/mandatory` (not `/profile`, which has no backend route in this branch).
+
+**Rationale:** Playwright suite depends on live app at `BETHUYA_BASE_URL`/`https://localhost:7112`; without that host it fails with `net::ERR_CONNECTION_REFUSED`. Cover-image path additionally gated on Cloudinary credentials.
+
+**Status:** Implemented
+
+---
+
+### 2026-04-09 — Aspire ACA Secrets Skill Scope Correction
 
 **Author:** Tank (Backend Dev)
 
@@ -112,6 +256,8 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 **Files:** `copilot/skills/aspire-aca-secrets/`, `.squad/skills/`
 
 **Impact:** Agents now receive correct guidance; deployment failures eliminated; skills scoped to specific platform context.
+
+**Status:** Implemented
 
 ---
 
@@ -156,94 +302,6 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 **Files:** `AppHost/AppHost/AppHost.cs`
 
 ---
-
-### 2026-03-31 — Performance Budget Directive
-
-**Author:** Augustine Correa (via Copilot)
-
-**Directive:** Ensure Playwright tests pass within project performance budgets:
-- Hot path p99 < 180ms @ 2,500 RPS
-- 0 B hot-path allocations
-- > 90% cache hit rate
-
----
-
-### E2E Test Selector Standards (2026-03-21)
-
-**Author:** Switch (Tester)
-
-**Decision:** All E2E Playwright tests MUST use `data-test` attributes as selectors instead of role-based or text-based selectors.
-
-**Rationale:**
-- Role-based selectors break when button text changes
-- `data-test` provides stability decoupled from UI text and styling
-- Explicit test contract between frontend and tests
-
-**Standard Selectors:**
-- `[data-test='new-event-btn']` — Opens create event dialog
-- `[data-test='create-event-submit']` — Submits create form
-- `[data-test='event-card']` — Individual event cards in list
-- `[data-test='notification']` — Success/error notifications
-
-**Implementation:** Trinity adds `data-test` attributes to interactive elements; Switch uses `Page.Locator("[data-test='selector']")` exclusively.
-
----
-
-### Add Cloudinary Image Upload for Event Cover Pics (2026-03-21)
-
-**Author:** Tank (Backend Dev)
-
-**Decision:** Integrated **CloudinaryDotNet 1.26.2** as the image upload provider behind an `IImageUploadService` abstraction in Core. Implementation lives in Infrastructure (`CloudinaryImageUploadService`), configured via `CloudinaryOptions`.
-
-**Changes:**
-- `CoverImageUrl` (nullable, max 2048 chars) added to Event model, API contracts, EF config, Refit DTOs
-- New `POST /api/images/upload` endpoint with validation: 5 MB max, JPEG/PNG/WebP/GIF only
-- Images stored in `bethuya/events` folder; secure URL returned
-- DI: `IImageUploadService` → `CloudinaryImageUploadService` (singleton)
-
-**Trade-offs:** Vendor coupling mitigated by `IImageUploadService` abstraction (swap to Azure Blob or S3 by implementing interface).
-
-**Impact:** All projects build cleanly (0 warnings, 0 errors); existing tests updated for new `CoverImageUrl` parameter.
-
----
-
-### Event Endpoint DTO Pattern (2026-03-21)
-
-**Author:** Tank (Backend Dev)
-
-**Context:** Backend event creation endpoint returned raw `Event` domain entities with navigation properties, causing serialization cycles and type mismatches with frontend expectations (enums vs strings).
-
-**Decision:** Added `EventResponse` DTO that decouples domain from API contracts. All endpoints now return DTOs:
-- GET `/api/events` → `List<EventResponse>`
-- GET `/api/events/{id}` → `EventResponse`
-- POST `/api/events` → `EventResponse`
-- PUT `/api/events/{id}` → `EventResponse`
-
-**Benefits:**
-- ✅ Type safety: Frontend `EventDto` matches Backend `EventResponse`
-- ✅ Enum consistency: Serialized as strings via `JsonStringEnumConverter`
-- ✅ No serialization issues: DTOs have no navigation properties
-- ✅ API stability: Domain changes don't break frontend
-
-**Validation added:** Title (required, max 200 chars), Capacity (1-10,000), EndDate >= StartDate, CreatedBy (required).
-
----
-
-### Notification Pattern for Dialog Components (2026-03-21)
-
-**Author:** Trinity
-
-**Decision:** Implement reusable notification pattern for dialog components:
-1. Dialog emits notifications via `[Parameter] EventCallback<string> OnNotification`
-2. Parent page renders `<Notification>` with `@bind-IsVisible`
-3. Parent handler determines `AlertVariant` based on message content
-
-**Implementation:** Applied to CreateEventDialog, Home.razor, Events.razor
-
-**Impact:**
-- ✅ Consistent UX across create flows
-- ✅ Testable via `data-test="notification"`
-- ✅ Pattern reusable for other dialogs (edit, delete, etc.)
 
 ## Governance
 

@@ -58,3 +58,30 @@
 - [ ] Search codebase for other IAuthenticationService dependencies or Refit client injection points that may need similar fix
 - [ ] Update tasks/todo.md task status to "done"
 - [ ] Consider: should dev-token be configurable via appsettings instead of hardcoded? (Low priority for now)
+
+---
+
+## Session Work Log: Transitive Dependency Security Boundary (2026-04-15)
+
+**Scope:** Dependency vulnerability remediation for `Bethuya.MigrationService` NU1901 gate.
+
+**Incident:** `Bethuya.MigrationService` and `AppHost` restore were failing on NU1901 for transitive `System.Security.Cryptography.Xml` 9.0.0 through `ServiceDefaults` → `Microsoft.Identity.Web` → `Microsoft.AspNetCore.DataProtection`.
+
+**Tank's Fix:** Applied central transitive pin in `Directory.Packages.props` to `System.Security.Cryptography.Xml` `10.0.6` (correct .NET 10 servicing line).
+
+**Security Boundary Review (Morpheus):**
+- ✅ Central transitive pinning is the correct immediate remediation mechanism for shared infrastructure dependencies
+- ✅ Minimum safe version for .NET 10 repo is `10.0.6` (active advisory fix on .NET 10 train)
+- ✅ Fix placement at package-management boundary keeps trust boundary clean — not scattered across leaf projects
+- ✅ NU1901 gate and warnings-as-errors remain intact; no suppressions or loosenings
+- ✅ Pre-existing duplicate assembly-attribute errors (CS0579) are unrelated to this fix and do not block approval
+- **Risk assessment:** LOW — minimal, scoped, preserves all guardrails
+
+**Verification:**
+- Build: ✅ `dotnet restore` for both `Bethuya.MigrationService` and `AppHost` — **PASS** (no NU1901)
+- Package resolution: ✅ `System.Security.Cryptography.Xml` → `10.0.6`
+- Vulnerability scan: ✅ **CLEAN**
+- Reviewers: Code review clean; Morpheus approved security boundary
+
+**Decision recorded:** `.squad/decisions.md` (merged from inbox, 2026-04-15)
+

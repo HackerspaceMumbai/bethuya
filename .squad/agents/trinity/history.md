@@ -32,3 +32,7 @@
   - **InteractiveServer for sensitive pages** — auth/PII pages MUST use `@rendermode InteractiveServer` (global assignment on Routes in App.razor, not per-page).
   - **File-scoped namespaces, primary constructors, collection expressions** — C# 14 idioms enforced.
   - **Nullable enabled, TreatWarningsAsErrors** — fix all warnings; never suppress without documented justification.
+- **LinkedIn social onboarding state-stability (2026-04-15):** `/registration/social` cannot let async hydration masquerade as the disconnected state.
+  - Keep the LinkedIn public profile URL field visible in every state, but disable edits and OAuth buttons until saved social data has loaded or a blocking load error has been surfaced.
+  - Reserve card status and feedback space so GitHub and LinkedIn actions stay aligned even when only one provider is connected or a provider-specific error appears.
+  - Trim the typed LinkedIn URL when carrying it through the OAuth return URL and final save, but never treat that typed URL as completion without the verified LinkedIn member ID.
