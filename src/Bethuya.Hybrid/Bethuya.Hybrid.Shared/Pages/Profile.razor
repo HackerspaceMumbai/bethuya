@@ -1,0 +1,50 @@
+@page "/profile"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Bethuya.Hybrid.Shared.Services
+@using BlazorBlueprint.Components
+@inject IProfileApi ProfileApi
+@inject NavigationManager Navigation
+
+<PageTitle>Opening your profile — Bethuya</PageTitle>
+
+<main aria-label="Profile entry" data-test="profile-entry">
+    @if (_errorMessage is not null)
+    {
+        <div data-test="profile-entry-error">
+            <BbAlert Variant="AlertVariant.Danger">
+                <BbAlertDescription>@_errorMessage</BbAlertDescription>
+            </BbAlert>
+        </div>
+    }
+    else
+    {
+        <div data-test="loading-state" class="p-8 text-center">
+            <p>Opening your saved profile…</p>
+        </div>
+    }
+</main>
+
+@code {
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var status = await ProfileApi.GetCompletionStatusAsync();
+            var targetRoute = status.IsProfileComplete switch
+            {
+                false => "/registration/mandatory",
+                true when !status.IsSocialConnectionsComplete => "/registration/social",
+                _ => "/registration/mandatory"
+            };
+
+            Navigation.NavigateTo(targetRoute, replace: true);
+        }
+        catch (Exception)
+        {
+            _errorMessage = "We couldn't open your profile right now. Refresh and try again.";
+        }
+    }
+}

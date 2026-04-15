@@ -16,6 +16,18 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-04-15] Stabilize profile edit hydration after onboarding completion
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Patch the Blazor onboarding/profile edit flow so the Profile nav lands in the correct edit surface after completion, mandatory/social/AIDE steps load saved values truthfully while hydrating, and incomplete users still resume the correct step.
+- **Acceptance:** ✅ Profile nav now routes through `/profile` so incomplete users resume the right step while completed users re-enter the edit flow. ✅ Mandatory and AIDE pages now hydrate saved values with disabled/loading states instead of reopening blank. ✅ Backend + web builds succeeded after clearing Aspire locks, scoped review/perf/Anvil checks were clean, and the full test run stayed at 153/158 with the remaining 5 failures isolated to pre-existing `SocialProfileConnections` regressions.
+
+## [2026-04-15] Rehydrate saved profile data in the onboarding edit flow
+- **Status:** done
+- **Agent/Owner:** Tank (Backend Dev)
+- **Description:** Trace the post-onboarding profile/edit path, fix any backend/shared-contract load gaps so saved mandatory, social, and AIDE profile data rehydrates when users revisit Profile, and preserve the existing three-step completion flow.
+- **Acceptance:** ✅ Added dedicated profile read contracts/endpoints so `/registration/mandatory`, `/registration/social`, and `/registration/aide` can rehydrate saved state instead of reopening blank. ✅ Mandatory and AIDE pages now load persisted data before edit-mode submit continues the existing three-step flow. ✅ Backend/shared projects compile successfully when built with isolated output paths to avoid running-dev-process file locks, and the isolated TUnit app now runs with 153/158 passing; the remaining 5 failures are pre-existing `SocialProfileConnections` bUnit regressions around LinkedIn input event wiring/helper-copy assertions.
+
 ## [2026-04-15] Guard LinkedIn connect on `/registration/social`
 - **Status:** done
 - **Agent/Owner:** Trinity (Frontend Dev)

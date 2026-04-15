@@ -13,6 +13,18 @@ public static class ProfileEndpoints
     {
         var group = app.MapGroup("/api/profile").WithTags("Profile");
 
+        group.MapGet("/", async (
+            ClaimsPrincipal user,
+            IAttendeeProfileRepository repo,
+            CancellationToken ct) =>
+        {
+            var userId = GetUserId(user);
+            if (userId is null) return Results.Unauthorized();
+
+            var profile = await repo.GetByUserIdAsync(userId, ct);
+            return Results.Ok(MapMandatoryProfile(profile));
+        });
+
         group.MapGet("/completion-status", async (
             ClaimsPrincipal user,
             IAttendeeProfileRepository repo,
@@ -63,6 +75,18 @@ public static class ProfileEndpoints
                 profile.LinkedInProfileUrl,
                 profile.GitHubLogin,
                 profile.GitHubProfileUrl));
+        });
+
+        group.MapGet("/aide", async (
+            ClaimsPrincipal user,
+            IAttendeeProfileRepository repo,
+            CancellationToken ct) =>
+        {
+            var userId = GetUserId(user);
+            if (userId is null) return Results.Unauthorized();
+
+            var profile = await repo.GetByUserIdAsync(userId, ct);
+            return Results.Ok(MapAideProfile(profile));
         });
 
         group.MapPost("/", async (
@@ -253,6 +277,50 @@ public static class ProfileEndpoints
             profile.ProfileCompletedAt = DateTimeOffset.UtcNow;
         }
     }
+
+    private static MandatoryProfileResponse MapMandatoryProfile(AttendeeProfile? profile)
+        => profile is null
+            ? new MandatoryProfileResponse(null, null, null, null, null, null, null, null, null, null, null, null, null)
+            : new MandatoryProfileResponse(
+                profile.FirstName,
+                profile.LastName,
+                profile.Email,
+                profile.MobileNumber,
+                profile.GovernmentPhotoIdType,
+                profile.GovernmentIdLastFour,
+                profile.OccupationStatus,
+                profile.CompanyName,
+                profile.EducationInstitute,
+                profile.City,
+                profile.State,
+                profile.PostalCode,
+                profile.Country);
+
+    private static AideProfileResponse MapAideProfile(AttendeeProfile? profile)
+        => profile is null
+            ? new AideProfileResponse(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
+            : new AideProfileResponse(
+                profile.GenderIdentity,
+                profile.SelfDescribeGender,
+                profile.AgeRange,
+                profile.Ethnicity,
+                profile.SelfDescribeEthnicity,
+                profile.Disability,
+                profile.DisabilityDetails,
+                profile.DietaryRequirements,
+                profile.LgbtqIdentity,
+                profile.ParentalStatus,
+                profile.Religion,
+                profile.Caste,
+                profile.Neighborhood,
+                profile.ModeOfTransportation,
+                profile.SocioeconomicBackground,
+                profile.Neurodiversity,
+                profile.CaregivingResponsibilities,
+                profile.LanguageProficiency,
+                profile.EducationalBackground,
+                profile.HowDidYouHear,
+                profile.AdditionalSupport);
 
     private static Dictionary<string, string[]> ValidateMandatoryRequest(SaveMandatoryProfileRequest request)
     {

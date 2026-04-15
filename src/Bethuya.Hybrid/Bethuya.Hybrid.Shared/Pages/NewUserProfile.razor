@@ -33,15 +33,25 @@
                 <EditForm Model="@_model" OnValidSubmit="@HandleValidSubmit" FormName="mandatory-profile">
                     <DataAnnotationsValidator />
 
-                    <BbCard Class="profile-form-card">
-                        <BbCardHeader>
-                            <BbCardTitle>Required attendee details</BbCardTitle>
-                            <BbCardDescription>
-                                Complete this once so Bethuya can personalise registration, reminders, and venue logistics. Use a government-issued photo ID that also serves as address proof.
-                            </BbCardDescription>
-                        </BbCardHeader>
-                        <BbCardContent Class="profile-form-card__content">
-                            <BbFormSection Title="Your Details" Description="Required information for event participation.">
+                    <fieldset disabled="@_isLoading">
+                        <BbCard Class="profile-form-card">
+                            <BbCardHeader>
+                                <BbCardTitle>Required attendee details</BbCardTitle>
+                                <BbCardDescription>
+                                    Complete this once so Bethuya can personalise registration, reminders, and venue logistics. Use a government-issued photo ID that also serves as address proof.
+                                </BbCardDescription>
+                            </BbCardHeader>
+                            <BbCardContent Class="profile-form-card__content">
+                                @if (_isLoading)
+                                {
+                                    <div data-test="mandatory-profile-loading">
+                                        <BbAlert Variant="AlertVariant.Info">
+                                            <BbAlertDescription>Loading your saved profile details…</BbAlertDescription>
+                                        </BbAlert>
+                                    </div>
+                                }
+
+                                <BbFormSection Title="Your Details" Description="Required information for event participation.">
 
                                 <div class="space-y-4">
                                     <div class="name-row">
@@ -126,23 +136,33 @@
 
                             </BbFormSection>
 
-                            @if (_errorMessage is not null)
-                            {
-                                <div data-test="profile-error">
-                                    <BbAlert Variant="AlertVariant.Danger">
-                                        <BbAlertDescription>@_errorMessage</BbAlertDescription>
-                                    </BbAlert>
-                                </div>
-                            }
-                        </BbCardContent>
-                    </BbCard>
+                                @if (_loadErrorMessage is not null)
+                                {
+                                    <div data-test="profile-load-error">
+                                        <BbAlert Variant="AlertVariant.Danger">
+                                            <BbAlertDescription>@_loadErrorMessage</BbAlertDescription>
+                                        </BbAlert>
+                                    </div>
+                                }
+
+                                @if (_errorMessage is not null)
+                                {
+                                    <div data-test="profile-error">
+                                        <BbAlert Variant="AlertVariant.Danger">
+                                            <BbAlertDescription>@_errorMessage</BbAlertDescription>
+                                        </BbAlert>
+                                    </div>
+                                }
+                            </BbCardContent>
+                        </BbCard>
+                    </fieldset>
 
                     <div class="profile-actions">
                         <div class="profile-actions-copy">
                             <p class="profile-actions-title">You're almost done.</p>
                             <p class="profile-actions-hint">We'll save these required details first, then you'll verify your GitHub and LinkedIn accounts before the optional AIDE step.</p>
                         </div>
-                        <button type="submit" class="profile-primary-button" disabled="@_isSaving" data-test="save-profile-btn">
+                        <button type="submit" class="profile-primary-button" disabled="@(_isLoading || _isSaving)" data-test="save-profile-btn">
                             @if (_isSaving)
                             {
                                 <span>Saving…</span>
@@ -191,7 +211,9 @@
 
 @code {
     private readonly MandatoryProfileModel _model = new();
+    private bool _isLoading = true;
     private bool _isSaving;
+    private string? _loadErrorMessage;
     private string? _errorMessage;
 
     private bool IsEmployee => string.Equals(_model.OccupationStatus, "Employee", StringComparison.Ordinal);
@@ -206,6 +228,23 @@
         new("Voter ID", "Voter ID"),
         new("Other Government ID", "Other Government ID")
     ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var profile = await ProfileApi.GetMandatoryProfileAsync();
+            ApplySavedProfile(profile);
+        }
+        catch (Exception)
+        {
+            _loadErrorMessage = "We couldn't load your saved profile details. Review the form before saving.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
 
     private async Task HandleValidSubmit()
     {
@@ -239,6 +278,28 @@
         {
             _isSaving = false;
         }
+    }
+
+    private void ApplySavedProfile(MandatoryProfileDto? profile)
+    {
+        if (profile is null)
+        {
+            return;
+        }
+
+        _model.FirstName = profile.FirstName;
+        _model.LastName = profile.LastName;
+        _model.Email = profile.Email;
+        _model.MobileNumber = profile.MobileNumber;
+        _model.GovernmentPhotoIdType = profile.GovernmentPhotoIdType;
+        _model.GovernmentIdLastFour = profile.GovernmentIdLastFour;
+        _model.OccupationStatus = profile.OccupationStatus;
+        _model.CompanyName = profile.CompanyName;
+        _model.EducationInstitute = profile.EducationInstitute;
+        _model.City = profile.City;
+        _model.State = profile.State;
+        _model.PostalCode = profile.PostalCode;
+        _model.Country = profile.Country;
     }
 
     private sealed class MandatoryProfileModel : IValidatableObject

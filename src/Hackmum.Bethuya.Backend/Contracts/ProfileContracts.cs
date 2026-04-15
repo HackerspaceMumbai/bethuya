@@ -10,6 +10,22 @@ public sealed record ProfileCompletionStatusResponse(
     DateTimeOffset? ProfileCompletedAt,
     DateTimeOffset? AideProfileCompletedAt);
 
+/// <summary>Saved mandatory profile details for the current user.</summary>
+public sealed record MandatoryProfileResponse(
+    string? FirstName,
+    string? LastName,
+    string? Email,
+    string? MobileNumber,
+    string? GovernmentPhotoIdType,
+    string? GovernmentIdLastFour,
+    string? OccupationStatus,
+    string? CompanyName,
+    string? EducationInstitute,
+    string? City,
+    string? State,
+    string? PostalCode,
+    string? Country);
+
 /// <summary>Request payload for saving mandatory profile fields.</summary>
 public sealed record SaveMandatoryProfileRequest(
     [Required, MaxLength(100)] string FirstName,
@@ -84,3 +100,27 @@ public sealed record SaveAideProfileRequest(
     [MaxLength(200)] string? EducationalBackground,
     [MaxLength(200)] string? HowDidYouHear,
     [MaxLength(1000)] string? AdditionalSupport);
+
+/// <summary>Saved optional AIDE profile details for the signed-in user.</summary>
+public sealed record AideProfileResponse(
+    string? GenderIdentity,
+    string? SelfDescribeGender,
+    string? AgeRange,
+    string? Ethnicity,
+    string? SelfDescribeEthnicity,
+    string? Disability,
+    string? DisabilityDetails,
+    string? DietaryRequirements,
+    string? LgbtqIdentity,
+    string? ParentalStatus,
+    string? Religion,
+    string? Caste,
+    string? Neighborhood,
+    string? ModeOfTransportation,
+    string? SocioeconomicBackground,
+    string? Neurodiversity,
+    string? CaregivingResponsibilities,
+    string? LanguageProficiency,
+    string? EducationalBackground,
+    string? HowDidYouHear,
+    string? AdditionalSupport);

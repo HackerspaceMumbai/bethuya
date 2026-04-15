@@ -18,6 +18,20 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-04-15] Profile edit entry should resolve step state before dumping users into onboarding pages
+
+- **What happened:** After users finished onboarding, the main Profile nav still linked straight to `/registration/mandatory`, so completed users landed on the first step without any route-level context and could see apparently blank edit forms before hydration.
+- **Root cause:** The app had first-login completion gating on Home, but no dedicated profile-entry route to choose between "resume onboarding" and "edit saved profile" once users returned from the dashboard.
+- **Fix:** Added a `/profile` entry route that resolves completion status first, kept incomplete users on the correct required step, and added saved-data hydration plus explicit loading states on the mandatory and AIDE edit pages.
+- **Prevention:** For multi-step onboarding flows that later double as edit screens, use a single resolver route for nav entry and make each step surface its own truthful loading state before editable profile fields are shown.
+
+## [2026-04-15] Onboarding regression runs can be blocked by both unrelated compile debt and a running web lock
+
+- **What happened:** Targeted validation for onboarding/profile regression tests could not complete cleanly because the shared test project still picks up unrelated compile errors in other auth tests, and the live `Bethuya.Hybrid.Web` process held copied web assemblies open during rebuild.
+- **Root cause:** `Hackmum.Bethuya.Tests` is compiled as a single assembly, so unrelated broken test files still stop filtered runs, and the running web host locks `Bethuya.Hybrid.Shared.dll` / `Bethuya.Hybrid.Web.Client.dll` in the web output folder.
+- **Fix:** Kept the regression work scoped to durable UI/auth tests, documented the blockers explicitly, and avoided folding unrelated compile or process-management fixes into this test task.
+- **Prevention:** Before relying on targeted `dotnet test` in this workspace, clear unrelated compile debt in sibling test files and stop the running web resource so copied web assemblies are not locked during the build.
+
 ## [2026-04-15] Social OAuth CTAs must be gated by the provider-owned input state
 
 - **What happened:** The LinkedIn onboarding card let users press “Connect LinkedIn” before entering any public profile URL, which made it possible to return from verification with the field locked but blank.

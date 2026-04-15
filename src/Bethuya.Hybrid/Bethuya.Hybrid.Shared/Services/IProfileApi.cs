@@ -6,11 +6,17 @@ namespace Bethuya.Hybrid.Shared.Services;
 /// <summary>Refit-generated typed HTTP client for the Bethuya Profile API.</summary>
 public interface IProfileApi
 {
+    [Get("/api/profile")]
+    Task<MandatoryProfileDto> GetMandatoryProfileAsync(CancellationToken ct = default);
+
     [Get("/api/profile/completion-status")]
     Task<ProfileCompletionStatusDto> GetCompletionStatusAsync(CancellationToken ct = default);
 
     [Get("/api/profile/social")]
     Task<SocialProfileDto> GetSocialProfileAsync(CancellationToken ct = default);
+
+    [Get("/api/profile/aide")]
+    Task<AideProfileDto> GetAideProfileAsync(CancellationToken ct = default);
 
     [Post("/api/profile")]
     Task<ProfileCompletionStatusDto> SaveMandatoryProfileAsync([Body] SaveMandatoryProfileDto request, CancellationToken ct = default);
@@ -39,6 +45,22 @@ public sealed record SocialProfileDto(
     string? LinkedInProfileUrl,
     string? GitHubLogin,
     string? GitHubProfileUrl);
+
+/// <summary>Saved mandatory profile details for the signed-in user.</summary>
+public sealed record MandatoryProfileDto(
+    string? FirstName,
+    string? LastName,
+    string? Email,
+    string? MobileNumber,
+    string? GovernmentPhotoIdType,
+    string? GovernmentIdLastFour,
+    string? OccupationStatus,
+    string? CompanyName,
+    string? EducationInstitute,
+    string? City,
+    string? State,
+    string? PostalCode,
+    string? Country);
 
 /// <summary>Payload for saving mandatory profile fields.</summary>
 public sealed record SaveMandatoryProfileDto(
@@ -86,3 +108,27 @@ public sealed record SaveAideProfileDto(
     [MaxLength(200)] string? EducationalBackground,
     [MaxLength(200)] string? HowDidYouHear,
     [MaxLength(1000)] string? AdditionalSupport);
+
+/// <summary>Saved optional AIDE profile details for the signed-in user.</summary>
+public sealed record AideProfileDto(
+    string? GenderIdentity,
+    string? SelfDescribeGender,
+    string? AgeRange,
+    string? Ethnicity,
+    string? SelfDescribeEthnicity,
+    string? Disability,
+    string? DisabilityDetails,
+    string? DietaryRequirements,
+    string? LgbtqIdentity,
+    string? ParentalStatus,
+    string? Religion,
+    string? Caste,
+    string? Neighborhood,
+    string? ModeOfTransportation,
+    string? SocioeconomicBackground,
+    string? Neurodiversity,
+    string? CaregivingResponsibilities,
+    string? LanguageProficiency,
+    string? EducationalBackground,
+    string? HowDidYouHear,
+    string? AdditionalSupport);

@@ -7,6 +7,11 @@
 
 ## Learnings
 
+- **Profile edit entry routing (2026-04-15):** Dashboard `Profile` nav should enter a resolver route first instead of hard-linking to the first onboarding page.
+  - Use a dedicated `/profile` entry surface to decide whether the user must resume mandatory/social onboarding or can re-enter the saved edit flow.
+  - When onboarding pages double as edit screens, keep the layout stable with explicit loading copy and disabled primary actions until saved values hydrate.
+  - Mandatory and AIDE edits now rely on saved-profile GET contracts; if the step-gating lookup fails, AIDE should still attempt hydration rather than silently skipping the saved data call.
+
 - Sensitive Bethuya pages must use `@rendermode InteractiveServer`; `data-test` selectors belong on plain HTML elements, not Blazor Blueprint components.
 - **Create Event Flow (2026-03-21):** Integrated CreateEventDialog into both Home.razor and Events.razor with full notification support.
   - Added `OnNotification` EventCallback to CreateEventDialog for success/error feedback

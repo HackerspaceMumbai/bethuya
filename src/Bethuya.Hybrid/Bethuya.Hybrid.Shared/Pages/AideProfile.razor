@@ -35,15 +35,25 @@
                 <EditForm Model="@_model" OnValidSubmit="@HandleValidSubmit" FormName="aide-profile">
                     <DataAnnotationsValidator />
 
-                    <BbCard Class="profile-form-card">
-                        <BbCardHeader>
-                            <BbCardTitle>Optional inclusion context</BbCardTitle>
-                            <BbCardDescription>
-                                Answer as much or as little as you want. These responses help Bethuya improve accessibility in aggregate.
-                            </BbCardDescription>
-                        </BbCardHeader>
-                        <BbCardContent Class="profile-form-card__content">
-                            <BbFormSection Title="Identity" Description="Help us understand the diversity of our community.">
+                    <fieldset disabled="@_isLoading">
+                        <BbCard Class="profile-form-card">
+                            <BbCardHeader>
+                                <BbCardTitle>Optional inclusion context</BbCardTitle>
+                                <BbCardDescription>
+                                    Answer as much or as little as you want. These responses help Bethuya improve accessibility in aggregate.
+                                </BbCardDescription>
+                            </BbCardHeader>
+                            <BbCardContent Class="profile-form-card__content">
+                                @if (_isLoading)
+                                {
+                                    <div data-test="aide-profile-loading">
+                                        <BbAlert Variant="AlertVariant.Info">
+                                            <BbAlertDescription>Loading your saved accessibility profile…</BbAlertDescription>
+                                        </BbAlert>
+                                    </div>
+                                }
+
+                                <BbFormSection Title="Identity" Description="Help us understand the diversity of our community.">
 
                                 <div class="space-y-4">
                                     <BbFormFieldSelect @bind-Value="_model.GenderIdentity"
@@ -157,23 +167,33 @@
 
                             </BbFormSection>
 
-                            @if (_errorMessage is not null)
-                            {
-                                <div data-test="aide-error">
-                                    <BbAlert Variant="AlertVariant.Danger">
-                                        <BbAlertDescription>@_errorMessage</BbAlertDescription>
-                                    </BbAlert>
-                                </div>
-                            }
-                        </BbCardContent>
-                    </BbCard>
+                                @if (_loadErrorMessage is not null)
+                                {
+                                    <div data-test="aide-load-error">
+                                        <BbAlert Variant="AlertVariant.Danger">
+                                            <BbAlertDescription>@_loadErrorMessage</BbAlertDescription>
+                                        </BbAlert>
+                                    </div>
+                                }
+
+                                @if (_errorMessage is not null)
+                                {
+                                    <div data-test="aide-error">
+                                        <BbAlert Variant="AlertVariant.Danger">
+                                            <BbAlertDescription>@_errorMessage</BbAlertDescription>
+                                        </BbAlert>
+                                    </div>
+                                }
+                            </BbCardContent>
+                        </BbCard>
+                    </fieldset>
 
                     <div class="profile-actions">
                         <div class="profile-actions-copy">
                             <p class="profile-actions-title">Optional, but valuable.</p>
                             <p class="profile-actions-hint">Share only what you're comfortable with. Skipping this step won't block your access to Bethuya.</p>
                         </div>
-                        <button type="submit" class="profile-primary-button" disabled="@_isSaving" data-test="save-aide-btn">
+                        <button type="submit" class="profile-primary-button" disabled="@(_isLoading || _isSaving)" data-test="save-aide-btn">
                             @if (_isSaving)
                             {
                                 <span>Saving…</span>
@@ -223,7 +243,9 @@
 
 @code {
     private readonly AideProfileModel _model = new();
+    private bool _isLoading = true;
     private bool _isSaving;
+    private string? _loadErrorMessage;
     private string? _errorMessage;
 
     private static IReadOnlyList<SelectOption<string>> Opts(params string[] values) =>
@@ -276,6 +298,46 @@
         new("Other", "Other"),
     ];
 
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            ProfileCompletionStatusDto? status = null;
+
+            try
+            {
+                status = await ProfileApi.GetCompletionStatusAsync();
+            }
+            catch
+            {
+                // If the step-gating lookup fails, still try to hydrate the saved AIDE data.
+            }
+
+            if (status is { IsProfileComplete: false })
+            {
+                Navigation.NavigateTo("/registration/mandatory", replace: true);
+                return;
+            }
+
+            if (status is { IsSocialConnectionsComplete: false })
+            {
+                Navigation.NavigateTo("/registration/social", replace: true);
+                return;
+            }
+
+            var profile = await ProfileApi.GetAideProfileAsync();
+            ApplySavedProfile(profile);
+        }
+        catch (Exception)
+        {
+            _loadErrorMessage = "We couldn't load your saved inclusion profile. Review the form before saving.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
     private async Task HandleValidSubmit()
     {
         _isSaving = true;
@@ -318,6 +380,36 @@
         {
             _isSaving = false;
         }
+    }
+
+    private void ApplySavedProfile(AideProfileDto? profile)
+    {
+        if (profile is null)
+        {
+            return;
+        }
+
+        _model.GenderIdentity = profile.GenderIdentity ?? "";
+        _model.SelfDescribeGender = profile.SelfDescribeGender ?? "";
+        _model.AgeRange = profile.AgeRange ?? "";
+        _model.Ethnicity = profile.Ethnicity ?? "";
+        _model.SelfDescribeEthnicity = profile.SelfDescribeEthnicity ?? "";
+        _model.Disability = profile.Disability ?? "";
+        _model.DisabilityDetails = profile.DisabilityDetails ?? "";
+        _model.DietaryRequirements = profile.DietaryRequirements ?? "";
+        _model.LgbtqIdentity = profile.LgbtqIdentity ?? "";
+        _model.ParentalStatus = profile.ParentalStatus ?? "";
+        _model.Religion = profile.Religion ?? "";
+        _model.Caste = profile.Caste ?? "";
+        _model.Neighborhood = profile.Neighborhood ?? "";
+        _model.ModeOfTransportation = profile.ModeOfTransportation ?? "";
+        _model.SocioeconomicBackground = profile.SocioeconomicBackground ?? "";
+        _model.Neurodiversity = profile.Neurodiversity ?? "";
+        _model.CaregivingResponsibilities = profile.CaregivingResponsibilities ?? "";
+        _model.LanguageProficiency = profile.LanguageProficiency ?? "";
+        _model.EducationalBackground = profile.EducationalBackground ?? "";
+        _model.HowDidYouHear = profile.HowDidYouHear ?? "";
+        _model.AdditionalSupport = profile.AdditionalSupport ?? "";
     }
 
     private sealed class AideProfileModel
