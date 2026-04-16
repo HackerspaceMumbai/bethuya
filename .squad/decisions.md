@@ -23,6 +23,41 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ## Active Decisions
 
+### 2026-04-16 — Strengthen GitHub continuation cue on `/registration/social` via visual bridge
+
+**Date:** 2026-04-16  
+**Owner:** Trinity (Frontend Dev) + Switch (Tester)  
+**Context:** The LinkedIn card is intentionally taller and more complex than GitHub, so some users miss that GitHub still continues below once LinkedIn is connected.
+
+**Decision:** Keep the provider order state-stable (LinkedIn first, GitHub second) and add a visual continuation system instead of reordering cards by state. The page now uses:
+- A compact stack-intro cue at the top (visible always)
+- An inter-card bridge (`social-stack-path`, `github-stack-bridge`) 
+- GitHub follow-up accent that intensifies only when LinkedIn is connected and GitHub is still pending
+
+**Why:** Reordering would make the flow feel unstable across loading, connected, and mixed states. A fixed order with stronger visual direction keeps the experience truthful, easier to scan, and safer for regression tests. Visual styling (CSS) is more maintainable than text cues and state-dependent reordering.
+
+**Implementation notes:**
+- The GitHub bridge only intensifies when LinkedIn is connected and GitHub is pending
+- This keeps the disconnected/default view polished while making the next action obvious at the moment users most need it
+- Files: `SocialProfileConnections.razor`, `SocialProfileConnections.razor.css`, `OnboardingNavigationRenderTests.cs`
+
+**Verification:**
+- Build: ✅ `dotnet build`
+- Live UI: ✅ Verified in Aspire web
+- Screenshot: ✅ `artifacts/social-connect-ui-continuation.png`
+- Regression tests: ✅ Locked by Switch in `OnboardingNavigationRenderTests.cs`
+  - Card order stays LinkedIn first, GitHub second
+  - Stack cue present in all states
+  - Bridge/emphasis only active after LinkedIn connected + GitHub pending
+- Code review: ✅ Clean
+
+**Status:**
+- **Approved by:** Trinity (implementation), Switch (test coverage)
+- **Date approved:** 2026-04-16
+- **Ready for merge:** ✅
+
+---
+
 ### 2026-04-15 — Pin transitive `System.Security.Cryptography.Xml` on the .NET 10 servicing line
 
 **Author:** Tank (Backend Dev) + Morpheus (Security Engineer approval)

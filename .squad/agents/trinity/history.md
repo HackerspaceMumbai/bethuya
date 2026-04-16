@@ -52,3 +52,8 @@
   - Verification: `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` ✅, live `/registration/social` markup markers ✅, screenshot `artifacts\social-connect-ui.png` ✅. Targeted test project remains blocked by pre-existing `HasCount` compile failures in `Auth\UserInfoTests.cs` and `Auth\AuthProviderTypeTests.cs`; full test invocations that rebuild the web host also hit locked-assembly MSB3021/MSB3027 failures while Aspire `web` is running.
 
    - **Orchestration (2026-04-15T10:44:07Z):** Implementation committed as 1ee6bcb2e84998d323ea4a5a5a1f63af0d115a30. Build ✅, live UI ✅, screenshot ✅, code review ✅, Anvil verification ✅, performance review ✅. Orchestration log: .squad/orchestration-log/2026-04-15T10-44-07Z-trinity.md.
+
+- **Visual continuation for stacked social cards (2026-04-16):** `/registration/social` keeps LinkedIn first and GitHub second in every state; the stronger follow-up cue is now visual instead of depending on text or card reordering.
+  - Use a compact top-of-stack flow map plus an inter-card bridge (`social-stack-path`, `github-stack-bridge`) so users see the fixed LinkedIn → GitHub progression before and after data loads.
+  - Intensify the bridge and GitHub follow-up accent only when LinkedIn is already connected and GitHub is still pending; this keeps the default disconnected state professional while still pulling attention downward at the right moment.
+  - Key paths: `src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Pages\SocialProfileConnections.razor`, `src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Pages\SocialProfileConnections.razor.css`, `tests\Hackmum.Bethuya.Tests\UI\OnboardingNavigationRenderTests.cs`, `artifacts\social-connect-ui-continuation.png`.
