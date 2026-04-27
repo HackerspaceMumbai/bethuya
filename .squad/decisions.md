@@ -23,6 +23,31 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ## Active Decisions
 
+### 2026-04-27 — Apply central DataProtection patch for GHSA-9mv3-2cwr-p262
+
+**Date:** 2026-04-27  
+**Owner:** Tank (Backend Dev)  
+**Context:** GHSA-9mv3-2cwr-p262 requires pinning `Microsoft.AspNetCore.DataProtection` to `10.0.7`. Transitive dependency routing through `ServiceDefaults` → `Microsoft.Identity.Web` → `Microsoft.AspNetCore.DataProtection` blocked restore for `Bethuya.MigrationService` and `AppHost`.
+
+**Decision:** Apply least-risky fix by centrally pinning three companion packages in `Directory.Packages.props` to the .NET 10 servicing band:
+- `Microsoft.AspNetCore.DataProtection` → `10.0.7`
+- `System.Security.Cryptography.Xml` → `10.0.7`
+- `Microsoft.Extensions.Hosting.Abstractions` → `10.0.7`
+
+**Why:** The repository already enforces central transitive pinning and treats package warnings as errors. A central servicing-band bump preserves the vulnerability gate (NU1901, warnings-as-errors) instead of bypassing it or scattering project-specific references.
+
+**Validation:**
+- Restore: ✅ `dotnet restore .\src\Bethuya.MigrationService\Bethuya.MigrationService.csproj -v minimal`
+- Restore: ✅ `dotnet restore .\AppHost\AppHost\AppHost.csproj -v minimal`
+- Build: ✅ `dotnet build .\src\Bethuya.MigrationService\Bethuya.MigrationService.csproj --no-restore -v minimal`
+
+**Status:**
+- **Approved by:** Tank (implementation + validation)
+- **Date approved:** 2026-04-27
+- **Ready for merge:** ✅
+
+---
+
 ### 2026-04-16 — Strengthen GitHub continuation cue on `/registration/social` via visual bridge
 
 **Date:** 2026-04-16  
