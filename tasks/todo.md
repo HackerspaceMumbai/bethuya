@@ -16,6 +16,18 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-04-27] Patch transitive DataProtection restore vulnerability
+- **Status:** done
+- **Agent/Owner:** Tank (Backend Dev)
+- **Description:** Investigate why `Bethuya.MigrationService` and `AppHost` restore still resolve vulnerable `Microsoft.AspNetCore.DataProtection` 10.0.0 transitively, then apply the smallest central package management fix so restore no longer pulls the vulnerable version.
+- **Acceptance:** ✅ `Directory.Packages.props` now centrally pins `Microsoft.AspNetCore.DataProtection` `10.0.7`, plus the required companion transitive pins `System.Security.Cryptography.Xml` `10.0.7` and `Microsoft.Extensions.Hosting.Abstractions` `10.0.7`, so the vulnerable `10.0.0` graph is no longer selected. ✅ `dotnet restore` succeeds for both `src\Bethuya.MigrationService\Bethuya.MigrationService.csproj` and `AppHost\AppHost\AppHost.csproj`, and `dotnet build .\src\Bethuya.MigrationService\Bethuya.MigrationService.csproj --no-restore -v minimal` passed. ✅ Recorded the central-package remediation lesson for future dependency fixes.
+
+## [2026-04-16] Strengthen GitHub continuation cue on social onboarding
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Keep the `/registration/social` cards state-stable with LinkedIn first and GitHub second, but replace the weak stacked-card cue with a stronger visual continuation treatment that still feels professional across loading, connected, and error states.
+- **Acceptance:** ✅ `/registration/social` now keeps the fixed LinkedIn → GitHub order while adding a visual stack map plus an inter-card bridge that makes the GitHub follow-up obvious without reordering. ✅ Updated onboarding render tests now assert the visual cue structure and the highlighted GitHub follow-up state when LinkedIn is connected but GitHub is still pending. ✅ `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` passed, Aspire `web` rebuild/live markup checks passed, and `dotnet test --project .\tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v minimal` finished at 154/158 with only the pre-existing LinkedIn bUnit input-event failures remaining. ✅ Visual proof refreshed at `artifacts\social-connect-ui-continuation.png`.
+
 ## [2026-04-15] Stabilize profile edit hydration after onboarding completion
 - **Status:** done
 - **Agent/Owner:** Trinity (Frontend Dev)

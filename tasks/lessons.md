@@ -18,6 +18,20 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-04-27] Patched transitive package pins can require companion central bumps
+
+- **What happened:** Raising the central transitive pin for `Microsoft.AspNetCore.DataProtection` from the vulnerable `10.0.0` path to the patched `10.0.7` release immediately flipped restore from NU1904 to NU1109 downgrade failures.
+- **Root cause:** Bethuya also centrally pins `System.Security.Cryptography.Xml` and `Microsoft.Extensions.Hosting.Abstractions`; the patched DataProtection package requires those dependencies at `10.0.7`, so keeping them at `10.0.6` created a downgrade against the new secure graph.
+- **Fix:** Updated all three central package versions together in `Directory.Packages.props`, then re-ran restore/build validation to confirm the dependency graph settled on the patched versions without suppressing vulnerability checks.
+- **Prevention:** When central transitive pinning fixes a .NET security advisory, inspect the patched package's immediate dependency floor and bump any centrally pinned companion packages in the same servicing band to avoid NU1109 churn.
+
+## [2026-04-16] TUnit projects in this workspace do not honor the usual dotnet --filter flow
+
+- **What happened:** A targeted `dotnet test --filter "FullyQualifiedName~OnboardingNavigationRenderTests"` run built successfully but executed zero tests and exited with the TUnit runner's "Unknown option '--filter'" message.
+- **Root cause:** `Hackmum.Bethuya.Tests` runs through the Microsoft Testing Platform/TUnit app host, so the familiar VSTest `--filter` switch is not supported by this repo's current test entrypoint.
+- **Fix:** Fell back to a full `dotnet test` run once the web lock was cleared, then used the remaining failure list to confirm only the pre-existing LinkedIn input-event regressions were still failing.
+- **Prevention:** When you need focused TUnit validation here, use the runner's supported tree/UID filtering options or plan on a full-suite fallback instead of assuming VSTest `--filter` will work.
+
 ## [2026-04-15] Profile edit entry should resolve step state before dumping users into onboarding pages
 
 - **What happened:** After users finished onboarding, the main Profile nav still linked straight to `/registration/mandatory`, so completed users landed on the first step without any route-level context and could see apparently blank edit forms before hydration.

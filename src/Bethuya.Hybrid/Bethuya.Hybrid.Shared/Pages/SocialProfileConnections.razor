@@ -40,8 +40,13 @@
                     <BbCardContent Class="profile-form-card__content">
                         <div class="social-connection-grid social-connection-grid--stacked" data-test="social-connection-stack">
                             <div class="social-connection-stack-intro" data-test="social-stack-cue">
+                                <div class="social-connection-stack-intro__path" data-test="social-stack-path" aria-hidden="true">
+                                    <span class="social-connection-stack-intro__node social-connection-stack-intro__node--current">LinkedIn</span>
+                                    <span class="social-connection-stack-intro__line"></span>
+                                    <span class="social-connection-stack-intro__node">GitHub</span>
+                                </div>
                                 <p class="social-connection-stack-intro__eyebrow">Two verification cards</p>
-                                <p class="social-connection-stack-intro__text">LinkedIn comes first. GitHub verification continues directly below in this same stack.</p>
+                                <p class="social-connection-stack-intro__text">Finish LinkedIn first, then continue straight into GitHub in the same stack.</p>
                             </div>
 
                             <BbCard Class="social-connection-card">
@@ -115,7 +120,16 @@
                                 </BbCardContent>
                             </BbCard>
 
-                            <BbCard Class="social-connection-card">
+                            <div class="@GetGitHubContinuationBridgeClass()" data-test="github-stack-bridge" aria-label="GitHub verification continues below">
+                                <span class="social-connection-bridge__line" aria-hidden="true"></span>
+                                <span class="social-connection-bridge__badge">
+                                    <span class="social-connection-bridge__dot" aria-hidden="true"></span>
+                                    <span>GitHub continues below</span>
+                                </span>
+                                <span class="social-connection-bridge__line" aria-hidden="true"></span>
+                            </div>
+
+                            <BbCard Class="@GetGitHubCardClass()">
                                 @{
                                     var gitHubError = GetProviderSocialErrorMessage("github");
                                 }
@@ -299,6 +313,7 @@
     private bool HasLoadError => _loadErrorMessage is not null;
     private bool AreSocialControlsDisabled => _isLoading || _isSaving || HasLoadError;
     private bool HasLinkedInProfileUrlForConnect => !string.IsNullOrWhiteSpace(GetNormalizedLinkedInProfileUrl());
+    private bool ShouldEmphasizeGitHubContinuation => !AreSocialControlsDisabled && IsLinkedInConnected && !IsGitHubConnected;
     private bool CanStartLinkedInConnect => !AreSocialControlsDisabled && (IsLinkedInConnected || HasLinkedInProfileUrlForConnect);
     private bool CanContinue => !AreSocialControlsDisabled && (!IsLinkedInRequired || IsLinkedInConnected) && (!IsGitHubRequired || IsGitHubConnected);
 
@@ -432,6 +447,16 @@
                 : IsGitHubConnected
                     ? "GitHub already supplied the verified profile URL Bethuya will keep on this step."
                     : "GitHub supplies the verified profile URL for you, so this card stays simpler even though the proof still matters.";
+
+    private string GetGitHubCardClass()
+        => ShouldEmphasizeGitHubContinuation
+            ? "social-connection-card social-connection-card--followup social-connection-card--followup-active"
+            : "social-connection-card social-connection-card--followup";
+
+    private string GetGitHubContinuationBridgeClass()
+        => ShouldEmphasizeGitHubContinuation
+            ? "social-connection-bridge social-connection-bridge--active"
+            : "social-connection-bridge";
 
     private string GetLinkedInUrlHelperText()
         => _isLoading

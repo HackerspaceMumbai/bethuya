@@ -439,11 +439,15 @@ public class OnboardingNavigationRenderTests
         var gitHubCard = cards[1];
         var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
+        var stackPath = cut.Find("[data-test='social-stack-path']");
+        var gitHubBridge = cut.Find("[data-test='github-stack-bridge']");
 
         await Assert.That(cards.Count).IsEqualTo(2);
         await Assert.That(cut.FindAll(".social-connection-card input[type='url']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll(".social-connection-stack-intro__node").Count).IsEqualTo(2);
+        await Assert.That(cut.FindAll(".social-connection-bridge__line").Count).IsEqualTo(2);
         await Assert.That(cut.Markup).Contains("social-connection-meta--placeholder");
-        await Assert.That(cut.Markup).Contains("Enter the exact public LinkedIn profile URL carefully before you connect.");
+        await Assert.That(cut.Markup).Contains("Add your public LinkedIn profile URL to enable LinkedIn connect.");
         await Assert.That(linkedInCard.TextContent).Contains("LinkedIn");
         await Assert.That(linkedInCard.TextContent).Contains("Public LinkedIn profile URL");
         await Assert.That(linkedInCard.TextContent).Contains("Connect LinkedIn");
@@ -451,8 +455,13 @@ public class OnboardingNavigationRenderTests
         await Assert.That(gitHubCard.TextContent).Contains("Verified GitHub profile details appear here after you connect.");
         await Assert.That(gitHubCard.TextContent).Contains("Connect GitHub");
         await Assert.That(gitHubCard.TextContent).DoesNotContain("Public LinkedIn profile URL");
+        await Assert.That(gitHubCard.GetAttribute("class") ?? string.Empty).Contains("social-connection-card--followup");
+        await Assert.That(gitHubCard.GetAttribute("class") ?? string.Empty).DoesNotContain("social-connection-card--followup-active");
+        await Assert.That(gitHubBridge.GetAttribute("class") ?? string.Empty).DoesNotContain("social-connection-bridge--active");
         await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsFalse();
         await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
+        await Assert.That(stackPath.TextContent).Contains("LinkedIn");
+        await Assert.That(stackPath.TextContent).Contains("GitHub");
         await Assert.That(stack.TextContent.Contains("GitHub", StringComparison.Ordinal) &&
                           stack.TextContent.Contains("below", StringComparison.OrdinalIgnoreCase)).IsTrue();
     }
@@ -591,7 +600,7 @@ public class OnboardingNavigationRenderTests
     }
 
     [Test]
-    public async Task SocialProfileConnections_LinkedInConnectedWhileGitHubPending_KeepsLinkedInReconnectSeparateFromGitHubCta()
+    public async Task SocialProfileConnections_LinkedInConnectedWhileGitHubPending_KeepsLinkedInReconnectSeparateFromGitHubCta_AndHighlightsGitHubAsNext()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Dev User");
@@ -606,6 +615,7 @@ public class OnboardingNavigationRenderTests
         var cards = cut.FindAll(".social-connection-card");
         var linkedInCard = cards[0];
         var gitHubCard = cards[1];
+        var gitHubBridge = cut.Find("[data-test='github-stack-bridge']");
 
         await Assert.That(cards.Count).IsEqualTo(2);
         await Assert.That(cut.FindAll(".social-connection-details").Count).IsEqualTo(2);
@@ -619,6 +629,9 @@ public class OnboardingNavigationRenderTests
         await Assert.That(gitHubCard.TextContent).Contains("Verified GitHub profile details appear here after you connect.");
         await Assert.That(gitHubCard.TextContent).Contains("Connect GitHub");
         await Assert.That(gitHubCard.TextContent).DoesNotContain("Public LinkedIn profile URL");
+        await Assert.That(gitHubBridge.TextContent).Contains("GitHub continues below");
+        await Assert.That(gitHubBridge.GetAttribute("class") ?? string.Empty).Contains("social-connection-bridge--active");
+        await Assert.That(gitHubCard.GetAttribute("class") ?? string.Empty).Contains("social-connection-card--followup-active");
     }
 
     [Test]

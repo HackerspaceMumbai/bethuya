@@ -6,7 +6,7 @@
     <MauiVersion>9.0.21</MauiVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.2.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.2.4" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
     <!-- Azure Monitor / Application Insights — enabled via APPLICATIONINSIGHTS_CONNECTION_STRING env var -->
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.4.0" />
@@ -15,16 +15,17 @@
     <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="2.2.1" />
     <PackageVersion Include="MSTest.TestAdapter" Version="4.2.1" />
     <PackageVersion Include="MSTest.TestFramework" Version="4.2.1" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.2" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.2" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
     <!-- Auth providers -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection" Version="10.0.7" />
     <PackageVersion Include="Microsoft.Identity.Web" Version="4.7.0" />
-    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.6" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.7" />
     <PackageVersion Include="Auth0.AspNetCore.Authentication" Version="1.7.0" />
     <!-- Blazor auth components (AuthorizeView, CascadingAuthenticationState, etc.) -->
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.6" />
@@ -45,13 +46,13 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.6" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.6" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.6" />
-    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.2" />
+    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.4" />
     <!-- Aspire hosting for SQL Server (AppHost) -->
-    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.2.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.2.4" />
     <!-- Aspire hosting for Key Vault (AppHost) — provisions Key Vault; azd stores secret params here -->
-    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.2.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.2.4" />
     <!-- Aspire hosting for Keycloak (AppHost — local OIDC testing) -->
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.2.2-preview.1.26207.2" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.2.4-preview.1.26224.4" />
     <!-- ASP.NET Core TestHost for minimal-API endpoint testing -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.6" />
     <!-- Testing — TUnit (not xUnit/NUnit per project standards) -->
@@ -84,7 +85,7 @@
     <!-- Microsoft.Extensions.AI for AI provider abstraction -->
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.5.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.5.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.6" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.7" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.6" />
     <!-- Scalar — API documentation -->
     <PackageVersion Include="Scalar.AspNetCore" Version="2.13.22" />
