@@ -1,0 +1,314 @@
+@page "/approvals/plan/{eventId:guid}"
+@rendermode InteractiveServer
+@using Bethuya.Hybrid.Shared.Pages.Approvals.Models
+@using Microsoft.Extensions.Logging
+@inject ILogger<PlanApproval> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Approve Event Agenda — Bethuya</PageTitle>
+
+<div data-test="plan-approval-page" class="plan-approval-page">
+
+    <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => Navigation.NavigateTo("/approvals"))">
+        ← Back to Approvals
+    </BbButton>
+
+    @if (_isLoading)
+    {
+        <div data-test="loading-state" class="p-8 text-center">
+            <p>Loading agenda draft…</p>
+        </div>
+    }
+    else if (_draft is null)
+    {
+        <div data-test="not-found-state">
+            <BbAlert Variant="AlertVariant.Danger" Class="mt-6">
+                <BbAlertTitle>Draft Not Found</BbAlertTitle>
+                <BbAlertDescription>The requested agenda draft could not be found.</BbAlertDescription>
+            </BbAlert>
+        </div>
+    }
+    else
+    {
+        <BbCard Class="mt-6">
+            <BbCardHeader>
+                <div class="flex items-center gap-3">
+                    <BbCardTitle Class="text-2xl">Approve Event Agenda</BbCardTitle>
+                    <BbBadge Variant="BadgeVariant.Outline" data-test="draft-status">Pending Review</BbBadge>
+                </div>
+                <BbCardDescription>
+                    Review and approve or edit the proposed agenda. Changes will be saved.
+                </BbCardDescription>
+            </BbCardHeader>
+
+            @if (_draft.AgentReasoning is not null)
+            {
+                <BbAlert Variant="AlertVariant.Info" Class="mx-6 mt-6">
+                    <Icon><LucideIcon Name="sparkles" Class="h-4 w-4" /></Icon>
+                    <ChildContent>
+                        <BbAlertTitle>Agent Reasoning</BbAlertTitle>
+                        <BbAlertDescription>@_draft.AgentReasoning</BbAlertDescription>
+                    </ChildContent>
+                </BbAlert>
+            }
+
+            <EditForm EditContext="@_editContext" FormName="plan-approval" data-test="plan-approval-form">
+                <DataAnnotationsValidator />
+
+                <BbCardContent>
+                    <BbFormSection Title="Event Details" Description="Review the event title and description.">
+                        <BbFormFieldInput TValue="string"
+                                         @bind-Value="_draft.Title"
+                                         Label="Title"
+                                         data-test="event-title"
+                                         Required="true" />
+
+                        <div class="form-group">
+                            <BbLabel For="description">Description</BbLabel>
+                            <BbTextarea Id="description"
+                                       @bind-Value="_draft.Description"
+                                       data-test="event-description"
+                                       MaxLength="2000"
+                                       ShowCharacterCount="true" />
+                            <ValidationMessage For="@(() => _draft.Description)" />
+                        </div>
+                    </BbFormSection>
+
+                    <BbFormSection Title="Sessions" Description="Review and edit proposed session timings." Class="mt-6">
+                        @if (_draft.Sessions.Count == 0)
+                        {
+                            <p class="text-muted-foreground" data-test="no-sessions">No sessions defined yet.</p>
+                        }
+                        else
+                        {
+                            @foreach (var session in _draft.Sessions)
+                            {
+                                <div class="session-card mb-4 p-4 border rounded" data-test="@($"session-{session.Id}")">
+                                    <BbFormFieldInput TValue="string"
+                                                     @bind-Value="session.Title"
+                                                     Label="Session Title"
+                                                     data-test="@($"session-title-{session.Id}")"
+                                                     Required="true" />
+
+                                    <BbFormFieldInput TValue="string"
+                                                     @bind-Value="session.Speaker"
+                                                     Label="Speaker"
+                                                     data-test="@($"session-speaker-{session.Id}")"
+                                                     Class="mt-2" />
+
+                                    <div class="form-row-2col mt-2">
+                                        <div class="form-group">
+                                            <BbLabel For="@($"session-start-{session.Id}")">Start Time</BbLabel>
+                                            <BbDatePicker id="@($"session-start-{session.Id}")"
+                                                         @bind-Value="session.StartTime"
+                                                         data-test="@($"session-starttime-{session.Id}")"
+                                                         Placeholder="Pick start time"
+                                                         Class="w-full" />
+                                            <ValidationMessage For="@(() => session.StartTime)" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <BbLabel For="@($"session-end-{session.Id}")">End Time</BbLabel>
+                                            <BbDatePicker id="@($"session-end-{session.Id}")"
+                                                         @bind-Value="session.EndTime"
+                                                         data-test="@($"session-endtime-{session.Id}")"
+                                                         Placeholder="Pick end time"
+                                                         Class="w-full" />
+                                            <ValidationMessage For="@(() => session.EndTime)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group mt-2">
+                                        <BbLabel For="@($"session-desc-{session.Id}")">Description</BbLabel>
+                                        <BbTextarea Id="@($"session-desc-{session.Id}")"
+                                                   @bind-Value="session.Description"
+                                                   data-test="@($"session-description-{session.Id}")"
+                                                   MaxLength="500"
+                                                   ShowCharacterCount="true" />
+                                        <ValidationMessage For="@(() => session.Description)" />
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </BbFormSection>
+                </BbCardContent>
+
+                <BbCardFooter Class="flex gap-3 justify-end">
+                    <BbButton Variant="ButtonVariant.Outline"
+                              data-test="reject-btn"
+                              ButtonType="ButtonType.Button"
+                              Disabled="@_isSubmitting"
+                              OnClick="@OnRejectAsync">
+                        Reject Draft
+                    </BbButton>
+
+                    <BbButton Variant="ButtonVariant.Default"
+                              data-test="approve-btn"
+                              ButtonType="ButtonType.Button"
+                              Disabled="@_isSubmitting"
+                              OnClick="@OnApproveAsync">
+                        @if (_isSubmitting)
+                        {
+                            <LucideIcon Name="loader-circle" Size="16" Class="animate-spin mr-2" />
+                            <span>Submitting…</span>
+                        }
+                        else
+                        {
+                            <span>Approve Agenda</span>
+                        }
+                    </BbButton>
+                </BbCardFooter>
+            </EditForm>
+        </BbCard>
+
+        @if (_submitError is not null)
+        {
+            <BbAlert Variant="AlertVariant.Danger" Class="mt-4" data-test="submit-error">
+                <BbAlertTitle>Submission Error</BbAlertTitle>
+                <BbAlertDescription>@_submitError</BbAlertDescription>
+            </BbAlert>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    private EditContext? _editContext;
+    private PlanDraftViewModel? _draft;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _submitError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDraftAsync();
+    }
+
+    private async Task LoadDraftAsync()
+    {
+        _isLoading = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to GET /api/approvals/{EventId}/plan/pending
+            // For now, stub with sample data
+            await Task.Delay(500); // Simulate API call
+
+            _draft = new PlanDraftViewModel
+            {
+                EventId = EventId,
+                Title = "GitHub Copilot Dev Days Mumbai",
+                Description = "A hands-on developer event exploring GitHub Copilot, AI-powered coding, and the future of software development.",
+                AgentReasoning = "Agenda drafted based on venue constraints (4-hour slot), speaker availability (3 confirmed), and community interest signals (high demand for hands-on workshops).",
+                CreatedAt = DateTime.UtcNow.AddHours(-2),
+                Sessions = [
+                    new SessionDraftViewModel
+                    {
+                        Id = "s1",
+                        Title = "Introduction to GitHub Copilot",
+                        Speaker = "Augustine Correa",
+                        StartTime = DateTime.Today.AddDays(7).AddHours(10),
+                        EndTime = DateTime.Today.AddDays(7).AddHours(11),
+                        Description = "Overview of GitHub Copilot features and best practices."
+                    },
+                    new SessionDraftViewModel
+                    {
+                        Id = "s2",
+                        Title = "Building AI Agents with Microsoft Foundry",
+                        Speaker = "TBD",
+                        StartTime = DateTime.Today.AddDays(7).AddHours(11).AddMinutes(15),
+                        EndTime = DateTime.Today.AddDays(7).AddHours(12).AddMinutes(30),
+                        Description = "Hands-on workshop on creating multi-agent systems."
+                    },
+                    new SessionDraftViewModel
+                    {
+                        Id = "s3",
+                        Title = "Q&A and Networking",
+                        StartTime = DateTime.Today.AddDays(7).AddHours(13),
+                        EndTime = DateTime.Today.AddDays(7).AddHours(14),
+                        Description = "Open discussion and community networking."
+                    }
+                ]
+            };
+
+            _editContext = new EditContext(_draft);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load plan draft for event {EventId}", EventId);
+            _submitError = $"Failed to load draft: {ex.Message}";
+            _draft = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnApproveAsync()
+    {
+        if (_draft is null || _editContext is null) return;
+
+        if (!_editContext.Validate())
+        {
+            _submitError = "Please fix validation errors before approving.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to POST /api/approvals/{EventId}/approve
+            // Body: { WorkflowPhase: "Planning", Approved: true, Edits: JSON.stringify(_draft) }
+            await Task.Delay(1000); // Simulate API call
+
+            Logger.LogInformation("Approved plan draft for event {EventId}", EventId);
+
+            // Navigate back to approvals list
+            Navigation.NavigateTo("/approvals");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to approve plan draft for event {EventId}", EventId);
+            _submitError = $"Failed to approve: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task OnRejectAsync()
+    {
+        if (_draft is null) return;
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to POST /api/approvals/{EventId}/reject
+            // Body: { WorkflowPhase: "Planning", Approved: false, Reason: "Needs revision" }
+            await Task.Delay(500); // Simulate API call
+
+            Logger.LogInformation("Rejected plan draft for event {EventId}", EventId);
+
+            // Navigate back to approvals list
+            Navigation.NavigateTo("/approvals");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to reject plan draft for event {EventId}", EventId);
+            _submitError = $"Failed to reject: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

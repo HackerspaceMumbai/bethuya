@@ -1,0 +1,244 @@
+@page "/approvals/curation/{eventId:guid}"
+@rendermode InteractiveServer
+@using Bethuya.Hybrid.Shared.Pages.Approvals.Models
+@using Microsoft.Extensions.Logging
+@inject ILogger<CurationApproval> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Approve Attendee Curation — Bethuya</PageTitle>
+
+<div data-test="curation-approval-page" class="curation-approval-page">
+
+    <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => Navigation.NavigateTo("/approvals"))">
+        ← Back to Approvals
+    </BbButton>
+
+    @if (_isLoading)
+    {
+        <div data-test="loading-state" class="p-8 text-center">
+            <p>Loading curation proposal…</p>
+        </div>
+    }
+    else if (_proposal is null)
+    {
+        <div data-test="not-found-state">
+            <BbAlert Variant="AlertVariant.Danger" Class="mt-6">
+                <BbAlertTitle>Proposal Not Found</BbAlertTitle>
+                <BbAlertDescription>The requested curation proposal could not be found.</BbAlertDescription>
+            </BbAlert>
+        </div>
+    }
+    else
+    {
+        <BbCard Class="mt-6">
+            <BbCardHeader>
+                <div class="flex items-center gap-3">
+                    <BbCardTitle Class="text-2xl">Approve Attendee Curation</BbCardTitle>
+                    <BbBadge Variant="BadgeVariant.Outline" data-test="proposal-status">Pending Review</BbBadge>
+                </div>
+                <BbCardDescription>
+                    Review proposed attendee selections. NO PII SHOWN — aggregate counts only.
+                </BbCardDescription>
+            </BbCardHeader>
+
+            @if (_proposal.AgentReasoning is not null)
+            {
+                <BbAlert Variant="AlertVariant.Info" Class="mx-6 mt-6">
+                    <Icon><LucideIcon Name="sparkles" Class="h-4 w-4" /></Icon>
+                    <ChildContent>
+                        <BbAlertTitle>Agent Reasoning</BbAlertTitle>
+                        <BbAlertDescription>@_proposal.AgentReasoning</BbAlertDescription>
+                    </ChildContent>
+                </BbAlert>
+            }
+
+            <BbCardContent>
+                <BbFormSection Title="Selection Summary" Description="Aggregate attendee statistics (no individual PII).">
+                    <div class="stats-grid" data-test="curation-stats">
+                        <div class="stat-card p-4 border rounded">
+                            <div class="stat-label text-muted-foreground text-sm">Proposed Attendees</div>
+                            <div class="stat-value text-3xl font-bold" data-test="proposed-count">@_proposal.ProposedAttendees</div>
+                        </div>
+
+                        <div class="stat-card p-4 border rounded">
+                            <div class="stat-label text-muted-foreground text-sm">Waitlist</div>
+                            <div class="stat-value text-3xl font-bold" data-test="waitlist-count">@_proposal.WaitlistCount</div>
+                        </div>
+
+                        <div class="stat-card p-4 border rounded">
+                            <div class="stat-label text-muted-foreground text-sm">First-Time Attendees</div>
+                            <div class="stat-value text-3xl font-bold" data-test="first-time-pct">@_proposal.FirstTimePercentage.ToString("F0")%</div>
+                        </div>
+
+                        <div class="stat-card p-4 border rounded">
+                            <div class="stat-label text-muted-foreground text-sm">Underrepresented Backgrounds</div>
+                            <div class="stat-value text-3xl font-bold" data-test="underrep-pct">@_proposal.UnderrepresentedPercentage.ToString("F0")%</div>
+                        </div>
+                    </div>
+
+                    @if (_proposal.FairnessBudgetSummary is not null)
+                    {
+                        <BbAlert Variant="AlertVariant.Default" Class="mt-4">
+                            <BbAlertTitle>Fairness Budget</BbAlertTitle>
+                            <BbAlertDescription>@_proposal.FairnessBudgetSummary</BbAlertDescription>
+                        </BbAlert>
+                    }
+                </BbFormSection>
+
+                <BbAlert Variant="AlertVariant.Warning" Class="mt-6" data-test="privacy-notice">
+                    <Icon><LucideIcon Name="shield-check" Class="h-4 w-4" /></Icon>
+                    <ChildContent>
+                        <BbAlertTitle>Privacy Guardrail</BbAlertTitle>
+                        <BbAlertDescription>
+                            Individual attendee names, emails, and DEI fields are processed locally (Foundry Local)
+                            and are not shown in this UI. Only aggregate statistics are displayed.
+                        </BbAlertDescription>
+                    </ChildContent>
+                </BbAlert>
+            </BbCardContent>
+
+            <BbCardFooter Class="flex gap-3 justify-end">
+                <BbButton Variant="ButtonVariant.Outline"
+                          data-test="reject-curation"
+                          ButtonType="ButtonType.Button"
+                          Disabled="@_isSubmitting"
+                          OnClick="@OnRejectCurationAsync">
+                    Reject & Review with Curator
+                </BbButton>
+
+                <BbButton Variant="ButtonVariant.Default"
+                          data-test="approve-curation"
+                          ButtonType="ButtonType.Button"
+                          Disabled="@_isSubmitting"
+                          OnClick="@OnApproveCurationAsync">
+                    @if (_isSubmitting)
+                    {
+                        <LucideIcon Name="loader-circle" Size="16" Class="animate-spin mr-2" />
+                        <span>Submitting…</span>
+                    }
+                    else
+                    {
+                        <span>Approve Curation</span>
+                    }
+                </BbButton>
+            </BbCardFooter>
+        </BbCard>
+
+        @if (_submitError is not null)
+        {
+            <BbAlert Variant="AlertVariant.Danger" Class="mt-4" data-test="submit-error">
+                <BbAlertTitle>Submission Error</BbAlertTitle>
+                <BbAlertDescription>@_submitError</BbAlertDescription>
+            </BbAlert>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    private CurationProposalViewModel? _proposal;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _submitError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProposalAsync();
+    }
+
+    private async Task LoadProposalAsync()
+    {
+        _isLoading = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to GET /api/approvals/{EventId}/curation/pending
+            // IMPORTANT: Backend MUST return only aggregate data (no PII)
+            await Task.Delay(500); // Simulate API call
+
+            _proposal = new CurationProposalViewModel
+            {
+                EventId = EventId,
+                ProposedAttendees = 50,
+                WaitlistCount = 30,
+                FirstTimePercentage = 40.0f,
+                UnderrepresentedPercentage = 35.0f,
+                FairnessBudgetSummary = "Diversity targets met: 40% first-time attendees (target: 35%), 35% underrepresented backgrounds (target: 30%). Theme alignment scores range 0.65-0.92 (high).",
+                AgentReasoning = "Curator selected 50 attendees from 80 registrants using FairnessBudget constraints. Theme alignment scores weighted 60%, DEI fairness 25%, community history 15%. No bias flags detected.",
+                CreatedAt = DateTime.UtcNow.AddHours(-1)
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load curation proposal for event {EventId}", EventId);
+            _submitError = $"Failed to load proposal: {ex.Message}";
+            _proposal = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnApproveCurationAsync()
+    {
+        if (_proposal is null) return;
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to POST /api/approvals/{EventId}/approve
+            // Body: { WorkflowPhase: "Curation", Approved: true }
+            // Backend MUST delete local PII SQLite store after approval
+            await Task.Delay(1000); // Simulate API call
+
+            Logger.LogInformation("Approved curation proposal for event {EventId}", EventId);
+
+            // Navigate back to approvals list
+            Navigation.NavigateTo("/approvals");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to approve curation proposal for event {EventId}", EventId);
+            _submitError = $"Failed to approve: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task OnRejectCurationAsync()
+    {
+        if (_proposal is null) return;
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to POST /api/approvals/{EventId}/reject
+            // Body: { WorkflowPhase: "Curation", Approved: false, Reason: "Needs curator review" }
+            await Task.Delay(500); // Simulate API call
+
+            Logger.LogInformation("Rejected curation proposal for event {EventId}", EventId);
+
+            // Navigate back to approvals list
+            Navigation.NavigateTo("/approvals");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to reject curation proposal for event {EventId}", EventId);
+            _submitError = $"Failed to reject: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

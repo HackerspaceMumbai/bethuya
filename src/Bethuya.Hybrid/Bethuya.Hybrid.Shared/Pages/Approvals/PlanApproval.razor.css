@@ -1,0 +1,87 @@
+/* ── Approvals Pages — Custom Layout CSS ──
+   BB form-field components (BbFormFieldInput, BbFormFieldSelect, BbFormSection)
+   handle label, input, helper text, validation, and ARIA wiring.
+   Custom CSS here covers only what BB doesn't provide:
+     - Page wrapper (max-width centering)
+     - Vertical form stack and two-column grid layout
+     - Manual form-group for fields without BB form-field wrapper (standalone components)
+     - Stat cards for curation aggregate data display
+     - List styling for highlights and action items (dynamic add/remove) */
+
+/* Page wrapper: constrain width, center */
+.plan-approval-page,
+.curation-approval-page,
+.report-approval-page,
+.approvals-page {
+    max-width: 48rem;
+    margin-inline: auto;
+    padding: 1.5rem 1rem;
+}
+
+/* Vertical stack with 1rem gap between form sections */
+.form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Manual field group: only for fields without a BB form-field wrapper
+   (date/time pickers without BbFormFieldDatePicker, standalone BbTextarea) */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+/* Two-column grid row */
+.form-row-2col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1rem;
+    row-gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .form-row-2col {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Session cards in PlanApproval */
+.session-card {
+    background-color: hsl(var(--card));
+}
+
+/* Stats grid for CurationApproval (aggregate data, no PII) */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem;
+}
+
+.stat-card {
+    background-color: hsl(var(--card));
+}
+
+.stat-label {
+    margin-bottom: 0.5rem;
+}
+
+/* Lists for highlights and action items in ReportApproval */
+.highlights-list,
+.action-items-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.highlight-item,
+.action-item {
+    background-color: hsl(var(--card));
+}
+
+/* Approvals list on index page */
+.approvals-list .approval-card {
+    background-color: hsl(var(--card));
+}

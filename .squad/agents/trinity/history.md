@@ -32,3 +32,20 @@
   - **InteractiveServer for sensitive pages** — auth/PII pages MUST use `@rendermode InteractiveServer` (global assignment on Routes in App.razor, not per-page).
   - **File-scoped namespaces, primary constructors, collection expressions** — C# 14 idioms enforced.
   - **Nullable enabled, TreatWarningsAsErrors** — fix all warnings; never suppress without documented justification.
+- **Phase 1 Approver Approval UI (2026-04-28):** Implemented human-in-the-loop approval flows for Planner, Curator, and Reporter agents.
+  - Created `/approvals` index page listing pending approvals by workflow phase (Planning, Curation, Reporting).
+  - Created `/approvals/plan/{eventId}` for agenda review with editable session titles, speakers, start/end times, descriptions.
+  - Created `/approvals/curation/{eventId}` for attendee list review — **NO PII shown**, only aggregate statistics (proposed count, waitlist count, first-time %, underrep. %). Privacy guardrail alert prominently displayed.
+  - Created `/approvals/report/{eventId}` for post-event summary editing with dynamic highlight/action item lists (add/remove inline).
+  - All pages use `@rendermode InteractiveServer` (sensitive approval workflows).
+  - All interactive elements have `data-test` attributes for Playwright E2E.
+  - Blazor Blueprint components used exclusively (BbCard, BbFormFieldInput, BbFormSection, BbTextarea, BbButton, BbAlert, BbBadge).
+  - Manual form-group wrappers only for standalone components (BbDatePicker, BbTextarea) — BB lacks BbFormFieldDatePicker/BbFormFieldTextarea wrappers.
+  - Custom CSS limited to layout (page wrapper, stats grid, list styling) — all styled with theme variables (--card, --border, --muted-foreground).
+  - Stub API integration (TODO comments for real Backend API endpoints: GET /api/approvals/{eventId}/{phase}/pending, POST /api/approvals/{eventId}/approve, POST /api/approvals/{eventId}/reject).
+  - Build: 0 errors, 0 warnings.
+  - **Key learnings:**
+    - Razor string interpolation in attributes requires `@($"...")` syntax, not `attr="prefix-@variable"` (Razor compiler error RZ9986).
+    - `foreach` with `Select((item, index) => ...)` in Razor causes lambda return type mismatch — use explicit `for` loop with captured `index` variable instead.
+    - BB ButtonSize enum has `Small`, not `Sm` — use correct enum values or omit Size param.
+    - Nullable type params in TValue (e.g., `TValue="string?"`) cause nullable annotation errors in Razor-generated code — use non-nullable `TValue="string"` and make model properties non-nullable with default empty strings.

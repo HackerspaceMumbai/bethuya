@@ -1,0 +1,132 @@
+@page "/approvals"
+@rendermode InteractiveServer
+@using Bethuya.Hybrid.Shared.Pages.Approvals.Models
+@using Microsoft.Extensions.Logging
+@inject ILogger<Index> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Approvals — Bethuya</PageTitle>
+
+<div data-test="approvals-page" class="approvals-page">
+
+    <BbCard>
+        <BbCardHeader>
+            <BbCardTitle Class="text-2xl">Pending Approvals</BbCardTitle>
+            <BbCardDescription>
+                Review and approve agent-drafted content before publication.
+            </BbCardDescription>
+        </BbCardHeader>
+
+        @if (_isLoading)
+        {
+            <BbCardContent>
+                <div data-test="loading-state" class="p-8 text-center">
+                    <p>Loading pending approvals…</p>
+                </div>
+            </BbCardContent>
+        }
+        else if (_approvals.Count == 0)
+        {
+            <BbCardContent>
+                <div data-test="empty-state" class="p-8 text-center">
+                    <LucideIcon Name="inbox" Size="48" Class="mx-auto text-muted-foreground mb-4" />
+                    <p class="text-lg font-medium">No pending approvals</p>
+                    <p class="text-muted-foreground">All drafts have been reviewed.</p>
+                </div>
+            </BbCardContent>
+        }
+        else
+        {
+            <BbCardContent>
+                <div class="approvals-list" data-test="approvals-list">
+                    @foreach (var approval in _approvals)
+                    {
+                        <div class="approval-card mb-4 p-4 border rounded" data-test="approval-@approval.EventId">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <h3 class="text-lg font-medium">@approval.WorkflowPhase Approval</h3>
+                                        <BbBadge Variant="BadgeVariant.Outline">@approval.Status</BbBadge>
+                                    </div>
+                                    <p class="text-sm text-muted-foreground">Event ID: @approval.EventId.ToString("N")[..8]…</p>
+                                </div>
+                                <BbButton Variant="ButtonVariant.Default"
+                                         data-test="@($"review-{approval.WorkflowPhase.ToLowerInvariant()}")"
+                                         OnClick="@(() => NavigateToApproval(approval))">
+                                    Review
+                                </BbButton>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </BbCardContent>
+        }
+    </BbCard>
+</div>
+
+@code {
+    private List<ApprovalViewModel> _approvals = [];
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadApprovalsAsync();
+    }
+
+    private async Task LoadApprovalsAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            // TODO: Replace with actual API call to GET /api/approvals/pending
+            await Task.Delay(500); // Simulate API call
+
+            // Stub data for demonstration
+            var eventId = Guid.NewGuid();
+
+            _approvals = [
+                new ApprovalViewModel
+                {
+                    EventId = eventId,
+                    WorkflowPhase = "Planning",
+                    Status = "Pending"
+                },
+                new ApprovalViewModel
+                {
+                    EventId = eventId,
+                    WorkflowPhase = "Curation",
+                    Status = "Pending"
+                },
+                new ApprovalViewModel
+                {
+                    EventId = eventId,
+                    WorkflowPhase = "Reporting",
+                    Status = "Pending"
+                }
+            ];
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load pending approvals");
+            _approvals = [];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void NavigateToApproval(ApprovalViewModel approval)
+    {
+        var route = approval.WorkflowPhase.ToLowerInvariant() switch
+        {
+            "planning" => $"/approvals/plan/{approval.EventId}",
+            "curation" => $"/approvals/curation/{approval.EventId}",
+            "reporting" => $"/approvals/report/{approval.EventId}",
+            _ => "/approvals"
+        };
+
+        Navigation.NavigateTo(route);
+    }
+}

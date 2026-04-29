@@ -1,0 +1,344 @@
+@page "/approvals/report/{eventId:guid}"
+@rendermode InteractiveServer
+@using Bethuya.Hybrid.Shared.Pages.Approvals.Models
+@using Microsoft.Extensions.Logging
+@inject ILogger<ReportApproval> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Approve Event Report — Bethuya</PageTitle>
+
+<div data-test="report-approval-page" class="report-approval-page">
+
+    <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => Navigation.NavigateTo("/approvals"))">
+        ← Back to Approvals
+    </BbButton>
+
+    @if (_isLoading)
+    {
+        <div data-test="loading-state" class="p-8 text-center">
+            <p>Loading report draft…</p>
+        </div>
+    }
+    else if (_draft is null)
+    {
+        <div data-test="not-found-state">
+            <BbAlert Variant="AlertVariant.Danger" Class="mt-6">
+                <BbAlertTitle>Draft Not Found</BbAlertTitle>
+                <BbAlertDescription>The requested report draft could not be found.</BbAlertDescription>
+            </BbAlert>
+        </div>
+    }
+    else
+    {
+        <BbCard Class="mt-6">
+            <BbCardHeader>
+                <div class="flex items-center gap-3">
+                    <BbCardTitle Class="text-2xl">Approve Event Report</BbCardTitle>
+                    <BbBadge Variant="BadgeVariant.Outline" data-test="draft-status">Pending Review</BbBadge>
+                </div>
+                <BbCardDescription>
+                    Review and edit the post-event summary. Make final edits before publishing.
+                </BbCardDescription>
+            </BbCardHeader>
+
+            @if (_draft.AgentReasoning is not null)
+            {
+                <BbAlert Variant="AlertVariant.Info" Class="mx-6 mt-6">
+                    <Icon><LucideIcon Name="sparkles" Class="h-4 w-4" /></Icon>
+                    <ChildContent>
+                        <BbAlertTitle>Agent Reasoning</BbAlertTitle>
+                        <BbAlertDescription>@_draft.AgentReasoning</BbAlertDescription>
+                    </ChildContent>
+                </BbAlert>
+            }
+
+            <EditForm EditContext="@_editContext" FormName="report-approval" data-test="report-approval-form">
+                <DataAnnotationsValidator />
+
+                <BbCardContent>
+                    <BbFormSection Title="Event Summary" Description="Edit the summary to finalize before publishing.">
+                        <BbFormFieldInput TValue="string"
+                                         @bind-Value="_draft.Title"
+                                         Label="Report Title"
+                                         data-test="summary-title"
+                                         Required="true" />
+
+                        <div class="form-group">
+                            <BbLabel For="summary">Summary</BbLabel>
+                            <BbTextarea Id="summary"
+                                       @bind-Value="_draft.Summary"
+                                       data-test="summary-body"
+                                       MaxLength="5000"
+                                       ShowCharacterCount="true" />
+                            <ValidationMessage For="@(() => _draft.Summary)" />
+                        </div>
+                    </BbFormSection>
+
+                    <BbFormSection Title="Highlights" Description="Key takeaways from the event." Class="mt-6">
+                        @if (_draft.Highlights.Count == 0)
+                        {
+                            <p class="text-muted-foreground" data-test="no-highlights">No highlights added yet.</p>
+                        }
+                        else
+                        {
+                            <ul class="highlights-list" data-test="highlights-list">
+                                @for (int i = 0; i < _draft.Highlights.Count; i++)
+                                {
+                                    var index = i;
+                                    var highlight = _draft.Highlights[i];
+                                    <li class="highlight-item mb-2 p-3 border rounded" data-test="@($"highlight-{index}")">
+                                        <div class="flex items-start gap-2">
+                                            <LucideIcon Name="check-circle" Size="16" Class="mt-1 text-success" />
+                                            <div class="flex-1">
+                                                <BbInput @bind-Value="_draft.Highlights[index]"
+                                                        data-test="@($"highlight-input-{index}")"
+                                                        Placeholder="Highlight description"
+                                                        Class="w-full" />
+                                            </div>
+                                            <BbButton Variant="ButtonVariant.Ghost"
+                                                     data-test="@($"remove-highlight-{index}")"
+                                                     OnClick="@(() => RemoveHighlight(index))">
+                                                <LucideIcon Name="x" Size="14" />
+                                            </BbButton>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+
+                        <BbButton Variant="ButtonVariant.Outline"
+                                 data-test="add-highlight"
+                                 OnClick="@AddHighlight"
+                                 Class="mt-2">
+                            <LucideIcon Name="plus" Size="14" Class="mr-1" />
+                            Add Highlight
+                        </BbButton>
+                    </BbFormSection>
+
+                    <BbFormSection Title="Action Items" Description="Follow-up tasks and next steps." Class="mt-6">
+                        @if (_draft.ActionItems.Count == 0)
+                        {
+                            <p class="text-muted-foreground" data-test="no-action-items">No action items added yet.</p>
+                        }
+                        else
+                        {
+                            <ul class="action-items-list" data-test="action-items-list">
+                                @for (int i = 0; i < _draft.ActionItems.Count; i++)
+                                {
+                                    var index = i;
+                                    var item = _draft.ActionItems[i];
+                                    <li class="action-item mb-2 p-3 border rounded" data-test="@($"action-item-{index}")">
+                                        <div class="flex items-start gap-2">
+                                            <LucideIcon Name="list-checks" Size="16" Class="mt-1 text-primary" />
+                                            <div class="flex-1">
+                                                <BbInput @bind-Value="_draft.ActionItems[index]"
+                                                        data-test="@($"action-item-input-{index}")"
+                                                        Placeholder="Action item description"
+                                                        Class="w-full" />
+                                            </div>
+                                            <BbButton Variant="ButtonVariant.Ghost"
+                                                     data-test="@($"remove-action-item-{index}")"
+                                                     OnClick="@(() => RemoveActionItem(index))">
+                                                <LucideIcon Name="x" Size="14" />
+                                            </BbButton>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+
+                        <BbButton Variant="ButtonVariant.Outline"
+                                 data-test="add-action-item"
+                                 OnClick="@AddActionItem"
+                                 Class="mt-2">
+                            <LucideIcon Name="plus" Size="14" Class="mr-1" />
+                            Add Action Item
+                        </BbButton>
+                    </BbFormSection>
+                </BbCardContent>
+
+                <BbCardFooter Class="flex gap-3 justify-end">
+                    <BbButton Variant="ButtonVariant.Outline"
+                              data-test="return-for-edits"
+                              ButtonType="ButtonType.Button"
+                              Disabled="@_isSubmitting"
+                              OnClick="@OnReturnAsync">
+                        Request More Edits
+                    </BbButton>
+
+                    <BbButton Variant="ButtonVariant.Default"
+                              data-test="publish-report"
+                              ButtonType="ButtonType.Button"
+                              Disabled="@_isSubmitting"
+                              OnClick="@OnPublishAsync">
+                        @if (_isSubmitting)
+                        {
+                            <LucideIcon Name="loader-circle" Size="16" Class="animate-spin mr-2" />
+                            <span>Publishing…</span>
+                        }
+                        else
+                        {
+                            <span>Publish Report</span>
+                        }
+                    </BbButton>
+                </BbCardFooter>
+            </EditForm>
+        </BbCard>
+
+        @if (_submitError is not null)
+        {
+            <BbAlert Variant="AlertVariant.Danger" Class="mt-4" data-test="submit-error">
+                <BbAlertTitle>Submission Error</BbAlertTitle>
+                <BbAlertDescription>@_submitError</BbAlertDescription>
+            </BbAlert>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    private EditContext? _editContext;
+    private ReportDraftViewModel? _draft;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _submitError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDraftAsync();
+    }
+
+    private async Task LoadDraftAsync()
+    {
+        _isLoading = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to GET /api/approvals/{EventId}/report/pending
+            await Task.Delay(500); // Simulate API call
+
+            _draft = new ReportDraftViewModel
+            {
+                EventId = EventId,
+                Title = "GitHub Copilot Dev Days Mumbai — Event Summary",
+                Summary = "On April 27, 2026, HackerspaceMumbai hosted the inaugural GitHub Copilot Dev Days event with 50 attendees. The event featured hands-on workshops on GitHub Copilot, AI-powered coding, and multi-agent systems using Microsoft Foundry. Feedback was overwhelmingly positive, with attendees praising the practical exercises and community engagement.",
+                AgentReasoning = "Report drafted from session notes, attendance data (50 attendees), and feedback survey (92% satisfaction, 4.7/5.0 avg rating). Highlights extracted from Q&A transcripts and facilitator notes.",
+                CreatedAt = DateTime.UtcNow.AddMinutes(-30),
+                Highlights = [
+                    "50 developers attended, with 40% first-time HackerspaceMumbai participants.",
+                    "Hands-on exercises received 4.8/5.0 rating; attendees appreciated the practical focus.",
+                    "Q&A session generated 15 follow-up questions, demonstrating high engagement.",
+                    "Community networking led to 3 new collaboration proposals."
+                ],
+                ActionItems = [
+                    "Share session recordings and slides with attendees by April 30.",
+                    "Follow up with 3 collaboration proposals by May 5.",
+                    "Schedule next event based on feedback (requested: deep-dive on Foundry agents)."
+                ]
+            };
+
+            _editContext = new EditContext(_draft);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load report draft for event {EventId}", EventId);
+            _submitError = $"Failed to load draft: {ex.Message}";
+            _draft = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void AddHighlight()
+    {
+        if (_draft is null) return;
+        _draft.Highlights.Add(string.Empty);
+    }
+
+    private void RemoveHighlight(int index)
+    {
+        if (_draft is null || index < 0 || index >= _draft.Highlights.Count) return;
+        _draft.Highlights.RemoveAt(index);
+    }
+
+    private void AddActionItem()
+    {
+        if (_draft is null) return;
+        _draft.ActionItems.Add(string.Empty);
+    }
+
+    private void RemoveActionItem(int index)
+    {
+        if (_draft is null || index < 0 || index >= _draft.ActionItems.Count) return;
+        _draft.ActionItems.RemoveAt(index);
+    }
+
+    private async Task OnPublishAsync()
+    {
+        if (_draft is null || _editContext is null) return;
+
+        if (!_editContext.Validate())
+        {
+            _submitError = "Please fix validation errors before publishing.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to POST /api/approvals/{EventId}/approve
+            // Body: { WorkflowPhase: "Reporting", Approved: true, Edits: JSON.stringify(_draft) }
+            await Task.Delay(1000); // Simulate API call
+
+            Logger.LogInformation("Published report for event {EventId}", EventId);
+
+            // Navigate back to approvals list
+            Navigation.NavigateTo("/approvals");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to publish report for event {EventId}", EventId);
+            _submitError = $"Failed to publish: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task OnReturnAsync()
+    {
+        if (_draft is null) return;
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            // TODO: Replace with actual API call to POST /api/approvals/{EventId}/reject
+            // Body: { WorkflowPhase: "Reporting", Approved: false, Reason: "Needs more edits" }
+            await Task.Delay(500); // Simulate API call
+
+            Logger.LogInformation("Returned report for edits for event {EventId}", EventId);
+
+            // Navigate back to approvals list
+            Navigation.NavigateTo("/approvals");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to return report for edits for event {EventId}", EventId);
+            _submitError = $"Failed to return: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}
