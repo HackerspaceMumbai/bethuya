@@ -37,3 +37,26 @@
   - **No cross-test state pollution** — BP5: `ResetAsync()` in `[Before(Test)]` hooks ensures test isolation.
   - **Contract duplication as safety net** — BP6: duplicate contract types in test projects (not imported) to catch breaking changes at compile-time.
   - **Central Package Management** — all test package versions in Directory.Packages.props; never `Version=""` in .csproj.
+
+- **Phase 1: Orchestrator & Approver Agent test stubs (2026-04-15):** Created TUnit test stubs and builders for multi-agent orchestration acceptance criteria:
+  - **Test builders** — `EventDataBuilder.cs`, `WorkflowStateBuilder.cs`, `ApprovalStateBuilder.cs` — fluent builders using existing Core models and enums
+  - **Orchestrator tests** — `OrchestratorAgentTests.cs` — 8 test stubs validating existing `OrchestratorAgent` implementation (agent spawning, workflow advancement, approval enforcement, sequencing, audit logging)
+  - **Approver tests** — `ApproverAgentTests.cs` — 7 simplified test stubs for future Approver implementation (approval forms, state updates, rejection flows, human edits capture, UI render mode validation)
+  - **Aspire fixture** — `AgentRuntimeFixture.cs` — simplified stub for Phase 2 Aspire integration (no IAsyncLifetime for now)
+  - **Key discoveries:**
+    - Orchestrator already partially implemented with `SpawnAgentAsync`, `AdvanceWorkflowAsync`, and `DraftAsync` methods
+    - Existing contracts: `SpawnAgentRequest/Response`, `AdvanceWorkflowRequest/Response`, `OrchestratorRequest/Response`
+    - Core models exist: `WorkflowState`, `ApprovalState`, `WorkflowPhase`, `WorkflowStatus`, `ApprovalStatus` enums
+    - `ApprovalState.WorkflowPhase` is `string`, not enum; `Edits` property (not `Reason`)
+    - `WorkflowState` properties are all `init`-only, uses `DateTime` (not `DateTimeOffset`)
+  - **Pre-existing build issues (NOT caused by tests):**
+    - CS0122: `Logger` property in `AgentBase<TRequest, TResponse>` is inaccessible (constructor param, not protected property) — OrchestratorAgent tries to use it in lines 86, 101, 117
+    - CS8858: `WorkflowState` is not a record — OrchestratorAgent uses `with` syntax on line 128 (invalid)
+    - These are implementation bugs in `src/Hackmum.Bethuya.Agents/Implementations/OrchestratorAgent.cs` that need Tank/Trinity fixes
+  - **Test design decisions:**
+    - All tests marked `[Ignore("Awaiting implementation — Phase 1")]` until DB integration and src bugs fixed
+    - Used existing contracts from `Hackmum.Bethuya.Agents.Contracts` namespace (not placeholder interfaces)
+    - Tests validate behavior, not just structure — acceptance criteria from `.squad/designs/event-orchestration-agents.md`
+    - Simple placeholder types for `AgendaDraft` and `SessionSlot` in Approver tests (no Approver implementation exists yet)
+    - No immediate Aspire integration in tests — Phase 2 work for Tank/Trinity
+

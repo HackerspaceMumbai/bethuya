@@ -35,3 +35,59 @@
   - **File-scoped namespaces, primary constructors, collection expressions** — C# 14 style enforced.
   - **0 B hot-path allocations** — Vogen + BenchmarkDotNet ensure p99 < 180ms @ 2,500 RPS, >90% cache hit.
 - CI Playwright failure `24238142180` (2026-04-11) was not caused by the transient SQL State 38 startup log. The actual break was E2E harness drift: home CTA selector changed to `plan-event-cta`, Blazor redirects need URL+DOM waits instead of page-load waits, and event-detail coverage must publish first so `view-event-btn` exists.
+
+### Phase 1: Orchestrator Agent & MAF Runtime (2026-04-28)
+
+**Context:** Implemented foundational orchestration layer with SQL schema for workflow state, approval tracking, and audit logging.
+
+**Key Patterns Discovered:**
+
+1. **IAgent<TRequest, TResponse> Contract:**
+   - All request types must implement `IAgentRequest` with `AgentName`, `Sensitivity`, `RequestedBy`
+   - All response types must implement `IAgentResponse` with `RequiresHumanApproval`, `AgentReasoning`, `GeneratedAt`
+   - Records can implement interfaces via explicit properties in the body (not primary constructor parameters)
+
+2. **EF Core Configuration Best Practices:**
+   - Use `HasDefaultValueSql("GETUTCDATE()")` for server-side timestamps (consistent across instances)
+   - Store enums as strings with `.HasConversion<string>()` for human-readable audit logs
+   - Index strategy: foreign keys (EventId) + status/time columns for common query patterns
+
+3. **Aspire Service Discovery:**
+   - Agents-as-libraries integrate cleanly via Backend's DI container
+   - No need for separate Aspire project if agents don't expose HTTP endpoints
+   - Environment variables for AI routing flow through to Backend's configuration
+
+4. **Workflow State Machine Pattern:**
+   - Dual persistence (SQL + Redis) specified in design for durability + performance
+   - Phase 1 uses SQL only; Redis deferred to Phase 2
+   - State transitions require approval checks before advancing
+
+5. **Audit Log Design:**
+   - Append-only with `BIGINT IDENTITY` for high write throughput
+   - No updates, no deletes — immutable for compliance
+   - Indexed on EventId + Timestamp for time-range queries
+
+**Schema Decisions:**
+
+- `WorkflowState.EventId` as PK (one workflow per event)
+- `ApprovalState` allows multiple approvals per event (one per WorkflowPhase)
+- `AuditLog` tracks all agent actions (Orchestrator spawns, workflow advances, curation decisions)
+
+**Implementation Notes:**
+
+- Orchestrator uses synchronous DbContext calls in `ParseResponse` (base class contract)
+- Async methods (`SpawnAgentAsync`, `AdvanceWorkflowAsync`) for public API endpoints
+- Logging via structured OpenTelemetry (inherited from AgentBase)
+
+**Dependencies:**
+
+- `Microsoft.EntityFrameworkCore` required in Agents project for DbContext access
+- Infrastructure reference added to Agents (one-way: Agents → Infrastructure → Core)
+
+**Next Steps (Phase 2):**
+
+- Extract repository interfaces (`IWorkflowRepository`, `IAuditLogRepository`)
+- Wire up Redis for agent memory (Foundry Hosted)
+- Implement actual agent spawning (currently stubs)
+- Build approval UI and connect to ApprovalState table
+- Add TUnit integration tests for workflow transitions

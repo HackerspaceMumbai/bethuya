@@ -18,6 +18,9 @@ public static class AgentServiceExtensions
         builder.Services.AddScoped<IAgent<CuratorRequest, CuratorResponse>, CuratorAgent>();
         builder.Services.AddScoped<IAgent<FacilitatorRequest, FacilitatorResponse>, FacilitatorAgent>();
         builder.Services.AddScoped<IAgent<ReporterRequest, ReporterResponse>, ReporterAgent>();
+        builder.Services.AddScoped<IAgent<OrchestratorRequest, OrchestratorResponse>, OrchestratorAgent>();
+        builder.Services.AddScoped<IAgent<ScoutRequest, ScoutResponse>, ScoutAgent>();
+        builder.Services.AddScoped<IAgent<AuditorRequest, AuditorResponse>, AuditorAgent>();
         builder.Services.AddScoped<ApprovalWorkflow>();
 
         return builder;

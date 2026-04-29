@@ -36,3 +36,17 @@
   - **File-scoped namespaces, primary constructors, collection expressions** — enforce C# 14 idioms.
   - **Nullable enabled, TreatWarningsAsErrors** — fix all warnings, never suppress without documented justification.
   - **0 B hot-path allocations via Vogen** — performance target: p99 < 180ms @ 2,500 RPS, >90% cache hit rate.
+- **Multi-Agent Event Orchestration Architecture (2026-04-28):** Designed comprehensive 7-agent system spanning event lifecycle (planning → curation → reporting). Key architectural decisions:
+  - **Agent roster:** Planner (Lead), Scout (Reviewer), Curator (Lead, PII-sensitive), Auditor (Reviewer), Reporter (Lead), Orchestrator (Coordinator), Approver (Gateway).
+  - **Hosting strategy:** Foundry Hosted for stateful agents (Planner, Reporter, Orchestrator); Local MAF for stateless/PII agents (Scout, Curator, Auditor, Approver).
+  - **PII firewall enforced:** Curator processes all attendee data via Foundry Local (on-device SLM); no PII crosses to cloud. SQLite PII store deleted post-approval.
+  - **Agent-to-agent (A2A) via MAF message bus:** Orchestrator spawns agents and routes messages; Planner queries Scout for context; Curator logs to Auditor.
+  - **MCP boundaries:** External service calls (speaker availability, venue data, audit log) wrapped in MCP tools with Refit contracts.
+  - **Audit trail:** Immutable append-only SQL log; 2-year retention; tracks all curation decisions (agent proposals + human overrides).
+  - **Approval gateway:** Approver mediates all human workflows (agenda review, curation approval, report edits); enforces "no autonomous publish" guardrail.
+  - **Aspire integration:** Agents registered as Aspire projects with service discovery (`https+http://agents`); observable via Aspire Dashboard (traces, logs, metrics).
+  - **Scaling:** Scout fan-out for parallel external API calls; Curator/Planner/Reporter single-instance (sequential human review); Orchestrator single-instance per event.
+  - **Identity versioning:** Mnemonic names in dev (`planner`, `curator`); versioned endpoints in prod (`planner-v1.0`) for A/B testing and rollback.
+  - **Folder structure:** `.agents/` for MAF implementations; `copilot/skills/` for orchestration triggers; MCP tools in `src/Bethuya.Agents/Mcp/`.
+  - **Security:** `[RequiresLocalProvider]` attribute on Curator tools; InteractiveServer render mode for approval pages; rate limiting (20 req/min AI endpoints).
+  - **Implementation roadmap:** 5 phases over 9 weeks — Foundation → Planner+Scout → Curator+Auditor → Reporter → E2E validation.

@@ -54,6 +54,10 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
     .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
     .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
     .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
+    .WithEnvironment("AI_PROVIDER_PLANNER", "AzureOpenAI")
+    .WithEnvironment("AI_PROVIDER_CURATOR", "FoundryLocal")
+    .WithEnvironment("AI_PROVIDER_REPORTER", "AzureOpenAI")
+    .WithEnvironment("AI_PROVIDER_ORCHESTRATOR", "AzureOpenAI")
     .WithHttpHealthCheck("/health")
     .PublishAsAzureContainerApp((infra, app) =>
     {
