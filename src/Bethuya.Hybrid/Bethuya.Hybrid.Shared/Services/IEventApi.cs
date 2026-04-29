@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Refit;
+using Bethuya.Hybrid.Shared.Models;
 
 namespace Bethuya.Hybrid.Shared.Services;
 
@@ -40,6 +41,18 @@ public interface IEventApi
 
     [Post("/api/events/{id}/orchestrate/plan")]
     Task<OrchestrationResponseDto> TriggerPlannerAsync(Guid id, [Body] TriggerPlannerRequestDto request, CancellationToken ct = default);
+
+    [Get("/api/events/{id}/curation-proposal")]
+    Task<CurationProposalDto?> GetCurationProposalAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/approvals/curation")]
+    Task ApproveCurationAsync([Body] CurationApprovalRequest request, CancellationToken ct = default);
+
+    [Post("/api/approvals/curation/reject")]
+    Task RejectCurationAsync([Body] CurationRejectionRequest request, CancellationToken ct = default);
+
+    [Get("/api/audit-log/curation")]
+    Task<CurationAuditLogDto?> GetCurationAuditLogAsync(Guid eventId, CancellationToken ct = default);
 }
 
 /// <summary>Event data returned from the API.</summary>

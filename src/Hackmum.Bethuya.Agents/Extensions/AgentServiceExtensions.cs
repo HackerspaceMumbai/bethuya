@@ -20,14 +20,21 @@ public static class AgentServiceExtensions
         builder.Services.AddRefitClient<IEventHistoryMcp>()
             .ConfigureHttpClient(client =>
             {
-                client.BaseAddress = new Uri("http://localhost:5000"); // Will be replaced by Aspire service discovery
+                client.BaseAddress = new Uri("http://localhost:5000");
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
         builder.Services.AddRefitClient<ISpeakerAvailabilityMcp>()
             .ConfigureHttpClient(client =>
             {
-                client.BaseAddress = new Uri("http://localhost:5000"); // Will be replaced by Aspire service discovery
+                client.BaseAddress = new Uri("http://localhost:5000");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
+        builder.Services.AddRefitClient<IAuditLogMcp>()
+            .ConfigureHttpClient(client =>
+            {
+                client.BaseAddress = new Uri("http://localhost:5000");
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
@@ -44,4 +51,3 @@ public static class AgentServiceExtensions
         return builder;
     }
 }
-

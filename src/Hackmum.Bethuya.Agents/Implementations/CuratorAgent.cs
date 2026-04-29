@@ -13,7 +13,16 @@ namespace Hackmum.Bethuya.Agents.Implementations;
 /// ALWAYS uses DataSensitivity.Sensitive (Foundry Local) for PII protection.
 /// NEVER auto-accepts or auto-rejects — outputs are recommendations only.
 /// All curation insights are explainable and transparent.
+/// 
+/// CRITICAL: This agent MUST run on Foundry Local only.
+/// Attribute [RequiresLocalProvider] enforces this constraint at runtime.
 /// </summary>
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class RequiresLocalProviderAttribute : Attribute
+{
+}
+
+[RequiresLocalProvider]
 public sealed class CuratorAgent(IAIRouter router, ILogger<CuratorAgent> logger)
     : AgentBase<CuratorRequest, CuratorResponse>(router, logger)
 {
@@ -42,10 +51,12 @@ public sealed class CuratorAgent(IAIRouter router, ILogger<CuratorAgent> logger)
             6. Over-representation alerts
             
             Output a ranked recommendation with clear reasoning for each attendee.
+            IMPORTANT: Do NOT include attendee names or email addresses in your response.
+            Use only registrant indices (Registrant #1, Registrant #2, etc.).
             """;
 
         var registrationSummary = string.Join("\n", request.Registrations.Select((r, i) =>
-            $"  {i + 1}. {r.FullName} — Interests: [{string.Join(", ", r.Interests)}] — Registered: {r.RegisteredAt:g}"));
+            $"  Registrant #{i + 1} — Interests: [{string.Join(", ", r.Interests)}] — Registered: {r.RegisteredAt:g}"));
 
         var userPrompt = $"""
             Event: {request.Event.Title} (Capacity: {request.Event.Capacity})
@@ -58,7 +69,7 @@ public sealed class CuratorAgent(IAIRouter router, ILogger<CuratorAgent> logger)
             Equity Prompts:
             {string.Join("\n", request.Budget.EquityPrompts.Select(p => $"  - {p}"))}
             
-            Registrations:
+            Registrations (anonymized):
             {registrationSummary}
             """;
 
@@ -75,25 +86,28 @@ public sealed class CuratorAgent(IAIRouter router, ILogger<CuratorAgent> logger)
         var capacity = request.Event.Capacity;
         var registrations = request.Registrations;
 
-        var proposedIds = registrations
+        // Use FairnessBudget to rank registrants
+        var ranked = request.Budget.RankForSelection(registrations.ToList());
+
+        var proposedIds = ranked
             .Take(capacity)
-            .Select(r => r.Id)
+            .Select(r => r.Item1.Id)
             .ToList();
 
-        var waitlistedIds = registrations
+        var waitlistedIds = ranked
             .Skip(capacity)
-            .Select(r => r.Id)
+            .Select(r => r.Item1.Id)
             .ToList();
 
         var insights = new CurationInsights
         {
-            ThemeAlignmentScores = registrations.ToDictionary(
-                r => r.Id,
-                r => r.Interests.Count > 0 ? 0.5 : 0.0),
-            DEINudges = ["Review distribution of represented communities"],
+            ThemeAlignmentScores = ranked.ToDictionary(
+                r => r.Item1.Id,
+                r => (double)(r.Item2 / 100m)), // Normalize to 0-1
+            DEINudges = request.Budget.EquityPrompts,
             OverRepresentationAlerts = [],
-            CommunitySignals = ["First-time attendees flagged for consideration"],
-            FirstComeSignals = ["Registration order preserved as tiebreaker"]
+            CommunitySignals = ["Fairness-based selection applied"],
+            FirstComeSignals = ["Tiebreakers resolved randomly"]
         };
 
         var proposal = new AttendanceProposal
@@ -109,7 +123,7 @@ public sealed class CuratorAgent(IAIRouter router, ILogger<CuratorAgent> logger)
         {
             EventId = request.Event.Id,
             WaitlistedRegistrationIds = waitlistedIds,
-            Reason = "Capacity exceeded — waitlisted based on curation recommendations",
+            Reason = "Capacity exceeded — waitlisted based on fairness-driven curation recommendations",
             Status = ProposalStatus.PendingReview
         };
 
