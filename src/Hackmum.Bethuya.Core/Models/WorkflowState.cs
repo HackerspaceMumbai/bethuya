@@ -6,7 +6,7 @@ namespace Hackmum.Bethuya.Core.Models;
 /// Tracks workflow state machine for event orchestration (planning → curation → reporting).
 /// Redundant with Redis for durability.
 /// </summary>
-public sealed class WorkflowState
+public sealed record WorkflowState
 {
     public Guid EventId { get; set; }
     public WorkflowPhase CurrentPhase { get; set; }

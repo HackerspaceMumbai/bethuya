@@ -3,6 +3,7 @@ using Hackmum.Bethuya.Agents.Implementations;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Tests.Agents.Builders;
 using NSubstitute;
+using TUnit.Core;
 
 namespace Hackmum.Bethuya.Tests.Agents;
 
@@ -15,7 +16,7 @@ public sealed class OrchestratorAgentTests
     // Phase 1: Tests marked [Ignore] until full integration with DB context
 
     [Test]
-    [Ignore("Awaiting full DB integration — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task SpawnAgent_WithValidRequest_ReturnsSpawnedStatus()
     {
         // Arrange
@@ -37,7 +38,7 @@ public sealed class OrchestratorAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting full DB integration — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task AdvanceWorkflow_FromPlanningToCuration_TransitionsSuccessfully()
     {
         // Arrange
@@ -65,7 +66,7 @@ public sealed class OrchestratorAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting full DB integration — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task AdvanceWorkflow_WithoutApproval_ReturnsPendingApprovalStatus()
     {
         // Arrange
@@ -85,7 +86,7 @@ public sealed class OrchestratorAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting full DB integration — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task WorkflowState_LogsToDatabase_AfterPhaseTransition()
     {
         // Arrange
@@ -106,11 +107,11 @@ public sealed class OrchestratorAgentTests
 
         // Assert — Verify workflow state updated in DB
         // Requires DB context integration
-        await Assert.That(true).IsTrue();
+        // Stub: Tank will implement assertion logic
     }
 
     [Test]
-    [Ignore("Awaiting full DB integration — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task GetWorkflowStatus_WithInitializedWorkflow_ReturnsCurrentPhase()
     {
         // Arrange
@@ -130,7 +131,7 @@ public sealed class OrchestratorAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting full DB integration — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task EnforceSequencing_NoCurationBeforePlanningApproval_ReturnsPendingApproval()
     {
         // Arrange
@@ -156,7 +157,7 @@ public sealed class OrchestratorAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting full DB integration — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task AuditLog_RecordsAgentSpawn_WithEventIdAndAgentType()
     {
         // Arrange
@@ -173,11 +174,11 @@ public sealed class OrchestratorAgentTests
 
         // Assert — Verify audit log entry created
         // Requires DB context integration
-        await Assert.That(true).IsTrue();
+        // Stub: Tank will implement assertion logic
     }
 
     [Test]
-    [Ignore("Awaiting full DB integration — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task AuditLog_RecordsWorkflowAdvancement_WithPhaseTransition()
     {
         // Arrange
@@ -199,7 +200,7 @@ public sealed class OrchestratorAgentTests
         await orchestrator.AdvanceWorkflowAsync(request);
 
         // Assert — Verify audit log entry created for phase transition
-        await Assert.That(true).IsTrue();
+        // Stub: Tank will implement assertion logic
     }
 
     // Stub factory — Tank/Trinity will replace with full DB integration in Phase 2

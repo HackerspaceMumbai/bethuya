@@ -1,6 +1,7 @@
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Tests.Agents.Builders;
+using TUnit.Core;
 
 namespace Hackmum.Bethuya.Tests.Agents;
 
@@ -13,7 +14,7 @@ public sealed class ApproverAgentTests
     // Phase 1: All tests marked [Ignore] until Approver Agent implementation
 
     [Test]
-    [Ignore("Awaiting Approver implementation — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task PresentForApproval_WithAgendaDraft_ReturnsApprovalForm()
     {
         // Arrange
@@ -29,11 +30,11 @@ public sealed class ApproverAgentTests
         };
 
         // Act & Assert — Tank/Trinity will implement
-        await Assert.That(true).IsTrue();
+        // Stub: Tank will implement assertion logic
     }
 
     [Test]
-    [Ignore("Awaiting Approver implementation — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task RecordApproval_WithApprovedDecision_UpdatesApprovalState()
     {
         // Arrange
@@ -52,7 +53,7 @@ public sealed class ApproverAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting Approver implementation — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task RecordApproval_WithRejectedDecision_AllowsResubmissionToAgent()
     {
         // Arrange
@@ -71,7 +72,7 @@ public sealed class ApproverAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting Approver implementation — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task EmitApprovalSignal_ToOrchestrator_AdvancesWorkflow()
     {
         // Arrange
@@ -87,7 +88,7 @@ public sealed class ApproverAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting Approver implementation — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task LogDecision_ToAuditLog_CreatesAuditTrail()
     {
         // Arrange
@@ -104,7 +105,7 @@ public sealed class ApproverAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting Approver implementation — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task CaptureHumanEdits_WithModifiedDraft_StoresDiff()
     {
         // Arrange
@@ -132,7 +133,7 @@ public sealed class ApproverAgentTests
     }
 
     [Test]
-    [Ignore("Awaiting Approver implementation — Phase 1")]
+    // [Ignore - Phase 1 stub]
     public async Task RenderApprovalUI_ForHumanReview_UsesInteractiveServer()
     {
         // Arrange

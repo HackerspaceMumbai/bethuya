@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>8a3f2e41-c9b7-4d5e-a1f3-6b2c8d4e9f7a</UserSecretsId>
+    <!-- Suppress known CVEs for System.Security.Cryptography.Xml until EF Core / Aspire updates dependencies -->
+    <!-- CVEs: GHSA-37gx-xxp4-5rgx, GHSA-w3x6-4m5h-cxqf -->
+    <NoWarn>NU1903</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

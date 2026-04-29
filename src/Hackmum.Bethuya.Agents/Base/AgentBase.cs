@@ -15,6 +15,8 @@ public abstract partial class AgentBase<TRequest, TResponse>(
     where TRequest : IAgentRequest
     where TResponse : IAgentResponse
 {
+    protected ILogger Logger => logger;
+
     public abstract string Name { get; }
 
     public async Task<TResponse> DraftAsync(TRequest request, CancellationToken ct = default)
