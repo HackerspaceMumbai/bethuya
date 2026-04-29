@@ -1,9 +1,13 @@
 @page "/approvals/plan/{eventId:guid}"
 @rendermode InteractiveServer
 @using Bethuya.Hybrid.Shared.Pages.Approvals.Models
+@using Bethuya.Hybrid.Shared.Services
 @using Microsoft.Extensions.Logging
+@using System.Text.Json
 @inject ILogger<PlanApproval> Logger
 @inject NavigationManager Navigation
+@inject IEventApi EventApi
+@inject ICurrentUserService CurrentUserService
 
 <PageTitle>Approve Event Agenda — Bethuya</PageTitle>
 
@@ -72,6 +76,24 @@
                                        ShowCharacterCount="true" />
                             <ValidationMessage For="@(() => _draft.Description)" />
                         </div>
+
+                        @if (!string.IsNullOrEmpty(_draft.Theme))
+                        {
+                            <BbFormFieldInput TValue="string"
+                                             @bind-Value="_draft.Theme"
+                                             Label="Proposed Theme"
+                                             data-test="event-theme"
+                                             Class="mt-2" />
+                            
+                            @if (!string.IsNullOrEmpty(_draft.ThemeRationale))
+                            {
+                                <div class="form-group mt-2">
+                                    <p class="text-sm text-muted-foreground" data-test="theme-rationale">
+                                        <strong>Rationale:</strong> @_draft.ThemeRationale
+                                    </p>
+                                </div>
+                            }
+                        }
                     </BbFormSection>
 
                     <BbFormSection Title="Sessions" Description="Review and edit proposed session timings." Class="mt-6">
@@ -193,45 +215,33 @@
 
         try
         {
-            // TODO: Replace with actual API call to GET /api/approvals/{EventId}/plan/pending
-            // For now, stub with sample data
-            await Task.Delay(500); // Simulate API call
+            // Fetch the agenda draft from the Backend API
+            var draftDto = await EventApi.GetAgendaDraftAsync(EventId);
+            
+            if (draftDto is null)
+            {
+                _draft = null;
+                return;
+            }
 
             _draft = new PlanDraftViewModel
             {
                 EventId = EventId,
-                Title = "GitHub Copilot Dev Days Mumbai",
-                Description = "A hands-on developer event exploring GitHub Copilot, AI-powered coding, and the future of software development.",
-                AgentReasoning = "Agenda drafted based on venue constraints (4-hour slot), speaker availability (3 confirmed), and community interest signals (high demand for hands-on workshops).",
-                CreatedAt = DateTime.UtcNow.AddHours(-2),
-                Sessions = [
-                    new SessionDraftViewModel
-                    {
-                        Id = "s1",
-                        Title = "Introduction to GitHub Copilot",
-                        Speaker = "Augustine Correa",
-                        StartTime = DateTime.Today.AddDays(7).AddHours(10),
-                        EndTime = DateTime.Today.AddDays(7).AddHours(11),
-                        Description = "Overview of GitHub Copilot features and best practices."
-                    },
-                    new SessionDraftViewModel
-                    {
-                        Id = "s2",
-                        Title = "Building AI Agents with Microsoft Foundry",
-                        Speaker = "TBD",
-                        StartTime = DateTime.Today.AddDays(7).AddHours(11).AddMinutes(15),
-                        EndTime = DateTime.Today.AddDays(7).AddHours(12).AddMinutes(30),
-                        Description = "Hands-on workshop on creating multi-agent systems."
-                    },
-                    new SessionDraftViewModel
-                    {
-                        Id = "s3",
-                        Title = "Q&A and Networking",
-                        StartTime = DateTime.Today.AddDays(7).AddHours(13),
-                        EndTime = DateTime.Today.AddDays(7).AddHours(14),
-                        Description = "Open discussion and community networking."
-                    }
-                ]
+                Title = draftDto.Title,
+                Description = draftDto.Description,
+                Theme = draftDto.Theme,
+                ThemeRationale = draftDto.ThemeRationale,
+                AgentReasoning = draftDto.AgentReasoning,
+                CreatedAt = draftDto.CreatedAt,
+                Sessions = draftDto.Sessions.Select(s => new SessionDraftViewModel
+                {
+                    Id = s.Id,
+                    Title = s.Title,
+                    Speaker = s.Speaker ?? "",
+                    StartTime = s.StartTime,
+                    EndTime = s.EndTime,
+                    Description = s.Description ?? ""
+                }).ToList()
             };
 
             _editContext = new EditContext(_draft);
@@ -263,9 +273,16 @@
 
         try
         {
-            // TODO: Replace with actual API call to POST /api/approvals/{EventId}/approve
-            // Body: { WorkflowPhase: "Planning", Approved: true, Edits: JSON.stringify(_draft) }
-            await Task.Delay(1000); // Simulate API call
+            var editsJson = JsonSerializer.Serialize(_draft);
+
+            var approval = new ApprovalRequestDto(
+                EventId: EventId,
+                ApprovedBy: CurrentUserService.Email ?? "unknown",
+                EditsJson: editsJson,
+                Status: "Approved"
+            );
+
+            await EventApi.ApproveAgendaAsync(approval);
 
             Logger.LogInformation("Approved plan draft for event {EventId}", EventId);
 
@@ -292,9 +309,14 @@
 
         try
         {
-            // TODO: Replace with actual API call to POST /api/approvals/{EventId}/reject
-            // Body: { WorkflowPhase: "Planning", Approved: false, Reason: "Needs revision" }
-            await Task.Delay(500); // Simulate API call
+            var rejection = new RejectionRequestDto(
+                EventId: EventId,
+                RejectedBy: CurrentUserService.Email ?? "unknown",
+                Reason: "Requires revision - organizer review needed",
+                Status: "Rejected"
+            );
+
+            await EventApi.RejectAgendaAsync(rejection);
 
             Logger.LogInformation("Rejected plan draft for event {EventId}", EventId);
 

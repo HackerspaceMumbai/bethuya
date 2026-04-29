@@ -15,6 +15,8 @@ public sealed class PlanDraftViewModel
     public required Guid EventId { get; init; }
     public required string Title { get; set; }
     public string? Description { get; set; }
+    public string? Theme { get; set; }
+    public string? ThemeRationale { get; set; }
     public List<SessionDraftViewModel> Sessions { get; set; } = [];
     public DateTime CreatedAt { get; init; }
     public string? AgentReasoning { get; init; }

@@ -28,6 +28,18 @@ public interface IEventApi
 
     [Post("/api/agents/recommend-dates")]
     Task<RecommendDatesResponse> RecommendDatesAsync([Body] RecommendDatesRequest request, CancellationToken ct = default);
+
+    [Get("/api/events/{id}/agenda-draft")]
+    Task<AgendaDraftDto?> GetAgendaDraftAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/approvals/agenda")]
+    Task ApproveAgendaAsync([Body] ApprovalRequestDto approval, CancellationToken ct = default);
+
+    [Post("/api/approvals/agenda/reject")]
+    Task RejectAgendaAsync([Body] RejectionRequestDto rejection, CancellationToken ct = default);
+
+    [Post("/api/events/{id}/orchestrate/plan")]
+    Task<OrchestrationResponseDto> TriggerPlannerAsync(Guid id, [Body] TriggerPlannerRequestDto request, CancellationToken ct = default);
 }
 
 /// <summary>Event data returned from the API.</summary>
@@ -90,3 +102,47 @@ public sealed record RecommendDatesResponse(
     string EndDate,
     string EndTime,
     string? Reasoning = null);
+
+/// <summary>Agenda draft from the Planner agent.</summary>
+public sealed record AgendaDraftDto(
+    Guid EventId,
+    string Title,
+    string? Description,
+    string? Theme,
+    string? ThemeRationale,
+    List<SessionDraftDto> Sessions,
+    DateTime CreatedAt,
+    string? AgentReasoning);
+
+/// <summary>Session draft in an agenda.</summary>
+public sealed record SessionDraftDto(
+    string Id,
+    string Title,
+    string? Speaker,
+    DateTime? StartTime,
+    DateTime? EndTime,
+    string? Description);
+
+/// <summary>Request to approve an agenda draft.</summary>
+public sealed record ApprovalRequestDto(
+    Guid EventId,
+    string ApprovedBy,
+    string EditsJson,
+    string Status = "Approved");
+
+/// <summary>Request to reject an agenda draft.</summary>
+public sealed record RejectionRequestDto(
+    Guid EventId,
+    string RejectedBy,
+    string Reason,
+    string Status = "Rejected");
+
+/// <summary>Request to trigger the Planner agent.</summary>
+public sealed record TriggerPlannerRequestDto(
+    string OrganizerEmail);
+
+/// <summary>Response from triggering an orchestration workflow.</summary>
+public sealed record OrchestrationResponseDto(
+    string WorkflowId,
+    string Status,
+    string Message);
