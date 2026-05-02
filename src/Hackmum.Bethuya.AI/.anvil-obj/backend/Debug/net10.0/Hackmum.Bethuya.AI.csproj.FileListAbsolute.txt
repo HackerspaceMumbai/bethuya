@@ -1,6 +1,0 @@
-D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.AI\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.AI.csproj.AssemblyReference.cache
-D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.AI\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.AI.GeneratedMSBuildEditorConfig.editorconfig
-D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.AI\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.AI.AssemblyInfoInputs.cache
-D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.AI\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.AI.AssemblyInfo.cs
-D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.AI\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.AI.csproj.CoreCompileInputs.cache
-D:\Projects\bethuya.worktrees\newuser-signin\src\Hackmum.Bethuya.AI\.anvil-obj\backend\Debug\net10.0\Hackmum.Bethuya.AI.sourcelink.json

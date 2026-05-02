@@ -60,3 +60,14 @@ reports/
 # VS Code C# Dev Kit cache
 *.lscache
 
+# Build artifacts
+.anvil-obj/
+artifacts/
+bin/
+obj/
+
+# Copilot / runtime binaries
+*.tgz
+*.exe
+
+
