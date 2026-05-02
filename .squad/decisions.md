@@ -305,15 +305,23 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 **Author:** Tank (Backend Dev)
 
-**Context:** Copilot skill guidance was inverted, directing agents to ADD `secret: true` to AddParameter calls. This parameter causes "Unsupported value type System.Boolean" failures in Azure Container Apps deployment. Root cause required skill rename and guidance correction.
+**Context:** The `aspire-secrets` skill contained inverted guidance in the copilot version, instructing agents to ADD `secret: true` to parameters — the exact bug we fixed by removing it. This would cause future agents to re-introduce the Azure Container Apps deployment bug.
 
 **Decision:**
-- Renamed both skills from `aspire-secrets` → `aspire-aca-secrets`
+- Renamed skill folders from `aspire-secrets` to `aspire-aca-secrets` to clarify Azure Container Apps scope
 - Scoped skill descriptions to Azure Container Apps (not generic Aspire)
+- Completely rewrote skill guidance:
+  - DO NOT use `AddParameter(secret: true)` for Azure Container Apps (breaks deployment)
+  - DO use Key Vault for production secret management
 - Fixed copilot skill guidance: now directs to REMOVE `secret: true` and use AddSecret pattern
 - Updated `.squad/` metadata and routing references
+- Deleted old `aspire-secrets` folders (both copilot and squad)
 
-**Files:** `copilot/skills/aspire-aca-secrets/`, `.squad/skills/`
+**Files Changed:**
+- Created: `copilot/skills/aspire-aca-secrets/SKILL.md`
+- Created: `.squad/skills/aspire-aca-secrets/SKILL.md`
+- Deleted: `copilot/skills/aspire-secrets/`
+- Deleted: `.squad/skills/aspire-secrets/`
 
 **Impact:** Agents now receive correct guidance; deployment failures eliminated; skills scoped to specific platform context.
 
@@ -360,6 +368,142 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 **Decision:** Remove `secret: true` from all `AddParameter` calls in AppHost.cs. For production secrets, use the Key Vault `AddSecret` pattern instead.
 
 **Files:** `AppHost/AppHost/AppHost.cs`
+
+---
+
+### 2026-03-31 — Performance Budget Directive
+
+**Author:** Augustine Correa (via Copilot)
+
+**Directive:** Ensure Playwright tests pass within project performance budgets:
+- Hot path p99 < 180ms @ 2,500 RPS
+- 0 B hot-path allocations
+- > 90% cache hit rate
+
+---
+
+### E2E Test Selector Standards (2026-03-21)
+
+**Author:** Switch (Tester)
+
+**Decision:** All E2E Playwright tests MUST use `data-test` attributes as selectors instead of role-based or text-based selectors.
+
+**Rationale:**
+- Role-based selectors break when button text changes
+- `data-test` provides stability decoupled from UI text and styling
+- Explicit test contract between frontend and tests
+
+**Standard Selectors:**
+- `[data-test='new-event-btn']` — Opens create event dialog
+- `[data-test='create-event-submit']` — Submits create form
+- `[data-test='event-card']` — Individual event cards in list
+- `[data-test='notification']` — Success/error notifications
+
+**Implementation:** Trinity adds `data-test` attributes to interactive elements; Switch uses `Page.Locator("[data-test='selector']")` exclusively.
+
+---
+
+### Add Cloudinary Image Upload for Event Cover Pics (2026-03-21)
+
+**Author:** Tank (Backend Dev)
+
+**Decision:** Integrated **CloudinaryDotNet 1.26.2** as the image upload provider behind an `IImageUploadService` abstraction in Core. Implementation lives in Infrastructure (`CloudinaryImageUploadService`), configured via `CloudinaryOptions`.
+
+**Changes:**
+- `CoverImageUrl` (nullable, max 2048 chars) added to Event model, API contracts, EF config, Refit DTOs
+- New `POST /api/images/upload` endpoint with validation: 5 MB max, JPEG/PNG/WebP/GIF only
+- Images stored in `bethuya/events` folder; secure URL returned
+- DI: `IImageUploadService` → `CloudinaryImageUploadService` (singleton)
+
+**Trade-offs:** Vendor coupling mitigated by `IImageUploadService` abstraction (swap to Azure Blob or S3 by implementing interface).
+
+**Impact:** All projects build cleanly (0 warnings, 0 errors); existing tests updated for new `CoverImageUrl` parameter.
+
+---
+
+### Event Endpoint DTO Pattern (2026-03-21)
+
+**Author:** Tank (Backend Dev)
+
+**Context:** Backend event creation endpoint returned raw `Event` domain entities with navigation properties, causing serialization cycles and type mismatches with frontend expectations (enums vs strings).
+
+**Decision:** Added `EventResponse` DTO that decouples domain from API contracts. All endpoints now return DTOs:
+- GET `/api/events` → `List<EventResponse>`
+- GET `/api/events/{id}` → `EventResponse`
+- POST `/api/events` → `EventResponse`
+- PUT `/api/events/{id}` → `EventResponse`
+
+**Benefits:**
+- ✅ Type safety: Frontend `EventDto` matches Backend `EventResponse`
+- ✅ Enum consistency: Serialized as strings via `JsonStringEnumConverter`
+- ✅ No serialization issues: DTOs have no navigation properties
+- ✅ API stability: Domain changes don't break frontend
+
+**Validation added:** Title (required, max 200 chars), Capacity (1-10,000), EndDate >= StartDate, CreatedBy (required).
+
+---
+
+### Notification Pattern for Dialog Components (2026-03-21)
+
+**Author:** Trinity
+
+**Decision:** Implement reusable notification pattern for dialog components:
+1. Dialog emits notifications via `[Parameter] EventCallback<string> OnNotification`
+2. Parent page renders `<Notification>` with `@bind-IsVisible`
+3. Parent handler determines `AlertVariant` based on message content
+
+**Implementation:** Applied to CreateEventDialog, Home.razor, Events.razor
+
+**Impact:**
+- ✅ Consistent UX across create flows
+- ✅ Testable via `data-test="notification"`
+- ✅ Pattern reusable for other dialogs (edit, delete, etc.)
+
+### 2026-04-11 — Switch Verification: CI Playwright E2E Failure Is Test-Harness Drift, Not SQL Race
+
+**Requested by:** Augustine Correa
+
+**Decision:** Reject SQL-race root-cause hypothesis for CI run 24238142180. Verified actual failure is E2E harness drift.
+
+**Findings:**
+
+1. **Stale selector:** Home.razor exposes `data-test="plan-event-cta"` but test expects `plan-event-btn`
+2. **Wrong navigation wait:** Test uses `Page.WaitForURLAsync(...until Load)` for Blazor client-side routing (doesn't guarantee full page-load)
+3. **Wrong draft expectation:** Draft events render `complete-event-btn`, not `view-event-btn`
+
+**Evidence:** CI run 24238142180 shows transient SQL startup warning, but backend becomes healthy and web app renders. Failure deterministically matches test harness contracts, not backend crashes.
+
+**Direction:** Tank to fix E2E tests to follow live UI contracts and Blazor routing patterns.
+
+---
+
+### 2026-04-11 — Tank Direction: Fix CI Playwright E2E in Test Harness, Not Backend Wiring
+
+**Requested by:** Augustine Correa
+
+**Decision:** Treat CI failure as test-harness drift. Do not change backend/database wiring.
+
+**Implementation:**
+- Keep backend/database startup unchanged
+- Fix `tests/Hackmum.Bethuya.E2E` to match live selector contracts
+- Update wait strategies for Blazor client-side routing
+- Re-run build/test validation against updated E2E harness
+
+**Files Updated:**
+- `tests/Hackmum.Bethuya.E2E/BethuyaE2ETest.cs`
+- `tests/Hackmum.Bethuya.E2E/Tests/EventFlowTests.cs`
+- `tests/Hackmum.Bethuya.E2E/Tests/CoverImageFlowTests.cs`
+
+---
+
+
+### 2026-04-09 — User Directive: No EF Migrations Until Formal Release
+
+**By:** Augustine Correa (via Copilot)
+
+**Decision:** Do NOT include EF Core migrations in the solution until a formal release milestone. Delete existing broken Migrations folder from Infrastructure project.
+
+**Rationale:** Faster iteration pre-release takes priority over migration scaffolding.
 
 ---
 

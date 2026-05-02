@@ -393,6 +393,7 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Fix:** (1) Changed `MigrationWorker` from `MigrateAsync` to `EnsureCreatedAsync` — creates the database and all tables from the current EF model without any migration tracking. (2) Added a "Create E2E database schema" step in ci.yml that runs MigrationService (with the E2E connection string) before starting the backend API.
 - **Prevention:** When no EF migrations exist, `MigrateAsync` is a no-op — it does NOT create the database. Use `EnsureCreatedAsync` for pre-migration / no-migration scenarios. `EnsureCreatedAsync` creates the DB + full schema from the model. Caveat: when migrations are eventually added at formal release, the existing `EnsureCreated`-provisioned database will need to be dropped/recreated (it has no `__EFMigrationsHistory` table).
 
+
 ## [2026-04-15] Sensitive onboarding cards must render truthful loading and load-error states
 
 - **What happened:** The `/registration/social` LinkedIn URL WIP rendered the same "not connected yet" affordances before the saved social state had loaded, which made the page look disconnected even while the server roundtrip was still in flight.
