@@ -9,14 +9,14 @@
 
 - Bethuya currently exposes Entra, Auth0, and Keycloak provider branches and must keep login/auth/PII pages on `InteractiveServer`.
 - **AI coding primitives updated (2026-04-09):** Augustine updated README.md, AGENTS.md, and .github/copilot-instructions.md. Key security/privacy conventions absorbed:
-  - **InteractiveServer for all sensitive pages** — auth/login/PII/organizer/agent control pages MUST use `@rendermode InteractiveServer` (global assignment on Routes in App.razor). WASM code is client-inspectable; sensitive pages must be server-side only.
-  - **Foundry Local for all PII** — Curator Agent processes attendee PII exclusively via Foundry Local (on-device, offline). PII never reaches any cloud endpoint. Only consented DEI fields used; never infer sensitive traits.
-  - **PII routing guardrail** — all attendee data routed via Foundry Local. Non-sensitive orchestration uses Microsoft Foundry or Azure OpenAI.
-  - **Vogen IDs prevent PII leaks** — AttendeeId, EventId, UserId are Vogen structs (zero-allocation), not raw Guid/int. Ensures type safety on sensitive data boundaries.
-  - **Security headers enforced** — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy via `app.UseSecurityDefaults()` from ServiceDefaults.
-  - **Rate limiting for AI calls** — 100 req/min (general), 20 req/min for `RateLimitPolicies.Ai` (sensitive operations).
-  - **Nullable enabled, TreatWarningsAsErrors** — fix all warnings; never suppress without documented justification.
-   - **Responsible disclosure** — see SECURITY.md; Dependabot weekly NuGet + Actions updates; `dotnet list package --vulnerable` blocks CI on CVEs.
+  - **InteractiveServer for all sensitive pages** - auth/login/PII/organizer/agent control pages MUST use `@rendermode InteractiveServer` (global assignment on Routes in App.razor). WASM code is client-inspectable; sensitive pages must be server-side only.
+  - **Foundry Local for all PII** - Curator Agent processes attendee PII exclusively via Foundry Local (on-device, offline). PII never reaches any cloud endpoint. Only consented DEI fields used; never infer sensitive traits.
+  - **PII routing guardrail** - all attendee data routed via Foundry Local. Non-sensitive orchestration uses Microsoft Foundry or Azure OpenAI.
+  - **Vogen IDs prevent PII leaks** - AttendeeId, EventId, UserId are Vogen structs (zero-allocation), not raw Guid/int. Ensures type safety on sensitive data boundaries.
+  - **Security headers enforced** - CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy via `app.UseSecurityDefaults()` from ServiceDefaults.
+  - **Rate limiting for AI calls** - 100 req/min (general), 20 req/min for `RateLimitPolicies.Ai` (sensitive operations).
+  - **Nullable enabled, TreatWarningsAsErrors** - fix all warnings; never suppress without documented justification.
+   - **Responsible disclosure** - see SECURITY.md; Dependabot weekly NuGet + Actions updates; `dotnet list package --vulnerable` blocks CI on CVEs.
 
 ## Session Work Log: Dev-Mode Auth Boundary Fix (2026-04-XX)
 
@@ -26,12 +26,12 @@
 
 **Minimal Safe Fix (implemented & verified):**
 
-1. **Frontend: `DevelopmentAuthorizationHandler.cs`** — HTTP message handler (21 lines)
+1. **Frontend: `DevelopmentAuthorizationHandler.cs`** - HTTP message handler (21 lines)
    - Injects "Bearer dev-token" into all outgoing Refit requests when `authOptions.Provider == AuthProviderType.None`
    - Registered conditionally in Program.cs only in dev mode
    - Wired into IEventApi and IProfileApi Refit clients via `AddHttpMessageHandler()`
 
-2. **Backend: `DevelopmentAuthenticationMiddleware.cs`** — Middleware + extension (58 lines)
+2. **Backend: `DevelopmentAuthenticationMiddleware.cs`** - Middleware + extension (58 lines)
    - Accepts dev bearer token (`"Bearer dev-token"`) and validates
    - Creates dev principal with identical claims structure to frontend (sub, name, email, roles)
    - Allows backend logic (ProfileEndpoints GetUserId, claim lookups) to work without modification
@@ -42,7 +42,7 @@
    - Backend: Added using, added middleware to pipeline
 
 **Security Properties:**
-- Dev token is **hardcoded, local-only** — never reaches production (dev mode only)
+- Dev token is **hardcoded, local-only** - never reaches production (dev mode only)
 - Frontend handler conditional: only injects token when `AuthProviderType.None`
 - Backend middleware conditional: only active in `IsDevelopment()`
 - Claim parity with frontend ensures ProfileEndpoints logic unchanged
@@ -72,13 +72,13 @@
 **Security Boundary Review (Morpheus):**
 - ✅ Central transitive pinning is the correct immediate remediation mechanism for shared infrastructure dependencies
 - ✅ Minimum safe version for .NET 10 repo is `10.0.6` (active advisory fix on .NET 10 train)
-- ✅ Fix placement at package-management boundary keeps trust boundary clean — not scattered across leaf projects
+- ✅ Fix placement at package-management boundary keeps trust boundary clean - not scattered across leaf projects
 - ✅ NU1901 gate and warnings-as-errors remain intact; no suppressions or loosenings
 - ✅ Pre-existing duplicate assembly-attribute errors (CS0579) are unrelated to this fix and do not block approval
-- **Risk assessment:** LOW — minimal, scoped, preserves all guardrails
+- **Risk assessment:** LOW - minimal, scoped, preserves all guardrails
 
 **Verification:**
-- Build: ✅ `dotnet restore` for both `Bethuya.MigrationService` and `AppHost` — **PASS** (no NU1901)
+- Build: ✅ `dotnet restore` for both `Bethuya.MigrationService` and `AppHost` - **PASS** (no NU1901)
 - Package resolution: ✅ `System.Security.Cryptography.Xml` → `10.0.6`
 - Vulnerability scan: ✅ **CLEAN**
 - Reviewers: Code review clean; Morpheus approved security boundary

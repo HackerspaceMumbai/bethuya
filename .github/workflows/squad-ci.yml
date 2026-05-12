@@ -1,5 +1,5 @@
 name: Squad CI
-# dotnet project — configure build/test commands below
+# dotnet project - configure build/test commands below
 
 on:
   pull_request:
@@ -25,4 +25,4 @@ jobs:
           # .NET:          dotnet test
           # Java (Maven):  mvn test
           # Java (Gradle): ./gradlew test
-          echo "No build commands configured — update squad-ci.yml"
+          echo "No build commands configured - update squad-ci.yml"

@@ -11,11 +11,11 @@
 
 ## What I Own
 
-- `.squad/log/` — session logs (what happened, who worked, what was decided)
-- `.squad/decisions.md` — the shared decision log all agents read (canonical, merged)
-- `.squad/decisions/inbox/` — decision drop-box (agents write here, I merge)
-- Cross-agent context propagation — when one agent's decision affects another
-- Decision archival — **HARD GATE**: enforce two-tier ceiling on decisions.md before every merge:
+- `.squad/log/` - session logs (what happened, who worked, what was decided)
+- `.squad/decisions.md` - the shared decision log all agents read (canonical, merged)
+- `.squad/decisions/inbox/` - decision drop-box (agents write here, I merge)
+- Cross-agent context propagation - when one agent's decision affects another
+- Decision archival - **HARD GATE**: enforce two-tier ceiling on decisions.md before every merge:
   - **Tier 1 (30-day):** If >20KB, archive entries older than 30 days
   - **Tier 2 (7-day):** If still >50KB after Tier 1, archive entries older than 7 days
   - Emit HEALTH REPORT to session log after archival runs
@@ -53,11 +53,11 @@ After every substantial work session:
 4. **Propagate cross-agent updates:**
    For any newly merged decision that affects other agents, append to their `history.md`:
    ```
-   📌 Team update ({timestamp}): {summary} — decided by {Name}
+   📌 Team update ({timestamp}): {summary} - decided by {Name}
    ```
 
 5. **Commit `.squad/` changes:**
-   **IMPORTANT — Windows compatibility:** Do NOT use `git -C {path}` (unreliable with Windows paths).
+   **IMPORTANT - Windows compatibility:** Do NOT use `git -C {path}` (unreliable with Windows paths).
    Do NOT embed newlines in `git commit -m` (backtick-n fails silently in PowerShell).
    Instead:
    - `cd` into the team root first.
@@ -80,9 +80,9 @@ After every substantial work session:
      }
      if ($filesToStage) { $filesToStage | Where-Object { $_ } | ForEach-Object { git add -- $_ } }
      ```
-     ⚠️ NEVER use `git add .squad/` or broad globs — only stage specific files you wrote in this session.
+     ⚠️ NEVER use `git add .squad/` or broad globs - only stage specific files you wrote in this session.
    - Check for staged changes: `git diff --cached --quiet`
-     If exit code is 0, no changes — skip silently.
+     If exit code is 0, no changes - skip silently.
    - Write the commit message to a temp file, then commit with `-F`:
      ```
      $msg = @"
@@ -111,15 +111,15 @@ After every substantial work session:
 
 ```
 .squad/
-├── decisions.md          # Shared brain — all agents read this (merged by Scribe)
+├── decisions.md          # Shared brain - all agents read this (merged by Scribe)
 ├── decisions/
-│   └── inbox/            # Drop-box — agents write decisions here in parallel
+│   └── inbox/            # Drop-box - agents write decisions here in parallel
 │       ├── river-jwt-auth.md
 │       └── kai-component-lib.md
 ├── orchestration-log/    # Per-spawn log entries
 │   ├── 2025-07-01T10-00-river.md
 │   └── 2025-07-01T10-00-kai.md
-├── log/                  # Session history — searchable record
+├── log/                  # Session history - searchable record
 │   ├── 2025-07-01-setup.md
 │   └── 2025-07-02-api.md
 └── agents/

@@ -1,5 +1,5 @@
 name: Squad Preview Validation
-# dotnet project — configure build, test, and validation commands below
+# dotnet project - configure build, test, and validation commands below
 
 on:
   push:
@@ -22,9 +22,9 @@ jobs:
           # .NET:          dotnet test
           # Java (Maven):  mvn test
           # Java (Gradle): ./gradlew test
-          echo "No build commands configured — update squad-preview.yml"
+          echo "No build commands configured - update squad-preview.yml"
 
       - name: Validate
         run: |
           # TODO: Add pre-release validation commands here
-          echo "No validation commands configured — update squad-preview.yml"
+          echo "No validation commands configured - update squad-preview.yml"

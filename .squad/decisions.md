@@ -23,7 +23,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ## Active Decisions
 
-### 2026-04-27 — Apply central DataProtection patch for GHSA-9mv3-2cwr-p262
+### 2026-04-27 - Apply central DataProtection patch for GHSA-9mv3-2cwr-p262
 
 **Date:** 2026-04-27  
 **Owner:** Tank (Backend Dev)  
@@ -48,7 +48,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-16 — Strengthen GitHub continuation cue on `/registration/social` via visual bridge
+### 2026-04-16 - Strengthen GitHub continuation cue on `/registration/social` via visual bridge
 
 **Date:** 2026-04-16  
 **Owner:** Trinity (Frontend Dev) + Switch (Tester)  
@@ -83,7 +83,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-15 — Pin transitive `System.Security.Cryptography.Xml` on the .NET 10 servicing line
+### 2026-04-15 - Pin transitive `System.Security.Cryptography.Xml` on the .NET 10 servicing line
 
 **Author:** Tank (Backend Dev) + Morpheus (Security Engineer approval)
 
@@ -127,7 +127,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-11 — Harden Onboarding Identity Boundary: Layout-Based Nav Suppression
+### 2026-04-11 - Harden Onboarding Identity Boundary: Layout-Based Nav Suppression
 
 **Author:** Morpheus (Security Engineer)
 
@@ -139,9 +139,9 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 **Decision:**
 
-1. **Primary fix — Layout suppression:** Created `OnboardingLayout.razor` (new layout for onboarding routes) that uses `OnboardingNavMenu` instead of the main `NavMenu`. Created `OnboardingNavMenu.razor` (minimal nav without organizer/admin sections). Onboarding pages (`NewUserProfile.razor`, `AideProfile.razor`) now use `@layout OnboardingLayout` directive. This is a structural code choice that applies uniformly regardless of user identity — cannot be bypassed by any user (dev or production).
+1. **Primary fix - Layout suppression:** Created `OnboardingLayout.razor` (new layout for onboarding routes) that uses `OnboardingNavMenu` instead of the main `NavMenu`. Created `OnboardingNavMenu.razor` (minimal nav without organizer/admin sections). Onboarding pages (`NewUserProfile.razor`, `AideProfile.razor`) now use `@layout OnboardingLayout` directive. This is a structural code choice that applies uniformly regardless of user identity - cannot be bypassed by any user (dev or production).
 
-2. **Secondary fix — NavMenu hardening (defense-in-depth):** Wrapped "Organizer Tools" (AI Agents + Curation) sections in `<AuthorizeView Roles="Admin,Organizer,Curator">` as a production-layer check. This provides defense-in-depth for non-onboarding routes and protects the main dashboard if a user somehow reaches it without the full profile flow.
+2. **Secondary fix - NavMenu hardening (defense-in-depth):** Wrapped "Organizer Tools" (AI Agents + Curation) sections in `<AuthorizeView Roles="Admin,Organizer,Curator">` as a production-layer check. This provides defense-in-depth for non-onboarding routes and protects the main dashboard if a user somehow reaches it without the full profile flow.
 
 3. **Dashboard render mode:** Added explicit `@rendermode InteractiveServer` to Home.razor to prevent client-side WASM inspection of dashboard logic. Sensitive dashboard data (event status, user identity, curation insights) must be server-only.
 
@@ -158,18 +158,18 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 - EventDetail.razor does not restrict nav visibility to role; attendees can see event detail links on Home. This is intentional (public registration flow).
 
 **Alternatives Considered:**
-- Role-based visibility gating via `<AuthorizeView>` in main NavMenu — rejected (ineffective in dev mode; dev principal has all roles).
-- Client-side CSS hiding (`display: none`) — rejected (security via obscurity; not acceptable).
-- Hard-code attendee role on new users — rejected (would prevent future promotions; identity stays immutable).
-- Narrow dev principal to only Attendee role — out of scope (design decision for Neo); layout suppression provides equivalent protection.
+- Role-based visibility gating via `<AuthorizeView>` in main NavMenu - rejected (ineffective in dev mode; dev principal has all roles).
+- Client-side CSS hiding (`display: none`) - rejected (security via obscurity; not acceptable).
+- Hard-code attendee role on new users - rejected (would prevent future promotions; identity stays immutable).
+- Narrow dev principal to only Attendee role - out of scope (design decision for Neo); layout suppression provides equivalent protection.
 
 **Files Changed:**
-- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/OnboardingLayout.razor` (NEW) — Layout for onboarding routes; uses `OnboardingNavMenu` to suppress organizer/admin nav.
-- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/OnboardingNavMenu.razor` (NEW) — Minimal nav for onboarding; shows only "Back to Home" and "Profile" links; no organizer/admin sections.
-- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/NewUserProfile.razor` — Added `@layout OnboardingLayout` directive.
-- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/AideProfile.razor` — Added `@layout OnboardingLayout` directive.
-- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/NavMenu.razor` — Added `@using` directives; wrapped Organizer Tools section in `<AuthorizeView Roles="Admin,Organizer,Curator">` (defense-in-depth).
-- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/Home.razor` — Added `@rendermode InteractiveServer` directive.
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/OnboardingLayout.razor` (NEW) - Layout for onboarding routes; uses `OnboardingNavMenu` to suppress organizer/admin nav.
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/OnboardingNavMenu.razor` (NEW) - Minimal nav for onboarding; shows only "Back to Home" and "Profile" links; no organizer/admin sections.
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/NewUserProfile.razor` - Added `@layout OnboardingLayout` directive.
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/AideProfile.razor` - Added `@layout OnboardingLayout` directive.
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Layout/NavMenu.razor` - Added `@using` directives; wrapped Organizer Tools section in `<AuthorizeView Roles="Admin,Organizer,Curator">` (defense-in-depth).
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/Home.razor` - Added `@rendermode InteractiveServer` directive.
 
 **Ownership & Roles:**
 - **Lead gate:** Neo
@@ -179,12 +179,12 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 - **Recorder:** Scribe
 
 **Verification (Evidence Required for PR):**
-- **Build:** ✅ `dotnet build` — Shared project syntax valid (pre-existing MSBuild issue in tests unrelated to UI changes)
+- **Build:** ✅ `dotnet build` - Shared project syntax valid (pre-existing MSBuild issue in tests unrelated to UI changes)
 - **Manual verification:** Start Aspire with `Authentication:Provider=None`, navigate to `/registration/mandatory`, verify:
   - Nav menu shows only "Back to Home" and "Profile" links (no Dashboard, Events, AI Agents, Curation)
-  - After completing profile, navigate to Home — nav now shows Dashboard, Events, and Profile (plus AI Agents/Curation if user has role)
+  - After completing profile, navigate to Home - nav now shows Dashboard, Events, and Profile (plus AI Agents/Curation if user has role)
   - Main NavMenu still has AuthorizeView check as secondary layer; verify with role-based test user
-- **E2E Playwright:** Add `OnboardingNavigationVisibilityTest` — assert onboarding nav suppressed, main nav restored after profile.
+- **E2E Playwright:** Add `OnboardingNavigationVisibilityTest` - assert onboarding nav suppressed, main nav restored after profile.
 - **Lint/format:** ✅ Consistent with Blazor Blueprint casing; C# using statements alphabetized.
 - **Reviewers (Anvil):** Pending
 
@@ -201,7 +201,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-14 — Default LinkedIn onboarding to OIDC scopes
+### 2026-04-14 - Default LinkedIn onboarding to OIDC scopes
 
 **Author:** Tank (Backend Dev)
 
@@ -218,7 +218,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-11 — Make `Authentication:Provider=None` a real local auth mode for onboarding
+### 2026-04-11 - Make `Authentication:Provider=None` a real local auth mode for onboarding
 
 **Author:** Tank (Backend Dev)
 
@@ -251,7 +251,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-11 — Focus onboarding into its own shell
+### 2026-04-11 - Focus onboarding into its own shell
 
 **Author:** Trinity
 
@@ -270,7 +270,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-11 — Social onboarding loading stability
+### 2026-04-11 - Social onboarding loading stability
 
 **Author:** Trinity
 
@@ -287,7 +287,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-11 — Onboarding/nav regression coverage choice
+### 2026-04-11 - Onboarding/nav regression coverage choice
 
 **Author:** Switch
 
@@ -301,11 +301,11 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-09 — Aspire ACA Secrets Skill Scope Correction
+### 2026-04-09 - Aspire ACA Secrets Skill Scope Correction
 
 **Author:** Tank (Backend Dev)
 
-**Context:** The `aspire-secrets` skill contained inverted guidance in the copilot version, instructing agents to ADD `secret: true` to parameters — the exact bug we fixed by removing it. This would cause future agents to re-introduce the Azure Container Apps deployment bug.
+**Context:** The `aspire-secrets` skill contained inverted guidance in the copilot version, instructing agents to ADD `secret: true` to parameters - the exact bug we fixed by removing it. This would cause future agents to re-introduce the Azure Container Apps deployment bug.
 
 **Decision:**
 - Renamed skill folders from `aspire-secrets` to `aspire-aca-secrets` to clarify Azure Container Apps scope
@@ -347,11 +347,11 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-08 — Integration Test Infrastructure (TUnit + Aspire.Hosting.Testing)
+### 2026-04-08 - Integration Test Infrastructure (TUnit + Aspire.Hosting.Testing)
 
 **Author:** Switch (via Augustine Correa)
 
-**Decision:** Bethuya.IntegrationTests uses TUnit `IAsyncInitializer` + `ClassDataSource<BethuyaAppFixture>(Shared = SharedType.PerTestSession)` as the xUnit `ICollectionFixture` equivalent. Respawn uses `DbAdapter.SqlServer`. No Backend.csproj reference — contract types duplicated in `Contracts/` for BP6 anti-regression.
+**Decision:** Bethuya.IntegrationTests uses TUnit `IAsyncInitializer` + `ClassDataSource<BethuyaAppFixture>(Shared = SharedType.PerTestSession)` as the xUnit `ICollectionFixture` equivalent. Respawn uses `DbAdapter.SqlServer`. No Backend.csproj reference - contract types duplicated in `Contracts/` for BP6 anti-regression.
 
 **Rationale:** Aspire testing BP1/BP2/BP3/BP5/BP6 compliance; TUnit-native pattern (not xUnit).
 
@@ -359,7 +359,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-08 — Remove secret: true from AddParameter for Azure Container Apps
+### 2026-04-08 - Remove secret: true from AddParameter for Azure Container Apps
 
 **Author:** Tank (Backend Dev)
 
@@ -371,7 +371,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-03-31 — Performance Budget Directive
+### 2026-03-31 - Performance Budget Directive
 
 **Author:** Augustine Correa (via Copilot)
 
@@ -394,10 +394,10 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 - Explicit test contract between frontend and tests
 
 **Standard Selectors:**
-- `[data-test='new-event-btn']` — Opens create event dialog
-- `[data-test='create-event-submit']` — Submits create form
-- `[data-test='event-card']` — Individual event cards in list
-- `[data-test='notification']` — Success/error notifications
+- `[data-test='new-event-btn']` - Opens create event dialog
+- `[data-test='create-event-submit']` - Submits create form
+- `[data-test='event-card']` - Individual event cards in list
+- `[data-test='notification']` - Success/error notifications
 
 **Implementation:** Trinity adds `data-test` attributes to interactive elements; Switch uses `Page.Locator("[data-test='selector']")` exclusively.
 
@@ -459,7 +459,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 - ✅ Testable via `data-test="notification"`
 - ✅ Pattern reusable for other dialogs (edit, delete, etc.)
 
-### 2026-04-11 — Switch Verification: CI Playwright E2E Failure Is Test-Harness Drift, Not SQL Race
+### 2026-04-11 - Switch Verification: CI Playwright E2E Failure Is Test-Harness Drift, Not SQL Race
 
 **Requested by:** Augustine Correa
 
@@ -477,7 +477,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ---
 
-### 2026-04-11 — Tank Direction: Fix CI Playwright E2E in Test Harness, Not Backend Wiring
+### 2026-04-11 - Tank Direction: Fix CI Playwright E2E in Test Harness, Not Backend Wiring
 
 **Requested by:** Augustine Correa
 
@@ -497,7 +497,7 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 ---
 
 
-### 2026-04-09 — User Directive: No EF Migrations Until Formal Release
+### 2026-04-09 - User Directive: No EF Migrations Until Formal Release
 
 **By:** Augustine Correa (via Copilot)
 
@@ -524,7 +524,7 @@ and contributors:
 
 ---
 
-## YYYY-MM-DD — <Short Decision Title>
+## YYYY-MM-DD - <Short Decision Title>
 
 ### Context
 
@@ -538,8 +538,8 @@ and contributors:
 
 ### Alternatives Considered
 
-- <Option A> — <Why not?>
-- <Option B> — <Why not?>
+- <Option A> - <Why not?>
+- <Option B> - <Why not?>
 
 ### Ownership & Roles
 
@@ -575,11 +575,11 @@ and contributors:
 
 Examples of decisions recorded in this format
 
-Example 1 — Standard “Anvil Required” entry
+Example 1 - Standard “Anvil Required” entry
 
 ---
 ```markdown
-## 2026-04-04 — Refactor Shared UI Component Placement
+## 2026-04-04 - Refactor Shared UI Component Placement
 
 ### Context
 
@@ -595,8 +595,8 @@ Example 1 — Standard “Anvil Required” entry
 
 ### Alternatives Considered
 
-- Keep components duplicated in Web and Hybrid — rejected (drift risk).
-- Create platform-specific wrappers — rejected (extra maintenance).
+- Keep components duplicated in Web and Hybrid - rejected (drift risk).
+- Create platform-specific wrappers - rejected (extra maintenance).
 
 ### Ownership & Roles
 
@@ -630,13 +630,13 @@ Example 1 — Standard “Anvil Required” entry
 
 ---
 
-## Example 2 — Security/Auth decision entry (stronger gate wording)
+## Example 2 - Security/Auth decision entry (stronger gate wording)
 
 ---
 
 ```markdown
 
-## 2026-04-04 — Harden Auth Boundary for Provider-Pluggable Identity
+## 2026-04-04 - Harden Auth Boundary for Provider-Pluggable Identity
 
 ### Context
 
@@ -652,8 +652,8 @@ Example 1 — Standard “Anvil Required” entry
 
 ### Alternatives Considered
 
-- Defer hardening until after feature work — rejected (risk accumulation).
-- Hotfix without test coverage — rejected (unproven correctness).
+- Defer hardening until after feature work - rejected (risk accumulation).
+- Hotfix without test coverage - rejected (unproven correctness).
 
 ### Ownership & Roles
 
@@ -687,7 +687,7 @@ Example 1 — Standard “Anvil Required” entry
 ```
 
 ---
-## 2026-04-15 — Stack asymmetric social verification cards
+## 2026-04-15 - Stack asymmetric social verification cards
 
 **Author:** Trinity
 
@@ -721,7 +721,7 @@ LinkedIn now carries more behavior than GitHub on this step: it owns the extra p
 
 ---
 
-## 2026-04-15 — Stacked social-card regression coverage (Switch)
+## 2026-04-15 - Stacked social-card regression coverage (Switch)
 
 **Author:** Switch
 
@@ -744,7 +744,7 @@ For /registration/social, prefer regression tests that lock reading order and pr
 
 ---
 
-### 2026-04-15T10:44:07Z — Gate LinkedIn connect on URL entry and clarify stacked GitHub cue
+### 2026-04-15T10:44:07Z - Gate LinkedIn connect on URL entry and clarify stacked GitHub cue
 
 **Author:** Augustine Correa (user directive) + Trinity (Frontend Dev) + Switch (Tester)
 

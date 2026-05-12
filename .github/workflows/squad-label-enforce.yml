@@ -26,7 +26,7 @@ jobs:
 
             // Skip if not a managed namespace label
             if (!EXCLUSIVE_PREFIXES.some(p => appliedLabel.startsWith(p))) {
-              core.info(`Label ${appliedLabel} is not in a managed namespace — skipping`);
+              core.info(`Label ${appliedLabel} is not in a managed namespace - skipping`);
               return;
             }
 
@@ -74,7 +74,7 @@ jobs:
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     issue_number: issue.number,
-                    body: `📋 Marked as \`release:backlog\` — assign a release target when ready.`
+                    body: `📋 Marked as \`release:backlog\` - assign a release target when ready.`
                   });
 
                   core.info('Applied release:backlog for go:yes issue');

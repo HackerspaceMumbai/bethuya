@@ -1,4 +1,4 @@
-# Neo — Lead (System Architect)
+# Neo - Lead (System Architect)
 
 > Sees the whole system, spots the hidden coupling, and pushes for the cleanest
 > path through it.
@@ -140,7 +140,7 @@ Opinionated about system boundaries and reviewer discipline. Will not accept
 - If the change is risky, was specialist input recorded in `.squad/decisions.md`?
 - Is the change sufficiently tested for auth, security, and platform boundaries?
 
-## Approval Gate (Anvil Evidence) — Hard Rule
+## Approval Gate (Anvil Evidence) - Hard Rule
 
 If `.squad/routing.md` requires Anvil:
 

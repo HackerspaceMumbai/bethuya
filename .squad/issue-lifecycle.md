@@ -1,4 +1,4 @@
-# Issue Lifecycle — Repo Connection & PR Flow
+# Issue Lifecycle - Repo Connection & PR Flow
 
 Reference for connecting Squad to a repository and managing the issue→branch→PR→merge lifecycle.
 
@@ -41,12 +41,12 @@ Each platform tracks issue lifecycle differently. Squad normalizes these into a 
 | Closed | `state: closed` | `done` |
 
 **Issue labels used by Squad:**
-- `squad` — Issue is in Squad backlog
-- `squad:{member}` — Assigned to specific agent
-- `squad:untriaged` — Needs triage
-- `go:needs-research` — Needs investigation before implementation
-- `priority:p{N}` — Priority level (0=critical, 1=high, 2=medium, 3=low)
-- `next-up` — Queued for next agent pickup
+- `squad` - Issue is in Squad backlog
+- `squad:{member}` - Assigned to specific agent
+- `squad:untriaged` - Needs triage
+- `go:needs-research` - Needs investigation before implementation
+- `priority:p{N}` - Priority level (0=critical, 1=high, 2=medium, 3=low)
+- `next-up` - Queued for next agent pickup
 
 **Branch naming convention:**
 ```
@@ -67,8 +67,8 @@ Example: `squad/42-fix-login-validation`
 | Closed | `done` |
 
 **Work item tags used by Squad:**
-- `squad` — Work item is in Squad backlog
-- `squad:{member}` — Assigned to specific agent
+- `squad` - Work item is in Squad backlog
+- `squad:{member}` - Assigned to specific agent
 
 **Branch naming convention:**
 ```
@@ -212,7 +212,7 @@ Closes #{issue-number}
 Working as {member} ({role})
 
 {If needs human review:}
-⚠️ This task was flagged as "needs review" — please have a squad member review before merging.
+⚠️ This task was flagged as "needs review" - please have a squad member review before merging.
 ```
 
 ### 5. PR Review & Updates
@@ -231,7 +231,7 @@ Working as {member} ({role})
 **Update workflow:**
 ```bash
 # Make changes
-# ⚠️ NEVER use `git add .` or `git add -A` — only stage files you intentionally changed
+# ⚠️ NEVER use `git add .` or `git add -A` - only stage files you intentionally changed
 git add -- {specific files you modified}
 git commit -m "fix: address review feedback"
 git push
@@ -267,7 +267,7 @@ az repos pr update --id {pr-id} --status completed --delete-source-branch true
 1. Issue automatically closes (if "Closes #{number}" is in PR description)
 2. Feature branch is deleted
 3. Squad board state transitions to `done`
-4. Worktree cleanup (if worktree was used — #525)
+4. Worktree cleanup (if worktree was used - #525)
 
 ### 7. Cleanup
 
@@ -291,7 +291,7 @@ When spawning an agent to work on an issue, include this context block:
 ```markdown
 ## ISSUE CONTEXT
 
-**Issue:** #{number} — {title}  
+**Issue:** #{number} - {title}  
 **Platform:** {GitHub | Azure DevOps | Planner}  
 **Repository:** {owner}/{repo}  
 **Assigned to:** {member}
@@ -400,8 +400,8 @@ All PRs reviewed → All PRs merged → Epic closed
 - ❌ Merging PRs before CI passes
 - ❌ Leaving feature branches undeleted after merge
 - ❌ Using `checkout -b` when parallel agents are active (causes working directory conflicts)
-- ❌ Manually transitioning issue states — let the platform and Squad automation handle it
-- ❌ Skipping the branch naming convention — breaks Ralph's tracking logic
+- ❌ Manually transitioning issue states - let the platform and Squad automation handle it
+- ❌ Skipping the branch naming convention - breaks Ralph's tracking logic
 
 ## Migration Notes
 

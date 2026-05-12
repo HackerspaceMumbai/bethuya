@@ -1,5 +1,5 @@
 name: Squad Insider Release
-# dotnet project — configure build, test, and insider release commands below
+# dotnet project - configure build, test, and insider release commands below
 
 on:
   push:
@@ -24,11 +24,11 @@ jobs:
           # .NET:          dotnet test
           # Java (Maven):  mvn test
           # Java (Gradle): ./gradlew test
-          echo "No build commands configured — update squad-insider-release.yml"
+          echo "No build commands configured - update squad-insider-release.yml"
 
       - name: Create insider release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # TODO: Add your insider/pre-release commands here
-          echo "No release commands configured — update squad-insider-release.yml"
+          echo "No release commands configured - update squad-insider-release.yml"
