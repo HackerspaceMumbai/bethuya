@@ -27,13 +27,13 @@ jobs:
             // Extract member name from label (e.g., "squad:ripley" → "ripley")
             const memberName = label.replace('squad:', '').toLowerCase();
 
-            // Read team roster — check .squad/ first, fall back to .ai-team/
+            // Read team roster - check .squad/ first, fall back to .ai-team/
             let teamFile = '.squad/team.md';
             if (!fs.existsSync(teamFile)) {
               teamFile = '.ai-team/team.md';
             }
             if (!fs.existsSync(teamFile)) {
-              core.warning('No .squad/team.md or .ai-team/team.md found — cannot assign work');
+              core.warning('No .squad/team.md or .ai-team/team.md found - cannot assign work');
               return;
             }
 
@@ -83,7 +83,7 @@ jobs:
               comment = [
                 `### 🤖 Routed to @copilot (Coding Agent)`,
                 '',
-                `**Issue:** #${issue.number} — ${issue.title}`,
+                `**Issue:** #${issue.number} - ${issue.title}`,
                 '',
                 `@copilot has been assigned and will pick this up automatically.`,
                 '',
@@ -94,7 +94,7 @@ jobs:
               comment = [
                 `### 📋 Assigned to ${assignedMember.name} (${assignedMember.role})`,
                 '',
-                `**Issue:** #${issue.number} — ${issue.title}`,
+                `**Issue:** #${issue.number} - ${issue.title}`,
                 '',
                 `${assignedMember.name} will pick this up in the next Copilot session.`,
                 '',

@@ -1,4 +1,4 @@
-# Raw Agent Output — Appendix Format
+# Raw Agent Output - Appendix Format
 
 > This template defines the format for the `## APPENDIX: RAW AGENT OUTPUTS` section
 > in any multi-agent artifact.
@@ -18,11 +18,11 @@
 ```markdown
 ## APPENDIX: RAW AGENT OUTPUTS
 
-### {Name} ({Role}) — Raw Output
+### {Name} ({Role}) - Raw Output
 
 {Paste agent's verbatim response here, unedited}
 
-### {Name} ({Role}) — Raw Output
+### {Name} ({Role}) - Raw Output
 
 {Paste agent's verbatim response here, unedited}
 ```

@@ -14,10 +14,10 @@ The assembled result goes at the top. Below it, include:
 ```
 ## APPENDIX: RAW AGENT OUTPUTS
 
-### {Name} ({Role}) — Raw Output
+### {Name} ({Role}) - Raw Output
 {Paste agent's verbatim response here, unedited}
 
-### {Name} ({Role}) — Raw Output
+### {Name} ({Role}) - Raw Output
 {Paste agent's verbatim response here, unedited}
 ```
 

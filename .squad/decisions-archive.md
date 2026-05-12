@@ -4,7 +4,7 @@ Archived entries from decisions.md (older than 2026-04-08).
 
 ---
 
-### 2026-03-31 — Performance Budget Directive
+### 2026-03-31 - Performance Budget Directive
 
 **Author:** Augustine Correa (via Copilot)
 
@@ -27,10 +27,10 @@ Archived entries from decisions.md (older than 2026-04-08).
 - Explicit test contract between frontend and tests
 
 **Standard Selectors:**
-- `[data-test='new-event-btn']` — Opens create event dialog
-- `[data-test='create-event-submit']` — Submits create form
-- `[data-test='event-card']` — Individual event cards in list
-- `[data-test='notification']` — Success/error notifications
+- `[data-test='new-event-btn']` - Opens create event dialog
+- `[data-test='create-event-submit']` - Submits create form
+- `[data-test='event-card']` - Individual event cards in list
+- `[data-test='notification']` - Success/error notifications
 
 **Implementation:** Trinity adds `data-test` attributes to interactive elements; Switch uses `Page.Locator("[data-test='selector']")` exclusively.
 

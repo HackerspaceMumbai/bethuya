@@ -4,14 +4,14 @@
 
 ---
 
-### {timestamp} — {task summary}
+### {timestamp} - {task summary}
 
 | Field | Value |
 |-------|-------|
 | **Agent routed** | {Name} ({Role}) |
-| **Why chosen** | {Routing rationale — what in the request matched this agent} |
+| **Why chosen** | {Routing rationale - what in the request matched this agent} |
 | **Mode** | {`background` / `sync`} |
-| **Why this mode** | {Brief reason — e.g., "No hard data dependencies" or "User needs to approve architecture"} |
+| **Why this mode** | {Brief reason - e.g., "No hard data dependencies" or "User needs to approve architecture"} |
 | **Files authorized to read** | {Exact file paths the agent was told to read} |
 | **File(s) agent must produce** | {Exact file paths the agent is expected to create or modify} |
 | **Outcome** | {Completed / Rejected by {Reviewer} / Escalated} |

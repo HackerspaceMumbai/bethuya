@@ -5,7 +5,7 @@ domain: "{e.g., testing, api-design, error-handling}"
 confidence: "low|medium|high"
 source: "{how this was learned: manual, observed, earned}"
 tools:
-  # Optional — declare MCP tools relevant to this skill's patterns
+  # Optional - declare MCP tools relevant to this skill's patterns
   # - name: "{tool-name}"
   #   description: "{what this tool does}"
   #   when: "{when to use this tool}"
