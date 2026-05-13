@@ -14,25 +14,33 @@ public sealed partial class AIRouter(
     ILogger<AIRouter> logger) : IAIRouter
 {
     private readonly AIRoutingOptions _options = options.Value;
+    private static readonly string[] SensitiveFallbacks = ["Foundry", "Ollama", "OpenAI"];
+    private static readonly string[] NonSensitiveFallbacks = ["Ollama", "OpenAI"];
 
     public IChatClient GetChatClient(DataSensitivity sensitivity)
     {
-        var providerName = GetProviderName(sensitivity);
-        LogRouting(logger, sensitivity, providerName);
-
-        if (!_options.Providers.TryGetValue(providerName, out var providerOptions))
+        foreach (var providerName in GetProviderCandidates(sensitivity))
         {
-            LogFallback(logger, providerName, _options.FallbackProvider);
-            providerName = _options.FallbackProvider;
+            LogRouting(logger, sensitivity, providerName);
 
-            if (!_options.Providers.TryGetValue(providerName, out providerOptions))
+            if (!_options.Providers.TryGetValue(providerName, out var providerOptions))
             {
-                throw new InvalidOperationException(
-                    $"Neither provider '{GetProviderName(sensitivity)}' nor fallback '{_options.FallbackProvider}' is configured.");
+                LogProviderMissing(logger, providerName);
+                continue;
             }
+
+            // Skip cloud providers that are not configured with keys.
+            if (string.IsNullOrWhiteSpace(providerOptions.ApiKey) && !providerOptions.IsLocal)
+            {
+                LogMissingApiKey(logger, providerName);
+                continue;
+            }
+
+            return CreateChatClient(providerName, providerOptions);
         }
 
-        return CreateChatClient(providerName, providerOptions);
+        throw new InvalidOperationException(
+            $"No configured AI provider was available for '{sensitivity}'. Checked: {string.Join(", ", GetProviderCandidates(sensitivity))}.");
     }
 
     public string GetProviderName(DataSensitivity sensitivity) => sensitivity switch
@@ -43,10 +51,32 @@ public sealed partial class AIRouter(
         _ => _options.FallbackProvider
     };
 
+    private List<string> GetProviderCandidates(DataSensitivity sensitivity)
+    {
+        var configuredPrimary = GetProviderName(sensitivity);
+        var fallbacks = sensitivity switch
+        {
+            DataSensitivity.Sensitive => SensitiveFallbacks,
+            DataSensitivity.NonSensitive => NonSensitiveFallbacks,
+            DataSensitivity.Public => NonSensitiveFallbacks,
+            _ => NonSensitiveFallbacks
+        };
+
+        // Keep configured primary first, then deterministic chain, then configurable fallback if set.
+        var candidates = new List<string> { configuredPrimary };
+        candidates.AddRange(fallbacks);
+        candidates.Add(_options.FallbackProvider);
+
+        return candidates
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     private IChatClient CreateChatClient(string providerName, AIProviderOptions providerOptions)
     {
-        // All supported providers (Foundry Local, Ollama, Azure OpenAI, OpenAI) expose
-        // an OpenAI-compatible chat completions API, so we use a single factory.
+        // All supported providers (Foundry, FoundryLocal, Ollama, Azure OpenAI, OpenAI) expose
+        // an OpenAI-compatible chat completions API. Foundry is now primary; others are fallbacks.
         var endpoint = new Uri(providerOptions.Endpoint);
         var modelId = providerOptions.ModelId ?? "default";
 
@@ -65,8 +95,11 @@ public sealed partial class AIRouter(
     [LoggerMessage(Level = LogLevel.Information, Message = "Routing {Sensitivity} request to provider: {Provider}")]
     private static partial void LogRouting(ILogger logger, DataSensitivity sensitivity, string provider);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Provider {Provider} not configured, falling back to {Fallback}")]
-    private static partial void LogFallback(ILogger logger, string provider, string fallback);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Provider {Provider} not configured, skipping")]
+    private static partial void LogProviderMissing(ILogger logger, string provider);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Provider {Provider} missing API key, skipping")]
+    private static partial void LogMissingApiKey(ILogger logger, string provider);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Creating chat client for {Provider} at {Endpoint} with model {Model}")]
     private static partial void LogCreatingClient(ILogger logger, string provider, Uri endpoint, string model);

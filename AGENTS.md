@@ -1,10 +1,10 @@
-# Bethuya — AI Agent Context
+# Bethuya - AI Agent Context
 
 > **Read this file first.** It is the canonical project context for all AI agents, coding assistants, and automated tools operating in this repository.
 
 ## Project Overview
 
-**Bethuya** is an AI-augmented, agent-first, .NET-built, Aspire-orchestrated platform for planning, curating, running, and reporting community events — built for and by [HackerspaceMumbai](https://hackerspacemumbai.com), debuting at GitHub Copilot Dev Days.
+**Bethuya** is an AI-augmented, agent-first, .NET-built, Aspire-orchestrated platform for planning, curating, running, and reporting community events - built for and by [HackerspaceMumbai](https://hackerspacemumbai.com), debuting at GitHub Copilot Dev Days.
 
 **Principle:** AI *drafts*, humans *approve*, community *owns*.
 
@@ -25,11 +25,11 @@ AppHost (Aspire)
 ```
 
 Planned additions (scaffold in `src/`):
-- `Bethuya.Core` — Domain: Events, Registrations, Decisions, FairnessBudget
-- `Bethuya.Agents` — Planner, Curator, Facilitator, Reporter agents
-- `Bethuya.AI` — Provider router (Foundry Local / Ollama / Azure OpenAI / OpenAI), prompts, memory
-- `Bethuya.Backend` — ASP.NET Core API (Aspire-connected)
-- `Bethuya.Infrastructure` — Storage (Azure SQL), repos, platform adapters
+- `Bethuya.Core` - Domain: Events, Registrations, Decisions, FairnessBudget
+- `Bethuya.Agents` - Planner, Curator, Facilitator, Reporter agents
+- `Bethuya.AI` - Provider router (Foundry Local / Ollama / Azure OpenAI / OpenAI), prompts, memory
+- `Bethuya.Backend` - ASP.NET Core API (Aspire-connected)
+- `Bethuya.Infrastructure` - Storage (Azure SQL), repos, platform adapters
 
 ---
 
@@ -41,7 +41,7 @@ Planned additions (scaffold in `src/`):
 | Orchestration | .NET Aspire 13 (File-based Resource Definition) |
 | API Docs | Scalar (Aspire Integrations) |
 | API Layer | Refit (Type-safe contracts) |
-| Data Engine | Data API Builder (DAB) — Native MCP Server support |
+| Data Engine | Data API Builder (DAB) - Native MCP Server support |
 | Identity | Vogen (Zero-allocation Value Objects) |
 | Mobile/Desktop | .NET MAUI Blazor Hybrid |
 | Web | Blazor Web App (SSR + WASM) |
@@ -76,7 +76,7 @@ Planned additions (scaffold in `src/`):
   - DEI nudges only use consented fields.
 
 ### Facilitator Agent
-- **Purpose:** Live session assistance — prompts, Q&A suggestions, notes capture.
+- **Purpose:** Live session assistance - prompts, Q&A suggestions, notes capture.
 - **Inputs:** Session agenda, live transcript (opt-in).
 - **Outputs:** Suggested prompts, Q&A queue, captured notes (organizer-controlled publish).
 - **Guardrail:** All capture is opt-in; organizer controls publication.
@@ -102,15 +102,197 @@ Route AI calls by data sensitivity:
 
 ---
 
+## Planner Hosted Agent Implementation
+
+### Overview
+The **Planner Agent** is implemented as a Microsoft Foundry **Hosted Agent** using the OpenAI-compatible **Responses** protocol. It produces hybrid output suitable for human review and machine processing.
+
+### Architecture
+- **Type:** Microsoft Foundry Hosted Agent (`.PublishAsHostedAgent`)
+- **Endpoint:** `/responses` (OpenAI-compatible conversation endpoint)
+- **Deployment:** Aspire-orchestrated; runs locally on ephemeral port or cloud-hosted
+- **Orchestration:** Backend (Bethuya.Backend) is the central orchestrator; calls Planner as a service
+
+### Planning Cycle Semantics
+
+#### One Conversation Per Cycle
+- Each `PlanningCycle` gets exactly one Foundry `conversationId` (persisted).
+- All Planner calls within a cycle use the same conversationId for multi-turn refinement.
+- Different cycles for the same event use different conversationIds (no pollution).
+
+#### Cycle Lifecycle
+1. **Drafting** — Cycle created; Planner can generate/refine drafts
+2. **ReadyToPublish** — Draft approved by human; awaiting publish
+3. **Published** — Schedule finalized; cycle LOCKED
+   - Published cycles reject all future Planner invocations with clear error: `"Cycle is already published and locked. Start a new cycle to make changes."`
+   - Post-publish changes MUST create a NEW cycle with a NEW conversationId
+
+#### Cycle Closure Boundary
+- Cycle closes **only on Publish** (not on approval)
+- Refinement is always allowed until publish
+- After publish, the cycle is immutable
+
+### Hybrid Output Contract
+
+#### Response Fields (Always Returned)
+```json
+{
+  "markdown_agenda": "string",
+  "agenda_json": {
+    "agendaVersion": "1.0",
+    "event": { "eventId", "title", "date" (ISO-8601), "timezone" (IANA), "location" (optional) },
+    "objectives": ["string"],
+    "constraints": ["string"],
+    "agenda": {
+      "totalDurationMinutes": number,
+      "blocks": [
+        {
+          "blockId": "string",
+          "start": "HH:MM",
+          "end": "HH:MM",
+          "title": "string",
+          "description": "string",
+          "format": "talk" | "panel" | "workshop" | "networking" | "break" | "other",
+          "speakers": [{ "name", "role" (optional) }],
+          "tags": ["string"]
+        }
+      ]
+    },
+    "rationale": { "keyTradeoffs": ["string"], "inclusionNotes": ["string"] },
+    "risks": { "items": [{ "risk": "string", "mitigation": "string" }] },
+    "nextActions": { "items": [{ "owner": "human" | "planner" | "other_agent", "action": "string" }] }
+  }
+}
+```
+
+#### Consistency Rules
+- Block count and each block's start/end/title must match Markdown vs JSON
+- totalDurationMinutes equals sum of block durations
+- Markdown includes all block titles and times from JSON
+
+#### Human Edits & Reconciliation
+- Humans edit the Markdown representation
+- Backend reconciles JSON from edited Markdown (preserves key schema fields)
+- Re-validates both schema and consistency after edits
+
+### UI Workflow (EventDetail.razor)
+
+#### "🤖 Draft Schedule with AI"
+- Calls `PlanningCycleApi.StartCycleAsync()` → creates cycle + conversationId
+- Calls `PlanningCycleApi.GenerateDraftAsync()` → Planner returns hybrid output
+- Markdown displayed in editor; JSON available in "📋 Schema" tab
+
+#### "✅ Approve"
+- User edits Markdown (optional)
+- Clicks Approve → `ApproveDraftAsync()` with edited markdown
+- Backend validates and reconciles JSON
+- Status transitions to `ReadyToPublish`
+
+#### "📢 Publish Schedule"
+- Calls `PublishAsync()` with approved draft ID
+- Cycle transitions to `Published` (immutable snapshot stored)
+- All Planner buttons disabled (cycle locked)
+- Message: `"Schedule published. This cycle is now closed and refinement is blocked."`
+
+#### "🔁 Start New Cycle"
+- Available only after Publish
+- Creates new cycle with new conversationId
+- Clears draft; status resets to `Drafting`
+- Planner can now generate new drafts (no leakage from prior cycle)
+
+### Audit Trail (Immutable)
+Every Planner invocation is recorded:
+- Input hash (SHA256 of request payload)
+- Response ID (from agent)
+- Agent name + version tag
+- TraceParent + CorrelationId (distributed tracing)
+- Cycle state at invocation time
+- Markdown agenda + JSON sidecar (both persisted)
+- Human diff + approval decision (if edited)
+
+### Running Locally
+
+```bash
+# Start Aspire (includes Foundry Local + Planner hosted agent)
+aspire start
+
+# Access dashboard
+# https://localhost:17129/
+
+# Test Planner endpoint directly
+curl -X POST https://localhost:54531/responses \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "planner-chat",
+    "messages": [{"role": "user", "content": "Draft agenda for Hackerspace Meetup on 2026-06-30"}],
+    "conversation_id": "pc_test123"
+  }'
+```
+
+#### Port Discovery
+- AppHost specifies `targetPort: 8088` for planner-hosted
+- Aspire assigns ephemeral port (e.g., 54531)
+- Discover via: `aspire ps` or check Aspire Dashboard logs
+- Always use HTTPS (not HTTP) for local dev
+
+### Deployment (Cloud)
+
+```bash
+# Publish to Azure (generates Bicep + deployable artifacts)
+aspire publish
+
+# No manual Azure portal steps required; all config is in AppHost.cs
+```
+
+### Testing
+
+#### TUnit Integration Tests (D5)
+Located in `tests/Hackmum.Bethuya.Tests/Workflows/PlanningCycleWorkflowTests.cs`:
+- ✅ `PlanningCycleCreation_PersistsConversationId`
+- ✅ `TwoCyclesForSameEvent_UseDifferentConversationIds`
+- ✅ `PlannerInvocation_ProducesHybridConsistentOutput`
+- ✅ `PublishingFinalSchedule_ClosesCycleAndBlocksFurtherPlannerInvocations`
+- ✅ `PostPublishChange_CreatesNewCycleWithNewConversationId`
+
+Run: `dotnet test tests/Hackmum.Bethuya.Tests`
+
+#### Playwright E2E Tests (D5)
+Located in `tests/Hackmum.Bethuya.E2E/Tests/EventFlowTests.cs`:
+- ✅ `EventDetail_ShouldShowScheduleEditor`
+- ✅ `EventDetail_PlannerCycleFlow_ShouldDraftApprovePublishAndStartNewCycle`
+- ✅ `EventDetail_HybridViewer_ShouldToggleBetweenMarkdownAndJsonTabs`
+
+Run: `dotnet test tests/Hackmum.Bethuya.E2E`
+
+### Future (Option B: A2A Delegation)
+
+#### Design Pattern (Ready; Not Yet Implemented)
+- `IAgentInvoker` abstraction already supports delegation
+- Stub: `FoundryA2AInvoker` (will implement A2A protocol later)
+- Current: `FoundryResponsesInvoker` (Responses protocol)
+
+#### When to Migrate
+- Multi-agent delegation (Planner → Scout → Speaker Invite)
+- Need for agent-to-agent message passing
+- Stateful multi-step workflows beyond single-cycle refinement
+
+#### Changes Required
+- Implement `FoundryA2AInvoker.InvokePlannerAsync()` with A2A delegation
+- Wire in AppHost: `.PublishAsA2AAgent()` (or similar)
+- Test multi-agent call chains with `ActivitySource` correlation
+- No changes to cycle semantics or audit trail
+
+---
+
 ## Coding Standards (Strict Enforcement)
 
 ### General
 
 - **Nullable reference types:** Always enabled (`<Nullable>enable</Nullable>`).
-- **Warnings as errors:** `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` — fix all warnings; never suppress without documented justification.
-- **Analysis level:** `latest-Recommended` — heed analyzer suggestions.
+- **Warnings as errors:** `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` - fix all warnings; never suppress without documented justification.
+- **Analysis level:** `latest-Recommended` - heed analyzer suggestions.
 - **Code style:** Enforced in build (`<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>`).
-- Suppressed globally: `CA1716` (reserved keywords), `CA1711` (name suffixes) — do not add others without discussion.
+- Suppressed globally: `CA1716` (reserved keywords), `CA1711` (name suffixes) - do not add others without discussion.
 
 ### Identity & Data [API & Communication]
 
@@ -127,21 +309,21 @@ Route AI calls by data sensitivity:
 - Private fields: `_camelCase`. Public members: `PascalCase`. Locals: `camelCase`.
 - XML doc comments on all public APIs.
 
-### UI — Blazor Blueprint First
+### UI - Blazor Blueprint First
 
 - **Always use Blazor Blueprint (BB) components before writing custom CSS or HTML.**
-- **Custom CSS requires a comment explaining why BB couldn't handle it.** Each custom CSS block must have a one-line comment stating what BB lacks (e.g., "BB ShowPreview only supports local IBrowserFile — remote URL preview is custom").
+- **Custom CSS requires a comment explaining why BB couldn't handle it.** Each custom CSS block must have a one-line comment stating what BB lacks (e.g., "BB ShowPreview only supports local IBrowserFile - remote URL preview is custom").
 - **BB form-field wrappers** (wrap label + input + helper text + validation + ARIA):
-  - `BbFormFieldInput<TValue>` — text, email, number, URL inputs
-  - `BbFormFieldSelect<TValue>` — dropdown (Options mode or compositional)
-  - `BbFormSection` — group related fields with title/description
-- **BB standalone components** (no built-in label/validation wrapper — use manual `<div class="form-group">` + `BbLabel` + `ValidationMessage`):
-  - `BbTextarea` — multi-line text with `MaxLength`/`ShowCharacterCount`
-  - `BbNumericInput<TValue>` — numeric with `Min`/`Max`/`Step`/`ShowButtons`
-  - `BbFileUpload` — drag-and-drop file upload with `Accept`/`MaxFileSize`/`MaxFileCount`/`OnValidationError`
-  - `BbDatePicker`, `BbTimePicker` — date/time pickers
+  - `BbFormFieldInput<TValue>` - text, email, number, URL inputs
+  - `BbFormFieldSelect<TValue>` - dropdown (Options mode or compositional)
+  - `BbFormSection` - group related fields with title/description
+- **BB standalone components** (no built-in label/validation wrapper - use manual `<div class="form-group">` + `BbLabel` + `ValidationMessage`):
+  - `BbTextarea` - multi-line text with `MaxLength`/`ShowCharacterCount`
+  - `BbNumericInput<TValue>` - numeric with `Min`/`Max`/`Step`/`ShowButtons`
+  - `BbFileUpload` - drag-and-drop file upload with `Accept`/`MaxFileSize`/`MaxFileCount`/`OnValidationError`
+  - `BbDatePicker`, `BbTimePicker` - date/time pickers
 - **Manual `<div class="form-group">` wrappers** are for fields that lack a `BbFormField*` wrapper (textarea, numeric, file upload, date/time pickers, inline adornment inputs like hashtag `#` prefix).
-- Use `data-test` attributes on all interactive elements — never CSS classes for E2E selectors.
+- Use `data-test` attributes on all interactive elements - never CSS classes for E2E selectors.
 
 ### AI & Privacy
 
@@ -155,7 +337,7 @@ Route AI calls by data sensitivity:
 
 ### Testing
 
-- **Unit/integration tests:** Use **TUnit** — not xUnit, not NUnit.
+- **Unit/integration tests:** Use **TUnit** - not xUnit, not NUnit.
 - **Test-first:** Every feature begins with a TUnit test. **No code is accepted without a passing TUnit integration test.**
 - **Visual Proof E2E:** Playwright screenshots are required for ALL major use cases like registration flow. Use **Playwright for .NET**. Always use `data-test` selectors (not CSS classes) for stability.
 - **Performance:** Use BenchmarkDotNet for micro-benchmarks; NBomber for load tests.
@@ -176,13 +358,13 @@ Route AI calls by data sensitivity:
 1. **Plan First:** Before executing any task, add it to `tasks/todo.md`. No code changes without a plan entry.
 2. **No Hacks:** Identify root causes. Temporary workarounds are not acceptable.
 3. **Record Lessons:** Every mistake or unexpected discovery goes in `tasks/lessons.md` to prevent recurrence.
-4. **Autonomous Fixes:** Agents are authorized to resolve failing tests and CI without manual intervention — but must record reasoning.
+4. **Autonomous Fixes:** Agents are authorized to resolve failing tests and CI without manual intervention - but must record reasoning.
 5. **Playwright Visual Proof:** Capture screenshots of UI changes before marking tasks done.
 6. **Pre-Commit Review (mandatory):**
    - Run `code-review` agent on staged changes before every commit.
    - Run `dotnet-diag:optimizing-dotnet-performance` agent on modified .NET files.
    - Run `/explain-diff` before opening or updating a PR.
-   - **Never rely on humans to catch code issues** — use available analysis tools proactively.
+   - **Never rely on humans to catch code issues** - use available analysis tools proactively.
 
 ---
 
@@ -195,7 +377,7 @@ Route AI calls by data sensitivity:
 ├─ Directory.Packages.props       # Central Package Management
 ├─ global.json                    # SDK version pin (≥10.0.100, latestFeature)
 ├─ .editorconfig                  # Code style enforcement
-├─ AGENTS.md                      # This file — AI agent context
+├─ AGENTS.md                      # This file - AI agent context
 ├─ CLAUDE.md                      # Claude-specific mirror
 │
 ├─ AppHost/AppHost/               # .NET Aspire AppHost
@@ -220,12 +402,12 @@ Route AI calls by data sensitivity:
 ├─ .github/
 │  ├─ copilot-instructions.md     # Copilot Chat/CLI workspace instructions
 │  ├─ agents/                     # Agent persona files
-│  │  ├─ planner.md               # Planner Agent — agenda drafting (Azure OpenAI)
-│  │  ├─ curator.md               # Curator Agent — attendee curation (Foundry Local, PII)
-│  │  ├─ facilitator.md           # Facilitator Agent — live assistance (Foundry Local, real-time)
-│  │  ├─ reporter.md              # Reporter Agent — post-event summaries (Azure OpenAI)
-│  │  ├─ approver.md              # Approver — human-in-the-loop approval workflow
-│  │  └─ dotnet-dev.md            # .NET Developer — coding standards & patterns
+│  │  ├─ planner.md               # Planner Agent - agenda drafting (Azure OpenAI)
+│  │  ├─ curator.md               # Curator Agent - attendee curation (Foundry Local, PII)
+│  │  ├─ facilitator.md           # Facilitator Agent - live assistance (Foundry Local, real-time)
+│  │  ├─ reporter.md              # Reporter Agent - post-event summaries (Azure OpenAI)
+│  │  ├─ approver.md              # Approver - human-in-the-loop approval workflow
+│  │  └─ dotnet-dev.md            # .NET Developer - coding standards & patterns
 │  └─ workflows/
 │     ├─ ci.yml                   # Build + test CI
 │     └─ security.yml             # CodeQL + vulnerable package scan
@@ -244,7 +426,7 @@ dotnet test
 # Build full solution
 dotnet build
 
-# Run Aspire AppHost (detached mode — preferred for AI agents)
+# Run Aspire AppHost (detached mode - preferred for AI agents)
 aspire start
 # Or with isolated ports for worktrees/parallel instances:
 aspire start --isolated
@@ -278,9 +460,9 @@ dotnet list package --vulnerable --include-transitive
 ### Authentication
 
 Auth is implemented on three interchangeable feature branches:
-- `feature/auth/entra` — Microsoft Entra External ID
-- `feature/auth/auth0` — Auth0
-- `feature/auth/keycloak` — Keycloak (self-hosted OIDC)
+- `feature/auth/entra` - Microsoft Entra External ID
+- `feature/auth/auth0` - Auth0
+- `feature/auth/keycloak` - Keycloak (self-hosted OIDC)
 
 On `main`, `NullCurrentUserService` is registered as the `ICurrentUserService` placeholder. Merge the desired auth branch when ready.
 
@@ -288,7 +470,7 @@ On `main`, `NullCurrentUserService` is registered as the `ICurrentUserService` p
 
 - All non-public Blazor pages must have `[Authorize]` or `<AuthorizeView>`
 - Authorization policies use `BethuyaRoles` constants (Admin, Organizer, Curator, Attendee)
-- Policies: `RequireOrganizer`, `RequireCurator`, `RequireAttendee` — defined in auth branches
+- Policies: `RequireOrganizer`, `RequireCurator`, `RequireAttendee` - defined in auth branches
 
 ### Blazor Render Mode Rule
 
@@ -297,10 +479,10 @@ On `main`, `NullCurrentUserService` is registered as the `ICurrentUserService` p
 
 ### Security Infrastructure (active on main)
 
-- **Security headers:** CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy — added via `app.UseSecurityDefaults()` from ServiceDefaults
-- **Rate limiting:** 100 req/min (general), 20 req/min for `RateLimitPolicies.Ai` — configured in ServiceDefaults
+- **Security headers:** CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy - added via `app.UseSecurityDefaults()` from ServiceDefaults
+- **Rate limiting:** 100 req/min (general), 20 req/min for `RateLimitPolicies.Ai` - configured in ServiceDefaults
 - **CORS:** Named policy `"BethuyaMobileClients"`, origins from `appsettings.json` `Cors:AllowedOrigins`
-- **AllowedHosts:** Locked to `localhost` — must be set to actual domain in production `appsettings.json`
+- **AllowedHosts:** Locked to `localhost` - must be set to actual domain in production `appsettings.json`
 - **CodeQL:** SAST analysis on all PRs (`.github/workflows/security.yml`)
 - **Dependabot:** Weekly NuGet + Actions updates (`.github/dependabot.yml`)
 - **Vulnerable package gate:** `dotnet list package --vulnerable` blocks CI on CVEs
