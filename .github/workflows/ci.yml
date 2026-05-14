@@ -24,8 +24,7 @@ jobs:
         run: dotnet restore
 
       - name: Clean build artifacts
-        run: |
-          find . -type d \( -name "bin" -o -name "obj" \) -exec rm -rf {} + 2>/dev/null || true
+        run: dotnet nuget locals all --clear
 
       - name: Build
         run: dotnet build --configuration Release --no-restore
