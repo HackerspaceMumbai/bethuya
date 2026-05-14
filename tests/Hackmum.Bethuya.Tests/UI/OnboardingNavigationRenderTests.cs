@@ -141,7 +141,7 @@ public class OnboardingNavigationRenderTests
 
         await Assert.That(cut.Markup).Contains("Organizer Tools");
         await Assert.That(cut.Markup).Contains("Agent Workflows");
-        await Assert.That(cut.Markup).DoesNotContain("Attendee Curation");
+        await Assert.That(cut.Markup).DoesNotContain("Curation");
     }
 
     [Test]
@@ -153,7 +153,7 @@ public class OnboardingNavigationRenderTests
         var cut = ctx.RenderComponent<NavMenu>();
 
         await Assert.That(cut.Markup).Contains("Organizer Tools");
-        await Assert.That(cut.Markup).Contains("Attendee Curation");
+        await Assert.That(cut.Markup).Contains("Curation");
         await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
     }
 
@@ -484,10 +484,10 @@ public class OnboardingNavigationRenderTests
 
         await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
 
-        linkedInUrlInput.Change("   ");
+        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "   " });
         await Assert.That(cut.Find("[data-test='connect-linkedin-btn'] button").HasAttribute("disabled")).IsTrue();
 
-        linkedInUrlInput.Change("https://www.linkedin.com/in/future-speaker");
+        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "https://www.linkedin.com/in/future-speaker" });
         await Assert.That(cut.Find("[data-test='connect-linkedin-btn'] button").HasAttribute("disabled")).IsFalse();
     }
 
@@ -718,7 +718,7 @@ public class OnboardingNavigationRenderTests
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
-        linkedInUrlInput.Change("https://www.linkedin.com/in/future-speaker");
+        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "https://www.linkedin.com/in/future-speaker" });
 
         await InvokeAsync(cut.Instance, "HandleContinue");
 
@@ -745,7 +745,7 @@ public class OnboardingNavigationRenderTests
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
-        linkedInUrlInput.Change("https://www.linkedin.com/in/future-speaker");
+        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "https://www.linkedin.com/in/future-speaker" });
 
         cut.Find("[data-test='connect-github-btn'] button").Click();
 
@@ -770,7 +770,7 @@ public class OnboardingNavigationRenderTests
         var startingUri = navigation.Uri;
         var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
 
-        linkedInUrlInput.Change("https://www.linkedin.com/in/dev-user");
+        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "https://www.linkedin.com/in/dev-user" });
         cut.Find("[data-test='connect-linkedin-btn'] button").Click();
 
         await Assert.That(navigation.Uri).IsNotEqualTo(startingUri);
