@@ -1,0 +1,2 @@
+ curl -X GET "http://localhost:5247/api/events/019ded5d-1ee9-777c-9a76-cd25a77cc05a" `
+>    -H "Content-Type: application/json"

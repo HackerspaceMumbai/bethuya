@@ -12,6 +12,7 @@
     <PackageReference Include="Aspire.Hosting.Azure.AppContainers" />
     <PackageReference Include="Aspire.Hosting.Azure.KeyVault" />
     <PackageReference Include="Aspire.Hosting.Azure.Sql" />
+    <PackageReference Include="Aspire.Hosting.Foundry" />
     <PackageReference Include="Aspire.Hosting.Keycloak" />
     <PackageReference Include="Scalar.Aspire" />
   </ItemGroup>

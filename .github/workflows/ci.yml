@@ -23,11 +23,12 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Clean
-        run: dotnet clean --configuration Release
+      - name: Clean build artifacts
+        run: |
+          find . -type d \( -name "bin" -o -name "obj" \) -exec rm -rf {} + 2>/dev/null || true
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --configuration Release --no-restore
 
       - name: Test (TUnit)
         run: dotnet test --project tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj --no-build --configuration Release
