@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\Hackmum.Bethuya.Backend\Hackmum.Bethuya.Backend.csproj" />
     <ProjectReference Include="..\..\src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj" />
     <ProjectReference Include="..\..\src\Bethuya.MigrationService\Bethuya.MigrationService.csproj" />
+    <ProjectReference Include="..\..\src\Hackmum.Bethuya.Agents.Planner.Hosted\Hackmum.Bethuya.Agents.Planner.Hosted.csproj" />
   </ItemGroup>
 
 </Project>
