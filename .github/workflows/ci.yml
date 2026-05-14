@@ -23,9 +23,6 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Clean build artifacts
-        run: dotnet nuget locals all --clear
-
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
