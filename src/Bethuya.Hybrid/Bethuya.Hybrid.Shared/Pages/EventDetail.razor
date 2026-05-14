@@ -216,12 +216,14 @@
 
                     @* Hybrid Viewer Tabs *@
                     <div class="flex gap-2 mb-3">
-                        <button @onclick="@(() => _showJsonTab = false)" 
+                        <button data-test="planner-tab-markdown"
+                                @onclick="@(() => _showJsonTab = false)" 
                                 class="@(_showJsonTab ? "text-muted-foreground" : "font-semibold border-b-2 border-foreground")
                                        px-2 py-1 text-sm">
                             📝 Markdown
                         </button>
-                        <button @onclick="@(() => _showJsonTab = true)" 
+                        <button data-test="planner-tab-schema"
+                                @onclick="@(() => _showJsonTab = true)" 
                                 class="@(_showJsonTab ? "font-semibold border-b-2 border-foreground" : "text-muted-foreground")
                                        px-2 py-1 text-sm">
                             📋 Schema
@@ -342,7 +344,7 @@
                 var evt = await EventApi.GetByIdAsync(EventId);
                 eventTitle = evt.Title;
             }
-            catch
+            catch (Exception)
             {
                 // Keep default title if event read fails.
             }
@@ -606,7 +608,7 @@
                 _ => ScheduleStatus.Draft
             };
         }
-        catch
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             // No active cycle yet.
             _activeCycle = null;

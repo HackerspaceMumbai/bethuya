@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using System.Text.Json;
 
 namespace Hackmum.Bethuya.E2E.Tests;
 
@@ -142,25 +143,32 @@ public class EventFlowTests : BethuyaE2ETest
         var jsonViewer = Page.Locator("[data-test='planner-json-viewer']");
         await Assertions.Expect(jsonViewer).ToBeHiddenAsync();
 
-        // Click JSON tab (uses button with text containing "Schema")
-        var jsonTab = Page.Locator("button:has-text('Schema')").First;
-        await jsonTab.ClickAsync();
+        // Click JSON tab
+        var schemaTab = Page.Locator("[data-test='planner-tab-schema']");
+        await schemaTab.ClickAsync();
 
         // Verify JSON viewer is now visible
         await Assertions.Expect(jsonViewer).ToBeVisibleAsync();
         
-        // Verify it contains valid JSON structure (agendaVersion, event, agenda, etc.)
+        // Verify it contains valid JSON structure
         var jsonContent = await jsonViewer.TextContentAsync();
         
-        if (string.IsNullOrEmpty(jsonContent) || !jsonContent.Contains("agendaVersion"))
-            throw new InvalidOperationException("JSON content missing agendaVersion");
-        if (!jsonContent.Contains("event"))
-            throw new InvalidOperationException("JSON content missing event");
-        if (!jsonContent.Contains("agenda"))
-            throw new InvalidOperationException("JSON content missing agenda");
+        if (string.IsNullOrEmpty(jsonContent))
+            throw new InvalidOperationException("JSON content is empty");
+
+        // Parse JSON and validate structure
+        using var doc = System.Text.Json.JsonDocument.Parse(jsonContent);
+        var root = doc.RootElement;
+        
+        if (!root.TryGetProperty("agendaVersion", out _))
+            throw new InvalidOperationException("JSON missing required property: agendaVersion");
+        if (!root.TryGetProperty("event", out _))
+            throw new InvalidOperationException("JSON missing required property: event");
+        if (!root.TryGetProperty("agenda", out _))
+            throw new InvalidOperationException("JSON missing required property: agenda");
 
         // Click back to Markdown tab
-        var markdownTab = Page.Locator("button:has-text('Markdown')").First;
+        var markdownTab = Page.Locator("[data-test='planner-tab-markdown']");
         await markdownTab.ClickAsync();
 
         // Verify markdown editor is visible again
