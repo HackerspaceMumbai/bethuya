@@ -113,13 +113,12 @@ var foundry = builder.AddFoundry("bethuya-foundry");
 var foundryProject = foundry.AddProject("bethuya-project");
 var plannerChatModel = foundryProject.AddModelDeployment("planner-chat", FoundryModel.OpenAI.Gpt41);
 
-// TODO: Uncomment when planner-hosted project exists
-// var plannerHosted = builder.AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>("planner-hosted")
-//     .WithHttpEndpoint(targetPort: 8088)
-//     .WithReference(foundryProject)
-//     .WithReference(plannerChatModel)
-//     .WaitFor(plannerChatModel)
-//     .PublishAsHostedAgent(foundryProject);
+var plannerHosted = builder.AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>("planner-hosted")
+    .WithHttpEndpoint(targetPort: 8088)
+    .WithReference(foundryProject)
+    .WithReference(plannerChatModel)
+    .WaitFor(plannerChatModel)
+    .PublishAsHostedAgent(foundryProject);
 
 // Migration service - runs EF Core migrations then exits; backend waits for it to complete.
 // IMPORTANT: run `dotnet ef migrations add InitialCreate --project src/Hackmum.Bethuya.Infrastructure`
@@ -130,9 +129,9 @@ var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("mi
 
 var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
     .WithReference(sql)
-    // .WithReference(plannerHosted)
+    .WithReference(plannerHosted)
     .WaitFor(sql)
-    // .WaitFor(plannerHosted)
+    .WaitFor(plannerHosted)
     .WaitForCompletion(migrationService)
     .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
     .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
