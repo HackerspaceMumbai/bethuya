@@ -73,6 +73,16 @@ builder.Services
     .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
     .AddStandardResilienceHandler();
 
+// Refit typed client for Backend Registrations API (Aspire service discovery)
+builder.Services
+    .AddRefitClient<IRegistrationApi>(new RefitSettings
+    {
+        ContentSerializer = new SystemTextJsonContentSerializer(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+    })
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
+    .AddStandardResilienceHandler();
+
 // CORS — origins from appsettings.json "Cors:AllowedOrigins" (empty by default in production)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
