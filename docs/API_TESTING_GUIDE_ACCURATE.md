@@ -107,7 +107,7 @@ curl -X POST "http://localhost:$API_PORT/api/events" `
 
 ```powershell
 # Create 10 registrations for the event
-for ($i = 1; $i -le 10; $i++) {
+for ($i = 1; $i -le 30; $i++) {
     $regPayload = @{
         eventId = $responseEventId
         fullName = "Attendee $i"
@@ -121,8 +121,8 @@ for ($i = 1; $i -le 10; $i++) {
       -d $regPayload
 }
 
-Write-Host "Created 10 test registrations for event $responseEventId"
-```
+Write-Host "Created 30 test registrations for event $responseEventId"
+```1
 
 ### Step 3: Invoke Planner Agent
 
