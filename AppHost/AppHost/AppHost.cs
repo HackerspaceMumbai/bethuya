@@ -1,4 +1,5 @@
 using Aspire.Hosting.Azure;
+using Aspire.Hosting.Foundry;
 using Scalar.Aspire;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -62,13 +63,13 @@ var sql = builder.AddAzureSqlServer("sql")
     .RunAsContainer()
     .AddDatabase("BethuyaDb");
 
-// Key Vault — provisioned in Azure only; no local emulator exists.
+// Key Vault - provisioned in Azure only; no local emulator exists.
 // Only wire it in publish mode (azd up) so local dev starts without Azure credentials.
 IResourceBuilder<AzureKeyVaultResource>? keyVault = builder.ExecutionContext.IsPublishMode
     ? builder.AddAzureKeyVault("vault")
     : null;
 
-// Keycloak — local dev only; not published to Azure.
+// Keycloak - local dev only; not published to Azure.
 // The preview Keycloak package sets KC_HEALTH_ENABLED=true (boolean literal) in its container
 // env vars. ACA's BaseContainerAppContext.ProcessValue cannot handle booleans, causing
 // "Unsupported value type System.Boolean" during aspire deploy. In production, use Entra ID.
@@ -79,20 +80,47 @@ if (!builder.ExecutionContext.IsPublishMode)
         .WithDataVolume();
 }
 
-// Cloudinary — image upload for event cover images
-// secret: true omitted — causes "Unsupported value type System.Boolean" in Azure deployment.
+// Cloudinary - image upload for event cover images
+// secret: true omitted - causes "Unsupported value type System.Boolean" in Azure deployment.
 // For production: route secrets through Key Vault via keyVault.AddSecret(...) in publish mode.
 var cloudinaryCloudName = builder.AddParameter("cloudinary-cloud-name");
 var cloudinaryApiKey = builder.AddParameter("cloudinary-api-key");
 var cloudinaryApiSecret = builder.AddParameter("cloudinary-api-secret");
 
-// // AI provider configuration — configure via user-secrets (dev) or Key Vault (Azure)
-// // Dev: dotnet user-secrets set "Parameters:azure-openai-endpoint" "https://YOUR-RESOURCE.openai.azure.com/"
-// var azureOpenAiEndpoint = builder.AddParameter("azure-openai-endpoint");
-// var azureOpenAiApiKey = builder.AddParameter("azure-openai-api-key", secret: true);
-// var openAiApiKey = builder.AddParameter("openai-api-key", secret: true);
+// AI provider configuration - configure via user-secrets (dev) or Key Vault (Azure).
+// Local providers default in AppHost/appsettings.json; cloud keys must be set via user-secrets.
+// FoundryLocal endpoint can be supplied via environment variable AI_FOUNDRYLOCAL_ENDPOINT or parameter.
+// Example: $env:AI_FOUNDRYLOCAL_ENDPOINT = "http://127.0.0.1:55950"; aspire start
+// Dev: dotnet user-secrets set "Parameters:ai-azure-openai-endpoint" "https://YOUR-RESOURCE.openai.azure.com/"
+// Dev: dotnet user-secrets set "Parameters:ai-azure-openai-key" "<key>"
+// Dev: dotnet user-secrets set "Parameters:ai-openai-key" "<key>"
 
-// Migration service — runs EF Core migrations then exits; backend waits for it to complete.
+// FoundryLocal endpoint: accept from environment variable or parameter with fallback to appsettings
+var aiFoundryLocalEndpointValue = Environment.GetEnvironmentVariable("AI_FOUNDRYLOCAL_ENDPOINT")
+    ?? builder.Configuration["Parameters:ai-foundrylocal-endpoint"]
+    ?? "http://localhost:5272"; // Fallback to default
+
+var aiFoundryLocalEndpoint = builder.AddParameter("ai-foundrylocal-endpoint", aiFoundryLocalEndpointValue);
+var aiOllamaEndpoint = builder.AddParameter("ai-ollama-endpoint", 
+    Environment.GetEnvironmentVariable("AI_OLLAMA_ENDPOINT") ?? "http://localhost:11434");
+var aiAzureOpenAiEndpoint = builder.AddParameter("ai-azure-openai-endpoint");
+var aiAzureOpenAiKey = builder.AddParameter("ai-azure-openai-key");
+var aiAzureOpenAiModel = builder.AddParameter("ai-azure-openai-model");
+var aiOpenAiKey = builder.AddParameter("ai-openai-key");
+var aiOpenAiModel = builder.AddParameter("ai-openai-model");
+
+var foundry = builder.AddFoundry("bethuya-foundry");
+var foundryProject = foundry.AddProject("bethuya-project");
+var plannerChatModel = foundryProject.AddModelDeployment("planner-chat", FoundryModel.OpenAI.Gpt41);
+
+var plannerHosted = builder.AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>("planner-hosted")
+    .WithHttpEndpoint(targetPort: 8088)
+    .WithReference(foundryProject)
+    .WithReference(plannerChatModel)
+    .WaitFor(plannerChatModel)
+    .PublishAsHostedAgent(foundryProject);
+
+// Migration service - runs EF Core migrations then exits; backend waits for it to complete.
 // IMPORTANT: run `dotnet ef migrations add InitialCreate --project src/Hackmum.Bethuya.Infrastructure`
 // before the first Azure deployment.
 var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("migration-service")
@@ -101,21 +129,26 @@ var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("mi
 
 var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
     .WithReference(sql)
+    .WithReference(plannerHosted)
     .WaitFor(sql)
+    .WaitFor(plannerHosted)
     .WaitForCompletion(migrationService)
     .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
     .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
     .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
+    .WithEnvironment("AI__Providers__FoundryLocal__Endpoint", aiFoundryLocalEndpoint)
+    .WithEnvironment("AI__Providers__Ollama__Endpoint", aiOllamaEndpoint)
+    .WithEnvironment("AI__Providers__AzureOpenAI__Endpoint", aiAzureOpenAiEndpoint)
+    .WithEnvironment("AI__Providers__AzureOpenAI__ApiKey", aiAzureOpenAiKey)
+    .WithEnvironment("AI__Providers__AzureOpenAI__ModelId", aiAzureOpenAiModel)
+    .WithEnvironment("AI__Providers__OpenAI__ApiKey", aiOpenAiKey)
+    .WithEnvironment("AI__Providers__OpenAI__ModelId", aiOpenAiModel)
     .WithHttpHealthCheck("/health")
     .PublishAsAzureContainerApp((infra, app) =>
     {
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 5;
     });
-;
-    //.WithEnvironment("AI__Providers__AzureOpenAI__Endpoint", azureOpenAiEndpoint)
-    //.WithEnvironment("AI__Providers__AzureOpenAI__ApiKey", azureOpenAiApiKey)
-    //.WithEnvironment("AI__Providers__OpenAI__ApiKey", openAiApiKey);
 
 if (keyVault is not null)
     backend.WithReference(keyVault);
@@ -164,7 +197,7 @@ if (keycloak is not null)
     web.WithReference(keycloak);
 }
 
-// Scalar API reference — dev only; no Scalar container in Azure.
+// Scalar API reference - dev only; no Scalar container in Azure.
 // AddScalarApiReference() registers a container with boolean env vars that cause
 // "Unsupported value type System.Boolean" in ACA's BaseContainerAppContext.ProcessValue.
 if (!builder.ExecutionContext.IsPublishMode)

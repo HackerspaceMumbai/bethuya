@@ -18,7 +18,7 @@
 | Switch | Tester | `.squad/agents/switch/charter.md` | ✅ Active |
 | Morpheus | Security Engineer | `.squad/agents/morpheus/charter.md` | ✅ Active |
 | Scribe | Session Logger | `.squad/agents/scribe/charter.md` | 📋 Silent |
-| Ralph | Work Monitor | — | 🔄 Monitor |
+| Ralph | Work Monitor | - | 🔄 Monitor |
 
 ## Coding Agent
 
@@ -26,22 +26,22 @@
 
 | Name | Role | Charter | Status |
 |------|------|---------|--------|
-| @copilot | Coding Agent | — | 🤖 Coding Agent |
+| @copilot | Coding Agent | - | 🤖 Coding Agent |
 
 ### Capabilities
 
-**🟢 Good fit — auto-route when enabled:**
+**🟢 Good fit - auto-route when enabled:**
 - Bug fixes with clear reproduction steps
 - Test coverage additions and flaky test fixes
 - Documentation and small follow-up changes
 - Scaffolding that follows existing patterns
 
-**🟡 Needs review — route with squad member review:**
+**🟡 Needs review - route with squad member review:**
 - Medium features with clear acceptance criteria
 - Refactoring with strong test coverage
 - Isolated API additions following established conventions
 
-**🔴 Not suitable — route to squad members instead:**
+**🔴 Not suitable - route to squad members instead:**
 - Architecture and security decisions
 - Authentication, authorization, encryption, or access control changes
 - Multi-system integration requiring cross-agent coordination

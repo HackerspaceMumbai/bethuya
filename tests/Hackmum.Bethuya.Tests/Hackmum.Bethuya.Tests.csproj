@@ -12,6 +12,7 @@
     <PackageReference Include="bunit.web" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
   </ItemGroup>
 
   <!-- ASP.NET Core shared framework for endpoint testing -->

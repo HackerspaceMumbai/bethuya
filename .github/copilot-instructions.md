@@ -1,63 +1,46 @@
-# Bethuya — Copilot Instructions
+# Copilot Coding Agent — Squad Instructions
 
-> Concise workspace instructions for GitHub Copilot Chat and Copilot CLI. For full context, see [AGENTS.md](../AGENTS.md).
+You are working on a project that uses **Squad**, an AI team framework. When picking up issues autonomously, follow these guidelines.
 
-## Project Identity
-**Bethuya** — AI-augmented, agent-first community event platform. .NET 10, Aspire 13, MAUI Blazor Hybrid, Blazor Web App, Blazor Blueprint UI. Debuting at GitHub Copilot Dev Days.
+## Team Context
 
-## Tech Stack Quick-Reference
-- **Runtime:** .NET 10 / C# 14
-- **Orchestration:** Aspire 13
-- **Identity:** **Vogen** structs for `AttendeeId`, `EventId`, and `UserId`.
-- **API Documentation:** **Scalar** integration for real-time contract testing.
-- **Communication:** **Refit** shared interfaces for all service-to-service calls.
-- **UI:** Blazor Blueprint UI (`BlazorBlueprint.Components`)
-- **Tests:** **TUnit** (unit/integration) · **Playwright** (E2E) · BenchmarkDotNet (perf)
-- **AI Agents:** Microsoft Agent Framework
-- **AI Providers:** Foundry Local (PII/sensitive) → Ollama → Azure OpenAI → OpenAI
-- **Package Management:** Central (`Directory.Packages.props`) — never put `Version=""` in `.csproj`
+Before starting work on any issue:
 
-## Naming & Conventions
-- **Namespaces:** file-scoped (`namespace Bethuya.Core;`)
-- **Private fields:** `_camelCase`; public members: `PascalCase`; locals: `camelCase`
-- **Test selectors:** always `data-test` attributes — never CSS classes
-- **New packages:** add version to `Directory.Packages.props` first, then reference without version in `.csproj`
-- **UI: Blazor Blueprint first** — always use BB components before custom CSS. Form-field wrappers: `BbFormFieldInput`, `BbFormFieldSelect`, `BbFormSection`. Standalone (wrap with `BbLabel` + `form-group`): `BbTextarea`, `BbNumericInput`, `BbFileUpload`, `BbDatePicker`, `BbTimePicker`. Custom CSS must include a comment explaining why BB couldn't handle it.
+1. Read `.squad/team.md` for the team roster, member roles, and your capability profile.
+2. Read `.squad/routing.md` for work routing rules.
+3. If the issue has a `squad:{member}` label, read that member's charter at `.squad/agents/{member}/charter.md` to understand their domain expertise and coding style — work in their voice.
 
-## Domain Agents
-| Agent | Domain | Key Constraint |
-|---|---|---|
-| Planner | Agenda drafting | Human approves all drafts |
-| Curator | Attendee selection (3× oversubscription) | **NEVER** auto-accept/reject; Foundry Local for PII |
-| Facilitator | Live session assistance | All capture is opt-in |
-| Reporter | Post-event summaries | Human edit pass before publish |
+## Capability Self-Check
 
-## DEI & Privacy Guardrails
-- Curator Agent: only uses consented DEI fields; never infers sensitive traits; always surfaces explainable reasoning.
-- All attendee PII is processed locally via **Foundry Local** — never sent to cloud providers.
+Before starting work, check your capability profile in `.squad/team.md` under the **Coding Agent → Capabilities** section.
 
-## Testing Mandate
-- Every feature starts with a **TUnit** test (test-first).
-- E2E uses **Playwright for .NET** with `data-test` selectors.
-- Visual proof (screenshots) required for UI changes before marking tasks done.
+- **🟢 Good fit** — proceed autonomously.
+- **🟡 Needs review** — proceed, but note in the PR description that a squad member should review.
+- **🔴 Not suitable** — do NOT start work. Instead, comment on the issue:
+  ```
+  🤖 This issue doesn't match my capability profile (reason: {why}). Suggesting reassignment to a squad member.
+  ```
 
-## Development Protocol
-1. Add task to `tasks/todo.md` before writing code.
-2. Record mistakes/discoveries in `tasks/lessons.md`.
-3. No temporary hacks — fix root causes.
-4. Agents may autonomously fix failing tests/CI (record reasoning).
-5. **Pre-commit review (mandatory):** Run `code-review` agent + `dotnet-diag:optimizing-dotnet-performance` on changes, `/explain-diff` before PRs.
+## Branch Naming
 
-## Performance Targets
-- Hot path p99 < 180ms @ 2,500 RPS · 0B hot-path allocations · >90% cache hit rate
+Use the squad branch convention:
+```
+squad/{issue-number}-{kebab-case-slug}
+```
+Example: `squad/42-fix-login-validation`
 
-## Available Skills
-Use these via `/skill-name` in Copilot CLI:
-- `seed-db` — seed dev data via Backend API (requires Backend project)
-- `curate-attendees` — scaffold Curator MAF agent, models, and TUnit stubs
-- `run-e2e` — run Playwright suite and summarize failures with traces
-- `explain-diff` — PR summary & risk callouts (Curator guardrails, AppHost wiring, AI routing)
-- `run-benchmarks` — BenchmarkDotNet micro-benchmarks + NBomber load tests
-- `scaffold-agent` — scaffold a new MAF agent with tools, memory, worker, and TUnit stubs
-- `setup-ai-providers` — configure Foundry Local / Ollama / Azure OpenAI user-secrets
-- `run-tunit` — TUnit test runner with watch mode, filtering, and TDD loop support
+## PR Guidelines
+
+When opening a PR:
+- Reference the issue: `Closes #{issue-number}`
+- If the issue had a `squad:{member}` label, mention the member: `Working as {member} ({role})`
+- If this is a 🟡 needs-review task, add to the PR description: `⚠️ This task was flagged as "needs review" — please have a squad member review before merging.`
+- Follow any project conventions in `.squad/decisions.md`
+
+## Decisions
+
+If you make a decision that affects other team members, write it to:
+```
+.squad/decisions/inbox/copilot-{brief-slug}.md
+```
+The Scribe will merge it into the shared decisions file.
