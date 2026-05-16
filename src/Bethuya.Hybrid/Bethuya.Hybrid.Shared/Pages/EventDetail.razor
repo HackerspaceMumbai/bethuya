@@ -2,8 +2,9 @@
 @page "/events/{Slug}"
 @using Bethuya.Hybrid.Shared.Services
 @inject IEventApi EventApi
+@inject IPlanningCycleApi PlanningCycleApi
 
-<PageTitle>Event Details — Bethuya</PageTitle>
+<PageTitle>Event Details - Bethuya</PageTitle>
 
 <div class="container mx-auto p-4">
     @* Header Section *@
@@ -30,7 +31,7 @@
         </p>
     </div>
 
-    @* Schedule Editor — two-column layout *@
+    @* Schedule Editor - two-column layout *@
     <div data-test="schedule-editor" class="grid grid-cols-3 gap-6">
 
         @* ── Left Column: Session List & Add Form (2/3 width) ── *@
@@ -86,11 +87,11 @@
                                         <span class="font-semibold">@session.Title</span>
                                         @if (!string.IsNullOrWhiteSpace(session.Speaker))
                                         {
-                                            <span class="text-sm text-muted-foreground">— @session.Speaker</span>
+                                            <span class="text-sm text-muted-foreground">- @session.Speaker</span>
                                         }
                                     </div>
                                     <p class="text-sm text-muted-foreground">
-                                        🕐 @session.StartTime — @session.EndTime
+                                        🕐 @session.StartTime - @session.EndTime
                                     </p>
                                     @if (!string.IsNullOrWhiteSpace(session.Description))
                                     {
@@ -170,13 +171,13 @@
             }
         </div>
 
-        @* ── Right Column: AI Draft & Quick Actions (1/3 width) ── *@
+        @* ── Right Column: AI Draft & Planning Cycle HITL (1/3 width) ── *@
         <div>
             @* AI Draft Panel *@
             <BbCard Class="p-4 mb-4">
                 <h3 class="font-semibold mb-3">🤖 AI Planner</h3>
                 <p class="text-sm text-muted-foreground mb-3">
-                    Let the Planner Agent draft a schedule for your event.
+                    Planner drafts in cycle-threaded mode (one conversation per planning cycle).
                 </p>
                 @if (isAiDrafting)
                 {
@@ -188,37 +189,72 @@
                 {
                     <div data-test="ai-draft-btn">
                         <BbButton Variant="ButtonVariant.Default"
-                                  OnClick="DraftWithAiAsync">
+                                  OnClick="DraftWithAiAsync"
+                                  Disabled="@isCyclePublished">
                             🤖 Draft Schedule with AI
                         </BbButton>
                     </div>
                 }
+
+                <div class="mt-3" data-test="planner-cycle-meta">
+                    <p class="text-xs text-muted-foreground">
+                        Cycle: @(_activeCycle?.CycleId.ToString() ?? "none")
+                    </p>
+                    <p class="text-xs text-muted-foreground">
+                        Conversation: @(_activeCycle?.ConversationId ?? "none")
+                    </p>
+                </div>
             </BbCard>
 
-            @* Human-in-the-Loop Review (only when AI has proposed) *@
-            @if (agendaStatus == ScheduleStatus.ProposedByAgent)
+            @if (!string.IsNullOrWhiteSpace(_plannerMarkdown))
             {
                 <BbCard Class="p-4 mb-4">
                     <h3 class="font-semibold mb-2">🧑‍⚖️ Review Required</h3>
                     <p class="text-sm text-muted-foreground mb-3">
-                        This schedule was drafted by the Planner Agent. Review and decide:
+                        Edit markdown, approve, then publish to close this cycle.
                     </p>
-                    <div class="flex flex-col gap-2">
+
+                    @* Hybrid Viewer Tabs *@
+                    <div class="flex gap-2 mb-3">
+                        <button data-test="planner-tab-markdown"
+                                @onclick="@(() => _showJsonTab = false)" 
+                                class="@(_showJsonTab ? "text-muted-foreground" : "font-semibold border-b-2 border-foreground")
+                                       px-2 py-1 text-sm">
+                            📝 Markdown
+                        </button>
+                        <button data-test="planner-tab-schema"
+                                @onclick="@(() => _showJsonTab = true)" 
+                                class="@(_showJsonTab ? "font-semibold border-b-2 border-foreground" : "text-muted-foreground")
+                                       px-2 py-1 text-sm">
+                            📋 Schema
+                        </button>
+                    </div>
+
+                    @if (_showJsonTab)
+                    {
+                        <div data-test="planner-json-viewer" class="bg-slate-50 dark:bg-slate-900 p-3 rounded text-xs overflow-auto max-h-96 font-mono">
+                            <pre>@System.Text.Json.JsonSerializer.Serialize(_activeCycle?.ActiveDraft?.AgendaJson, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })</pre>
+                        </div>
+                    }
+                    else
+                    {
+                        <div data-test="planner-markdown-editor">
+                            <BbTextarea @bind-Value="_plannerMarkdown" Rows="12" />
+                        </div>
+                    }
+
+                    <div class="flex flex-col gap-2 mt-3">
                         <div data-test="approve-btn">
                             <BbButton Variant="ButtonVariant.Default"
-                                      OnClick="ApproveSchedule">
+                                      OnClick="ApproveScheduleAsync"
+                                      Disabled="@(_activeCycle?.ActiveDraft is null || isCyclePublished)">
                                 ✅ Approve
                             </BbButton>
                         </div>
-                        <div data-test="reject-btn">
-                            <BbButton Variant="ButtonVariant.Outline"
-                                      OnClick="RejectSchedule">
-                                ❌ Reject
-                            </BbButton>
-                        </div>
                         <BbButton Variant="ButtonVariant.Ghost"
-                                  OnClick="EditScheduleManually">
-                            ✏️ Edit Manually
+                                  OnClick="LoadPlanningCycleAsync"
+                                  Disabled="@isCyclePublished">
+                            ↺ Reload Active Cycle
                         </BbButton>
                     </div>
                 </BbCard>
@@ -236,11 +272,20 @@
             <BbCard Class="p-4">
                 <h3 class="font-semibold mb-3">⚡ Quick Actions</h3>
                 <div class="flex flex-col gap-2">
-                    <BbButton Variant="ButtonVariant.Outline"
-                              OnClick="PublishSchedule"
-                              Disabled="@(agendaStatus != ScheduleStatus.ApprovedByHuman)">
-                        📢 Publish Schedule
-                    </BbButton>
+                    <div data-test="publish-btn">
+                        <BbButton Variant="ButtonVariant.Outline"
+                                  OnClick="PublishScheduleAsync"
+                                  Disabled="@(!CanPublish)">
+                            📢 Publish Schedule
+                        </BbButton>
+                    </div>
+                    <div data-test="start-new-cycle-btn">
+                        <BbButton Variant="ButtonVariant.Ghost"
+                                  OnClick="StartNewCycleAsync"
+                                  Disabled="@(!isCyclePublished)">
+                            🔁 Start New Cycle
+                        </BbButton>
+                    </div>
                     <BbButton Variant="ButtonVariant.Ghost"
                               OnClick="ClearAll">
                         🗑️ Clear All
@@ -267,7 +312,12 @@
     private bool showAddForm;
     private bool isAiDrafting;
     private string? statusMessage;
+    private PlanningCycleDto? _activeCycle;
+    private string _plannerMarkdown = string.Empty;
+    private bool _showJsonTab;
     private readonly Dictionary<Guid, SessionViewModel> editSnapshots = new();
+    private bool isCyclePublished => _activeCycle?.Status == "Published";
+    private bool CanPublish => _activeCycle?.Status == "ReadyToPublish" && _activeCycle.ActiveDraft is not null;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -285,6 +335,21 @@
             {
                 // Event not found; leave defaults so page still renders
             }
+        }
+
+        if (EventId != Guid.Empty)
+        {
+            try
+            {
+                var evt = await EventApi.GetByIdAsync(EventId);
+                eventTitle = evt.Title;
+            }
+            catch (Exception)
+            {
+                // Keep default title if event read fails.
+            }
+
+            await LoadPlanningCycleAsync();
         }
     }
 
@@ -412,56 +477,113 @@
 
     private async Task DraftWithAiAsync()
     {
-        isAiDrafting = true;
-        statusMessage = null;
-        StateHasChanged();
+        if (EventId == Guid.Empty)
+        {
+            statusMessage = "Cannot draft schedule: event is not resolved.";
+            return;
+        }
 
-        await Task.Delay(1500);
+        try
+        {
+            isAiDrafting = true;
+            statusMessage = null;
+            StateHasChanged();
 
-        sessions =
-        [
-            new() { Title = "Opening & Welcome", Speaker = "Event Organizer", StartTime = "09:00", EndTime = "09:30", Order = 1, Description = "Welcome remarks and event overview." },
-            new() { Title = "Keynote: Innovation & Community", Speaker = "Featured Speaker", StartTime = "09:30", EndTime = "10:15", Order = 2, Description = "Inspiring keynote on innovation and community building." },
-            new() { Title = "☕ Break", StartTime = "10:15", EndTime = "10:30", Order = 3 },
-            new() { Title = "Workshop Session 1", Speaker = "Workshop Lead", StartTime = "10:30", EndTime = "12:00", Order = 4, Description = "Hands-on workshop diving into core topics." },
-            new() { Title = "🍕 Lunch & Networking", StartTime = "12:00", EndTime = "13:00", Order = 5 },
-            new() { Title = "Workshop Session 2", Speaker = "Workshop Lead", StartTime = "13:00", EndTime = "14:30", Order = 6, Description = "Advanced workshop continuation." },
-            new() { Title = "Lightning Talks", Speaker = "Community", StartTime = "14:30", EndTime = "15:15", Order = 7, Description = "Short community-driven presentations." },
-            new() { Title = "Closing & Next Steps", Speaker = "Event Organizer", StartTime = "15:15", EndTime = "15:45", Order = 8, Description = "Wrap-up, action items, and future plans." },
-        ];
+            _activeCycle ??= await PlanningCycleApi.StartCycleAsync(EventId, new StartPlanningCycleDto());
+            _activeCycle = await PlanningCycleApi.GenerateDraftAsync(
+                _activeCycle.CycleId,
+                new GeneratePlannerDraftDto(
+                    WorkItemId: $"draft-{Guid.CreateVersion7():N}",
+                    RequestedBy: "organizer"));
 
-        agendaStatus = ScheduleStatus.ProposedByAgent;
-        isAiDrafting = false;
+            ApplyDraftToUi(_activeCycle.ActiveDraft);
+            agendaStatus = ScheduleStatus.ProposedByAgent;
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            statusMessage = $"Planner draft failed: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
+        }
+        finally
+        {
+            isAiDrafting = false;
+        }
     }
 
     // ── Human-in-the-Loop actions ──
 
-    private void ApproveSchedule()
+    private async Task ApproveScheduleAsync()
     {
-        agendaStatus = ScheduleStatus.ApprovedByHuman;
-        statusMessage = "✅ Schedule approved! You can now publish it.";
+        if (_activeCycle?.ActiveDraft is null || string.IsNullOrWhiteSpace(_plannerMarkdown))
+        {
+            statusMessage = "No planner draft is available to approve.";
+            return;
+        }
+
+        try
+        {
+            _activeCycle = await PlanningCycleApi.ApproveDraftAsync(
+                _activeCycle.CycleId,
+                new ApprovePlannerDraftDto(
+                    DraftId: _activeCycle.ActiveDraft.DraftId,
+                    EditedMarkdown: _plannerMarkdown,
+                    ApprovedBy: "organizer"));
+
+            ApplyDraftToUi(_activeCycle.ActiveDraft);
+            agendaStatus = ScheduleStatus.ApprovedByHuman;
+            statusMessage = "✅ Draft approved and reconciled. Publish to finalize and close this cycle.";
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            statusMessage = $"Approval failed: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
+        }
     }
 
-    private void RejectSchedule()
+    private async Task StartNewCycleAsync()
     {
-        sessions.Clear();
-        agendaStatus = ScheduleStatus.Draft;
-        statusMessage = "❌ AI draft rejected. Start fresh or draft again.";
-    }
+        if (EventId == Guid.Empty)
+        {
+            return;
+        }
 
-    private void EditScheduleManually()
-    {
-        agendaStatus = ScheduleStatus.Draft;
-        statusMessage = "✏️ Editing mode — make your changes and approve when ready.";
+        try
+        {
+            _activeCycle = await PlanningCycleApi.StartCycleAsync(EventId, new StartPlanningCycleDto(ForceNewCycle: true));
+            _plannerMarkdown = string.Empty;
+            sessions.Clear();
+            agendaStatus = ScheduleStatus.Draft;
+            statusMessage = "🔁 New planning cycle started with a new conversation thread.";
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            statusMessage = $"Cannot start new cycle: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
+        }
     }
 
     // ── Quick Actions ──
 
-    private void PublishSchedule()
+    private async Task PublishScheduleAsync()
     {
-        if (agendaStatus != ScheduleStatus.ApprovedByHuman) return;
-        agendaStatus = ScheduleStatus.Published;
-        statusMessage = "📢 Schedule published successfully!";
+        if (_activeCycle?.ActiveDraft is null)
+        {
+            statusMessage = "Nothing to publish.";
+            return;
+        }
+
+        try
+        {
+            _ = await PlanningCycleApi.PublishAsync(
+                _activeCycle.CycleId,
+                new PublishPlanningCycleDto(
+                    DraftId: _activeCycle.ActiveDraft.DraftId,
+                    PublishedBy: "organizer"));
+            _activeCycle = await PlanningCycleApi.GetActiveCycleAsync(EventId);
+            agendaStatus = ScheduleStatus.Published;
+            statusMessage = "📢 Schedule published. This cycle is now closed and refinement is blocked.";
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            statusMessage = $"Publish failed: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
+        }
     }
 
     private void ClearAll()
@@ -469,5 +591,49 @@
         sessions.Clear();
         agendaStatus = ScheduleStatus.Draft;
         statusMessage = null;
+    }
+
+    private async Task LoadPlanningCycleAsync()
+    {
+        try
+        {
+            _activeCycle = await PlanningCycleApi.GetActiveCycleAsync(EventId);
+            ApplyDraftToUi(_activeCycle.ActiveDraft);
+
+            agendaStatus = _activeCycle.Status switch
+            {
+                "Published" => ScheduleStatus.Published,
+                "ReadyToPublish" => ScheduleStatus.ApprovedByHuman,
+                _ when _activeCycle.ActiveDraft is not null => ScheduleStatus.ProposedByAgent,
+                _ => ScheduleStatus.Draft
+            };
+        }
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // No active cycle yet.
+            _activeCycle = null;
+        }
+    }
+
+    private void ApplyDraftToUi(PlannerDraftDto? draft)
+    {
+        if (draft is null)
+        {
+            _plannerMarkdown = string.Empty;
+            return;
+        }
+
+        _plannerMarkdown = draft.HumanEditedMarkdown ?? draft.MarkdownAgenda;
+        sessions = draft.AgendaJson.Agenda.Blocks
+            .Select((block, index) => new SessionViewModel
+            {
+                Title = block.Title,
+                Speaker = block.Speakers.FirstOrDefault()?.Name ?? string.Empty,
+                StartTime = block.Start,
+                EndTime = block.End,
+                Description = block.Description,
+                Order = index + 1
+            })
+            .ToList();
     }
 }

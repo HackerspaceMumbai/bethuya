@@ -22,13 +22,13 @@ jobs:
             const fs = require('fs');
             const issue = context.payload.issue;
 
-            // Read team roster — check .squad/ first, fall back to .ai-team/
+            // Read team roster - check .squad/ first, fall back to .ai-team/
             let teamFile = '.squad/team.md';
             if (!fs.existsSync(teamFile)) {
               teamFile = '.ai-team/team.md';
             }
             if (!fs.existsSync(teamFile)) {
-              core.warning('No .squad/team.md or .ai-team/team.md found — cannot triage');
+              core.warning('No .squad/team.md or .ai-team/team.md found - cannot triage');
               return;
             }
 
@@ -88,7 +88,7 @@ jobs:
               }
             }
 
-            // Read routing rules — check .squad/ first, fall back to .ai-team/
+            // Read routing rules - check .squad/ first, fall back to .ai-team/
             let routingFile = '.squad/routing.md';
             if (!fs.existsSync(routingFile)) {
               routingFile = '.ai-team/routing.md';
@@ -106,13 +106,15 @@ jobs:
             );
 
             if (!lead) {
-              core.warning('No Lead role found in team roster — cannot triage');
+              core.warning('No Lead role found in team roster - cannot triage');
               return;
             }
 
+            function slugify(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+
             // Build triage context
             const memberList = members.map(m =>
-              `- **${m.name}** (${m.role}) → label: \`squad:${m.name.toLowerCase()}\``
+              `- **${m.name}** (${m.role}) → label: \`squad:${slugify(m.name)}\``
             ).join('\n');
 
             // Determine best assignee based on issue content and routing
@@ -131,11 +133,11 @@ jobs:
               if (isGoodFit) {
                 copilotTier = 'good-fit';
                 assignedMember = { name: '@copilot', role: 'Coding Agent' };
-                triageReason = '🟢 Good fit for @copilot — matches capability profile';
+                triageReason = '🟢 Good fit for @copilot - matches capability profile';
               } else if (isNeedsReview) {
                 copilotTier = 'needs-review';
                 assignedMember = { name: '@copilot', role: 'Coding Agent' };
-                triageReason = '🟡 Routing to @copilot (needs review) — a squad member should review the PR';
+                triageReason = '🟡 Routing to @copilot (needs review) - a squad member should review the PR';
               } else if (isNotSuitable) {
                 copilotTier = 'not-suitable';
                 // Fall through to normal routing
@@ -185,11 +187,11 @@ jobs:
             // Default to Lead if no routing match
             if (!assignedMember) {
               assignedMember = lead;
-              triageReason = 'No specific domain match — assigned to Lead for further analysis';
+              triageReason = 'No specific domain match - assigned to Lead for further analysis';
             }
 
             const isCopilot = assignedMember.name === '@copilot';
-            const assignLabel = isCopilot ? 'squad:copilot' : `squad:${assignedMember.name.toLowerCase()}`;
+            const assignLabel = isCopilot ? 'squad:copilot' : `squad:${slugify(assignedMember.name)}`;
 
             // Add the member-specific label
             await github.rest.issues.addLabels({
@@ -225,20 +227,20 @@ jobs:
             let copilotNote = '';
             if (hasCopilot && !isCopilot) {
               if (copilotTier === 'not-suitable') {
-                copilotNote = `\n\n**@copilot evaluation:** 🔴 Not suitable — issue involves work outside the coding agent's capability profile.`;
+                copilotNote = `\n\n**@copilot evaluation:** 🔴 Not suitable - issue involves work outside the coding agent's capability profile.`;
               } else {
-                copilotNote = `\n\n**@copilot evaluation:** No strong capability match — routed to squad member.`;
+                copilotNote = `\n\n**@copilot evaluation:** No strong capability match - routed to squad member.`;
               }
             }
 
             // Post triage comment
             const comment = [
-              `### 🏗️ Squad Triage — ${lead.name} (${lead.role})`,
+              `### 🏗️ Squad Triage - ${lead.name} (${lead.role})`,
               '',
-              `**Issue:** #${issue.number} — ${issue.title}`,
+              `**Issue:** #${issue.number} - ${issue.title}`,
               `**Assigned to:** ${assignedMember.name} (${assignedMember.role})`,
               `**Reason:** ${triageReason}`,
-              copilotTier === 'needs-review' ? `\n⚠️ **PR review recommended** — a squad member should review @copilot's work on this one.` : '',
+              copilotTier === 'needs-review' ? `\n⚠️ **PR review recommended** - a squad member should review @copilot's work on this one.` : '',
               copilotNote,
               '',
               `---`,

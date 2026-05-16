@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 
 namespace Hackmum.Bethuya.E2E;
@@ -86,6 +87,29 @@ public class BethuyaE2ETest
         Assert.IsTrue(
             sw.ElapsedMilliseconds <= budget,
             $"Navigation took {sw.ElapsedMilliseconds}ms, exceeding budget of {budget}ms");
+    }
+
+    /// <summary>
+    /// Wait for Blazor client-side navigation by polling the current URL and a ready locator
+    /// instead of waiting for a full page load event.
+    /// </summary>
+    protected async Task WaitForClientSideNavigationAsync(string urlPattern, ILocator readyLocator, int budgetMs)
+    {
+        var sw = Stopwatch.StartNew();
+
+        await Assertions.Expect(Page)
+            .ToHaveURLAsync(new Regex(urlPattern), new() { Timeout = budgetMs });
+
+        var remainingBudgetMs = Math.Max(1, budgetMs - (int)sw.ElapsedMilliseconds);
+
+        await Assertions.Expect(readyLocator)
+            .ToBeVisibleAsync(new() { Timeout = remainingBudgetMs });
+
+        sw.Stop();
+
+        Assert.IsTrue(
+            sw.ElapsedMilliseconds <= budgetMs,
+            $"'Client-side navigation' took {sw.ElapsedMilliseconds}ms, exceeding budget of {budgetMs}ms");
     }
 
     /// <summary>

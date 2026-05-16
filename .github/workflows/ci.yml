@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v4.2.0
         with:
           global-json-file: global.json
 
@@ -24,7 +24,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --configuration Release --no-restore
 
       - name: Test (TUnit)
         run: dotnet test --project tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj --no-build --configuration Release
@@ -32,7 +32,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.4.3
         with:
           name: test-results
           path: TestResults/
@@ -57,15 +57,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v4.2.0
         with:
           global-json-file: global.json
 
       - name: Restore
         run: dotnet restore
+
+      - name: Clean
+        run: dotnet clean --configuration Release
 
       - name: Build
         run: dotnet build --no-restore --configuration Release
@@ -190,7 +193,7 @@ jobs:
 
       - name: Upload E2E results and traces
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.4.3
         with:
           name: e2e-results
           path: TestResults/E2E/

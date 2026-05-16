@@ -11,9 +11,9 @@
 
 ## What I Own
 
-- `.squad/log/` — session logs
-- `.squad/decisions.md` — the shared decision log all agents read
-- `.squad/decisions/inbox/` — decision drop-box
+- `.squad/log/` - session logs
+- `.squad/decisions.md` - the shared decision log all agents read
+- `.squad/decisions/inbox/` - decision drop-box
 - Cross-agent context propagation
 
 ## How I Work
