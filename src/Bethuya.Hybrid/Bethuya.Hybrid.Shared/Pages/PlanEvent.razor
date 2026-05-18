@@ -715,15 +715,10 @@
             await DeletePendingCoverImageAsync(_formModel.CoverImagePublicId, _pendingCoverDeleteToken);
         }
 
-        if (!string.IsNullOrWhiteSpace(_originalCoverImageUrl)
-            && !string.Equals(_formModel.CoverImageUrl, _originalCoverImageUrl, StringComparison.Ordinal))
-        {
-            _formModel.CoverImageUrl = _originalCoverImageUrl;
-        }
-        else
-        {
-            _formModel.CoverImageUrl = null;
-        }
+        _formModel.CoverImageUrl = !string.IsNullOrWhiteSpace(_originalCoverImageUrl)
+            && !string.Equals(_formModel.CoverImageUrl, _originalCoverImageUrl, StringComparison.Ordinal)
+            ? _originalCoverImageUrl
+            : null;
 
         _formModel.CoverImagePublicId = null;
         _pendingCoverDeleteToken = null;
