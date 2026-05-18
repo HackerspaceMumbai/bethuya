@@ -34,7 +34,11 @@ public sealed partial class PendingImageUploadCleanupService(
             {
                 break;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                LogPendingUploadCleanupIterationFailed(logger, ex);
+            }
+            catch (TimeoutException ex)
             {
                 LogPendingUploadCleanupIterationFailed(logger, ex);
             }

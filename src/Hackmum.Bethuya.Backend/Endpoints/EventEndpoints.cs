@@ -4,6 +4,7 @@ using Hackmum.Bethuya.Core.Repositories;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
@@ -287,7 +288,11 @@ public static partial class EventEndpoints
         {
             throw;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            LogFailedToDeletePreviousCoverImage(logger, previousPublicId, ex);
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
             LogFailedToDeletePreviousCoverImage(logger, previousPublicId, ex);
         }
