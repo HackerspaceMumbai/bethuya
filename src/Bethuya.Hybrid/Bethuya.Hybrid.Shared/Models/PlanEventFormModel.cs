@@ -41,6 +41,10 @@ public sealed class PlanEventFormModel : IValidatableObject
     [MaxLength(2048, ErrorMessage = "Cover image URL must be 2,048 characters or fewer.")]
     public string? CoverImageUrl { get; set; }
 
+    /// <summary>Cloudinary public ID of the uploaded cover image while the form is in progress.</summary>
+    [MaxLength(512, ErrorMessage = "Cover image public ID must be 512 characters or fewer.")]
+    public string? CoverImagePublicId { get; set; }
+
     public DateTime? StartDate { get; set; } = DateTime.Today;
 
     public TimeSpan? StartTime { get; set; } = new TimeSpan(9, 0, 0);
