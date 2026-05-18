@@ -1,12 +1,46 @@
 namespace Hackmum.Bethuya.Core.Services;
 
-/// <summary>Uploads images to a cloud storage provider and returns the public URL.</summary>
+/// <summary>Coordinates direct-to-cloud image uploads and lifecycle management.</summary>
 public interface IImageUploadService
 {
-    /// <summary>Uploads an image stream and returns its publicly accessible URL.</summary>
-    /// <param name="imageStream">The image file stream.</param>
-    /// <param name="fileName">Original file name (used for format detection).</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The public URL of the uploaded image.</returns>
-    Task<string> UploadAsync(Stream imageStream, string fileName, CancellationToken ct = default);
+    /// <summary>Creates a signed direct-upload session for an image selected in the browser.</summary>
+    Task<DirectImageUploadSession> CreateDirectUploadSessionAsync(
+        string fileName,
+        string contentType,
+        long fileSize,
+        CancellationToken ct = default);
+
+    /// <summary>Deletes a pending upload when the caller proves possession of its delete token.</summary>
+    Task<bool> DeletePendingUploadAsync(string publicId, string deleteToken, CancellationToken ct = default);
+
+    /// <summary>Marks a pending upload as attached to a saved event so cleanup will ignore it.</summary>
+    Task MarkUploadAttachedAsync(string publicId, CancellationToken ct = default);
+
+    /// <summary>Checks whether a Cloudinary public ID belongs to a pending upload created by this app.</summary>
+    Task<bool> IsPendingUploadAsync(string publicId, CancellationToken ct = default);
+
+    /// <summary>Checks whether the uploaded asset currently exists in Cloudinary.</summary>
+    Task<bool> UploadedAssetExistsAsync(string publicId, CancellationToken ct = default);
+
+    /// <summary>Deletes a stored image by Cloudinary public ID.</summary>
+    Task DeleteStoredImageAsync(string publicId, CancellationToken ct = default);
+
+    /// <summary>Tries to parse the Cloudinary public ID from a secure delivery URL.</summary>
+    bool TryGetPublicId(string? imageUrl, out string publicId);
+
+    /// <summary>Deletes expired pending uploads that were never attached to an event.</summary>
+    Task<int> CleanupExpiredPendingUploadsAsync(CancellationToken ct = default);
 }
+
+/// <summary>Signed parameters the browser needs to upload directly to Cloudinary.</summary>
+public sealed record DirectImageUploadSession(
+    string UploadUrl,
+    string CloudName,
+    string ApiKey,
+    string PublicId,
+    long Timestamp,
+    string Signature,
+    string DeleteToken,
+    string? UploadPreset,
+    long MaxFileSize,
+    string AllowedFormats);

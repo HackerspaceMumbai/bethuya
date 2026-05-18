@@ -11,6 +11,20 @@ namespace Hackmum.Bethuya.E2E.Tests;
 public class CoverImageFlowTests : BethuyaE2ETest
 {
     [TestMethod]
+    public async Task PlanEvent_CloudinaryUploadScript_ShouldLoad()
+    {
+        await GotoWithBudgetAsync("/events/plan");
+
+        var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
+        await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
+
+        var hasUploadFunction = await Page.EvaluateAsync<bool>(
+            "() => typeof window.bethuyaCloudinaryUpload?.uploadDirectImage === 'function'");
+
+        Assert.IsTrue(hasUploadFunction, "Global cloudinary upload script should be loaded in-browser.");
+    }
+
+    [TestMethod]
     public async Task PlanEvent_WithoutCoverImage_ShouldSucceed()
     {
         await GotoWithBudgetAsync("/events/plan");
@@ -71,8 +85,8 @@ public class CoverImageFlowTests : BethuyaE2ETest
             {
                 await fileInput.SetInputFilesAsync(pngPath);
 
-                // Upload is server-side (Refit → backend → Cloudinary); wait for the
-                // preview to appear in the UI rather than watching browser network traffic.
+                // Upload now goes browser -> Cloudinary with a backend-issued signature, so
+                // wait for the preview to appear instead of asserting on server-side traffic.
                 await Assertions.Expect(Page.Locator("[data-test='cover-image-preview']"))
                     .ToBeVisibleAsync(new() { Timeout = PerformanceBudgets.FileUploadMs });
             });

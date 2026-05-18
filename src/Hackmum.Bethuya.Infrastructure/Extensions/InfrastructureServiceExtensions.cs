@@ -24,7 +24,9 @@ public static class InfrastructureServiceExtensions
 
         builder.Services.Configure<CloudinaryOptions>(
             builder.Configuration.GetSection(CloudinaryOptions.SectionName));
-        builder.Services.AddSingleton<IImageUploadService, CloudinaryImageUploadService>();
+        builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddHostedService<PendingImageUploadCleanupService>();
 
         return builder;
     }

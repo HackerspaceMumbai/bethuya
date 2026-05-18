@@ -1,5 +1,5 @@
 using System.Net;
-using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using Hackmum.Bethuya.Backend.Endpoints;
 using Hackmum.Bethuya.Core.Services;
 using Microsoft.AspNetCore.Builder;
@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using System.Text.RegularExpressions;
 
 namespace Hackmum.Bethuya.Tests.Endpoints;
 
@@ -55,155 +54,87 @@ public class ImageEndpointValidationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Upload_RejectsOversizedFile()
+    public async Task CreateSession_RejectsMissingFileMetadata()
     {
-        // 6 MB exceeds the 5 MB limit
-        using var content = CreateMultipartFile(
-            sizeBytes: 6 * 1024 * 1024,
-            contentType: "image/jpeg",
-            fileName: "large.jpg");
-
-        var response = await _client.PostAsync("/api/images/upload", content);
+        var response = await _client.PostAsJsonAsync(
+            "/api/images/direct-upload/session",
+            new ImageEndpoints.CreateDirectUploadSessionRequest("", "", 0));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     [Test]
-    public async Task Upload_RejectsInvalidContentType()
+    public async Task CreateSession_ReturnsSignedUploadSession()
     {
-        using var content = CreateMultipartFile(
-            sizeBytes: 1024,
-            contentType: "application/pdf",
-            fileName: "document.pdf");
+        var session = new DirectImageUploadSession(
+            "https://api.cloudinary.com/v1_1/demo/image/upload",
+            "demo",
+            "key123",
+            "bethuya/events/pending/test-cover",
+            1_715_000_000,
+            "signed-value",
+            "delete-token",
+            "signed-preset",
+            5 * 1024 * 1024,
+            "jpg,jpeg,png,gif,webp");
 
-        var response = await _client.PostAsync("/api/images/upload", content);
+        _mockUploadService
+            .CreateDirectUploadSessionAsync("cover.png", "image/png", 2048, Arg.Any<CancellationToken>())
+            .Returns(session);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/images/direct-upload/session",
+            new ImageEndpoints.CreateDirectUploadSessionRequest("cover.png", "image/png", 2048));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<ImageEndpoints.DirectUploadSessionResponse>();
+        await Assert.That(payload).IsNotNull();
+        await Assert.That(payload!.PublicId).IsEqualTo(session.PublicId);
+        await Assert.That(payload.Signature).IsEqualTo(session.Signature);
+        await Assert.That(payload.DeleteToken).IsEqualTo(session.DeleteToken);
+    }
+
+    [Test]
+    public async Task CreateSession_MapsArgumentErrorsToValidationProblem()
+    {
+        _mockUploadService
+            .CreateDirectUploadSessionAsync("cover.bmp", "image/bmp", 1024, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<DirectImageUploadSession>(
+                new ArgumentException("Only JPEG, PNG, WebP, and GIF images are accepted.", "contentType")));
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/images/direct-upload/session",
+            new ImageEndpoints.CreateDirectUploadSessionRequest("cover.bmp", "image/bmp", 1024));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     [Test]
-    [Arguments("image/jpeg", "photo.jpg")]
-    [Arguments("image/png", "icon.png")]
-    [Arguments("image/webp", "banner.webp")]
-    [Arguments("image/gif", "animation.gif")]
-    public async Task Upload_AcceptsValidImageTypes(string contentType, string fileName)
+    public async Task DeletePendingUpload_ReturnsNoContent_WhenDeleteTokenMatches()
     {
-        var expectedUrl = $"https://res.cloudinary.com/demo/image/upload/v1/bethuya/events/{fileName}";
         _mockUploadService
-            .UploadAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(expectedUrl);
+            .DeletePendingUploadAsync("bethuya/events/pending/test-cover", "delete-token", Arg.Any<CancellationToken>())
+            .Returns(true);
 
-        using var content = CreateMultipartFile(
-            sizeBytes: 2048,
-            contentType: contentType,
-            fileName: fileName);
+        var response = await _client.PostAsJsonAsync(
+            "/api/images/direct-upload/delete",
+            new ImageEndpoints.DeletePendingDirectUploadRequest("bethuya/events/pending/test-cover", "delete-token"));
 
-        var response = await _client.PostAsync("/api/images/upload", content);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
     }
 
     [Test]
-    public async Task Upload_ReturnsUrlFromUploadService()
-    {
-        const string expectedUrl = "https://res.cloudinary.com/demo/image/upload/v1/bethuya/events/cover.jpg";
-        _mockUploadService
-            .UploadAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(expectedUrl);
-
-        using var content = CreateMultipartFile(
-            sizeBytes: 4096,
-            contentType: "image/jpeg",
-            fileName: "cover.jpg");
-
-        var response = await _client.PostAsync("/api/images/upload", content);
-        var body = await response.Content.ReadAsStringAsync();
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(body).Contains(expectedUrl);
-    }
-
-    [Test]
-    public async Task Upload_FileAtExactSizeLimit_IsAccepted()
-    {
-        // Exactly 5 MB — should pass
-        _mockUploadService
-            .UploadAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns("https://res.cloudinary.com/demo/image/upload/v1/bethuya/events/max.jpg");
-
-        using var content = CreateMultipartFile(
-            sizeBytes: 5 * 1024 * 1024,
-            contentType: "image/png",
-            fileName: "max.png");
-
-        var response = await _client.PostAsync("/api/images/upload", content);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-    }
-
-    [Test]
-    public async Task Upload_FileOneByteOverLimit_IsRejected()
-    {
-        // 5 MB + 1 byte — should fail
-        using var content = CreateMultipartFile(
-            sizeBytes: 5 * 1024 * 1024 + 1,
-            contentType: "image/jpeg",
-            fileName: "oversize.jpg");
-
-        var response = await _client.PostAsync("/api/images/upload", content);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-    }
-
-    [Test]
-    public async Task Upload_CallsUploadServiceWithSanitizedFileName()
+    public async Task DeletePendingUpload_ReturnsNotFound_WhenDeleteTokenDoesNotMatch()
     {
         _mockUploadService
-            .UploadAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns("https://res.cloudinary.com/demo/image/upload/v1/bethuya/events/event-cover.jpg");
+            .DeletePendingUploadAsync("bethuya/events/pending/test-cover", "wrong-token", Arg.Any<CancellationToken>())
+            .Returns(false);
 
-        using var content = CreateMultipartFile(
-            sizeBytes: 1024,
-            contentType: "image/jpeg",
-            fileName: "event-cover.jpg");
+        var response = await _client.PostAsJsonAsync(
+            "/api/images/direct-upload/delete",
+            new ImageEndpoints.DeletePendingDirectUploadRequest("bethuya/events/pending/test-cover", "wrong-token"));
 
-        await _client.PostAsync("/api/images/upload", content);
-
-        await _mockUploadService.Received(1)
-            .UploadAsync(
-                Arg.Any<Stream>(),
-                Arg.Is<string>(name =>
-                    Regex.IsMatch(name, "^[a-f0-9]{32}\\.jpg$")),
-                Arg.Any<CancellationToken>());
-    }
-
-    private static readonly Regex s_sanitizedJpgFileNameRegex = new(
-        "^[a-f0-9]{32}\\.jpg$",
-        RegexOptions.Compiled);
-    private static readonly Dictionary<string, byte[]> s_magicBytes = new()
-    {
-        ["image/jpeg"] = [0xFF, 0xD8, 0xFF, 0xE0],
-        ["image/png"] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
-        ["image/gif"] = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61],
-        // RIFF....WEBP — bytes 4-7 are file size (placeholder)
-        ["image/webp"] = [0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]
-    };
-
-    private static MultipartFormDataContent CreateMultipartFile(int sizeBytes, string contentType, string fileName)
-    {
-        var fileBytes = new byte[Math.Max(sizeBytes, 12)];
-
-        // Prepend magic bytes so the server-side signature check passes
-        if (s_magicBytes.TryGetValue(contentType, out var header))
-        {
-            Array.Copy(header, fileBytes, header.Length);
-        }
-
-        var fileContent = new ByteArrayContent(fileBytes);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-
-        var form = new MultipartFormDataContent();
-        form.Add(fileContent, "file", fileName);
-        return form;
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 }

@@ -64,6 +64,11 @@ Post-event drafts → human edit pass → publish with attribution.
 4. Test-first with TUnit; E2E with Playwright (`data-test` selectors)
 5. Screenshot UI changes before marking done
 6. **Pre-commit review (mandatory):** Run `code-review` agent on staged changes, `dotnet-diag:optimizing-dotnet-performance` on .NET files, `/explain-diff` before PRs. Never rely on humans to catch code issues.
+7. **Operational guardrails (repeatable):**
+   - For critical `InteractiveServer` upload flows, prefer preloaded global scripts in `App.razor` over runtime JS module imports from RCL static assets.
+   - When using EF retry strategy with explicit transactions, run the entire transaction block inside `CreateExecutionStrategy().ExecuteAsync(...)`.
+   - For generic UI errors, inspect Aspire `web` and `backend` console logs before changing UI behavior.
+   - For verification, set `BETHUYA_BASE_URL` explicitly and run Playwright checks focused on the changed integration seam.
 
 ## Performance Targets
 

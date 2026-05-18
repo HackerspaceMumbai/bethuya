@@ -20,6 +20,7 @@ public sealed class BethuyaDbContext(DbContextOptions<BethuyaDbContext> options)
     public DbSet<PlannerDraft> PlannerDrafts => Set<PlannerDraft>();
     public DbSet<PlannerInvocationAudit> PlannerInvocationAudits => Set<PlannerInvocationAudit>();
     public DbSet<PublishedScheduleSnapshot> PublishedScheduleSnapshots => Set<PublishedScheduleSnapshot>();
+    public DbSet<PendingImageUpload> PendingImageUploads => Set<PendingImageUpload>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
