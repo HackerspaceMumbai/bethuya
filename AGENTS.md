@@ -365,6 +365,11 @@ Run: `dotnet test tests/Hackmum.Bethuya.E2E`
    - Run `dotnet-diag:optimizing-dotnet-performance` agent on modified .NET files.
    - Run `/explain-diff` before opening or updating a PR.
    - **Never rely on humans to catch code issues** - use available analysis tools proactively.
+7. **Operational Guardrails (repeatable):**
+   - **Blazor upload JS interop:** For critical `InteractiveServer` flows, prefer preloaded global scripts from app shell (`App.razor`) over runtime `import()` of RCL assets.
+   - **EF retries + transactions:** If SQL retry strategy is enabled, execute user transactions inside `dbContext.Database.CreateExecutionStrategy().ExecuteAsync(...)`.
+   - **Debug order:** For generic UI failures, inspect Aspire `web`/`backend` console logs first; patch UI only after backend cause is confirmed.
+   - **E2E proof:** Set `BETHUYA_BASE_URL` to the active app URL and run targeted Playwright checks for the exact integration seam that changed.
 
 ---
 
