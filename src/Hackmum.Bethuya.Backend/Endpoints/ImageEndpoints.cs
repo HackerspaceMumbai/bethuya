@@ -72,10 +72,18 @@ public static class ImageEndpoints
         {
             if (string.IsNullOrWhiteSpace(request.PublicId) || string.IsNullOrWhiteSpace(request.DeleteToken))
             {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
+                var errors = new Dictionary<string, string[]>();
+                if (string.IsNullOrWhiteSpace(request.PublicId))
                 {
-                    [nameof(request.PublicId)] = ["A public ID and delete token are required."]
-                });
+                    errors[nameof(request.PublicId)] = ["Public ID is required."];
+                }
+
+                if (string.IsNullOrWhiteSpace(request.DeleteToken))
+                {
+                    errors[nameof(request.DeleteToken)] = ["Delete token is required."];
+                }
+
+                return Results.ValidationProblem(errors);
             }
 
             var deleted = await uploadService.DeletePendingUploadAsync(request.PublicId, request.DeleteToken, ct);

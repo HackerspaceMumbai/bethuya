@@ -1,6 +1,6 @@
 (function () {
   const selectedFileBySelector = new Map();
-  const initializedSelectors = new Set();
+  const initializedInputs = new WeakSet();
 
   function getInput(inputSelector) {
     const input = document.querySelector(inputSelector);
@@ -12,12 +12,12 @@
   }
 
   function initDirectImageUpload(inputSelector) {
-    if (initializedSelectors.has(inputSelector)) {
+    const input = getInput(inputSelector);
+    if (!input) {
       return;
     }
 
-    const input = getInput(inputSelector);
-    if (!input) {
+    if (initializedInputs.has(input)) {
       return;
     }
 
@@ -31,7 +31,7 @@
 
     input.addEventListener("change", updateSelectedFile);
     updateSelectedFile();
-    initializedSelectors.add(inputSelector);
+    initializedInputs.add(input);
   }
 
   function consumeSelectedFile(inputSelector) {

@@ -201,7 +201,8 @@ public sealed partial class CloudinaryImageUploadService(
 
         publicIdSegments[^1] = lastSegment[..extensionIndex];
         publicId = string.Join('/', publicIdSegments);
-        return publicId.StartsWith(_options.EventCoverRootFolder, StringComparison.Ordinal);
+        return string.Equals(publicId, _options.EventCoverRootFolder, StringComparison.Ordinal)
+            || publicId.StartsWith($"{_options.EventCoverRootFolder}/", StringComparison.Ordinal);
     }
 
     public async Task<int> CleanupExpiredPendingUploadsAsync(CancellationToken ct = default)
