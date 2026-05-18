@@ -32,6 +32,7 @@ public sealed partial class MigrationWorker(
     {
         LogEnsureSchema();
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        await dbContext.EnsurePendingImageUploadSchemaAsync(cancellationToken);
         LogSchemaReady();
     }
 

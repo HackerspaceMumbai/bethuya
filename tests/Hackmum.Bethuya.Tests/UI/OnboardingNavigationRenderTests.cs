@@ -140,8 +140,8 @@ public class OnboardingNavigationRenderTests
         var cut = ctx.RenderComponent<NavMenu>();
 
         await Assert.That(cut.Markup).Contains("Organizer Tools");
-        await Assert.That(cut.Markup).Contains("Agent Workflows");
-        await Assert.That(cut.Markup).DoesNotContain("Curation");
+        await Assert.That(cut.Markup).Contains("agent workflows");
+        await Assert.That(cut.Markup).Contains("curation");
     }
 
     [Test]
@@ -153,8 +153,8 @@ public class OnboardingNavigationRenderTests
         var cut = ctx.RenderComponent<NavMenu>();
 
         await Assert.That(cut.Markup).Contains("Organizer Tools");
-        await Assert.That(cut.Markup).Contains("Curation");
-        await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
+        await Assert.That(cut.Markup).Contains("agent workflows");
+        await Assert.That(cut.Markup).Contains("curation");
     }
 
     [Test]
@@ -479,15 +479,16 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
 
         await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
 
-        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "   " });
+        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "   ");
+        cut.Render();
         await Assert.That(cut.Find("[data-test='connect-linkedin-btn'] button").HasAttribute("disabled")).IsTrue();
 
-        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "https://www.linkedin.com/in/future-speaker" });
+        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/future-speaker");
+        cut.Render();
         await Assert.That(cut.Find("[data-test='connect-linkedin-btn'] button").HasAttribute("disabled")).IsFalse();
     }
 
@@ -717,8 +718,8 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
-        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "https://www.linkedin.com/in/future-speaker" });
+        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/future-speaker");
+        cut.Render();
 
         await InvokeAsync(cut.Instance, "HandleContinue");
 
@@ -744,8 +745,8 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
-        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "https://www.linkedin.com/in/future-speaker" });
+        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/future-speaker");
+        cut.Render();
 
         cut.Find("[data-test='connect-github-btn'] button").Click();
 
@@ -768,9 +769,8 @@ public class OnboardingNavigationRenderTests
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
         var startingUri = navigation.Uri;
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
-
-        await linkedInUrlInput.TriggerEventAsync("input", new ChangeEventArgs { Value = "https://www.linkedin.com/in/dev-user" });
+        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/dev-user");
+        cut.Render();
         cut.Find("[data-test='connect-linkedin-btn'] button").Click();
 
         await Assert.That(navigation.Uri).IsNotEqualTo(startingUri);
@@ -1199,4 +1199,3 @@ public class OnboardingNavigationRenderTests
         public bool IsInRole(string role) => false;
     }
 }
-

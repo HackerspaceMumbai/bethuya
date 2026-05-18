@@ -44,3 +44,10 @@ If you make a decision that affects other team members, write it to:
 .squad/decisions/inbox/copilot-{brief-slug}.md
 ```
 The Scribe will merge it into the shared decisions file.
+
+## Bethuya Repeatable Primitives
+
+- **Blazor `InteractiveServer` + uploads:** load critical upload scripts from app shell (`App.razor`) and call globals via JS interop; avoid runtime `import()` of `_content/...` assets in hot user flows.
+- **EF transaction safety:** when retry execution strategy is active, wrap `BeginTransactionAsync` units in `dbContext.Database.CreateExecutionStrategy().ExecuteAsync(...)`.
+- **Triage order:** on generic UI errors, read Aspire `backend` and `web` console logs first, then patch where the fault originates.
+- **E2E verification:** always set `BETHUYA_BASE_URL` to the active environment URL and run Playwright checks for the exact changed seam.
