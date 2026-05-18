@@ -21,7 +21,7 @@ Use before merging any UI changes. Invoke with `/run-e2e` in Copilot CLI.
 2. Run focused seam check first (faster regression signal), then broader suite if needed.
 3. Run:
    - `dotnet test tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj --verbosity minimal`
-3. Parse TRX results for failures.
+4. Parse TRX results for failures.
 4. For each failure:
    - Locate the Playwright trace file in `TestResults/` (`*.zip` trace archive)
    - Extract the failing step, screenshot, and assertion message

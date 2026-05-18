@@ -227,15 +227,15 @@ public static partial class EventEndpoints
             return null;
         }
 
-        if (!Uri.TryCreate(coverImageUrl, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        if (string.Equals(coverImageUrl, existingCoverImageUrl, StringComparison.Ordinal))
         {
-            errors[nameof(coverImageUrl)] = ["Cover image URL must be a valid absolute HTTP or HTTPS URL."];
             return null;
         }
 
-        if (string.Equals(coverImageUrl, existingCoverImageUrl, StringComparison.Ordinal))
+        if (!Uri.TryCreate(coverImageUrl, UriKind.Absolute, out var uri)
+            || uri.Scheme != Uri.UriSchemeHttps)
         {
+            errors[nameof(coverImageUrl)] = ["Cover image URL must be a valid absolute HTTPS URL."];
             return null;
         }
 
