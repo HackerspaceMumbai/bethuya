@@ -215,6 +215,8 @@
     private bool _isSaving;
     private string? _loadErrorMessage;
     private string? _errorMessage;
+    private static bool IsDevelopmentBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassSocialConnections"), "true", StringComparison.OrdinalIgnoreCase);
 
     private bool IsEmployee => string.Equals(_model.OccupationStatus, "Employee", StringComparison.Ordinal);
     private bool IsStudent => string.Equals(_model.OccupationStatus, "Student", StringComparison.Ordinal);
@@ -268,7 +270,7 @@
                 _model.PostalCode,
                 _model.Country));
 
-            Navigation.NavigateTo("/registration/social");
+            Navigation.NavigateTo(IsDevelopmentBypassEnabled ? "/registration/aide" : "/registration/social");
         }
         catch (Exception)
         {

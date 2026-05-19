@@ -54,7 +54,8 @@ public class BethuyaE2ETest
 
     /// <summary>
     /// Navigate to a URL and assert the navigation completes within the page load budget.
-    /// Waits for NetworkIdle to ensure Blazor Server SignalR circuit is established.
+    /// Waits for initial document load; Blazor keeps background connections open,
+    /// so NetworkIdle can hang indefinitely on some pages.
     /// </summary>
     protected async Task<IResponse?> GotoWithBudgetAsync(string url, int? budgetMs = null)
     {
@@ -62,7 +63,7 @@ public class BethuyaE2ETest
         var sw = Stopwatch.StartNew();
         var response = await Page.GotoAsync(url, new PageGotoOptions
         {
-            WaitUntil = WaitUntilState.NetworkIdle
+            WaitUntil = WaitUntilState.Load
         });
         sw.Stop();
 

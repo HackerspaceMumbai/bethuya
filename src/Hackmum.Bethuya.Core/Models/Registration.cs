@@ -10,6 +10,7 @@ public sealed class Registration
     public required string Email { get; set; }
     public string? Bio { get; set; }
     public List<string> Interests { get; set; } = [];
+    public InclusionSignals InclusionSignals { get; set; } = new();
     public RegistrationStatus Status { get; set; } = RegistrationStatus.Pending;
     public DateTimeOffset RegisteredAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

@@ -14,9 +14,11 @@
 
     @if (_errorMessage is not null)
     {
-        <BbAlert Variant="AlertVariant.Danger" Class="mb-4" data-test="registration-error">
-            @_errorMessage
-        </BbAlert>
+        <div data-test="registration-error">
+            <BbAlert Variant="AlertVariant.Danger" Class="mb-4">
+                @_errorMessage
+            </BbAlert>
+        </div>
     }
 
     <div class="grid grid-cols-3 gap-6">

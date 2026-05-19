@@ -67,6 +67,37 @@
     margin-top: 0.25rem;
 }
 
+/* BB doesn't provide a dedicated event-policy section, so this keeps the fairness
+   settings visually separated from the core event details. */
+.fairness-settings {
+    border: 1px solid var(--hs-border, rgba(212, 168, 48, 0.2));
+    border-radius: 1rem;
+    padding: 1rem;
+    background: linear-gradient(180deg, rgba(24, 18, 16, 0.96), rgba(15, 11, 10, 0.96));
+}
+
+.section-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+}
+
+.section-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.fairness-grid {
+    margin-bottom: 0.75rem;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 /* ── Cloudinary Remote Preview (BB ShowPreview only supports local IBrowserFile) ── */
 
 .cover-preview {

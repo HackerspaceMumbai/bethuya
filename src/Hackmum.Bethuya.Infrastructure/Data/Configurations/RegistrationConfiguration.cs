@@ -27,6 +27,11 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
                 v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
                 v => JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? new List<string>());
 
+        builder.Property(r => r.InclusionSignals)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
+                v => JsonSerializer.Deserialize<InclusionSignals>(v, JsonSerializerOptions.Default) ?? new InclusionSignals());
+
         builder.HasOne(r => r.Event)
             .WithMany(e => e!.Registrations)
             .HasForeignKey(r => r.EventId)

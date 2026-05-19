@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-05-16] Add privacy-safe inclusion signals to curation fairness budget
+- **Status:** in-progress
+- **Agent/Owner:** Copilot CLI
+- **Description:** Extend registration/profile-to-curation flow with derived InclusionSignals, organizer-configurable per-event fairness targets, fairness aggregation + impact preview, and UI updates that never expose raw sensitive AIDE responses.
+- **Acceptance:** Backend persists derived geo/language/education/socioeconomic signals and per-event fairness targets; curation dashboard shows current/target/deficit + alerts + impact preview; sensitive raw fields never surface in curation APIs/UI; new unit + E2E coverage passes with curation screenshot artifact.
+
 ## [2026-04-11] Fix CI Playwright E2E harness drift
 - **Status:** done
 - **Agent/Owner:** Tank

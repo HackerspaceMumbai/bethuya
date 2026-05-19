@@ -181,6 +181,93 @@
                         </div>
                     </div>
 
+                    <section class="fairness-settings" data-test="fairness-targets-section">
+                        <div class="section-head">
+                            <div>
+                                <p class="eyebrow">Fairness budget</p>
+                                <h3>Set organizer targets before registrations open</h3>
+                            </div>
+                            <p class="field-hint">
+                                These values are read by curation later and stay privacy-safe: only derived buckets and aggregate guidance are surfaced.
+                            </p>
+                        </div>
+
+                        <div class="form-row-2col fairness-grid">
+                            <div class="form-group">
+                                <BbLabel For="geo-target">Geo: min % outside dominant bucket</BbLabel>
+                                <div data-test="geo-target-input">
+                                    <BbNumericInput TValue="double"
+                                                    Id="geo-target"
+                                                    Min="0"
+                                                    Max="100"
+                                                    Step="1"
+                                                    @bind-Value="_geoOutsideDominantMinPercentInput" />
+                                </div>
+                                <p class="field-hint">Used as a bucketed locality signal; raw neighborhood strings never leave registration.</p>
+                            </div>
+
+                            <div class="form-group">
+                                <BbLabel For="language-target">Language: min % Marathi/Konkani speakers</BbLabel>
+                                <div data-test="language-target-input">
+                                    <BbNumericInput TValue="double"
+                                                    Id="language-target"
+                                                    Min="0"
+                                                    Max="100"
+                                                    Step="1"
+                                                    @bind-Value="_localLanguageMinPercentInput" />
+                                </div>
+                                <p class="field-hint">Supports Marathi, मराठी, Konkani, and related variants.</p>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2col fairness-grid">
+                            <div class="form-group">
+                                <BbLabel For="education-target">Education: min % underrepresented buckets</BbLabel>
+                                <div data-test="education-target-input">
+                                    <BbNumericInput TValue="double"
+                                                    Id="education-target"
+                                                    Min="0"
+                                                    Max="100"
+                                                    Step="1"
+                                                    @bind-Value="_underrepresentedEducationMinPercentInput" />
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <div class="checkbox-row">
+                                    <input id="enable-socioeconomic" type="checkbox" @bind="_formModel.EnableSocioeconomicDimension" data-test="enable-socioeconomic-toggle" />
+                                    <BbLabel For="enable-socioeconomic">Enable socioeconomic dimension</BbLabel>
+                                </div>
+                                @if (_formModel.EnableSocioeconomicDimension)
+                                {
+                                    <div class="mt-3">
+                                        <BbLabel For="socioeconomic-target">Socioeconomic: min % underrepresented buckets</BbLabel>
+                                        <div data-test="socioeconomic-target-input">
+                                            <BbNumericInput TValue="double"
+                                                            Id="socioeconomic-target"
+                                                            Min="0"
+                                                            Max="100"
+                                                            Step="1"
+                                                            @bind-Value="_underrepresentedSocioeconomicMinPercentInput" />
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="mt-3">
+                                    <BbLabel For="kanon-target">k-anonymity threshold</BbLabel>
+                                    <div data-test="kanonymity-input">
+                                        <BbNumericInput TValue="int"
+                                                        Id="kanon-target"
+                                                        Min="5"
+                                                        Max="25"
+                                                        Step="1"
+                                                        @bind-Value="_formModel.KAnonymityThreshold" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                     <div data-test="cover-image-section">
                         @if (_formModel.CoverImageUrl is not null)
                         {
@@ -299,6 +386,30 @@
     private bool _endDateExplicitlySet;
     private bool _isLoadingEvent;
 
+    private double _geoOutsideDominantMinPercentInput
+    {
+        get => _formModel.GeoOutsideDominantMinPercent * 100;
+        set => _formModel.GeoOutsideDominantMinPercent = value / 100;
+    }
+
+    private double _localLanguageMinPercentInput
+    {
+        get => _formModel.LocalLanguageMinPercent * 100;
+        set => _formModel.LocalLanguageMinPercent = value / 100;
+    }
+
+    private double _underrepresentedEducationMinPercentInput
+    {
+        get => _formModel.UnderrepresentedEducationMinPercent * 100;
+        set => _formModel.UnderrepresentedEducationMinPercent = value / 100;
+    }
+
+    private double _underrepresentedSocioeconomicMinPercentInput
+    {
+        get => (_formModel.UnderrepresentedSocioeconomicMinPercent ?? 0) * 100;
+        set => _formModel.UnderrepresentedSocioeconomicMinPercent = value / 100;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _editContext = new EditContext(_formModel);
@@ -321,6 +432,12 @@
                 _formModel.EndDate = dto.EndDate == default ? null : dto.EndDate.DateTime.Date;
                 _formModel.StartTime = dto.StartDate == default ? null : dto.StartDate.TimeOfDay;
                 _formModel.EndTime = dto.EndDate == default ? null : dto.EndDate.TimeOfDay;
+                _formModel.GeoOutsideDominantMinPercent = dto.FairnessTargets.GeoOutsideDominantMinPercent;
+                _formModel.LocalLanguageMinPercent = dto.FairnessTargets.LocalLanguageMinPercent;
+                _formModel.UnderrepresentedEducationMinPercent = dto.FairnessTargets.UnderrepresentedEducationMinPercent;
+                _formModel.EnableSocioeconomicDimension = dto.FairnessTargets.EnableSocioeconomicDimension;
+                _formModel.UnderrepresentedSocioeconomicMinPercent = dto.FairnessTargets.UnderrepresentedSocioeconomicMinPercent;
+                _formModel.KAnonymityThreshold = dto.FairnessTargets.KAnonymityThreshold;
 
                 if (_formModel.EndDate is not null && _formModel.EndDate != _formModel.StartDate)
                     _endDateExplicitlySet = true;
@@ -414,7 +531,16 @@
                     EndDate: endOffset,
                     Location: _formModel.Location,
                     Status: status,
-                    CoverImageUrl: _formModel.CoverImageUrl);
+                    CoverImageUrl: _formModel.CoverImageUrl,
+                    FairnessTargets: new EventFairnessTargetsDto(
+                        GeoOutsideDominantMinPercent: _formModel.GeoOutsideDominantMinPercent,
+                        LocalLanguageMinPercent: _formModel.LocalLanguageMinPercent,
+                        UnderrepresentedEducationMinPercent: _formModel.UnderrepresentedEducationMinPercent,
+                        EnableSocioeconomicDimension: _formModel.EnableSocioeconomicDimension,
+                        UnderrepresentedSocioeconomicMinPercent: _formModel.EnableSocioeconomicDimension
+                            ? _formModel.UnderrepresentedSocioeconomicMinPercent
+                            : null,
+                        KAnonymityThreshold: _formModel.KAnonymityThreshold));
 
                 await EventApi.UpdateAsync(eventId, updateDto);
             }
@@ -431,7 +557,16 @@
                     CreatedBy: "organizer@hackmum.org",
                     Hashtag: string.IsNullOrWhiteSpace(_formModel.Hashtag) ? null : _formModel.Hashtag,
                     CoverImageUrl: _formModel.CoverImageUrl,
-                    Status: status);
+                    Status: status,
+                    FairnessTargets: new EventFairnessTargetsDto(
+                        GeoOutsideDominantMinPercent: _formModel.GeoOutsideDominantMinPercent,
+                        LocalLanguageMinPercent: _formModel.LocalLanguageMinPercent,
+                        UnderrepresentedEducationMinPercent: _formModel.UnderrepresentedEducationMinPercent,
+                        EnableSocioeconomicDimension: _formModel.EnableSocioeconomicDimension,
+                        UnderrepresentedSocioeconomicMinPercent: _formModel.EnableSocioeconomicDimension
+                            ? _formModel.UnderrepresentedSocioeconomicMinPercent
+                            : null,
+                        KAnonymityThreshold: _formModel.KAnonymityThreshold));
 
                 await EventApi.PlanAsync(dto);
             }

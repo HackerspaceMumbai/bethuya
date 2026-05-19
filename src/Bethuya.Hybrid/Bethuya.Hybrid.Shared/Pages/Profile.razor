@@ -27,16 +27,26 @@
 
 @code {
     private string? _errorMessage;
+    private static bool IsSocialBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassSocialConnections"), "true", StringComparison.OrdinalIgnoreCase);
+    private static bool IsMandatoryBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"), "true", StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            if (IsMandatoryBypassEnabled)
+            {
+                Navigation.NavigateTo("/", replace: true);
+                return;
+            }
+
             var status = await ProfileApi.GetCompletionStatusAsync();
             var targetRoute = status.IsProfileComplete switch
             {
                 false => "/registration/mandatory",
-                true when !status.IsSocialConnectionsComplete => "/registration/social",
+                true when !status.IsSocialConnectionsComplete => IsSocialBypassEnabled ? "/registration/aide" : "/registration/social",
                 _ => "/registration/mandatory"
             };
 

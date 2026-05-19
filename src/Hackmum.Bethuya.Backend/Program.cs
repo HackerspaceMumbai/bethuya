@@ -2,6 +2,7 @@ using Hackmum.Bethuya.Agents.Extensions;
 using Hackmum.Bethuya.AI.Extensions;
 using Hackmum.Bethuya.Backend;
 using Hackmum.Bethuya.Backend.Endpoints;
+using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,8 @@ builder.AddBethuyaAuthorization();
 builder.AddBethuyaInfrastructure();
 builder.AddBethuyaAI();
 builder.AddBethuyaAgents();
+builder.Services.AddScoped<InclusionSignalsNormalizer>();
+builder.Services.AddScoped<CurationFairnessService>();
 
 var app = builder.Build();
 
@@ -40,6 +43,7 @@ app.MapEventEndpoints();
 app.MapImageEndpoints();
 app.MapRegistrationEndpoints();
 app.MapAgentEndpoints();
+app.MapCurationEndpoints();
 app.MapApprovalEndpoints();
 app.MapProfileEndpoints();
 

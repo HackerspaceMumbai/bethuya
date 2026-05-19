@@ -1,4 +1,6 @@
-﻿<Router AppAssembly="typeof(Layout.MainLayout).Assembly">
+﻿@using System.Reflection
+
+<Router AppAssembly="typeof(Layout.MainLayout).Assembly" AdditionalAssemblies="AdditionalRouteAssemblies">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized>
@@ -15,3 +17,10 @@
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    private static readonly Assembly[] AdditionalRouteAssemblies =
+        AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly => string.Equals(assembly.GetName().Name, "Bethuya.Hybrid.Web", StringComparison.Ordinal))
+            .ToArray();
+}

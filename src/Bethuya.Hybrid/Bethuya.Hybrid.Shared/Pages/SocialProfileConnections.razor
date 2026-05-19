@@ -316,6 +316,8 @@
     private bool ShouldEmphasizeGitHubContinuation => !AreSocialControlsDisabled && IsLinkedInConnected && !IsGitHubConnected;
     private bool CanStartLinkedInConnect => !AreSocialControlsDisabled && (IsLinkedInConnected || HasLinkedInProfileUrlForConnect);
     private bool CanContinue => !AreSocialControlsDisabled && (!IsLinkedInRequired || IsLinkedInConnected) && (!IsGitHubRequired || IsGitHubConnected);
+    private static bool IsMandatoryBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"), "true", StringComparison.OrdinalIgnoreCase);
 
     protected override void OnParametersSet()
     {
@@ -328,7 +330,7 @@
         try
         {
             var status = await ProfileApi.GetCompletionStatusAsync();
-            if (!status.IsProfileComplete)
+            if (!status.IsProfileComplete && !IsMandatoryBypassEnabled)
             {
                 Navigation.NavigateTo("/registration/mandatory", replace: true);
                 return;

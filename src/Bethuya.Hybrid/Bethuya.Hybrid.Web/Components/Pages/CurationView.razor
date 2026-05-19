@@ -1,120 +1,443 @@
 @page "/curation/{EventId:guid}"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireCurator)]
+@using Bethuya.Hybrid.Shared.Services
+@inject ICurationApi CurationApi
+@inject NavigationManager Navigation
 
 <PageTitle>Attendee Curation — Bethuya</PageTitle>
 
-<div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-2">🎯 Attendee Curation</h1>
-    <p class="text-sm text-muted-foreground mb-6">
-        ⚠️ This view handles attendee PII — processed locally via Foundry Local. Never sent to cloud.
-    </p>
+<div class="curation-shell" data-test="curation-page">
+    @if (_errorMessage is not null)
+    {
+        <div data-test="curation-error">
+            <BbAlert Variant="AlertVariant.Danger" Class="mb-3">
+                @_errorMessage
+            </BbAlert>
+        </div>
+    }
 
-    <div class="grid grid-cols-3 gap-6">
-        <div class="col-span-2">
-            <BbCard Class="p-4 mb-4">
-                <h2 class="text-lg font-semibold mb-4">Fairness Budget</h2>
-                <p class="text-sm text-muted-foreground mb-4">
-                    Set aspirational diversity and equity targets. These are nudges, not hard quotas.
-                </p>
-                <div class="space-y-3">
-                    @foreach (var target in fairnessTargets)
-                    {
-                        <div class="flex items-center gap-4">
-                            <span class="w-48 text-sm">@target.Label</span>
-                            <div class="flex-1">
-                                <div class="w-full bg-secondary rounded-full h-2">
-                                    <div class="bg-primary h-2 rounded-full" style="width: @(target.Actual / target.Target * 100)%"></div>
-                                </div>
-                            </div>
-                            <span class="text-sm w-24 text-right">@($"{target.Actual * 100:F0}")% / @($"{target.Target * 100:F0}")%</span>
-                        </div>
-                    }
+    @if (_isLoading)
+    {
+        <div data-test="curation-loading">
+            <BbAlert Variant="AlertVariant.Info">Loading curation dashboard...</BbAlert>
+        </div>
+    }
+    else if (_dashboard is not null)
+    {
+        <section class="curation-header">
+            <div>
+                <p class="eyebrow">Mumbai AI &amp; Robotics Summit</p>
+                <h1>Fairness Budget</h1>
+            </div>
+
+            <div class="header-stats">
+                <div>
+                    <p class="value">@_dashboard.Applicants</p>
+                    <p class="label">Applicants</p>
                 </div>
-            </BbCard>
+                <div>
+                    <p class="value">@_dashboard.Capacity</p>
+                    <p class="label">Capacity</p>
+                </div>
+            </div>
 
-            <BbCard Class="p-4">
-                <h2 class="text-lg font-semibold mb-4">Attendance Proposal</h2>
-                <p class="text-sm text-muted-foreground mb-2">
-                    AI recommendations — <strong>you decide</strong>. Review each suggestion carefully.
-                </p>
-
-                <BbButton Variant="ButtonVariant.Default" OnClick="InvokeCurator" Disabled="@isCurating"
-                          Class="mb-4">
-                    @(isCurating ? "Curating..." : "🤖 Generate Curation Proposal")
-                </BbButton>
-
-                @if (curationInsights.Count > 0)
-                {
-                    <div class="space-y-2">
-                        @foreach (var insight in curationInsights)
+                <div class="header-actions">
+                    <div data-test="generate-curation-proposal-btn">
+                        <BbButton Variant="ButtonVariant.Default"
+                              Disabled="@(!CanGenerateProposal)"
+                              OnClick="GenerateProposalAsync"
+                              Class="w-full">
+                            @(_isGeneratingProposal ? "Generating..." : "Generate Curation Proposal")
+                        </BbButton>
+                    </div>
+                    <p class="helper-text">
+                        @if (_lastProposalGeneratedAt is null)
                         {
-                            <div class="p-2 border rounded text-sm">
-                                <span class="font-medium">@insight.Type:</span> @insight.Message
-                            </div>
+                            <span>@GenerateProposalHint</span>
+                        }
+                        else
+                        {
+                            <span>@GenerateProposalHint</span>
+                        }
+                    </p>
+                </div>
+        </section>
+
+        <section class="fairness-strip" data-test="fairness-dimensions">
+            @foreach (var dimension in _dashboard.Dimensions)
+            {
+                <article class="fairness-tile" data-test="fairness-dimension-card">
+                    <div class="tile-row">
+                        <p class="tile-title">@dimension.Dimension</p>
+                        <p class="tile-target">Target @ToPercent(dimension.TargetPercent)</p>
+                    </div>
+                    <div class="meter">
+                        <div class="meter-fill" style="width: @ToProgressWidth(dimension.CurrentPercent, dimension.TargetPercent)%"></div>
+                    </div>
+                    <p class="tile-current">Current @ToPercent(dimension.CurrentPercent)</p>
+                    @if (dimension.IsSuppressed)
+                    {
+                        <p class="tile-alert muted" data-test="fairness-suppressed">@dimension.Alert</p>
+                    }
+                    else if (dimension.Alert is not null)
+                    {
+                        <p class="tile-alert" data-test="fairness-deficit-alert">@dimension.Alert</p>
+                    }
+                </article>
+            }
+        </section>
+
+        <section class="workbench">
+            <BbCard Class="queue-panel">
+                <div class="panel-head">
+                    <h2>Registrant Queue</h2>
+                    <BbBadge Variant="BadgeVariant.Secondary">@FilteredRegistrants.Count Unreviewed</BbBadge>
+                </div>
+
+                <div class="queue-controls">
+                    <input class="queue-search"
+                           placeholder="Search registrants..."
+                           @bind="_searchQuery"
+                           @bind:event="oninput"
+                           @bind:after="EnsureSelectedRegistrant" />
+                    <select class="queue-filter" @bind="_statusFilter" @bind:after="EnsureSelectedRegistrant">
+                        <option>All</option>
+                        <option>Pending</option>
+                        <option>Waitlisted</option>
+                    </select>
+                </div>
+
+                @if (FilteredRegistrants.Count == 0)
+                {
+                    <p class="empty-queue">No registrants match the active filter.</p>
+                }
+                else
+                {
+                    <div class="queue-list" data-test="curation-registrant-list">
+                        @foreach (var registrant in FilteredRegistrants)
+                        {
+                            var isSelected = registrant.RegistrationId == SelectedRegistrant?.RegistrationId;
+                            <button type="button"
+                                    class="@(isSelected ? "queue-item selected" : "queue-item")"
+                                    @onclick="() => SelectRegistrant(registrant.RegistrationId)"
+                                    data-test="curation-registrant-card">
+                                <div class="item-head">
+                                    <div>
+                                        <p class="name">@registrant.FullName</p>
+                                        <p class="email">@registrant.Email</p>
+                                    </div>
+                                    <BbBadge Variant="BadgeVariant.Outline">@registrant.Status</BbBadge>
+                                </div>
+                                <div class="item-tags">
+                                    @foreach (var interest in registrant.Interests.Take(2))
+                                    {
+                                        <BbBadge Variant="BadgeVariant.Secondary">@interest</BbBadge>
+                                    }
+                                </div>
+                                <p class="impact-line">@registrant.Impact.Explanation</p>
+                            </button>
                         }
                     </div>
                 }
             </BbCard>
-        </div>
 
-        <div>
-            <BbCard Class="p-4">
-                <h2 class="text-lg font-semibold mb-4">Curation Principles</h2>
-                <div class="space-y-2 text-sm">
-                    <p>✅ Consent-first — only consented fields</p>
-                    <p>✅ Explainable — transparent reasoning</p>
-                    <p>✅ Human approval — AI recommends only</p>
-                    <p>❌ No auto-accept/reject</p>
-                    <p>❌ No opaque scoring</p>
-                    <p>❌ No trait inference</p>
-                    <p>🔒 PII processed locally only</p>
-                </div>
-            </BbCard>
-        </div>
-    </div>
+            <div class="right-column">
+                <BbCard Class="profile-panel">
+                    <p class="eyebrow">Community Profile</p>
+                    @if (SelectedRegistrant is null)
+                    {
+                        <p class="helper-text">Select a registrant to inspect profile and impact.</p>
+                    }
+                    else
+                    {
+                        <div class="profile-hero">
+                            <h2>@SelectedRegistrant.FullName</h2>
+                            <p>@SelectedRegistrant.Email</p>
+                            <div class="profile-tags">
+                                <BbBadge Variant="BadgeVariant.Outline">@SelectedRegistrant.Status</BbBadge>
+                                @foreach (var interest in SelectedRegistrant.Interests.Take(3))
+                                {
+                                    <BbBadge Variant="BadgeVariant.Secondary">@interest</BbBadge>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="profile-grid">
+                            <BbCard Class="info-card">
+                                <h3>Impact if approved</h3>
+                                <p class="small-muted" data-test="impact-explanation">@SelectedRegistrant.Impact.Explanation</p>
+                                @if (SelectedRegistrant.Impact.IsSuppressed)
+                                {
+                                    <p class="small-muted" data-test="impact-suppressed">Preview suppressed by anonymity threshold.</p>
+                                }
+                                else
+                                {
+                                    <div class="delta-list" data-test="impact-deltas">
+                                        @foreach (var delta in SelectedRegistrant.Impact.DeltaPercentByDimension)
+                                        {
+                                            <BbBadge Variant="BadgeVariant.Secondary">@ToDimensionLabel(delta.Key): @ToDeltaPercent(delta.Value)</BbBadge>
+                                        }
+                                    </div>
+                                }
+                            </BbCard>
+
+                            <BbCard Class="info-card">
+                                <h3>Curation Insights</h3>
+                                @if (_dashboard.CurationInsights.Count == 0)
+                                {
+                                    <p class="small-muted">No insight highlights yet. Generate proposal to refresh guidance.</p>
+                                }
+                                else
+                                {
+                                    <div class="insight-list" data-test="curation-insights-list">
+                                        @foreach (var insight in _dashboard.CurationInsights.Take(4))
+                                        {
+                                            <p>@insight</p>
+                                        }
+                                    </div>
+                                }
+                            </BbCard>
+                        </div>
+                    }
+                </BbCard>
+
+                <BbCard Class="targets-panel">
+                    <div class="panel-head">
+                        <h2>Fairness Targets</h2>
+                        <BbBadge Variant="BadgeVariant.Outline">Configured in Event Setup</BbBadge>
+                    </div>
+
+                    @if (_dashboard is not null)
+                    {
+                        <div class="targets-summary" data-test="curation-fairness-targets-summary">
+                            <div class="target-summary-row">
+                                <span>Geo</span>
+                                <strong>@ToPercent(_dashboard.Targets.GeoOutsideDominantMinPercent)</strong>
+                            </div>
+                            <div class="target-summary-row">
+                                <span>Language</span>
+                                <strong>@ToPercent(_dashboard.Targets.LocalLanguageMinPercent)</strong>
+                            </div>
+                            <div class="target-summary-row">
+                                <span>Education</span>
+                                <strong>@ToPercent(_dashboard.Targets.UnderrepresentedEducationMinPercent)</strong>
+                            </div>
+                            <div class="target-summary-row">
+                                <span>k-anonymity</span>
+                                <strong>@_dashboard.Targets.KAnonymityThreshold</strong>
+                            </div>
+                            @if (_dashboard.Targets.EnableSocioeconomicDimension)
+                            {
+                                <div class="target-summary-row">
+                                    <span>Socioeconomic</span>
+                                    <strong>@ToPercent(_dashboard.Targets.UnderrepresentedSocioeconomicMinPercent ?? 0)</strong>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <p class="small-muted">
+                        Edit these event-level settings before registrations open. Curation only reads them as aggregate guidance.
+                    </p>
+
+                    <button type="button"
+                            class="settings-link"
+                            data-test="curation-fairness-settings-link"
+                            @onclick="OpenEventSetup">
+                        Open event setup
+                    </button>
+                </BbCard>
+            </div>
+        </section>
+
+        <section class="action-tray">
+            <p class="small-muted">
+                Guidance-only mode. Curation decisions stay human-approved for @SelectedRegistrant?.FullName.
+            </p>
+            <div class="tray-actions">
+                <BbButton Variant="ButtonVariant.Outline" Disabled="true">Reject</BbButton>
+                <BbButton Variant="ButtonVariant.Secondary" Disabled="true">Waitlist</BbButton>
+                <BbButton Variant="ButtonVariant.Default" Disabled="true">Approve for Seat</BbButton>
+            </div>
+        </section>
+    }
 </div>
 
 @code {
     [Parameter] public Guid EventId { get; set; }
 
-    private bool isCurating;
-    private List<FairnessTarget> fairnessTargets =
-    [
-        new() { Label = "First-time attendees", Target = 0.30, Actual = 0.22 },
-        new() { Label = "Students", Target = 0.20, Actual = 0.15 },
-        new() { Label = "Geographic diversity", Target = 0.40, Actual = 0.35 }
-    ];
+    private CurationDashboardDto? _dashboard;
+    private bool _isLoading = true;
+    private bool _isGeneratingProposal;
+    private Guid? _selectedRegistrationId;
+    private DateTimeOffset? _lastProposalGeneratedAt;
+    private string _searchQuery = string.Empty;
+    private string _statusFilter = "All";
+    private string? _errorMessage;
 
-    private List<InsightViewModel> curationInsights = [];
+    private bool CanGenerateProposal => !_isLoading && !_isGeneratingProposal && _dashboard is not null && HasMeaningfulProposalOpportunity;
 
-    private async Task InvokeCurator()
+    private string GenerateProposalHint
+        => _dashboard is null
+            ? "Loading proposal state..."
+            : !HasMeaningfulProposalOpportunity
+                ? "Generate proposal is disabled until the current dashboard shows a visible fairness delta or insight."
+                : _lastProposalGeneratedAt is null
+                    ? "No proposal run in this session yet."
+                    : $"Last generated at {_lastProposalGeneratedAt.Value.ToLocalTime():HH:mm:ss}.";
+
+    private IReadOnlyList<CurationRegistrantDto> FilteredRegistrants
     {
-        isCurating = true;
-        await Task.Delay(1500); // Simulated — replace with Curator Agent call via Foundry Local
+        get
+        {
+            if (_dashboard is null)
+            {
+                return [];
+            }
 
-        curationInsights =
-        [
-            new() { Type = "DEI Nudge", Message = "Consider increasing first-time attendee representation (currently 22%, target 30%)" },
-            new() { Type = "Theme Alignment", Message = "12 registrants have strong AI/ML interests matching event theme" },
-            new() { Type = "Over-representation", Message = "No over-representation detected in current pool" },
-            new() { Type = "Community Signal", Message = "5 registrants are returning community members" },
-            new() { Type = "Equity Prompt", Message = "3 registrants from underrepresented geographic areas — consider prioritizing" }
-        ];
+            IEnumerable<CurationRegistrantDto> query = _dashboard.Registrants;
 
-        isCurating = false;
+            if (!string.IsNullOrWhiteSpace(_searchQuery))
+            {
+                query = query.Where(r =>
+                    r.FullName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    r.Email.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    r.Interests.Any(i => i.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            if (!string.Equals(_statusFilter, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(r => string.Equals(r.Status, _statusFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query.ToList();
+        }
     }
 
-    private sealed class FairnessTarget
+    private CurationRegistrantDto? SelectedRegistrant =>
+        FilteredRegistrants.FirstOrDefault(r => r.RegistrationId == _selectedRegistrationId)
+        ?? FilteredRegistrants.FirstOrDefault();
+
+    protected override async Task OnParametersSetAsync()
     {
-        public string Label { get; set; } = "";
-        public double Target { get; set; }
-        public double Actual { get; set; }
+        await LoadDashboardAsync();
     }
 
-    private sealed class InsightViewModel
+    private async Task LoadDashboardAsync()
     {
-        public string Type { get; set; } = "";
-        public string Message { get; set; } = "";
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _dashboard = await CurationApi.GetDashboardAsync(EventId);
+            EnsureSelectedRegistrant();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Unable to load curation data right now.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task GenerateProposalAsync()
+    {
+        _isGeneratingProposal = true;
+        _errorMessage = null;
+
+        try
+        {
+            _dashboard = await CurationApi.GenerateProposalAsync(EventId, new GenerateCurationProposalDto("curation-ui"));
+            _lastProposalGeneratedAt = DateTimeOffset.Now;
+            EnsureSelectedRegistrant();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Failed to generate curation proposal.";
+        }
+        finally
+        {
+            _isGeneratingProposal = false;
+        }
+    }
+
+    private void SelectRegistrant(Guid registrationId)
+    {
+        _selectedRegistrationId = registrationId;
+    }
+
+    private void OpenEventSetup()
+    {
+        Navigation.NavigateTo($"/events/plan?edit={EventId}");
+    }
+
+    private void EnsureSelectedRegistrant()
+    {
+        if (FilteredRegistrants.Count == 0)
+        {
+            _selectedRegistrationId = null;
+            return;
+        }
+
+        if (_selectedRegistrationId is null || FilteredRegistrants.All(r => r.RegistrationId != _selectedRegistrationId))
+        {
+            _selectedRegistrationId = FilteredRegistrants[0].RegistrationId;
+        }
+    }
+
+    private static string ToPercent(double value) => $"{value * 100:F0}%";
+
+    private static string ToDeltaPercent(double value)
+    {
+        var sign = value >= 0 ? "+" : "";
+        return $"{sign}{value * 100:F1}%";
+    }
+
+    private static double ToProgressWidth(double current, double target)
+    {
+        if (target <= 0)
+        {
+            return 100;
+        }
+
+        return Math.Clamp((current / target) * 100, 0, 100);
+    }
+
+    private static string ToDimensionLabel(string key) => key switch
+    {
+        "geo" => "Geo",
+        "language" => "Language",
+        "education" => "Education",
+        "socioeconomic" => "Socioeconomic",
+        _ => key
+    };
+
+    private bool HasMeaningfulProposalOpportunity
+    {
+        get
+        {
+            if (_dashboard is null)
+            {
+                return false;
+            }
+
+            if (_dashboard.CurationInsights.Count > 0)
+            {
+                return true;
+            }
+
+            if (_dashboard.Dimensions.Any(d => !d.IsSuppressed))
+            {
+                return true;
+            }
+
+            return _dashboard.Registrants.Any(r =>
+                !r.Impact.IsSuppressed &&
+                r.Impact.DeltaPercentByDimension.Values.Any(value => Math.Abs(value) > 0.0001));
+        }
     }
 }

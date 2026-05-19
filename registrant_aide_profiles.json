@@ -1,0 +1,272 @@
+[
+  {
+    "educationalBackground": "Bachelor's degree",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee1@example.com",
+    "neighborhood": "Navi Mumbai",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Marathi, Hindi, English"
+  },
+  {
+    "educationalBackground": "Master's degree",
+    "socioeconomicBackground": "Upper middle class",
+    "email": "attendee2@example.com",
+    "neighborhood": "Thane",
+    "ageRange": "35–44",
+    "parentalStatus": "Parent / guardian",
+    "languageProficiency": "Konkani, Marathi, English"
+  },
+  {
+    "educationalBackground": "Higher secondary (10+2)",
+    "socioeconomicBackground": "Lower middle class",
+    "email": "attendee3@example.com",
+    "neighborhood": "Dadar",
+    "ageRange": "18–24",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Hindi, Marathi, English"
+  },
+  {
+    "educationalBackground": "Diploma / Certificate",
+    "socioeconomicBackground": "Working class",
+    "email": "attendee4@example.com",
+    "neighborhood": "Borivali",
+    "ageRange": "25–34",
+    "parentalStatus": "Carer for adult family member",
+    "languageProficiency": "Hindi, English"
+  },
+  {
+    "educationalBackground": "Self-taught / Bootcamp",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee5@example.com",
+    "neighborhood": "Andheri",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "English, Marathi"
+  },
+  {
+    "educationalBackground": "Bachelor's degree",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee6@example.com",
+    "neighborhood": "Navi Mumbai",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Marathi, Hindi, English"
+  },
+  {
+    "educationalBackground": "Master's degree",
+    "socioeconomicBackground": "Upper middle class",
+    "email": "attendee7@example.com",
+    "neighborhood": "Thane",
+    "ageRange": "35–44",
+    "parentalStatus": "Parent / guardian",
+    "languageProficiency": "Konkani, Marathi, English"
+  },
+  {
+    "educationalBackground": "Higher secondary (10+2)",
+    "socioeconomicBackground": "Lower middle class",
+    "email": "attendee8@example.com",
+    "neighborhood": "Dadar",
+    "ageRange": "18–24",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Hindi, Marathi, English"
+  },
+  {
+    "educationalBackground": "Diploma / Certificate",
+    "socioeconomicBackground": "Working class",
+    "email": "attendee9@example.com",
+    "neighborhood": "Borivali",
+    "ageRange": "25–34",
+    "parentalStatus": "Carer for adult family member",
+    "languageProficiency": "Hindi, English"
+  },
+  {
+    "educationalBackground": "Self-taught / Bootcamp",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee10@example.com",
+    "neighborhood": "Andheri",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "English, Marathi"
+  },
+  {
+    "educationalBackground": "Bachelor's degree",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee11@example.com",
+    "neighborhood": "Navi Mumbai",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Marathi, Hindi, English"
+  },
+  {
+    "educationalBackground": "Master's degree",
+    "socioeconomicBackground": "Upper middle class",
+    "email": "attendee12@example.com",
+    "neighborhood": "Thane",
+    "ageRange": "35–44",
+    "parentalStatus": "Parent / guardian",
+    "languageProficiency": "Konkani, Marathi, English"
+  },
+  {
+    "educationalBackground": "Higher secondary (10+2)",
+    "socioeconomicBackground": "Lower middle class",
+    "email": "attendee13@example.com",
+    "neighborhood": "Dadar",
+    "ageRange": "18–24",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Hindi, Marathi, English"
+  },
+  {
+    "educationalBackground": "Diploma / Certificate",
+    "socioeconomicBackground": "Working class",
+    "email": "attendee14@example.com",
+    "neighborhood": "Borivali",
+    "ageRange": "25–34",
+    "parentalStatus": "Carer for adult family member",
+    "languageProficiency": "Hindi, English"
+  },
+  {
+    "educationalBackground": "Self-taught / Bootcamp",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee15@example.com",
+    "neighborhood": "Andheri",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "English, Marathi"
+  },
+  {
+    "educationalBackground": "Bachelor's degree",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee16@example.com",
+    "neighborhood": "Navi Mumbai",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Marathi, Hindi, English"
+  },
+  {
+    "educationalBackground": "Master's degree",
+    "socioeconomicBackground": "Upper middle class",
+    "email": "attendee17@example.com",
+    "neighborhood": "Thane",
+    "ageRange": "35–44",
+    "parentalStatus": "Parent / guardian",
+    "languageProficiency": "Konkani, Marathi, English"
+  },
+  {
+    "educationalBackground": "Higher secondary (10+2)",
+    "socioeconomicBackground": "Lower middle class",
+    "email": "attendee18@example.com",
+    "neighborhood": "Dadar",
+    "ageRange": "18–24",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Hindi, Marathi, English"
+  },
+  {
+    "educationalBackground": "Diploma / Certificate",
+    "socioeconomicBackground": "Working class",
+    "email": "attendee19@example.com",
+    "neighborhood": "Borivali",
+    "ageRange": "25–34",
+    "parentalStatus": "Carer for adult family member",
+    "languageProficiency": "Hindi, English"
+  },
+  {
+    "educationalBackground": "Self-taught / Bootcamp",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee20@example.com",
+    "neighborhood": "Andheri",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "English, Marathi"
+  },
+  {
+    "educationalBackground": "Bachelor's degree",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee21@example.com",
+    "neighborhood": "Navi Mumbai",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Marathi, Hindi, English"
+  },
+  {
+    "educationalBackground": "Master's degree",
+    "socioeconomicBackground": "Upper middle class",
+    "email": "attendee22@example.com",
+    "neighborhood": "Thane",
+    "ageRange": "35–44",
+    "parentalStatus": "Parent / guardian",
+    "languageProficiency": "Konkani, Marathi, English"
+  },
+  {
+    "educationalBackground": "Higher secondary (10+2)",
+    "socioeconomicBackground": "Lower middle class",
+    "email": "attendee23@example.com",
+    "neighborhood": "Dadar",
+    "ageRange": "18–24",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Hindi, Marathi, English"
+  },
+  {
+    "educationalBackground": "Diploma / Certificate",
+    "socioeconomicBackground": "Working class",
+    "email": "attendee24@example.com",
+    "neighborhood": "Borivali",
+    "ageRange": "25–34",
+    "parentalStatus": "Carer for adult family member",
+    "languageProficiency": "Hindi, English"
+  },
+  {
+    "educationalBackground": "Self-taught / Bootcamp",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee25@example.com",
+    "neighborhood": "Andheri",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "English, Marathi"
+  },
+  {
+    "educationalBackground": "Bachelor's degree",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee26@example.com",
+    "neighborhood": "Navi Mumbai",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Marathi, Hindi, English"
+  },
+  {
+    "educationalBackground": "Master's degree",
+    "socioeconomicBackground": "Upper middle class",
+    "email": "attendee27@example.com",
+    "neighborhood": "Thane",
+    "ageRange": "35–44",
+    "parentalStatus": "Parent / guardian",
+    "languageProficiency": "Konkani, Marathi, English"
+  },
+  {
+    "educationalBackground": "Higher secondary (10+2)",
+    "socioeconomicBackground": "Lower middle class",
+    "email": "attendee28@example.com",
+    "neighborhood": "Dadar",
+    "ageRange": "18–24",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "Hindi, Marathi, English"
+  },
+  {
+    "educationalBackground": "Diploma / Certificate",
+    "socioeconomicBackground": "Working class",
+    "email": "attendee29@example.com",
+    "neighborhood": "Borivali",
+    "ageRange": "25–34",
+    "parentalStatus": "Carer for adult family member",
+    "languageProficiency": "Hindi, English"
+  },
+  {
+    "educationalBackground": "Self-taught / Bootcamp",
+    "socioeconomicBackground": "Middle class",
+    "email": "attendee30@example.com",
+    "neighborhood": "Andheri",
+    "ageRange": "25–34",
+    "parentalStatus": "No dependants",
+    "languageProficiency": "English, Marathi"
+  }
+]
