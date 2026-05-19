@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Backend.Contracts;
+using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
 
@@ -18,15 +19,22 @@ public static class RegistrationEndpoints
                 ? Results.Ok(reg)
                 : Results.NotFound());
 
-        group.MapPost("/", async (CreateRegistrationRequest request, IRegistrationRepository repo, CancellationToken ct) =>
+        group.MapPost("/", async (
+            CreateRegistrationRequest request,
+            IRegistrationRepository repo,
+            IAttendeeProfileRepository profileRepo,
+            InclusionSignalsNormalizer inclusionSignalsNormalizer,
+            CancellationToken ct) =>
         {
+            var inclusionSource = await profileRepo.GetInclusionSourceByEmailAsync(request.Email, ct);
             var reg = new Registration
             {
                 EventId = request.EventId,
                 FullName = request.FullName,
                 Email = request.Email,
                 Bio = request.Bio,
-                Interests = request.Interests
+                Interests = request.Interests,
+                InclusionSignals = inclusionSignalsNormalizer.FromSource(inclusionSource)
             };
 
             var created = await repo.CreateAsync(reg, ct);

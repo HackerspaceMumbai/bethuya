@@ -41,6 +41,23 @@ public sealed class PlanEventFormModel : IValidatableObject
     [MaxLength(2048, ErrorMessage = "Cover image URL must be 2,048 characters or fewer.")]
     public string? CoverImageUrl { get; set; }
 
+    [Range(0, 1, ErrorMessage = "Geo target must be between 0 and 1.")]
+    public double GeoOutsideDominantMinPercent { get; set; } = 0.35;
+
+    [Range(0, 1, ErrorMessage = "Language target must be between 0 and 1.")]
+    public double LocalLanguageMinPercent { get; set; } = 0.25;
+
+    [Range(0, 1, ErrorMessage = "Education target must be between 0 and 1.")]
+    public double UnderrepresentedEducationMinPercent { get; set; } = 0.25;
+
+    public bool EnableSocioeconomicDimension { get; set; }
+
+    [Range(0, 1, ErrorMessage = "Socioeconomic target must be between 0 and 1.")]
+    public double? UnderrepresentedSocioeconomicMinPercent { get; set; }
+
+    [Range(5, 25, ErrorMessage = "k-anonymity threshold must be between 5 and 25.")]
+    public int KAnonymityThreshold { get; set; } = 5;
+
     public DateTime? StartDate { get; set; } = DateTime.Today;
 
     public TimeSpan? StartTime { get; set; } = new TimeSpan(9, 0, 0);

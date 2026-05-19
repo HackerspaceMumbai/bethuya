@@ -13,7 +13,8 @@ public sealed record PlanEventRequest(
     string CreatedBy,
     string? Hashtag,
     string? CoverImageUrl,
-    EventStatus Status = EventStatus.Draft);
+    EventStatus Status = EventStatus.Draft,
+    EventFairnessTargetsContract? FairnessTargets = null);
 
 public sealed record UpdateEventRequest(
     string Title,
@@ -24,7 +25,8 @@ public sealed record UpdateEventRequest(
     DateTimeOffset EndDate,
     string? Location,
     EventStatus Status,
-    string? CoverImageUrl);
+    string? CoverImageUrl,
+    EventFairnessTargetsContract? FairnessTargets = null);
 
 public sealed record EventResponse(
     Guid Id,
@@ -39,4 +41,13 @@ public sealed record EventResponse(
     string CreatedBy,
     DateTimeOffset CreatedAt,
     string? Hashtag,
-    string? CoverImageUrl);
+    string? CoverImageUrl,
+    EventFairnessTargetsContract FairnessTargets);
+
+public sealed record EventFairnessTargetsContract(
+    double GeoOutsideDominantMinPercent = 0.35,
+    double LocalLanguageMinPercent = 0.25,
+    double UnderrepresentedEducationMinPercent = 0.25,
+    bool EnableSocioeconomicDimension = false,
+    double? UnderrepresentedSocioeconomicMinPercent = null,
+    int KAnonymityThreshold = 5);

@@ -202,6 +202,8 @@ We frequently see **3× registrations** vs capacity. The agent assists humans to
 * **Provides:** theme alignment signals (self‑reported data), community continuity, **DEI nudges** (consented fields only), equity prompts, first‑come signals (when applicable), over‑representation alerts.
 * **Never:** auto‑accepts/rejects, infers sensitive traits, hides reasoning, uses opaque scoring.
 * **Outputs:** **AttendanceProposal**, **WaitlistProposal**, **CurationInsights**, **FairnessBudget** targets → humans decide.
+* **Fairness dimensions:** geo diversity (bucketed), Marathi/Konkani language diversity, education diversity, and optional socioeconomic diversity.
+* **Target scope:** fairness targets are organizer-configurable per event, with defaults and per-event overrides.
 
 ### Facilitator Agent — Live Assistance (Opt‑in)
 
@@ -516,6 +518,8 @@ dotnet run --project src/Hackmum.Bethuya.App -f net10.0-maccatalyst
 ## 🔐 Privacy, Safety, and DEI
 
 * **Consent first** — only use self‑provided, consented fields for curation.
+* **Derived only** — curation uses privacy-safe derived buckets/signals (geo bucket, normalized language flags, education bucket, optional socioeconomic bucket).
+* **No raw sensitive display** — disability, neurodiversity, and additional support answers are never shown in curation APIs/UI.
 * **No inference** of sensitive traits; no opaque scoring.
 * **Explainable** suggestions; human approvals required.
 * **Auditability** — logs & traces in Aspire Dashboard. [\[aspire.dev\]](https://aspire.dev/dashboard/explore/)

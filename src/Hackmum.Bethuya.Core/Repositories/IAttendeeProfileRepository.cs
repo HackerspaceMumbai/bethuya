@@ -13,4 +13,7 @@ public interface IAttendeeProfileRepository
 
     /// <summary>Updates an existing attendee profile.</summary>
     Task UpdateAsync(AttendeeProfile profile, CancellationToken ct = default);
+
+    /// <summary>Returns a minimal profile projection used for inclusion-signal derivation.</summary>
+    Task<AttendeeInclusionSource?> GetInclusionSourceByEmailAsync(string email, CancellationToken ct = default);
 }

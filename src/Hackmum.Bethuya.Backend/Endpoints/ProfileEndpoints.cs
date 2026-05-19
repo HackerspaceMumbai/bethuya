@@ -163,10 +163,27 @@ public static class ProfileEndpoints
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
+            var isMandatoryBypassEnabled = IsMandatoryBypassEnabled();
 
-            if (profile is null || !profile.IsProfileComplete)
+            if (profile is null)
+            {
+                if (!isMandatoryBypassEnabled)
+                {
+                    return Results.BadRequest("Mandatory profile must be completed first.");
+                }
+
+                profile = CreateBypassedProfile(userId);
+                await repo.CreateAsync(profile, ct);
+            }
+            else if (!profile.IsProfileComplete && !isMandatoryBypassEnabled)
             {
                 return Results.BadRequest("Mandatory profile must be completed first.");
+            }
+
+            if (!profile.IsProfileComplete && isMandatoryBypassEnabled)
+            {
+                profile.IsProfileComplete = true;
+                profile.ProfileCompletedAt ??= DateTimeOffset.UtcNow;
             }
 
             var validationErrors = ValidateSocialRequest(request, profile.OccupationStatus);
@@ -200,9 +217,28 @@ public static class ProfileEndpoints
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
+            var isMandatoryBypassEnabled = IsMandatoryBypassEnabled();
 
-            if (profile is null || !profile.IsProfileComplete)
+            if (profile is null)
+            {
+                if (!isMandatoryBypassEnabled)
+                {
+                    return Results.BadRequest("Mandatory profile must be completed first.");
+                }
+
+                profile = CreateBypassedProfile(userId);
+                await repo.CreateAsync(profile, ct);
+            }
+            else if (!profile.IsProfileComplete && !isMandatoryBypassEnabled)
+            {
                 return Results.BadRequest("Mandatory profile must be completed first.");
+            }
+
+            if (!profile.IsProfileComplete && isMandatoryBypassEnabled)
+            {
+                profile.IsProfileComplete = true;
+                profile.ProfileCompletedAt ??= DateTimeOffset.UtcNow;
+            }
 
             profile.GenderIdentity = request.GenderIdentity;
             profile.SelfDescribeGender = request.SelfDescribeGender;
@@ -415,5 +451,26 @@ public static class ProfileEndpoints
 
     private static bool IsGitHubRequired(string? occupationStatus)
         => string.Equals(occupationStatus, "Student", StringComparison.Ordinal);
-}
 
+    private static bool IsMandatoryBypassEnabled()
+        => string.Equals(
+            Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+
+    private static AttendeeProfile CreateBypassedProfile(string userId)
+        => new()
+        {
+            UserId = userId,
+            FirstName = string.Empty,
+            LastName = string.Empty,
+            Email = string.Empty,
+            GovernmentPhotoIdType = string.Empty,
+            GovernmentIdLastFour = string.Empty,
+            LinkedInMemberId = string.Empty,
+            GitHubLogin = string.Empty,
+            GitHubProfileUrl = string.Empty,
+            IsProfileComplete = true,
+            ProfileCompletedAt = DateTimeOffset.UtcNow
+        };
+}

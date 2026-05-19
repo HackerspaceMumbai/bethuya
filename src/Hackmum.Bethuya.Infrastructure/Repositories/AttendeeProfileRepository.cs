@@ -23,4 +23,15 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
         db.AttendeeProfiles.Update(profile);
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task<AttendeeInclusionSource?> GetInclusionSourceByEmailAsync(string email, CancellationToken ct = default)
+        => await db.AttendeeProfiles
+            .AsNoTracking()
+            .Where(p => p.Email == email)
+            .Select(p => new AttendeeInclusionSource(
+                p.Neighborhood,
+                p.LanguageProficiency,
+                p.EducationalBackground,
+                p.SocioeconomicBackground))
+            .FirstOrDefaultAsync(ct);
 }

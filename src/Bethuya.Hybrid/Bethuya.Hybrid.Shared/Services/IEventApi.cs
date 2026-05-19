@@ -22,6 +22,12 @@ public interface IEventApi
     [Put("/api/events/{id}")]
     Task<EventDto> UpdateAsync(Guid id, [Body] UpdateEventDto request, CancellationToken ct = default);
 
+    [Get("/api/events/{id}/fairness-targets")]
+    Task<EventFairnessTargetsDto> GetFairnessTargetsAsync(Guid id, CancellationToken ct = default);
+
+    [Put("/api/events/{id}/fairness-targets")]
+    Task<EventFairnessTargetsDto> UpdateFairnessTargetsAsync(Guid id, [Body] EventFairnessTargetsDto request, CancellationToken ct = default);
+
     [Multipart]
     [Post("/api/images/upload")]
     Task<ImageUploadResponse> UploadImageAsync([AliasAs("file")] StreamPart file, CancellationToken ct = default);
@@ -44,7 +50,8 @@ public sealed record EventDto(
     string CreatedBy,
     DateTimeOffset CreatedAt,
     string? Hashtag,
-    string? CoverImageUrl);
+    string? CoverImageUrl,
+    EventFairnessTargetsDto FairnessTargets);
 
 /// <summary>Payload sent to plan a new event.</summary>
 public sealed record PlanEventDto(
@@ -58,7 +65,8 @@ public sealed record PlanEventDto(
     string CreatedBy,
     string? Hashtag,
     string? CoverImageUrl,
-    string Status = "Draft");
+    string Status = "Draft",
+    EventFairnessTargetsDto? FairnessTargets = null);
 
 /// <summary>Payload sent to update an existing event.</summary>
 public sealed record UpdateEventDto(
@@ -70,7 +78,16 @@ public sealed record UpdateEventDto(
     DateTimeOffset EndDate,
     string? Location,
     string Status,
-    string? CoverImageUrl);
+    string? CoverImageUrl,
+    EventFairnessTargetsDto? FairnessTargets = null);
+
+public sealed record EventFairnessTargetsDto(
+    double GeoOutsideDominantMinPercent = 0.35,
+    double LocalLanguageMinPercent = 0.25,
+    double UnderrepresentedEducationMinPercent = 0.25,
+    bool EnableSocioeconomicDimension = false,
+    double? UnderrepresentedSocioeconomicMinPercent = null,
+    int KAnonymityThreshold = 5);
 
 /// <summary>Response from the image upload endpoint.</summary>
 public sealed record ImageUploadResponse([property: JsonPropertyName("url")] string Url);

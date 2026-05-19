@@ -1,6 +1,7 @@
 using Hackmum.Bethuya.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Text.Json;
 
 namespace Hackmum.Bethuya.Infrastructure.Data.Configurations;
 
@@ -25,6 +26,11 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
 
         builder.Property(e => e.CoverImageUrl)
             .HasMaxLength(2048);
+
+        builder.Property(e => e.FairnessTargets)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
+                v => JsonSerializer.Deserialize<EventFairnessTargets>(v, JsonSerializerOptions.Default) ?? new EventFairnessTargets());
 
         builder.HasIndex(e => e.Hashtag)
             .IsUnique()

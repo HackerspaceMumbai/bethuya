@@ -15,6 +15,7 @@ public sealed class Event
     public string? Location { get; set; }
     public string? Hashtag { get; set; }
     public string? CoverImageUrl { get; set; }
+    public EventFairnessTargets FairnessTargets { get; set; } = new();
     public required string CreatedBy { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

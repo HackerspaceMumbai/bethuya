@@ -127,6 +127,9 @@ var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("mi
     .WithReference(sql)
     .WaitFor(sql);
 
+var onboardingBypassSocialConnections = builder.ExecutionContext.IsPublishMode ? "false" : "true";
+var onboardingBypassMandatoryProfile = builder.ExecutionContext.IsPublishMode ? "false" : "true";
+
 var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
     .WithReference(sql)
     .WithReference(plannerHosted)
@@ -143,6 +146,7 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
     .WithEnvironment("AI__Providers__AzureOpenAI__ModelId", aiAzureOpenAiModel)
     .WithEnvironment("AI__Providers__OpenAI__ApiKey", aiOpenAiKey)
     .WithEnvironment("AI__Providers__OpenAI__ModelId", aiOpenAiModel)
+    .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
     .WithHttpHealthCheck("/health")
     .PublishAsAzureContainerApp((infra, app) =>
     {
@@ -174,6 +178,8 @@ var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileNa
     .WithHttpEndpoint(port: webHttpPort)
     .WithHttpsEndpoint(port: webHttpsPort)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithEnvironment("Onboarding__BypassSocialConnections", onboardingBypassSocialConnections)
+    .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
     .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest)
     .WithEnvironment("SocialConnections__GitHub__ClientId", gitHubClientId)
     .WithEnvironment("SocialConnections__GitHub__ClientSecret", gitHubClientSecret)

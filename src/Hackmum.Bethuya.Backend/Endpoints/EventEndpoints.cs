@@ -101,7 +101,8 @@ public static class EventEndpoints
                 Hashtag = string.IsNullOrEmpty(request.Hashtag) ? null : request.Hashtag,
                 CreatedBy = request.CreatedBy,
                 Status = request.Status,
-                CoverImageUrl = request.CoverImageUrl
+                CoverImageUrl = request.CoverImageUrl,
+                FairnessTargets = ToModel(request.FairnessTargets)
             };
 
             var created = await repo.CreateAsync(evt, ct);
@@ -151,9 +152,33 @@ public static class EventEndpoints
             evt.Location = request.Location;
             evt.Status = request.Status;
             evt.CoverImageUrl = request.CoverImageUrl;
+            evt.FairnessTargets = request.FairnessTargets is null
+                ? evt.FairnessTargets
+                : ToModel(request.FairnessTargets);
 
             await repo.UpdateAsync(evt, ct);
             return Results.Ok(MapToResponse(evt));
+        });
+
+        group.MapGet("/{id:guid}/fairness-targets", async (Guid id, IEventRepository repo, CancellationToken ct) =>
+        {
+            var evt = await repo.GetByIdAsync(id, ct);
+            return evt is null
+                ? Results.NotFound()
+                : Results.Ok(ToContract(evt.FairnessTargets));
+        });
+
+        group.MapPut("/{id:guid}/fairness-targets", async (Guid id, EventFairnessTargetsContract request, IEventRepository repo, CancellationToken ct) =>
+        {
+            var evt = await repo.GetByIdAsync(id, ct);
+            if (evt is null)
+            {
+                return Results.NotFound();
+            }
+
+            evt.FairnessTargets = ToModel(request);
+            await repo.UpdateAsync(evt, ct);
+            return Results.Ok(ToContract(evt.FairnessTargets));
         });
 
         group.MapDelete("/{id:guid}", async (Guid id, IEventRepository repo, CancellationToken ct) =>
@@ -195,5 +220,42 @@ public static class EventEndpoints
             evt.CreatedBy,
             evt.CreatedAt,
             evt.Hashtag,
-            evt.CoverImageUrl);
+            evt.CoverImageUrl,
+            ToContract(evt.FairnessTargets));
+
+    private static EventFairnessTargetsContract ToContract(EventFairnessTargets? source)
+    {
+        var settings = source ?? EventFairnessTargets.Default;
+        return new EventFairnessTargetsContract(
+            GeoOutsideDominantMinPercent: settings.GeoOutsideDominantMinPercent,
+            LocalLanguageMinPercent: settings.LocalLanguageMinPercent,
+            UnderrepresentedEducationMinPercent: settings.UnderrepresentedEducationMinPercent,
+            EnableSocioeconomicDimension: settings.EnableSocioeconomicDimension,
+            UnderrepresentedSocioeconomicMinPercent: settings.UnderrepresentedSocioeconomicMinPercent,
+            KAnonymityThreshold: settings.KAnonymityThreshold);
+    }
+
+    private static EventFairnessTargets ToModel(EventFairnessTargetsContract? source)
+    {
+        var settings = source ?? new EventFairnessTargetsContract();
+        return new EventFairnessTargets
+        {
+            GeoOutsideDominantMinPercent = ClampPercent(settings.GeoOutsideDominantMinPercent),
+            LocalLanguageMinPercent = ClampPercent(settings.LocalLanguageMinPercent),
+            UnderrepresentedEducationMinPercent = ClampPercent(settings.UnderrepresentedEducationMinPercent),
+            EnableSocioeconomicDimension = settings.EnableSocioeconomicDimension,
+            UnderrepresentedSocioeconomicMinPercent = settings.UnderrepresentedSocioeconomicMinPercent is null
+                ? null
+                : ClampPercent(settings.UnderrepresentedSocioeconomicMinPercent.Value),
+            KAnonymityThreshold = Math.Max(EventFairnessTargets.DefaultKAnonymityThreshold, settings.KAnonymityThreshold)
+        };
+    }
+
+    private static double ClampPercent(double value)
+        => value switch
+        {
+            < 0 => 0,
+            > 1 => 1,
+            _ => value
+        };
 }

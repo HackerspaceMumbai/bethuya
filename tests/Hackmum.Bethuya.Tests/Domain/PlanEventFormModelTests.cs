@@ -62,6 +62,17 @@ public class PlanEventFormModelTests
         await Assert.That(model.IsDraft).IsTrue();
     }
 
+    [Test]
+    public async Task Draft_DefaultFairnessTargets_ShouldMatchOrganizerDefaults()
+    {
+        var model = new PlanEventFormModel();
+
+        await Assert.That(model.GeoOutsideDominantMinPercent).IsEqualTo(0.35);
+        await Assert.That(model.LocalLanguageMinPercent).IsEqualTo(0.25);
+        await Assert.That(model.UnderrepresentedEducationMinPercent).IsEqualTo(0.25);
+        await Assert.That(model.KAnonymityThreshold).IsEqualTo(5);
+    }
+
     // ── Publish Mode Tests (full validation enforced) ──
 
     [Test]

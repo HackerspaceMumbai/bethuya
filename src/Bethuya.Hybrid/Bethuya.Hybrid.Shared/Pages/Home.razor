@@ -122,6 +122,10 @@
     private int UpcomingCount => events.Count(e =>
         e.StartDate >= DateOnly.FromDateTime(DateTime.Now) &&
         e.Status is not ("Completed" or "Cancelled"));
+    private static bool IsSocialBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassSocialConnections"), "true", StringComparison.OrdinalIgnoreCase);
+    private static bool IsMandatoryBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"), "true", StringComparison.OrdinalIgnoreCase);
 
     private EventViewModel? featuredEvent =>
         events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled") && e.StartDate >= DateOnly.FromDateTime(DateTime.Now))
@@ -130,7 +134,7 @@
     protected override async Task OnInitializedAsync()
     {
         // Check profile completion before loading dashboard data
-        if (CurrentUser.IsAuthenticated)
+        if (CurrentUser.IsAuthenticated && !IsMandatoryBypassEnabled)
         {
             try
             {
@@ -138,7 +142,7 @@
                 _redirectRoute = status.IsProfileComplete switch
                 {
                     false => "/registration/mandatory",
-                    true when !status.IsSocialConnectionsComplete => "/registration/social",
+                    true when !status.IsSocialConnectionsComplete => IsSocialBypassEnabled ? "/registration/aide" : "/registration/social",
                     _ => null
                 };
             }

@@ -247,6 +247,10 @@
     private bool _isSaving;
     private string? _loadErrorMessage;
     private string? _errorMessage;
+    private static bool IsSocialBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassSocialConnections"), "true", StringComparison.OrdinalIgnoreCase);
+    private static bool IsMandatoryBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"), "true", StringComparison.OrdinalIgnoreCase);
 
     private static IReadOnlyList<SelectOption<string>> Opts(params string[] values) =>
         [new SelectOption<string>("", "Prefer not to say"), ..values.Select(v => new SelectOption<string>(v, v))];
@@ -313,13 +317,13 @@
                 // If the step-gating lookup fails, still try to hydrate the saved AIDE data.
             }
 
-            if (status is { IsProfileComplete: false })
+            if (status is { IsProfileComplete: false } && !IsMandatoryBypassEnabled)
             {
                 Navigation.NavigateTo("/registration/mandatory", replace: true);
                 return;
             }
 
-            if (status is { IsSocialConnectionsComplete: false })
+            if (status is { IsSocialConnectionsComplete: false } && !IsSocialBypassEnabled)
             {
                 Navigation.NavigateTo("/registration/social", replace: true);
                 return;

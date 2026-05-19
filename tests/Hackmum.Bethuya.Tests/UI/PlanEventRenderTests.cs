@@ -50,6 +50,7 @@ public class PlanEventRenderTests
         await Assert.That(markup).Contains("start-time-picker");
         await Assert.That(markup).Contains("end-date-picker");
         await Assert.That(markup).Contains("end-time-picker");
+        await Assert.That(markup).Contains("fairness-targets-section");
         await Assert.That(markup).Contains("plan-event-form");
     }
 

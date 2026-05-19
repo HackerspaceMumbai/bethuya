@@ -65,6 +65,43 @@ public class EventPlanningTests
     }
 
     [Test]
+    public async Task UpdateEventRequest_WithOmittedFairnessTargets_PreservesExistingTargets()
+    {
+        var existingTargets = new EventFairnessTargets
+        {
+            GeoOutsideDominantMinPercent = 0.4,
+            LocalLanguageMinPercent = 0.3,
+            UnderrepresentedEducationMinPercent = 0.2,
+            EnableSocioeconomicDimension = true,
+            UnderrepresentedSocioeconomicMinPercent = 0.1,
+            KAnonymityThreshold = 7
+        };
+
+        var evt = new Event
+        {
+            Title = "Updated Event",
+            CreatedBy = "test@example.com",
+            FairnessTargets = existingTargets
+        };
+
+        var request = new UpdateEventRequest(
+            Title: "Updated Event",
+            Description: null,
+            Type: EventType.Meetup,
+            Capacity: 75,
+            StartDate: new DateTimeOffset(2026, 6, 15, 14, 0, 0, TimeSpan.Zero),
+            EndDate: new DateTimeOffset(2026, 6, 15, 17, 0, 0, TimeSpan.Zero),
+            Location: "HackerspaceMumbai",
+            Status: EventStatus.Planning,
+            CoverImageUrl: null,
+            FairnessTargets: null);
+
+        evt.FairnessTargets = request.FairnessTargets is null ? evt.FairnessTargets : new EventFairnessTargets();
+
+        await Assert.That(ReferenceEquals(evt.FairnessTargets, existingTargets)).IsTrue();
+    }
+
+    [Test]
     public async Task PlanEventRequest_TypeEnum_DeserializesFromString()
     {
         // Arrange

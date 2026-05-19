@@ -106,23 +106,106 @@ curl -X POST "http://localhost:$API_PORT/api/events" `
 ### Step 2: Create Sample Registrations
 
 ```powershell
-# Create 10 registrations for the event
+# Create 30 registrations with varied personas + AIDE profile dimensions
+$profileTemplates = @(
+    @{
+        fullNamePrefix = "Marathi Community Builder"
+        interests = @("AI", "Community", "Local Language Tech")
+        aide = @{
+            neighborhood = "Navi Mumbai"
+            languageProficiency = "Marathi, Hindi, English"
+            educationalBackground = "Bachelor's degree"
+            socioeconomicBackground = "Middle class"
+            ageRange = "25–34"
+            parentalStatus = "No dependants"
+        }
+    },
+    @{
+        fullNamePrefix = "Konkani Product Explorer"
+        interests = @("Product", "Community", "Accessibility")
+        aide = @{
+            neighborhood = "Thane"
+            languageProficiency = "Konkani, Marathi, English"
+            educationalBackground = "Master's degree"
+            socioeconomicBackground = "Upper middle class"
+            ageRange = "35–44"
+            parentalStatus = "Parent / guardian"
+        }
+    },
+    @{
+        fullNamePrefix = "Student AI Maker"
+        interests = @("Machine Learning", "Hackathons", "Education")
+        aide = @{
+            neighborhood = "Dadar"
+            languageProficiency = "Hindi, Marathi, English"
+            educationalBackground = "Higher secondary (10+2)"
+            socioeconomicBackground = "Lower middle class"
+            ageRange = "18–24"
+            parentalStatus = "No dependants"
+        }
+    },
+    @{
+        fullNamePrefix = "Career Switch Learner"
+        interests = @("Career Growth", "AI", "Workshops")
+        aide = @{
+            neighborhood = "Borivali"
+            languageProficiency = "Hindi, English"
+            educationalBackground = "Diploma / Certificate"
+            socioeconomicBackground = "Working class"
+            ageRange = "25–34"
+            parentalStatus = "Carer for adult family member"
+        }
+    },
+    @{
+        fullNamePrefix = "Open Source Contributor"
+        interests = @("Open Source", "AI Ethics", "Developer Tools")
+        aide = @{
+            neighborhood = "Andheri"
+            languageProficiency = "English, Marathi"
+            educationalBackground = "Self-taught / Bootcamp"
+            socioeconomicBackground = "Middle class"
+            ageRange = "25–34"
+            parentalStatus = "No dependants"
+        }
+    }
+)
+
+$personaAideMap = @()
+
 for ($i = 1; $i -le 30; $i++) {
+    $template = $profileTemplates[($i - 1) % $profileTemplates.Count]
+    $email = "attendee$i@example.com"
+    $aide = $template.aide
+
     $regPayload = @{
         eventId = $responseEventId
-        fullName = "Attendee $i"
-        email = "attendee$i@example.com"
-        bio = "Interested in AI and community building"
-        interests = @("AI", "Machine Learning", "Community")
-    } | ConvertTo-Json
+        fullName = "$($template.fullNamePrefix) $i"
+        email = $email
+        bio = "From $($aide.neighborhood). Speaks $($aide.languageProficiency). Education: $($aide.educationalBackground)."
+        interests = $template.interests
+    } | ConvertTo-Json -Depth 5
 
     curl -X POST "http://localhost:$API_PORT/api/registrations" `
       -H "Content-Type: application/json" `
       -d $regPayload
+
+    $personaAideMap += @{
+        email = $email
+        neighborhood = $aide.neighborhood
+        languageProficiency = $aide.languageProficiency
+        educationalBackground = $aide.educationalBackground
+        socioeconomicBackground = $aide.socioeconomicBackground
+        ageRange = $aide.ageRange
+        parentalStatus = $aide.parentalStatus
+    }
 }
 
-Write-Host "Created 30 test registrations for event $responseEventId"
-```1
+$personaAideMap | ConvertTo-Json -Depth 5 | Out-File -FilePath ".\registrant_aide_profiles.json"
+Write-Host "Created 30 varied test registrations for event $responseEventId"
+Write-Host "Saved AIDE profile variations to registrant_aide_profiles.json"
+```
+
+`registrant_aide_profiles.json` keeps per-registrant AIDE dimensions (neighborhood/language/education/socioeconomic/etc.) so you can replay the same personas when running profile-oriented onboarding or seeded profile flows.
 
 ### Step 3: Invoke Planner Agent
 
