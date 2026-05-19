@@ -57,6 +57,9 @@ public sealed class PlanEventFormModel : IValidatableObject
 
     [Range(5, 25, ErrorMessage = "k-anonymity threshold must be between 5 and 25.")]
     public int KAnonymityThreshold { get; set; } = 5;
+    /// <summary>Cloudinary public ID of the uploaded cover image while the form is in progress.</summary>
+    [MaxLength(512, ErrorMessage = "Cover image public ID must be 512 characters or fewer.")]
+    public string? CoverImagePublicId { get; set; }
 
     public DateTime? StartDate { get; set; } = DateTime.Today;
 
