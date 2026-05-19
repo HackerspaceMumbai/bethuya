@@ -148,7 +148,7 @@ public static class Extensions
                 "script-src 'self' 'wasm-unsafe-eval'; " +
                 "style-src 'self' 'unsafe-inline'; " +
                 "img-src 'self' https://res.cloudinary.com; " +
-                "connect-src 'self' wss: ws:; " +
+                "connect-src 'self' https://api.cloudinary.com wss: ws:; " +
                 "object-src 'none'; " +
                 "frame-ancestors 'none'";
             await next(context);

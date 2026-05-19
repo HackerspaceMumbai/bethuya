@@ -31,6 +31,13 @@ public interface IEventApi
     [Multipart]
     [Post("/api/images/upload")]
     Task<ImageUploadResponse> UploadImageAsync([AliasAs("file")] StreamPart file, CancellationToken ct = default);
+    [Post("/api/images/direct-upload/session")]
+    Task<DirectImageUploadSessionResponse> CreateDirectImageUploadSessionAsync(
+        [Body] CreateDirectImageUploadSessionRequest request,
+        CancellationToken ct = default);
+
+    [Post("/api/images/direct-upload/delete")]
+    Task DeletePendingImageUploadAsync([Body] DeletePendingImageUploadRequest request, CancellationToken ct = default);
 
     [Post("/api/agents/recommend-dates")]
     Task<RecommendDatesResponse> RecommendDatesAsync([Body] RecommendDatesRequest request, CancellationToken ct = default);
@@ -89,8 +96,29 @@ public sealed record EventFairnessTargetsDto(
     double? UnderrepresentedSocioeconomicMinPercent = null,
     int KAnonymityThreshold = 5);
 
-/// <summary>Response from the image upload endpoint.</summary>
-public sealed record ImageUploadResponse([property: JsonPropertyName("url")] string Url);
+/// <summary>Request for a signed Cloudinary direct-upload session.</summary>
+public sealed record CreateDirectImageUploadSessionRequest(
+    string FileName,
+    string ContentType,
+    long FileSize);
+
+/// <summary>Response containing the signed parameters required for direct upload.</summary>
+public sealed record DirectImageUploadSessionResponse(
+    [property: JsonPropertyName("uploadUrl")] string UploadUrl,
+    [property: JsonPropertyName("cloudName")] string CloudName,
+    [property: JsonPropertyName("apiKey")] string ApiKey,
+    [property: JsonPropertyName("publicId")] string PublicId,
+    [property: JsonPropertyName("timestamp")] long Timestamp,
+    [property: JsonPropertyName("signature")] string Signature,
+    [property: JsonPropertyName("deleteToken")] string DeleteToken,
+    [property: JsonPropertyName("uploadPreset")] string? UploadPreset,
+    [property: JsonPropertyName("maxFileSize")] long MaxFileSize,
+    [property: JsonPropertyName("allowedFormats")] string AllowedFormats);
+
+/// <summary>Deletes a pending image upload that has not yet been attached to a saved event.</summary>
+public sealed record DeletePendingImageUploadRequest(
+    string PublicId,
+    string DeleteToken);
 
 /// <summary>Request to recommend optimal event dates via AI.</summary>
 public sealed record RecommendDatesRequest(

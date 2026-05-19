@@ -18,6 +18,20 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-05-18] Event publish failure came from EF transaction strategy mismatch
+
+- **What happened:** Publishing/saving an event surfaced a generic UI error (`An unexpected error occurred. Please try again.`).
+- **Root cause:** Backend event endpoints opened explicit transactions under `SqlServerRetryingExecutionStrategy`, which throws for user-initiated transactions not wrapped in execution strategy.
+- **Fix:** Wrapped create/update transaction blocks inside `dbContext.Database.CreateExecutionStrategy().ExecuteAsync(...)` and rebuilt backend resource.
+- **Prevention:** Any endpoint combining retries + explicit transactions must use execution strategy wrapper from day one and keep one focused regression check on that transaction seam.
+
+## [2026-05-18] Runtime JS module import was brittle for upload flow in InteractiveServer
+
+- **What happened:** Cover upload intermittently failed with `Failed to fetch dynamically imported module` during event planning.
+- **Root cause:** Runtime JS `import()` path in a critical server-interactive flow introduced a fragile asset-loading seam.
+- **Fix:** Switched upload interop to preloaded global script in app shell and validated availability with Playwright.
+- **Prevention:** For critical upload/auth-like UI paths in `InteractiveServer`, prefer app-shell loaded global scripts and add a seam-level E2E check that script APIs are available.
+
 ## [2026-04-27] Patched transitive package pins can require companion central bumps
 
 - **What happened:** Raising the central transitive pin for `Microsoft.AspNetCore.DataProtection` from the vulnerable `10.0.0` path to the patched `10.0.7` release immediately flipped restore from NU1904 to NU1109 downgrade failures.
