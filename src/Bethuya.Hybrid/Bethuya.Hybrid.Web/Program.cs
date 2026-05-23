@@ -63,6 +63,16 @@ builder.Services
         options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(5);
     });
 
+// Refit typed client for Backend Planning Cycle API (Aspire service discovery)
+builder.Services
+    .AddRefitClient<IPlanningCycleApi>(new RefitSettings
+    {
+        ContentSerializer = new SystemTextJsonContentSerializer(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+    })
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
+    .AddStandardResilienceHandler();
+
 // Refit typed client for Backend Profile API (Aspire service discovery)
 builder.Services
     .AddRefitClient<IProfileApi>(new RefitSettings

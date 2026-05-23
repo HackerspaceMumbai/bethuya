@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-05-23] Fix View Schedule runtime crash
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Trace the `View Schedule` crash on `/events/{id}`, restore any missing dependency injection or service wiring required by `EventDetail.razor`, and confirm the event detail page renders without the unhandled exception.
+- **Acceptance:** ✅ Added the missing `IPlanningCycleApi` Refit registration to `Bethuya.Hybrid.Web`. ✅ Local AppHost validation at `https://localhost:59177/events/019e53cb-9462-7783-8a90-df2561599e57` now returns the schedule editor markup without the `PlanningCycleApi` service-resolution exception. ✅ `dotnet build Bethuya.slnx --no-incremental -v minimal` passed.
+
 ## [2026-05-23] Fix solution build blockers
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
