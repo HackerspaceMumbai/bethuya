@@ -28,9 +28,6 @@ public interface IEventApi
     [Put("/api/events/{id}/fairness-targets")]
     Task<EventFairnessTargetsDto> UpdateFairnessTargetsAsync(Guid id, [Body] EventFairnessTargetsDto request, CancellationToken ct = default);
 
-    [Multipart]
-    [Post("/api/images/upload")]
-    Task<ImageUploadResponse> UploadImageAsync([AliasAs("file")] StreamPart file, CancellationToken ct = default);
     [Post("/api/images/direct-upload/session")]
     Task<DirectImageUploadSessionResponse> CreateDirectImageUploadSessionAsync(
         [Body] CreateDirectImageUploadSessionRequest request,
