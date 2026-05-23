@@ -18,6 +18,13 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-05-23] Shared Refit contracts can outlive removed backend routes
+
+- **What happened:** `dotnet build Bethuya.slnx` failed in `Bethuya.Hybrid.Shared` because `IEventApi` still declared `UploadImageAsync` returning an `ImageUploadResponse` type that no longer existed anywhere in the repo.
+- **Root cause:** The image flow had already moved to signed direct-upload session endpoints, but the older multipart `/api/images/upload` Refit contract was left behind in shared code after the backend route disappeared.
+- **Fix:** Removed the dead multipart upload method from `IEventApi`, kept the direct-upload session/delete contracts that still match `ImageEndpoints`, and fixed the separate duplicate `MapDelete` line in `EventEndpoints`.
+- **Prevention:** When retiring or replacing a backend endpoint, update the shared Refit surface in the same change and run a full solution build so contract drift is caught before it lands.
+
 ## [2026-05-18] Event publish failure came from EF transaction strategy mismatch
 
 - **What happened:** Publishing/saving an event surfaced a generic UI error (`An unexpected error occurred. Please try again.`).
