@@ -221,7 +221,6 @@ public static partial class EventEndpoints
             return Results.Ok(ToContract(evt.FairnessTargets));
         });
 
-        group.MapDelete("/{id:guid}", async (Guid id, IEventRepository repo, CancellationToken ct) =>
         group.MapDelete("/{id:guid}", async (Guid id, IEventRepository repo, IImageUploadService imageUploadService, ILoggerFactory loggerFactory, CancellationToken ct) =>
         {
             var logger = loggerFactory.CreateLogger(nameof(EventEndpoints));
