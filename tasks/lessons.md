@@ -18,6 +18,13 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-05-23] Shared page injections still need host-level Refit wiring
+
+- **What happened:** Navigating to `View Schedule` threw `InvalidOperationException: Cannot provide a value for property 'PlanningCycleApi'` before the event detail page could render.
+- **Root cause:** `EventDetail.razor` in `Bethuya.Hybrid.Shared` injects `IPlanningCycleApi`, but `Bethuya.Hybrid.Web` only registered the other shared Refit clients and never added the planning-cycle client to DI.
+- **Fix:** Added the missing `AddRefitClient<IPlanningCycleApi>` registration in the web host so shared event-detail pages can resolve their planning-cycle dependency.
+- **Prevention:** Whenever a shared Razor page gains a new injected service, update each host's startup registration in the same change and verify the navigation seam that instantiates that page.
+
 ## [2026-05-23] Shared Refit contracts can outlive removed backend routes
 
 - **What happened:** `dotnet build Bethuya.slnx` failed in `Bethuya.Hybrid.Shared` because `IEventApi` still declared `UploadImageAsync` returning an `ImageUploadResponse` type that no longer existed anywhere in the repo.
