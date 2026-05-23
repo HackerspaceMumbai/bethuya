@@ -18,6 +18,13 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-05-23] Mapping a minimal API route still needs its service registered in DI
+
+- **What happened:** After wiring the planning-cycle endpoints into the backend host, the backend still failed to start and the planner flow remained broken.
+- **Root cause:** `PlanningCycleEndpoints` depends on `PlanningCycleService`, but the backend host never registered that service. Once the route was mapped, ASP.NET inferred the unregistered service parameter as a body parameter and threw a startup-time `InvalidOperationException`.
+- **Fix:** Registered `PlanningCycleService` in backend DI and added an endpoint-level regression test that proves the `/api/planning-cycles/events/{eventId}/start` route reaches domain handling rather than falling through to a framework 404.
+- **Prevention:** When adding or re-enabling minimal API endpoints, verify both halves of the seam in the same change: map the route group and register every endpoint-injected service so startup failures do not mask as route bugs.
+
 ## [2026-05-23] Shared page injections still need host-level Refit wiring
 
 - **What happened:** Navigating to `View Schedule` threw `InvalidOperationException: Cannot provide a value for property 'PlanningCycleApi'` before the event detail page could render.
