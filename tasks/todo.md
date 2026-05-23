@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-05-23] Fix solution build blockers
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Investigate the current `dotnet build Bethuya.slnx` failures, remove stale shared API contracts, correct backend compile errors, and rebuild until the solution compiles cleanly or only known unrelated blockers remain.
+- **Acceptance:** ✅ Removed the stale `ImageUploadResponse` Refit method from `IEventApi` after confirming the backend no longer exposes `/api/images/upload`. ✅ Fixed the malformed duplicate `group.MapDelete` declaration in `EventEndpoints`. ✅ `dotnet build Bethuya.slnx` now succeeds cleanly.
+
 ## [2026-05-16] Add privacy-safe inclusion signals to curation fairness budget
 - **Status:** in-progress
 - **Agent/Owner:** Copilot CLI
