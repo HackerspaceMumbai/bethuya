@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-05-23] Fix planner draft 404
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Trace why `Draft Schedule with AI` returns `404 NotFound` on the event detail page, restore the missing planning-cycle HTTP wiring, and add regression coverage for the backend route seam.
+- **Acceptance:** ✅ Added the missing `app.MapPlanningCycleEndpoints()` route wiring in `Hackmum.Bethuya.Backend`. ✅ Registered `PlanningCycleService` in backend DI so the mapped planning-cycle endpoints can start without startup-time request-delegate inference failures. ✅ Added `PlanningCycleEndpointValidationTests` to prove the HTTP seam reaches the planning-cycle domain handler instead of falling through to a missing-route 404. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v minimal` passed (172/172).
+
 ## [2026-05-23] Fix View Schedule runtime crash
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
