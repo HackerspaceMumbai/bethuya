@@ -785,3 +785,66 @@ This removes the normal blank-url path that could lead to a locked empty LinkedI
 **Status:**
 - **Approved by:** Augustine Correa
 - **Date approved:** 2026-04-15
+
+---
+
+### 2026-05-25 - Event detail planner uses agent-console layout
+
+**Date:** 2026-05-25T19:09:18.171+05:30  
+**Owner:** Trinity (Frontend Dev)
+
+## Context
+
+The event detail page had a two-column schedule/editor layout with a raw JSON schema tab for planner output. Augustine requested a modern agent-interface layout with a dominant agenda timeline, conversation context, and readable reasoning.
+
+## Decision
+
+Use a three-panel command-center pattern for EventDetail.razor:
+
+- Left: Planner/User interaction thread, primary AI draft CTA, cycle and conversation IDs.
+- Center: dominant timeline agenda editor with vertical time axis and inline block controls.
+- Right: structured planner reasoning cards from PlanningAgendaJsonDto (Constraints, Rationale, Risks & Mitigations) with no raw JSON/schema display.
+
+## Rationale
+
+The Planner is an agent-control surface, so the UI should make the human-in-the-loop sequence explicit while keeping the schedule itself central. Raw JSON is useful for debugging but not for organizer review; typed insight cards preserve transparency without exposing schema noise.
+
+## Validation
+
+- ✅ dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal
+- ✅ dotnet build .\tests\Hackmum.Bethuya.E2E\Hackmum.Bethuya.E2E.csproj --no-restore -v minimal
+
+## Status
+
+Implemented; awaiting reviewer/Anvil evidence before merge if required by routing policy.
+
+---
+
+### 2026-05-26 - Timeline axis polish
+
+**Date:** 2026-05-26T10:43:29+05:30  
+**Owner:** Switch (QA/Validator)
+
+## Context
+
+Trinity's event-flow timeline layout uses display: grid with lign-self: start/end on the time items, but without lign-content: space-between on the container the end time stacks below the start time rather than pinning to the bottom of the stretched grid row.
+
+## Decision
+
+Apply lign-content: space-between on .event-flow-time-axis grid container to pin end times to the lower card axis instead of clustering under start times.
+
+## Why
+
+Grid-based time labels now properly distribute vertically across the full height of the timeline container. This keeps the time axis visually aligned with the session blocks above and below without extra whitespace clustering.
+
+## Validation
+
+- ✅ dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal
+- ✅ dotnet build .\tests\Hackmum.Bethuya.E2E\Hackmum.Bethuya.E2E.csproj --no-restore -v minimal
+- ✅ E2E test compatibility: EventFlowTests build passed; data-test selectors stable
+
+## Status
+
+- **Approved by:** Switch (validation + CSS refinement)
+- **Date approved:** 2026-05-26
+- **Ready for merge:** ✅
