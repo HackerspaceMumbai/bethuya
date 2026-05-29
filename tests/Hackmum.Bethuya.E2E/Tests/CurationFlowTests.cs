@@ -96,11 +96,15 @@ public class CurationFlowTests : BethuyaE2ETest
         await Assertions.Expect(Page.Locator("[data-test='fairness-dimensions']")).ToContainTextAsync("Education diversity");
         await Assertions.Expect(Page.Locator("[data-test='curation-registrant-list']")).ToBeVisibleAsync();
         await Assertions.Expect(Page.Locator("[data-test='impact-explanation']").First).ToBeVisibleAsync();
+        await Assertions.Expect(Page.Locator("[data-test='curation-approve-btn']")).ToBeVisibleAsync();
+        await Assertions.Expect(Page.Locator("[data-test='curation-waitlist-btn']")).ToBeVisibleAsync();
+        await Assertions.Expect(Page.Locator("[data-test='curation-reject-btn']")).ToBeVisibleAsync();
 
         var pageText = (await Page.InnerTextAsync("[data-test='curation-page']")).ToLowerInvariant();
         Assert.IsFalse(pageText.Contains("disability details"), "Curation UI leaked raw disability details.");
         Assert.IsFalse(pageText.Contains("neurodiversity"), "Curation UI leaked neurodiversity field.");
         Assert.IsFalse(pageText.Contains("additional support"), "Curation UI leaked additional support field.");
+        Assert.IsFalse(pageText.Contains("gender identity"), "Curation UI leaked per-registrant gender identity.");
 
         Directory.CreateDirectory("artifacts");
         await Page.ScreenshotAsync(new PageScreenshotOptions

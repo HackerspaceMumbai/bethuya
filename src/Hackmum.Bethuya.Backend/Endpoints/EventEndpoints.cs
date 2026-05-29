@@ -355,7 +355,8 @@ public static partial class EventEndpoints
             UnderrepresentedEducationMinPercent: settings.UnderrepresentedEducationMinPercent,
             EnableSocioeconomicDimension: settings.EnableSocioeconomicDimension,
             UnderrepresentedSocioeconomicMinPercent: settings.UnderrepresentedSocioeconomicMinPercent,
-            KAnonymityThreshold: settings.KAnonymityThreshold);
+            KAnonymityThreshold: settings.KAnonymityThreshold,
+            GenderDiversityMinPercent: settings.GenderDiversityMinPercent);
     }
 
     private static EventFairnessTargets ToModel(EventFairnessTargetsContract? source)
@@ -370,6 +371,7 @@ public static partial class EventEndpoints
             UnderrepresentedSocioeconomicMinPercent = settings.UnderrepresentedSocioeconomicMinPercent is null
                 ? null
                 : ClampPercent(settings.UnderrepresentedSocioeconomicMinPercent.Value),
+            GenderDiversityMinPercent = ClampPercent(settings.GenderDiversityMinPercent),
             KAnonymityThreshold = Math.Max(EventFairnessTargets.DefaultKAnonymityThreshold, settings.KAnonymityThreshold)
         };
     }
