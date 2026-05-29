@@ -1,6 +1,9 @@
 using Aspire.Hosting.Azure;
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Foundry;
 using Scalar.Aspire;
+using System.Diagnostics;
+using System.Net.Http;
 
 var builder = DistributedApplication.CreateBuilder(args);
 builder.AddAzureContainerAppEnvironment("bethuya-env");
@@ -154,6 +157,88 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
         app.Template.Scale.MaxReplicas = 5;
     });
 
+var backendHttpsEndpoint = backend.GetEndpoint("https");
+var backendExecutablePath = Path.GetFullPath(Path.Combine(
+    AppContext.BaseDirectory,
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "src",
+    "Hackmum.Bethuya.Backend",
+    "bin",
+    "Debug",
+    "net10.0",
+    "Hackmum.Bethuya.Backend.exe"));
+
+if (!builder.ExecutionContext.IsPublishMode)
+{
+    backend.WithCommand(
+        "seed-curation",
+        "Seed curation sandbox",
+        async context =>
+        {
+            try
+            {
+                var endpointUrl = await backendHttpsEndpoint.GetValueAsync(context.CancellationToken);
+
+                var requestUrls = new List<string>();
+                if (!string.IsNullOrWhiteSpace(endpointUrl))
+                {
+                    requestUrls.Add($"{endpointUrl.TrimEnd('/')}/api/dev/curation/seed?reviewableCount=50");
+                }
+
+                var localBackendBaseUrl = await TryResolveLocalBackendBaseUrlAsync(backendExecutablePath, context.CancellationToken);
+                if (!string.IsNullOrWhiteSpace(localBackendBaseUrl))
+                {
+                    var localRequestUrl = $"{localBackendBaseUrl.TrimEnd('/')}/api/dev/curation/seed?reviewableCount=50";
+                    if (!requestUrls.Contains(localRequestUrl, StringComparer.OrdinalIgnoreCase))
+                    {
+                        requestUrls.Insert(0, localRequestUrl);
+                    }
+                }
+
+                if (requestUrls.Count == 0)
+                {
+                    return CommandResults.Failure("Backend HTTPS endpoint is unavailable and no local backend port could be resolved.");
+                }
+
+                using var httpClient = new HttpClient();
+                var failures = new List<string>();
+                foreach (var requestUrl in requestUrls)
+                {
+                    Console.WriteLine($"Seed curation sandbox request URL: {requestUrl}");
+
+                    using var response = await httpClient.PostAsync(requestUrl, content: null, context.CancellationToken);
+                    var responseBody = await response.Content.ReadAsStringAsync(context.CancellationToken);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"Seed curation sandbox response: {responseBody}");
+                        return CommandResults.Success();
+                    }
+
+                    Console.WriteLine(
+                        $"Seed curation sandbox failed. Request URL: {requestUrl}. Status: {(int)response.StatusCode} ({response.ReasonPhrase}). Response: {responseBody}");
+                    failures.Add(
+                        $"Request URL: {requestUrl}. Status: {(int)response.StatusCode} ({response.ReasonPhrase}). Response: {responseBody}");
+                }
+
+                return CommandResults.Failure($"Seed request failed for all candidate URLs.{Environment.NewLine}{string.Join(Environment.NewLine, failures)}");
+            }
+            catch (Exception ex)
+            {
+                return CommandResults.Failure(ex);
+            }
+        },
+        new CommandOptions
+        {
+            Description = "Create a fresh curation sandbox event with ~50 varied reviewable registrants plus fairness and reliability edge cases.",
+            ConfirmationMessage = "Generate a new curation sandbox event with seeded registrants?"
+        });
+}
+
 if (keyVault is not null)
     backend.WithReference(keyVault);
 
@@ -213,3 +298,51 @@ if (!builder.ExecutionContext.IsPublishMode)
 }
 
 builder.Build().Run();
+
+static async Task<string?> TryResolveLocalBackendBaseUrlAsync(string backendExecutablePath, CancellationToken cancellationToken)
+{
+    if (!OperatingSystem.IsWindows())
+    {
+        return null;
+    }
+
+    var escapedBackendPath = backendExecutablePath.Replace("'", "''", StringComparison.Ordinal);
+    var script = $$"""
+        $backendProcess = Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq '{{escapedBackendPath}}' } | Select-Object -First 1
+        if ($null -eq $backendProcess) { return }
+
+        $port = Get-NetTCPConnection -State Listen |
+            Where-Object { $_.OwningProcess -eq $backendProcess.ProcessId } |
+            Sort-Object LocalPort |
+            Select-Object -First 1 -ExpandProperty LocalPort
+
+        if ($null -eq $port) { return }
+        Write-Output $port
+        """;
+
+    using var process = new Process
+    {
+        StartInfo = new ProcessStartInfo
+        {
+            FileName = "powershell",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        }
+    };
+
+    process.StartInfo.ArgumentList.Add("-NoProfile");
+    process.StartInfo.ArgumentList.Add("-Command");
+    process.StartInfo.ArgumentList.Add(script);
+
+    process.Start();
+
+    var standardOutput = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+    _ = await process.StandardError.ReadToEndAsync(cancellationToken);
+    await process.WaitForExitAsync(cancellationToken);
+
+    return int.TryParse(standardOutput.Trim(), out var port)
+        ? $"https://localhost:{port}"
+        : null;
+}

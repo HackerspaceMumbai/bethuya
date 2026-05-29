@@ -1,20 +1,26 @@
+using System.Globalization;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
+using Hackmum.Bethuya.Core.Repositories;
 
 namespace Hackmum.Bethuya.Backend.Services;
 
 public sealed class CurationFairnessService
 {
-    public CurationDashboardResponse BuildDashboard(
+    public async Task<CurationDashboardResponse> BuildDashboardAsync(
         Event evt,
         IReadOnlyList<Registration> registrations,
-        IReadOnlyList<string>? curationInsights = null)
+        IAttendeeProfileRepository attendeeProfileRepository,
+        IRegistrationRepository registrationRepository,
+        IReadOnlyList<string>? curationInsights = null,
+        CancellationToken ct = default)
     {
         var targets = evt.FairnessTargets ?? new EventFairnessTargets();
         var selected = registrations
-            .Where(r => r.Status == RegistrationStatus.Accepted || r.Status == RegistrationStatus.CheckedIn)
+            .Where(r => r.Status is RegistrationStatus.Accepted or RegistrationStatus.CheckedIn)
             .ToList();
+        var genderProgress = BuildGenderProgress(selected, targets);
 
         var dimensions = new List<FairnessDimensionProgressResponse>
         {
@@ -28,25 +34,292 @@ public sealed class CurationFairnessService
             dimensions.Add(BuildSocioeconomicProgress(selected, targets));
         }
 
-        var registrants = registrations
-            .Where(r => r.Status is RegistrationStatus.Pending or RegistrationStatus.Waitlisted)
-            .Select(r => new CurationRegistrantResponse(
-                r.Id,
-                r.FullName,
-                r.Email,
-                r.Status.ToString(),
-                r.Interests,
-                BuildImpactPreview(selected, r, targets)))
+        var curationRegistrants = registrations
+            .Where(r => r.Status is not (RegistrationStatus.Rejected or RegistrationStatus.Cancelled))
+            .ToList();
+
+        var emails = curationRegistrants
+            .Select(registration => registration.Email)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var publicSummariesByEmail = await attendeeProfileRepository.GetPublicSummariesByEmailAsync(emails, ct);
+        var historyByEmail = await registrationRepository.GetHistoricalByEmailsAsync(emails, evt.Id, ct);
+
+        var registrants = curationRegistrants
+            .Select(registration =>
+            {
+                publicSummariesByEmail.TryGetValue(registration.Email, out var publicSummary);
+                historyByEmail.TryGetValue(registration.Email, out var history);
+                var comparisonSelection = selected
+                    .Where(selectedRegistration => selectedRegistration.Id != registration.Id)
+                    .ToList();
+
+                return BuildRegistrant(
+                    registration,
+                    comparisonSelection,
+                    targets,
+                    publicSummary,
+                    history ?? [],
+                    dimensions);
+            })
             .ToList();
 
         return new CurationDashboardResponse(
             EventId: evt.Id,
+            EventTitle: evt.Title,
             Capacity: evt.Capacity,
             Applicants: registrations.Count,
             Targets: ToContract(targets),
+            GenderProgress: genderProgress,
             Dimensions: dimensions,
             Registrants: registrants,
             CurationInsights: curationInsights ?? []);
+    }
+
+    private static CurationRegistrantResponse BuildRegistrant(
+        Registration registration,
+        IReadOnlyList<Registration> selected,
+        EventFairnessTargets targets,
+        AttendeePublicSummary? publicSummary,
+        IReadOnlyList<Registration> history,
+        IReadOnlyList<FairnessDimensionProgressResponse> dimensions)
+    {
+        var impact = BuildImpactPreview(selected, registration, targets);
+        var profile = BuildProfileSummary(registration, publicSummary, history);
+        var reliability = BuildReliability(history);
+        var intent = BuildIntentInsight(registration, impact);
+        var recommendation = BuildRecommendation(registration, impact, profile, reliability, intent, dimensions);
+
+        return new CurationRegistrantResponse(
+            RegistrationId: registration.Id,
+            FullName: registration.FullName,
+            Email: registration.Email,
+            Status: registration.Status.ToString(),
+            RegisteredAt: registration.RegisteredAt,
+            Bio: registration.Bio,
+            Interests: registration.Interests,
+            Profile: profile,
+            Reliability: reliability,
+            Intent: intent,
+            Recommendation: recommendation,
+            Impact: impact);
+    }
+
+    private static CurationProfileSummaryResponse BuildProfileSummary(
+        Registration registration,
+        AttendeePublicSummary? publicSummary,
+        IReadOnlyList<Registration> history)
+    {
+        var pastAcceptedCount = history.Count(r => r.Status is RegistrationStatus.Accepted or RegistrationStatus.CheckedIn);
+        var pastAttendedCount = history.Count(r => r.Status == RegistrationStatus.CheckedIn);
+        var isFirstTimer = pastAcceptedCount == 0;
+        var hasOrganizerStandoutContribution = history.Any(r => r.InclusionSignals.OrganizerMarkedStandout);
+
+        var headline = ResolveHeadline(publicSummary);
+        var organization = ResolveOrganization(publicSummary, registration.Email);
+        var tags = new List<string>();
+
+        if (isFirstTimer)
+        {
+            tags.Add("First timer");
+        }
+        else
+        {
+            tags.Add($"{pastAttendedCount} attended");
+        }
+
+        foreach (var interest in registration.Interests
+                     .Where(interest => !string.IsNullOrWhiteSpace(interest))
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .Take(2))
+        {
+            tags.Add(interest);
+        }
+
+        var historyLabel = isFirstTimer
+            ? "No prior Bethuya attendance history"
+            : $"{pastAcceptedCount} prior approvals across community events";
+
+        return new CurationProfileSummaryResponse(
+            Headline: headline,
+            Organization: organization,
+            HistoryLabel: historyLabel,
+            IsFirstTimer: isFirstTimer,
+            PastAcceptedCount: pastAcceptedCount,
+            PastAttendedCount: pastAttendedCount,
+            HasOrganizerStandoutContribution: hasOrganizerStandoutContribution,
+            Tags: tags);
+    }
+
+    private static CurationReliabilityResponse BuildReliability(IReadOnlyList<Registration> history)
+    {
+        var priorAccepted = history.Count(r => r.Status is RegistrationStatus.Accepted or RegistrationStatus.CheckedIn);
+        var priorAttended = history.Count(r => r.Status == RegistrationStatus.CheckedIn);
+
+        if (priorAccepted == 0)
+        {
+            return new CurationReliabilityResponse(
+                HasHistory: false,
+                Score: 0,
+                Label: "Unscored",
+                Summary: "No prior attendance or RSVP data linked yet.");
+        }
+
+        var score = (int)Math.Round((double)priorAttended / priorAccepted * 100, MidpointRounding.AwayFromZero);
+        var label = score switch
+        {
+            >= 90 => "Excellent",
+            >= 70 => "Stable",
+            >= 45 => "Mixed",
+            _ => "Needs review"
+        };
+
+        var summary = priorAttended == priorAccepted
+            ? $"Attended all {priorAttended} prior approved events."
+            : $"Attended {priorAttended} of {priorAccepted} prior approved events.";
+
+        return new CurationReliabilityResponse(
+            HasHistory: true,
+            Score: score,
+            Label: label,
+            Summary: summary);
+    }
+
+    private static CurationIntentInsightResponse BuildIntentInsight(
+        Registration registration,
+        ImpactPreviewResponse impact)
+    {
+        var summary = !string.IsNullOrWhiteSpace(registration.Bio)
+            ? registration.Bio!.Trim()
+            : registration.Interests.Count > 0
+                ? $"Interested in {string.Join(", ", registration.Interests.Take(3))} and wants to contribute to the event."
+                : "No written intent provided yet; review interests and fairness impact together.";
+
+        var lowerSummary = summary.ToLowerInvariant();
+        var specificityScore = summary.Length >= 90 || registration.Interests.Count >= 3 ? 2 : summary.Length >= 45 ? 1 : 0;
+        var evidenceScore = lowerSummary.Contains("build", StringComparison.Ordinal)
+                            || lowerSummary.Contains("project", StringComparison.Ordinal)
+                            || lowerSummary.Contains("research", StringComparison.Ordinal)
+                            || lowerSummary.Contains("mentor", StringComparison.Ordinal)
+                            || lowerSummary.Contains("community", StringComparison.Ordinal)
+            ? 2
+            : registration.Interests.Count >= 2 ? 1 : 0;
+        var authenticityScore = !string.IsNullOrWhiteSpace(registration.Bio)
+                                && (lowerSummary.Contains("i ", StringComparison.Ordinal)
+                                    || lowerSummary.StartsWith("interested", StringComparison.Ordinal)
+                                    || lowerSummary.Contains("want", StringComparison.Ordinal))
+            ? 2
+            : !string.IsNullOrWhiteSpace(registration.Bio) ? 1 : 0;
+
+        var signals = new List<string>();
+
+        if (lowerSummary.Contains("build", StringComparison.Ordinal) || lowerSummary.Contains("project", StringComparison.Ordinal))
+        {
+            signals.Add("Builder intent");
+        }
+
+        if (lowerSummary.Contains("community", StringComparison.Ordinal)
+            || lowerSummary.Contains("collabor", StringComparison.Ordinal)
+            || lowerSummary.Contains("network", StringComparison.Ordinal))
+        {
+            signals.Add("Community intent");
+        }
+
+        if (impact.DeltaPercentByDimension.Values.Any(value => value > 0.0001))
+        {
+            signals.Add("Fairness lift detected");
+        }
+
+        if (signals.Count == 0)
+        {
+            signals.Add("Manual review recommended");
+        }
+
+        return new CurationIntentInsightResponse(
+            Summary: summary,
+            Specificity: ToSignalLevel(specificityScore),
+            Evidence: ToSignalLevel(evidenceScore),
+            Authenticity: ToSignalLevel(authenticityScore),
+            Signals: signals,
+            Interpretation: BuildInterpretation(summary, signals));
+    }
+
+    private static CurationRecommendationResponse BuildRecommendation(
+        Registration registration,
+        ImpactPreviewResponse impact,
+        CurationProfileSummaryResponse profile,
+        CurationReliabilityResponse reliability,
+        CurationIntentInsightResponse intent,
+        IReadOnlyList<FairnessDimensionProgressResponse> dimensions)
+    {
+        var strongestPositiveDelta = impact.DeltaPercentByDimension.Values.DefaultIfEmpty(0).Max();
+        var deficits = dimensions
+            .Where(dimension => !dimension.IsSuppressed && dimension.DeficitPercent > 0)
+            .OrderByDescending(dimension => dimension.DeficitPercent)
+            .ToList();
+
+        string label;
+        string tone;
+        string summary;
+
+        if (strongestPositiveDelta > 0.02
+            && intent.Evidence is "High" or "Medium"
+            && profile.HasOrganizerStandoutContribution)
+        {
+            label = "Returning standout";
+            tone = "positive";
+            summary = "Organizer-marked contribution in a past meetup plus current fairness impact make this a standout returning candidate for human review.";
+        }
+        else if (strongestPositiveDelta > 0.02 && intent.Evidence is "High" or "Medium")
+        {
+            label = "Strong new candidate";
+            tone = "positive";
+            summary = "Concrete intent signal detected. Review alongside fairness impact, but no organizer-marked standout contribution is linked yet.";
+        }
+        else if (registration.Status == RegistrationStatus.Waitlisted
+                 || reliability.HasHistory && reliability.Score < 45)
+        {
+            label = "Needs manual trade-off review";
+            tone = "warning";
+            summary = "Past follow-through or current review state suggests a closer organizer review before approving.";
+        }
+        else
+        {
+            label = "Good exploratory attendee";
+            tone = "neutral";
+            summary = "Fair candidate to review with queue context, intent signal, and cohort balance together.";
+        }
+
+        var highlights = new List<string>();
+
+        foreach (var delta in impact.DeltaPercentByDimension
+                     .Where(item => Math.Abs(item.Value) > 0.0001)
+                     .OrderByDescending(item => item.Value)
+                     .Take(3))
+        {
+            highlights.Add($"{ToDimensionLabel(delta.Key)} {ToSignedPercent(delta.Value)}");
+        }
+
+        if (highlights.Count == 0 && deficits.Count > 0)
+        {
+            highlights.Add($"Watch {deficits[0].Dimension.ToLowerInvariant()} gap");
+        }
+
+        if (reliability.HasHistory)
+        {
+            highlights.Add($"Reliability {reliability.Score}/100");
+        }
+        else
+        {
+            highlights.Add("No prior RSVP history");
+        }
+
+        return new CurationRecommendationResponse(
+            Label: label,
+            Tone: tone,
+            Summary: summary,
+            Highlights: highlights.Distinct(StringComparer.OrdinalIgnoreCase).ToList());
     }
 
     private static FairnessDimensionProgressResponse BuildGeoProgress(
@@ -75,6 +348,23 @@ public sealed class CurationFairnessService
                 return (outsideDominant, regs.Count);
             },
             alertLabel: "outside dominant geo bucket");
+    }
+
+    private static FairnessDimensionProgressResponse BuildGenderProgress(
+        IReadOnlyCollection<Registration> selected,
+        EventFairnessTargets targets)
+    {
+        return BuildProgress(
+            dimension: "gender",
+            selected: selected,
+            targetPercent: targets.GenderDiversityMinPercent,
+            kThreshold: targets.KAnonymityThreshold,
+            numeratorAndDenominatorFactory: regs =>
+            {
+                var numerator = regs.Count(r => r.InclusionSignals.HasGenderDiversitySignal);
+                return (numerator, regs.Count);
+            },
+            alertLabel: "consented gender diversity signals");
     }
 
     private static FairnessDimensionProgressResponse BuildLanguageProgress(
@@ -180,16 +470,19 @@ public sealed class CurationFairnessService
         }
 
         var currentGeo = BuildGeoProgress(selected, targets);
+        var currentGender = BuildGenderProgress(selected, targets);
         var currentLanguage = BuildLanguageProgress(selected, targets);
         var currentEducation = BuildEducationProgress(selected, targets);
 
         var nextGeo = BuildGeoProgress(updatedSelected, targets);
+        var nextGender = BuildGenderProgress(updatedSelected, targets);
         var nextLanguage = BuildLanguageProgress(updatedSelected, targets);
         var nextEducation = BuildEducationProgress(updatedSelected, targets);
 
         var deltas = new Dictionary<string, double>(StringComparer.Ordinal)
         {
             ["geo"] = nextGeo.CurrentPercent - currentGeo.CurrentPercent,
+            ["gender"] = nextGender.CurrentPercent - currentGender.CurrentPercent,
             ["language"] = nextLanguage.CurrentPercent - currentLanguage.CurrentPercent,
             ["education"] = nextEducation.CurrentPercent - currentEducation.CurrentPercent
         };
@@ -201,11 +494,9 @@ public sealed class CurationFairnessService
             deltas["socioeconomic"] = nextSocioeconomic.CurrentPercent - currentSocioeconomic.CurrentPercent;
         }
 
-        var explanation = DescribeImpact(deltas);
-
         return new ImpactPreviewResponse(
             DeltaPercentByDimension: deltas,
-            Explanation: explanation,
+            Explanation: DescribeImpact(deltas),
             IsSuppressed: false);
     }
 
@@ -228,6 +519,84 @@ public sealed class CurationFairnessService
             "socioeconomic" => "Improves socioeconomic diversity toward target.",
             _ => "Improves fairness budget progress."
         };
+    }
+
+    private static string ResolveHeadline(AttendeePublicSummary? publicSummary)
+    {
+        if (string.IsNullOrWhiteSpace(publicSummary?.OccupationStatus))
+        {
+            return "Community participant";
+        }
+
+        return publicSummary.OccupationStatus.Trim() switch
+        {
+            "Employee" => "Working professional",
+            "Student" => "Student attendee",
+            "Freelancer" => "Independent builder",
+            var value => value
+        };
+    }
+
+    private static string ResolveOrganization(AttendeePublicSummary? publicSummary, string email)
+    {
+        if (!string.IsNullOrWhiteSpace(publicSummary?.CompanyName))
+        {
+            return publicSummary.CompanyName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(publicSummary?.EducationInstitute))
+        {
+            return publicSummary.EducationInstitute.Trim();
+        }
+
+        var atIndex = email.IndexOf('@');
+        if (atIndex < 0 || atIndex == email.Length - 1)
+        {
+            return "Community network";
+        }
+
+        var domain = email[(atIndex + 1)..];
+        var primaryLabel = domain.Split('.')[0];
+        return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(primaryLabel.Replace('-', ' '));
+    }
+
+    private static string BuildInterpretation(string summary, List<string> signals)
+    {
+        if (string.IsNullOrWhiteSpace(summary))
+        {
+            return "Review interests and fairness impact together before making a human decision.";
+        }
+
+        return signals[0] switch
+        {
+            "Builder intent" => "Specific examples and hands-on motivation suggest a contributing attendee profile.",
+            "Community intent" => "Collaborative language suggests this person can add community value beyond simple attendance.",
+            "Fairness lift detected" => "Intent is modest, but approving this person would improve at least one fairness dimension.",
+            _ => "Review intent, reliability, and fairness impact together before making a human decision."
+        };
+    }
+
+    private static string ToSignalLevel(int score) => score switch
+    {
+        >= 2 => "High",
+        1 => "Medium",
+        _ => "Low"
+    };
+
+    private static string ToDimensionLabel(string key) => key switch
+    {
+        "geo" => "Geo",
+        "gender" => "Gender",
+        "language" => "Language",
+        "education" => "Education",
+        "socioeconomic" => "Socioeconomic",
+        _ => key
+    };
+
+    private static string ToSignedPercent(double value)
+    {
+        var sign = value >= 0 ? "+" : string.Empty;
+        return $"{sign}{value * 100:F1}%";
     }
 
     private static bool IsUnderrepresentedEducation(EducationBucket bucket)
@@ -269,10 +638,11 @@ public sealed class CurationFairnessService
 
     private static EventFairnessTargetsContract ToContract(EventFairnessTargets source)
         => new(
-            source.GeoOutsideDominantMinPercent,
-            source.LocalLanguageMinPercent,
-            source.UnderrepresentedEducationMinPercent,
-            source.EnableSocioeconomicDimension,
-            source.UnderrepresentedSocioeconomicMinPercent,
-            source.KAnonymityThreshold);
+            GeoOutsideDominantMinPercent: source.GeoOutsideDominantMinPercent,
+            LocalLanguageMinPercent: source.LocalLanguageMinPercent,
+            UnderrepresentedEducationMinPercent: source.UnderrepresentedEducationMinPercent,
+            EnableSocioeconomicDimension: source.EnableSocioeconomicDimension,
+            UnderrepresentedSocioeconomicMinPercent: source.UnderrepresentedSocioeconomicMinPercent,
+            KAnonymityThreshold: source.KAnonymityThreshold,
+            GenderDiversityMinPercent: source.GenderDiversityMinPercent);
 }
