@@ -280,8 +280,64 @@
                                     </div>
                                 </div>
                             </BbCard>
+                        </div>
 
-                            <BbCard Class="metric-panel p-4">
+                        <BbCard Class="intent-panel">
+                            <BbCardContent Class="intent-panel-content">
+                                <div class="panel-head">
+                                    <div>
+                                        <p class="eyebrow">Event intent insight</p>
+                                        <h3 class="panel-title">Why this person wants to attend</h3>
+                                    </div>
+                                    <BbBadge Variant="BadgeVariant.Outline">@SelectedRegistrant.Recommendation.Label</BbBadge>
+                                </div>
+
+                                <div class="signal-grid">
+                                    <div class="signal-card">
+                                        <span class="mini-label">Specificity</span>
+                                        <strong>@SelectedRegistrant.Intent.Specificity</strong>
+                                    </div>
+                                    <div class="signal-card signal-card-positive">
+                                        <span class="mini-label">Evidence</span>
+                                        <strong>@SelectedRegistrant.Intent.Evidence</strong>
+                                    </div>
+                                    <div class="signal-card">
+                                        <span class="mini-label">Authenticity</span>
+                                        <strong>@SelectedRegistrant.Intent.Authenticity</strong>
+                                    </div>
+                                </div>
+
+                                <div class="explanation-panel">
+                                    <p class="mini-label">Interpretation</p>
+                                    @{
+                                        var interpretationSignals = BuildInterpretationSignals(SelectedRegistrant.Intent);
+                                    }
+                                    <div class="interpretation-callouts" data-test="intent-interpretation-signals">
+                                        <LucideIcon Name="link-2" Size="15" />
+                                        @for (var i = 0; i < interpretationSignals.Count; i++)
+                                        {
+                                            var signal = interpretationSignals[i];
+                                            <span class="@(signal.IsPositive ? "callout-positive" : "callout-negative")">@signal.Text</span>
+                                            @if (i < interpretationSignals.Count - 1)
+                                            {
+                                                <span class="callout-separator" aria-hidden="true">|</span>
+                                            }
+                                        }
+                                    </div>
+                                    <p class="small-muted interpretation-copy">@SelectedRegistrant.Intent.Interpretation</p>
+                                </div>
+
+                                <div class="explanation-panel">
+                                    <p class="mini-label">Registrant-provided answer</p>
+                                    <div class="answer-preview" title="@SelectedRegistrant.Intent.Summary" data-test="intent-answer-preview">
+                                        @((Microsoft.AspNetCore.Components.MarkupString)BuildHighlightedAnswerMarkup(SelectedRegistrant.Intent.Summary, SelectedRegistrant.Intent.Signals))
+                                    </div>
+                                </div>
+                            </BbCardContent>
+                        </BbCard>
+
+                        <BbCard Class="metric-panel impact-panel">
+                            <BbCardContent Class="impact-panel-content">
                                 <div class="panel-head">
                                     <div>
                                         <p class="eyebrow">Impact if approved</p>
@@ -291,94 +347,68 @@
                                         @GetRecommendationBadgeText(SelectedRegistrant.Recommendation.Tone)
                                     </BbBadge>
                                 </div>
-                                <p class="small-muted" data-test="impact-explanation">@SelectedRegistrant.Impact.Explanation</p>
+                                <div class="impact-summary-row">
+                                    <p class="small-muted" data-test="impact-explanation">@SelectedRegistrant.Impact.Explanation</p>
+                                    <div class="impact-net @(GetImpactNetClass(SelectedRegistrant.Impact))" data-test="impact-net-effect">
+                                        <span>Net effect</span>
+                                        <strong>@GetImpactNetLabel(SelectedRegistrant.Impact)</strong>
+                                    </div>
+                                </div>
                                 @if (SelectedRegistrant.Impact.IsSuppressed)
                                 {
                                     <p class="small-muted" data-test="impact-suppressed">Preview suppressed by anonymity threshold.</p>
                                 }
                                 else
                                 {
-                                    <div class="impact-grid" data-test="impact-deltas">
-                                        @foreach (var delta in SelectedRegistrant.Impact.DeltaPercentByDimension)
-                                        {
-                                            <div class="impact-delta">
-                                                <span class="mini-label">@ToDimensionLabel(delta.Key)</span>
-                                                <strong class="@(delta.Value >= 0 ? "positive" : "warning")">@ToDeltaPercent(delta.Value)</strong>
+                                    var fairnessRows = BuildImpactFairnessRows();
+                                    var organizationDelta = ProjectedUniqueOrganizationCount - CurrentUniqueOrganizationCount;
+                                    var concentration = GetTopOrganizationConcentration(ProjectedCohort);
+                                    var reliabilityDelta = (ProjectedAverageReliability - CurrentAverageReliability) / 100d;
+                                    <div class="impact-wireframe" data-test="impact-deltas">
+                                        <section class="impact-col">
+                                            <p class="mini-label">Fairness</p>
+                                            <div class="impact-list">
+                                                @foreach (var row in fairnessRows)
+                                                {
+                                                    <p class="impact-line-item">
+                                                        <span>@row.Label</span>
+                                                        <strong class="@row.State">@row.Value</strong>
+                                                    </p>
+                                                }
                                             </div>
-                                        }
+                                        </section>
+                                        <section class="impact-col">
+                                            <p class="mini-label">Cohort</p>
+                                            <div class="impact-list">
+                                                <p class="impact-line-item">
+                                                    <span>Organizations</span>
+                                                    <strong class="@(organizationDelta >= 0 ? "positive" : "warning")">@(organizationDelta >= 0 ? "+" : string.Empty)@organizationDelta</strong>
+                                                </p>
+                                                <p class="impact-line-item">
+                                                    <span>Top-org concentration</span>
+                                                    <strong class="@(concentration > 0.18 ? "warning" : "positive")">@ToPercent(concentration)</strong>
+                                                </p>
+                                            </div>
+                                        </section>
+                                        <section class="impact-col">
+                                            <p class="mini-label">Reliability</p>
+                                            <div class="impact-list">
+                                                <p class="impact-line-item">
+                                                    <span>Avg RSVP</span>
+                                                    <strong class="@(reliabilityDelta >= 0 ? "positive" : "warning")">@($"{reliabilityDelta:+0.0;-0.0;0.0}")</strong>
+                                                </p>
+                                            </div>
+                                        </section>
+                                        <section class="impact-col">
+                                            <p class="mini-label">Assessment</p>
+                                            <p class="assessment-text">@SelectedRegistrant.Recommendation.Label</p>
+                                            <p class="small-muted">@(SelectedRegistrant.Recommendation.AssessmentText ?? SelectedRegistrant.Recommendation.Summary)</p>
+                                        </section>
                                     </div>
                                 }
-                            </BbCard>
-                        </div>
-
-                        <BbCard Class="intent-panel p-5">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="eyebrow">Event intent insight</p>
-                                    <h3 class="panel-title">Why this person wants to attend</h3>
-                                </div>
-                                <BbBadge Variant="BadgeVariant.Secondary">@SelectedRegistrant.Recommendation.Label</BbBadge>
-                            </div>
-
-                            <div class="signal-grid">
-                                <div class="signal-card">
-                                    <span class="mini-label">Specificity</span>
-                                    <strong>@SelectedRegistrant.Intent.Specificity</strong>
-                                </div>
-                                <div class="signal-card signal-card-positive">
-                                    <span class="mini-label">Evidence</span>
-                                    <strong>@SelectedRegistrant.Intent.Evidence</strong>
-                                </div>
-                                <div class="signal-card">
-                                    <span class="mini-label">Authenticity</span>
-                                    <strong>@SelectedRegistrant.Intent.Authenticity</strong>
-                                </div>
-                            </div>
-
-                            <div class="explanation-panel">
-                                <p class="mini-label">Interpretation</p>
-                                <p>@SelectedRegistrant.Intent.Interpretation</p>
-                            </div>
-
-                            <div class="explanation-panel">
-                                <p class="mini-label">Registrant-provided answer</p>
-                                <p>@SelectedRegistrant.Intent.Summary</p>
-                            </div>
+                            </BbCardContent>
                         </BbCard>
 
-                        <BbCard Class="recommendation-panel p-5">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="eyebrow">Recommendation</p>
-                                    <h3 class="panel-title">@SelectedRegistrant.Recommendation.Label</h3>
-                                </div>
-                                <BbBadge Variant="@GetRecommendationBadgeVariant(SelectedRegistrant.Recommendation.Tone)">
-                                    @GetRecommendationBadgeText(SelectedRegistrant.Recommendation.Tone)
-                                </BbBadge>
-                            </div>
-
-                            <p class="small-muted">@SelectedRegistrant.Recommendation.Summary</p>
-
-                            <div class="recommendation-highlights">
-                                @foreach (var highlight in SelectedRegistrant.Recommendation.Highlights)
-                                {
-                                    <div class="highlight-chip">
-                                        <LucideIcon Name="sparkles" Size="14" />
-                                        <span>@highlight</span>
-                                    </div>
-                                }
-                            </div>
-
-                            @if (_dashboard.CurationInsights.Count > 0)
-                            {
-                                <div class="insight-list" data-test="curation-insights-list">
-                                    @foreach (var insight in _dashboard.CurationInsights.Take(3))
-                                    {
-                                        <p>@insight</p>
-                                    }
-                                </div>
-                            }
-                        </BbCard>
                     }
                     </BbCardContent>
                 </BbCard>
@@ -386,31 +416,49 @@
         </section>
 
         <section class="action-tray">
-            <div class="space-y-1">
+            <div class="tray-left">
                 <p class="tray-title">Guidance-only mode</p>
-                <p class="small-muted">
-                    Curation decisions stay human-approved. @(SelectedRegistrant is null ? "Select a registrant to take action." : $"You are reviewing {SelectedRegistrant.FullName}.")
+                <p class="small-muted tray-subtitle">
+                    Curation decisions stay human-approved.
+                    @if (SelectedRegistrant is not null)
+                    {
+                        <span class="tray-reviewer"> Reviewing <strong>@SelectedRegistrant.FullName</strong>.</span>
+                    }
                 </p>
             </div>
-            <div class="tray-actions">
-                <BbButton Variant="ButtonVariant.Outline"
-                          Disabled="@(!CanApplyDecision)"
-                          OnClick="@(() => ApplyDecisionAsync("reject"))"
-                          data-test="curation-reject-btn">
-                    Reject
-                </BbButton>
-                <BbButton Variant="ButtonVariant.Secondary"
-                          Disabled="@(!CanApplyDecision)"
-                          OnClick="@(() => ApplyDecisionAsync("waitlist"))"
-                          data-test="curation-waitlist-btn">
-                    Waitlist
-                </BbButton>
-                <BbButton Variant="ButtonVariant.Default"
-                          Disabled="@(!CanApplyDecision)"
-                          OnClick="@(() => ApplyDecisionAsync("approve"))"
-                          data-test="curation-approve-btn">
-                    @(_isApplyingDecision ? "Applying..." : "Approve for Seat")
-                </BbButton>
+            <div class="tray-right">
+                @if (SelectedRegistrant is not null)
+                {
+                    <p class="suggested-action" data-test="suggested-action-text">
+                        ✅ <strong>Suggested:</strong> @SelectedRegistrant.Recommendation.Label
+                    </p>
+                }
+                <div class="tray-actions">
+                    <BbButton Variant="ButtonVariant.Outline"
+                              Disabled="@(!CanApplyDecision)"
+                              OnClick="@(() => ApplyDecisionAsync("reject"))"
+                              data-test="curation-reject-btn"
+                              Class="btn-reject">
+                        <LucideIcon Name="ban" Size="15" />
+                        Reject
+                    </BbButton>
+                    <BbButton Variant="ButtonVariant.Secondary"
+                              Disabled="@(!CanApplyDecision)"
+                              OnClick="@(() => ApplyDecisionAsync("waitlist"))"
+                              data-test="curation-waitlist-btn"
+                              Class="btn-waitlist">
+                        <LucideIcon Name="hourglass" Size="15" />
+                        Waitlist
+                    </BbButton>
+                    <BbButton Variant="ButtonVariant.Default"
+                              Disabled="@(!CanApplyDecision)"
+                              OnClick="@(() => ApplyDecisionAsync("approve"))"
+                              data-test="curation-approve-btn"
+                              Class="btn-approve">
+                        <LucideIcon Name="circle-check" Size="15" />
+                        @(_isApplyingDecision ? "Applying..." : "Approve for Seat")
+                    </BbButton>
+                </div>
             </div>
         </section>
     }
@@ -997,10 +1045,249 @@
             : $"+ {ToDimensionLabel(strongest.Key)} boost";
     }
 
+    private static IReadOnlyList<InterpretationSignal> BuildInterpretationSignals(CurationIntentInsightDto intent)
+    {
+        var positives = new List<string>();
+        var negatives = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        static void AddSignal(List<string> target, HashSet<string> dedupe, string text)
+        {
+            if (!string.IsNullOrWhiteSpace(text) && dedupe.Add(text))
+            {
+                target.Add(text);
+            }
+        }
+
+        foreach (var signal in intent.Signals)
+        {
+            if (signal.Contains("builder", StringComparison.OrdinalIgnoreCase))
+            {
+                AddSignal(positives, seen, "Strong technical signal");
+            }
+            else if (signal.Contains("community", StringComparison.OrdinalIgnoreCase))
+            {
+                AddSignal(positives, seen, "Strong community signal");
+            }
+            else if (signal.Contains("fairness", StringComparison.OrdinalIgnoreCase))
+            {
+                AddSignal(positives, seen, "Improves fairness balance");
+            }
+            else if (signal.Contains("review", StringComparison.OrdinalIgnoreCase))
+            {
+                AddSignal(negatives, seen, "Needs manual review");
+            }
+        }
+
+        if (!string.Equals(intent.Specificity, "High", StringComparison.OrdinalIgnoreCase))
+        {
+            AddSignal(negatives, seen, "Slightly generic phrasing");
+        }
+
+        if (string.Equals(intent.Evidence, "Low", StringComparison.OrdinalIgnoreCase))
+        {
+            AddSignal(negatives, seen, "Limited supporting evidence");
+        }
+
+        if (string.Equals(intent.Authenticity, "Low", StringComparison.OrdinalIgnoreCase))
+        {
+            AddSignal(negatives, seen, "Authenticity signal is weak");
+        }
+
+        if (positives.Count == 0)
+        {
+            AddSignal(positives, seen, "Intent signal present");
+        }
+
+        if (negatives.Count == 0)
+        {
+            AddSignal(negatives, seen, "No major intent concerns");
+        }
+
+        return
+        [
+            new InterpretationSignal(positives[0], IsPositive: true),
+            new InterpretationSignal(negatives[0], IsPositive: false)
+        ];
+    }
+
+    private static Microsoft.AspNetCore.Components.MarkupString RenderHighlightedAnswer(string answer, IReadOnlyList<string> signals)
+        => new(BuildHighlightedAnswerMarkup(answer, signals));
+
+    private static string BuildHighlightedAnswerMarkup(string answer, IReadOnlyList<string> signals)
+    {
+        var terms = BuildAnswerHighlightTerms(answer, signals);
+        if (terms.Count == 0)
+        {
+            return System.Net.WebUtility.HtmlEncode(answer);
+        }
+
+        var pattern = string.Join("|", terms.OrderByDescending(term => term.Length).Select(System.Text.RegularExpressions.Regex.Escape));
+        var regex = new System.Text.RegularExpressions.Regex(
+            $@"\b({pattern})\b",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        var markup = new System.Text.StringBuilder();
+        var lastIndex = 0;
+
+        foreach (System.Text.RegularExpressions.Match match in regex.Matches(answer))
+        {
+            if (match.Index > lastIndex)
+            {
+                markup.Append(System.Net.WebUtility.HtmlEncode(answer[lastIndex..match.Index]));
+            }
+
+            markup.Append("<span class=\"answer-highlight\">");
+            markup.Append(System.Net.WebUtility.HtmlEncode(match.Value));
+            markup.Append("</span>");
+            lastIndex = match.Index + match.Length;
+        }
+
+        if (lastIndex < answer.Length)
+        {
+            markup.Append(System.Net.WebUtility.HtmlEncode(answer[lastIndex..]));
+        }
+
+        return markup.ToString();
+    }
+
+    private static IReadOnlyList<string> BuildAnswerHighlightTerms(string answer, IReadOnlyList<string> signals)
+    {
+        var terms = new List<string>();
+
+        void AddTerm(string term)
+        {
+            if (!string.IsNullOrWhiteSpace(term)
+                && answer.Contains(term, StringComparison.OrdinalIgnoreCase)
+                && !terms.Any(existing => existing.Equals(term, StringComparison.OrdinalIgnoreCase)))
+            {
+                terms.Add(term);
+            }
+        }
+
+        foreach (var signal in signals)
+        {
+            if (signal.Contains("builder", StringComparison.OrdinalIgnoreCase))
+            {
+                AddTerm("build");
+                AddTerm("building");
+                AddTerm("project");
+                AddTerm("projects");
+                AddTerm("prototype");
+            }
+
+            if (signal.Contains("community", StringComparison.OrdinalIgnoreCase))
+            {
+                AddTerm("community");
+                AddTerm("collaborate");
+                AddTerm("collaboration");
+                AddTerm("network");
+                AddTerm("networking");
+                AddTerm("meet");
+            }
+
+            if (signal.Contains("fairness", StringComparison.OrdinalIgnoreCase))
+            {
+                AddTerm("fairness");
+                AddTerm("inclusion");
+                AddTerm("equity");
+            }
+        }
+
+        foreach (var term in new[]
+                 {
+                     "AI",
+                     "research",
+                     "build",
+                     "building",
+                     "project",
+                     "projects",
+                     "tools",
+                     "tool",
+                     "community",
+                     "collaborate",
+                     "collaboration",
+                     "network",
+                     "networking",
+                     "learn",
+                     "mentor",
+                     "mentoring",
+                     "accessibility",
+                     "inclusion",
+                     "equity",
+                     "open source",
+                     "hardware",
+                     "design",
+                     "IoT"
+                 })
+        {
+            if (terms.Count >= 3)
+            {
+                break;
+            }
+
+            AddTerm(term);
+        }
+
+        return terms;
+    }
+
     private static string BuildQueueImpactLine(CurationRegistrantDto registrant)
         => HasPositiveFairnessDelta(registrant)
             ? "Significant fairness delta detected."
             : "No positive fairness delta from approving this registrant.";
+
+    private IReadOnlyList<ImpactMetricRow> BuildImpactFairnessRows()
+        =>
+        [
+            BuildImpactMetricRow("Gender", GetProjectionDelta("gender")),
+            BuildImpactMetricRow("Geography", GetProjectionDelta("geo")),
+            BuildImpactMetricRow("Language", GetProjectionDelta("language")),
+            BuildImpactMetricRow("Education", GetProjectionDelta("education")),
+            BuildImpactMetricRow("Inclusion", GetProjectionDelta("socioeconomic")),
+            BuildImpactMetricRow("First Timer", ProjectedFirstTimerShare - CurrentFirstTimerShare),
+            BuildImpactMetricRow("Equity", ProjectedUnderrepShare - CurrentUnderrepShare)
+        ];
+
+    private static ImpactMetricRow BuildImpactMetricRow(string label, double delta)
+    {
+        var state = Math.Abs(delta) <= 0.0001 ? "neutral" : delta > 0 ? "positive" : "warning";
+        return new ImpactMetricRow(label, ToDeltaPercent(delta), state);
+    }
+
+    private static double GetTopOrganizationConcentration(IReadOnlyList<CurationRegistrantDto> cohort)
+    {
+        if (cohort.Count == 0)
+        {
+            return 0;
+        }
+
+        var highestOrganizationCount = cohort
+            .Select(registrant => registrant.Profile.Organization)
+            .Where(organization => !string.IsNullOrWhiteSpace(organization))
+            .GroupBy(organization => organization, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.Count())
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return Ratio(highestOrganizationCount, cohort.Count);
+    }
+
+    private static string GetImpactNetLabel(ImpactPreviewDto impact)
+        => impact.DeltaPercentByDimension.Values.Sum() switch
+        {
+            > 0.0001 => "Positive",
+            < -0.0001 => "Negative",
+            _ => "Neutral"
+        };
+
+    private static string GetImpactNetClass(ImpactPreviewDto impact)
+        => impact.DeltaPercentByDimension.Values.Sum() switch
+        {
+            > 0.0001 => "positive",
+            < -0.0001 => "warning",
+            _ => "neutral"
+        };
 
     private static bool HasPositiveFairnessDelta(CurationRegistrantDto registrant)
         => registrant.Impact.DeltaPercentByDimension.Values.Any(value => value > 0.0001);
@@ -1098,6 +1385,9 @@
                 r.Impact.DeltaPercentByDimension.Values.Any(value => Math.Abs(value) > 0.0001));
         }
     }
+
+    private sealed record InterpretationSignal(string Text, bool IsPositive);
+    private sealed record ImpactMetricRow(string Label, string Value, string State);
 
     private sealed record BudgetGroup(string Label, IReadOnlyList<BudgetChip> Chips);
 
