@@ -37,11 +37,7 @@ public class CurationFlowTests : BethuyaE2ETest
         await Page.GetByLabel("First Name").FillAsync("Curation");
         await Page.GetByLabel("Last Name").FillAsync("Tester");
         await Page.GetByLabel("Email Address").FillAsync(attendeeEmail);
-        // BlazorBlueprint select renders as a combobox button; interact via role for stability.
-        await Page.Locator("button[role='combobox']").First.ClickAsync();
-        await Page.GetByRole(AriaRole.Option, new() { Name = "Aadhaar Card" }).ClickAsync();
-        await Page.GetByLabel("Last 4 digits of ID").FillAsync("1234");
-        await Page.GetByRole(AriaRole.Radio, new() { Name = "Freelancer" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Radio, new() { Name = "Independent / Freelancer" }).ClickAsync();
         await Page.Locator("[data-test='save-profile-btn']").ClickAsync();
         try
         {
@@ -60,9 +56,9 @@ public class CurationFlowTests : BethuyaE2ETest
             await Page.WaitForURLAsync("**/registration/aide");
         }
 
-        // Step 3: Fill inclusion details with Marathi/Konkani language signal
-        await Page.GetByLabel("Neighbourhood / Area").FillAsync("Andheri West");
-        await Page.GetByLabel("Languages Spoken").FillAsync("English, Marathi, Konkani");
+        // Step 3: Fill optional inclusion details with Marathi/Konkani language signal
+        await Page.GetByRole(AriaRole.Radio, new() { Name = "Yes" }).ClickAsync();
+        await Page.GetByLabel("Languages spoken").FillAsync("English, Marathi, Konkani");
         await Page.Locator("[data-test='save-aide-btn']").ClickAsync();
         await Page.WaitForURLAsync("**/");
 
