@@ -37,7 +37,7 @@ public class CurationFlowTests : BethuyaE2ETest
         await Page.GetByLabel("First Name").FillAsync("Curation");
         await Page.GetByLabel("Last Name").FillAsync("Tester");
         await Page.GetByLabel("Email Address").FillAsync(attendeeEmail);
-        await Page.GetByRole(AriaRole.Radio, new() { Name = "Freelancer" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Radio, new() { Name = "Independent / Freelancer" }).ClickAsync();
         await Page.Locator("[data-test='save-profile-btn']").ClickAsync();
         try
         {
@@ -58,7 +58,7 @@ public class CurationFlowTests : BethuyaE2ETest
 
         // Step 3: Fill optional inclusion details with Marathi/Konkani language signal
         await Page.GetByRole(AriaRole.Radio, new() { Name = "Yes" }).ClickAsync();
-        await Page.GetByLabel("Languages Spoken").FillAsync("English, Marathi, Konkani");
+        await Page.GetByLabel("Languages spoken").FillAsync("English, Marathi, Konkani");
         await Page.Locator("[data-test='save-aide-btn']").ClickAsync();
         await Page.WaitForURLAsync("**/");
 
