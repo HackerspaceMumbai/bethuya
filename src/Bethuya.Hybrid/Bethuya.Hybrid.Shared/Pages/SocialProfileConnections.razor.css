@@ -109,6 +109,51 @@
     line-height: 1.5;
 }
 
+.verification-status {
+    border: 1px solid rgba(212, 168, 48, 0.16);
+    border-radius: calc(var(--radius) + 2px);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.85rem 1rem;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.verification-status__title {
+    margin: 0;
+    color: var(--foreground);
+    font-weight: 700;
+}
+
+.verification-status__item {
+    margin: 0;
+    color: var(--muted-foreground, var(--foreground));
+    font-weight: 600;
+}
+
+.verification-benefits {
+    border: 1px solid rgba(212, 168, 48, 0.16);
+    border-radius: calc(var(--radius) + 2px);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.85rem 1rem;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.verification-benefits__title {
+    margin: 0;
+    color: var(--foreground);
+    font-weight: 700;
+}
+
+.verification-benefits__list {
+    margin: 0;
+    padding-left: 1rem;
+    display: grid;
+    gap: 0.4rem;
+    color: var(--muted-foreground, var(--foreground));
+    line-height: 1.5;
+}
+
 .social-connection-grid {
     display: grid;
     gap: 1rem;
@@ -288,6 +333,12 @@
 .social-connection-status--pending {
     color: var(--muted-foreground, var(--foreground));
     opacity: 0.82;
+}
+
+.social-connection-identity {
+    margin: 0;
+    color: var(--foreground);
+    line-height: 1.5;
 }
 
 .social-connection-meta {
