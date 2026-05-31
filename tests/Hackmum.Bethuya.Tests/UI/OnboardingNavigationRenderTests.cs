@@ -275,7 +275,7 @@ public class OnboardingNavigationRenderTests
         SetModelProperty(cut.Instance, "_model", "Email", "dev@bethuya.local");
         SetModelProperty(cut.Instance, "_model", "GovernmentPhotoIdType", "Passport");
         SetModelProperty(cut.Instance, "_model", "GovernmentIdLastFour", "1234");
-        SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Employee");
+        SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Working Professional");
         SetModelProperty(cut.Instance, "_model", "CompanyName", "GitHub");
         cut.Render();
 
@@ -288,7 +288,7 @@ public class OnboardingNavigationRenderTests
                 request.Email == "dev@bethuya.local" &&
                 request.GovernmentPhotoIdType == "Passport" &&
                 request.GovernmentIdLastFour == "1234" &&
-                request.OccupationStatus == "Employee" &&
+                request.OccupationStatus == "Working Professional" &&
                 request.CompanyName == "GitHub" &&
                 request.EducationInstitute == null &&
                 request.City == null &&
@@ -324,7 +324,7 @@ public class OnboardingNavigationRenderTests
             "+91 99999 99999",
             "Passport",
             "1234",
-            "Employee",
+            "Working Professional",
             "GitHub",
             null,
             "Mumbai",
@@ -363,13 +363,17 @@ public class OnboardingNavigationRenderTests
 
         await Assert.That(cut.Markup).Contains("Step 1 of 3");
         await Assert.That(cut.Markup).Contains("profile-primary-button");
-        await Assert.That(cut.Markup).Contains("You're almost done.");
-        await Assert.That(cut.Markup).Contains("What happens next");
-        await Assert.That(cut.Markup).Contains("Government-approved photo ID");
-        await Assert.That(cut.Markup).Contains("government-issued photo ID that also serves as address proof");
-        await Assert.That(cut.Markup).Contains("Enter the same location that appears on your selected government-issued photo ID address proof.");
-        await Assert.That(cut.Markup).Contains("Verify your GitHub and LinkedIn accounts on the next step.");
-        await Assert.That(cut.Markup).DoesNotContain("PAN Card");
+        await Assert.That(cut.Markup).Contains("Let’s set up your Bethuya profile");
+        await Assert.That(cut.Markup).Contains("Personal Details");
+        await Assert.That(cut.Markup).Contains("Professional Context");
+        await Assert.That(cut.Markup).Contains("This helps us tailor event recommendations");
+        await Assert.That(cut.Markup).Contains("Why we ask");
+        await Assert.That(cut.Markup).Contains("Next step: verify your GitHub or LinkedIn profile");
+        await Assert.That(cut.Markup).Contains("Next:");
+        await Assert.That(cut.Markup).Contains("Verify GitHub or LinkedIn");
+        await Assert.That(cut.Markup).DoesNotContain("Government-approved photo ID");
+        await Assert.That(cut.Markup).DoesNotContain("Last 4 digits of ID");
+        await Assert.That(cut.Markup).DoesNotContain("Postal Code");
     }
 
     [Test]
@@ -387,16 +391,16 @@ public class OnboardingNavigationRenderTests
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
 
-        await Assert.That(cut.Markup).Contains("Connected as");
+        await Assert.That(cut.Markup).Contains("Verification status:");
+        await Assert.That(cut.Markup).Contains("LinkedIn ✅");
+        await Assert.That(cut.Markup).Contains("GitHub ✅");
         await Assert.That(cut.Markup).Contains("yrZCpj2Z12");
         await Assert.That(cut.Markup).Contains("dev-user");
-        await Assert.That(cut.Markup).Contains("Reconnect LinkedIn");
-        await Assert.That(cut.Markup).Contains("Reconnect GitHub");
-        await Assert.That(cut.Markup).Contains("GitHub is required for students.");
-
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
-        await Assert.That(linkedInUrlInput.GetAttribute("value")).IsEqualTo("https://www.linkedin.com/in/dev-user");
-        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("Connect LinkedIn");
+        await Assert.That(cut.Markup).Contains("Connect GitHub");
+        await Assert.That(cut.Markup).Contains("Required for working professionals");
+        await Assert.That(cut.Markup).Contains("Required for students");
+        await Assert.That(cut.Markup).DoesNotContain("Public LinkedIn profile URL");
     }
 
     [Test]
@@ -421,7 +425,7 @@ public class OnboardingNavigationRenderTests
     }
 
     [Test]
-    public async Task SocialProfileConnections_DisconnectedState_KeepsLinkedInFirst_DisablesLinkedInConnectUntilUrlExists_AndSignalsGitHubBelow()
+    public async Task SocialProfileConnections_DisconnectedState_ShowsActionDrivenCardsWithoutManualUrlInput()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Dev User");
@@ -433,63 +437,24 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
-        var stack = cut.Find("[data-test='social-connection-stack']");
-        var cards = cut.FindAll(".social-connection-card");
-        var linkedInCard = cards[0];
-        var gitHubCard = cards[1];
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
-        var stackPath = cut.Find("[data-test='social-stack-path']");
-        var gitHubBridge = cut.Find("[data-test='github-stack-bridge']");
+        var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
+        var saveButton = cut.Find("[data-test='save-social-btn']");
 
-        await Assert.That(cards.Count).IsEqualTo(2);
-        await Assert.That(cut.FindAll(".social-connection-card input[type='url']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll(".social-connection-stack-intro__node").Count).IsEqualTo(2);
-        await Assert.That(cut.FindAll(".social-connection-bridge__line").Count).IsEqualTo(2);
-        await Assert.That(cut.Markup).Contains("social-connection-meta--placeholder");
-        await Assert.That(cut.Markup).Contains("Add your public LinkedIn profile URL to enable LinkedIn connect.");
-        await Assert.That(linkedInCard.TextContent).Contains("LinkedIn");
-        await Assert.That(linkedInCard.TextContent).Contains("Public LinkedIn profile URL");
-        await Assert.That(linkedInCard.TextContent).Contains("Connect LinkedIn");
-        await Assert.That(gitHubCard.TextContent).Contains("GitHub");
-        await Assert.That(gitHubCard.TextContent).Contains("Verified GitHub profile details appear here after you connect.");
-        await Assert.That(gitHubCard.TextContent).Contains("Connect GitHub");
-        await Assert.That(gitHubCard.TextContent).DoesNotContain("Public LinkedIn profile URL");
-        await Assert.That(gitHubCard.GetAttribute("class") ?? string.Empty).Contains("social-connection-card--followup");
-        await Assert.That(gitHubCard.GetAttribute("class") ?? string.Empty).DoesNotContain("social-connection-card--followup-active");
-        await Assert.That(gitHubBridge.GetAttribute("class") ?? string.Empty).DoesNotContain("social-connection-bridge--active");
-        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsFalse();
-        await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
-        await Assert.That(stackPath.TextContent).Contains("LinkedIn");
-        await Assert.That(stackPath.TextContent).Contains("GitHub");
-        await Assert.That(stack.TextContent.Contains("GitHub", StringComparison.Ordinal) &&
-                          stack.TextContent.Contains("below", StringComparison.OrdinalIgnoreCase)).IsTrue();
-    }
-
-    [Test]
-    public async Task SocialProfileConnections_LinkedInConnect_EnablesAfterNonEmptyUrlIsEntered()
-    {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
-        var profileApi = Substitute.For<IProfileApi>();
-        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
-        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new SocialProfileDto("Student", false, true, null, null, "dev-user", "https://github.com/dev-user")));
-        ctx.Services.AddSingleton(profileApi);
-
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
-        var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
-
-        await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
-
-        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "   ");
-        cut.Render();
-        await Assert.That(cut.Find("[data-test='connect-linkedin-btn'] button").HasAttribute("disabled")).IsTrue();
-
-        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/future-speaker");
-        cut.Render();
-        await Assert.That(cut.Find("[data-test='connect-linkedin-btn'] button").HasAttribute("disabled")).IsFalse();
+        await Assert.That(cut.Markup).Contains("Verification status:");
+        await Assert.That(cut.Markup).Contains("LinkedIn ❌");
+        await Assert.That(cut.Markup).Contains("GitHub ❌");
+        await Assert.That(cut.Markup).Contains("Why this matters:");
+        await Assert.That(cut.Markup).Contains("Improves your chances of selection");
+        await Assert.That(cut.Markup).Contains("Helps organizers trust your profile");
+        await Assert.That(cut.Markup).Contains("What happens next:");
+        await Assert.That(cut.Markup).Contains("Connect required account");
+        await Assert.That(cut.Markup).Contains("Optionally connect both");
+        await Assert.That(cut.Markup).Contains("Continue");
+        await Assert.That(cut.Markup).DoesNotContain("Public LinkedIn profile URL");
+        await Assert.That(linkedInButton.HasAttribute("disabled")).IsFalse();
+        await Assert.That(gitHubButton.HasAttribute("disabled")).IsFalse();
+        await Assert.That(saveButton.HasAttribute("disabled")).IsTrue();
     }
 
     [Test]
@@ -508,15 +473,11 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
         var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
         var saveButton = cut.Find("[data-test='save-social-btn']");
 
-        await Assert.That(cut.Markup).Contains("Loading your saved LinkedIn status…");
-        await Assert.That(cut.Markup).Contains("Loading saved GitHub profile details…");
-        await Assert.That(cut.Markup).Contains("Loading your saved social connections before you continue.");
-        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("Loading your saved social connections.");
         await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
         await Assert.That(gitHubButton.HasAttribute("disabled")).IsTrue();
         await Assert.That(saveButton.HasAttribute("disabled")).IsTrue();
@@ -526,21 +487,21 @@ public class OnboardingNavigationRenderTests
 
         cut.WaitForAssertion(() =>
         {
-            var hydratedInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
             var hydratedGitHubButton = cut.Find("[data-test='connect-github-btn'] button");
-            if (!cut.Markup.Contains("Connected as", StringComparison.Ordinal))
+            var hydratedLinkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
+            if (!cut.Markup.Contains("Verification status:", StringComparison.Ordinal))
             {
-                throw new InvalidOperationException("Expected the hydrated UI to show a connected account.");
-            }
-
-            if (hydratedInput.HasAttribute("disabled"))
-            {
-                throw new InvalidOperationException("Expected the LinkedIn URL field to become editable after hydration.");
+                throw new InvalidOperationException("Expected the hydrated UI to show the status header.");
             }
 
             if (hydratedGitHubButton.HasAttribute("disabled"))
             {
                 throw new InvalidOperationException("Expected the GitHub connect button to re-enable after hydration.");
+            }
+
+            if (hydratedLinkedInButton.HasAttribute("disabled"))
+            {
+                throw new InvalidOperationException("Expected the LinkedIn connect button to re-enable after hydration.");
             }
         });
     }
@@ -558,18 +519,13 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
         var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
         var saveButton = cut.Find("[data-test='save-social-btn']");
-        var linkedInStatus = cut.Find("[data-test='linkedin-load-error-status']");
         var loadError = cut.Find("[data-test='social-profile-error']");
-        var gitHubMeta = cut.Find("[data-test='github-meta']");
 
         await Assert.That(loadError.TextContent).Contains("We couldn't load this onboarding step. Refresh the page before continuing.");
-        await Assert.That(linkedInStatus.TextContent).Contains("We couldn't load your saved LinkedIn status.");
-        await Assert.That(gitHubMeta.TextContent).Contains("Refresh this page to reload your saved GitHub profile details.");
-        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("Refresh the page to reload your saved social connections.");
         await Assert.That(linkedInButton.HasAttribute("disabled")).IsTrue();
         await Assert.That(gitHubButton.HasAttribute("disabled")).IsTrue();
         await Assert.That(saveButton.HasAttribute("disabled")).IsTrue();
@@ -577,7 +533,7 @@ public class OnboardingNavigationRenderTests
     }
 
     [Test]
-    public async Task SocialProfileConnections_LinkedInConnectedWithSavedUrl_LocksFieldButKeepsReconnectAvailable()
+    public async Task SocialProfileConnections_LinkedInConnected_ShowsConnectedStatusAndConnectAction()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Dev User");
@@ -590,18 +546,16 @@ public class OnboardingNavigationRenderTests
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
 
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
 
-        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
-        await Assert.That(linkedInUrlInput.GetAttribute("value") ?? string.Empty).IsEqualTo("https://www.linkedin.com/in/dev-user");
         await Assert.That(linkedInButton.HasAttribute("disabled")).IsFalse();
-        await Assert.That(linkedInButton.TextContent).Contains("Reconnect LinkedIn");
-        await Assert.That(cut.Markup).Contains("Locked after LinkedIn verification on this step.");
+        await Assert.That(linkedInButton.TextContent).Contains("Connect LinkedIn");
+        await Assert.That(cut.Markup).Contains("Status: Connected");
+        await Assert.That(cut.Markup).Contains("Connected as");
     }
 
     [Test]
-    public async Task SocialProfileConnections_LinkedInConnectedWhileGitHubPending_KeepsLinkedInReconnectSeparateFromGitHubCta_AndHighlightsGitHubAsNext()
+    public async Task SocialProfileConnections_LinkedInConnectedWhileGitHubPending_ShowsMixedVerificationStatus()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Dev User");
@@ -613,26 +567,12 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
-        var cards = cut.FindAll(".social-connection-card");
-        var linkedInCard = cards[0];
-        var gitHubCard = cards[1];
-        var gitHubBridge = cut.Find("[data-test='github-stack-bridge']");
 
-        await Assert.That(cards.Count).IsEqualTo(2);
-        await Assert.That(cut.FindAll(".social-connection-details").Count).IsEqualTo(2);
-        await Assert.That(cut.FindAll(".social-connection-action").Count).IsEqualTo(2);
-        await Assert.That(cut.FindAll(".social-connection-feedback").Count).IsEqualTo(2);
-        await Assert.That(linkedInCard.TextContent).Contains("Reconnect LinkedIn");
-        await Assert.That(linkedInCard.TextContent).Contains("Public LinkedIn profile URL");
-        await Assert.That(linkedInCard.TextContent).Contains("Locked after LinkedIn verification on this step.");
-        await Assert.That(gitHubCard.TextContent).Contains("GitHub");
-        await Assert.That(gitHubCard.TextContent).Contains("Not connected yet.");
-        await Assert.That(gitHubCard.TextContent).Contains("Verified GitHub profile details appear here after you connect.");
-        await Assert.That(gitHubCard.TextContent).Contains("Connect GitHub");
-        await Assert.That(gitHubCard.TextContent).DoesNotContain("Public LinkedIn profile URL");
-        await Assert.That(gitHubBridge.TextContent).Contains("GitHub continues below");
-        await Assert.That(gitHubBridge.GetAttribute("class") ?? string.Empty).Contains("social-connection-bridge--active");
-        await Assert.That(gitHubCard.GetAttribute("class") ?? string.Empty).Contains("social-connection-card--followup-active");
+        await Assert.That(cut.Markup).Contains("LinkedIn ✅");
+        await Assert.That(cut.Markup).Contains("GitHub ❌");
+        await Assert.That(cut.Markup).Contains("Status: Connected");
+        await Assert.That(cut.Markup).Contains("Status: Not connected");
+        await Assert.That(cut.Markup).Contains("Connect GitHub");
     }
 
     [Test]
@@ -653,27 +593,6 @@ public class OnboardingNavigationRenderTests
         await Assert.That(cut.Markup).Contains("LinkedIn needs attention");
         await Assert.That(cut.Markup).Contains("Enable the \"Sign in with LinkedIn using OpenID Connect\" product");
         await Assert.That(cut.Markup).Contains("https://localhost:7400/oauth/linkedin/callback");
-    }
-
-    [Test]
-    public async Task SocialProfileConnections_EmployeeWithTypedLinkedInUrlButNoVerifiedMemberId_StillShowsRequiredError()
-    {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
-        var profileApi = Substitute.For<IProfileApi>();
-        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
-        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, null, null, "dev-user", "https://github.com/dev-user")));
-        ctx.Services.AddSingleton(profileApi);
-
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
-        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/dev-user/");
-
-        await InvokeAsync(cut.Instance, "HandleContinue");
-
-        await Assert.That(cut.Markup).Contains("LinkedIn is required for full-time employed applicants.");
-        await profileApi.DidNotReceive().SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -704,36 +623,7 @@ public class OnboardingNavigationRenderTests
     }
 
     [Test]
-    public async Task SocialProfileConnections_OptionalLinkedInUrl_RemainsEditableAndSavesTypedValue()
-    {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
-        var profileApi = Substitute.For<IProfileApi>();
-        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
-        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new SocialProfileDto("Student", false, true, null, null, "dev-user", "https://github.com/dev-user")));
-        profileApi.SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, false, DateTimeOffset.UtcNow, null)));
-        ctx.Services.AddSingleton(profileApi);
-
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
-        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/future-speaker");
-        cut.Render();
-
-        await InvokeAsync(cut.Instance, "HandleContinue");
-
-        await profileApi.Received(1).SaveSocialProfileAsync(
-            Arg.Is<SaveSocialProfileDto>(request =>
-                request.LinkedInMemberId == null &&
-                request.LinkedInProfileUrl == "https://www.linkedin.com/in/future-speaker" &&
-                request.GitHubLogin == "dev-user" &&
-                request.GitHubProfileUrl == "https://github.com/dev-user"),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task SocialProfileConnections_LinkedInUrl_IsPreservedWhenStartingSocialConnect()
+    public async Task SocialProfileConnections_LinkedInConnect_StartsWithoutManualProfileUrlEntry()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Dev User");
@@ -745,37 +635,13 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
-        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/future-speaker");
-        cut.Render();
-
-        cut.Find("[data-test='connect-github-btn'] button").Click();
-
-        var navigation = ctx.Services.GetRequiredService<NavigationManager>();
-        await Assert.That(navigation.Uri).Contains("returnUrl=%2Fregistration%2Fsocial%3FlinkedinProfileUrl%3Dhttps%253A%252F%252Fwww.linkedin.com%252Fin%252Ffuture-speaker");
-    }
-
-    [Test]
-    public async Task SocialProfileConnections_LinkedInConnect_StartsOnlyAfterUrlIsPresent()
-    {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
-        var profileApi = Substitute.For<IProfileApi>();
-        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
-        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, null, null, null, null)));
-        ctx.Services.AddSingleton(profileApi);
-
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
         var startingUri = navigation.Uri;
-        SetModelProperty(cut.Instance, "_model", "LinkedInProfileUrl", "https://www.linkedin.com/in/dev-user");
-        cut.Render();
         cut.Find("[data-test='connect-linkedin-btn'] button").Click();
 
         await Assert.That(navigation.Uri).IsNotEqualTo(startingUri);
         await Assert.That(navigation.Uri).Contains("/authentication/social/linkedin/start");
-        await Assert.That(navigation.Uri).Contains("linkedinProfileUrl%3Dhttps%253A%252F%252Fwww.linkedin.com%252Fin%252Fdev-user");
+        await Assert.That(navigation.Uri).DoesNotContain("linkedinProfileUrl");
     }
 
     [Test]
@@ -794,7 +660,7 @@ public class OnboardingNavigationRenderTests
 
         await InvokeAsync(cut.Instance, "HandleContinue");
 
-        await Assert.That(cut.Markup).Contains("LinkedIn is required for full-time employed applicants.");
+        await Assert.That(cut.Markup).Contains("LinkedIn is required for working professionals.");
         await profileApi.DidNotReceive().SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>());
     }
 
@@ -844,34 +710,32 @@ public class OnboardingNavigationRenderTests
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         cut.Render();
 
-        var linkedInUrlInput = cut.Find("[data-test='linkedin-profile-url-field'] input");
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
         var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
 
-        await Assert.That(cut.Markup).Contains("Connected as");
+        await Assert.That(cut.Markup).Contains("Verification status:");
         await Assert.That(cut.Markup).Contains("yrZCpj2Z12");
         await Assert.That(cut.Markup).Contains("dev-user");
-        await Assert.That(linkedInUrlInput.GetAttribute("value")).IsEqualTo("https://www.linkedin.com/in/dev-user");
-        await Assert.That(linkedInUrlInput.HasAttribute("disabled")).IsTrue();
-        await Assert.That(linkedInButton.TextContent).Contains("Reconnect LinkedIn");
-        await Assert.That(gitHubButton.TextContent).Contains("Reconnect GitHub");
-        await Assert.That(cut.Markup).DoesNotContain("Loading your saved LinkedIn status");
-        await Assert.That(cut.Markup).DoesNotContain("Loading saved GitHub profile details");
+        await Assert.That(linkedInButton.TextContent).Contains("Connect LinkedIn");
+        await Assert.That(gitHubButton.TextContent).Contains("Connect GitHub");
+        await Assert.That(cut.Markup).DoesNotContain("Public LinkedIn profile URL");
     }
 
     [Test]
-    public async Task NewUserProfile_EmployeeStatus_RevealsCompanyField()
+    public async Task NewUserProfile_WorkingProfessionalStatus_RevealsCompanyField()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
         var cut = ctx.RenderComponent<NewUserProfile>();
-        SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Employee");
+        SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Working Professional");
         cut.Render();
 
-        await Assert.That(cut.Markup).Contains("Name of company");
-        await Assert.That(cut.Markup).DoesNotContain("Name of education institute");
+        await Assert.That(cut.Markup).Contains("Company / Organization");
+        await Assert.That(cut.Markup).Contains("Start typing your company name");
+        await Assert.That(cut.Markup).Contains("balanced mix across organizations");
+        await Assert.That(cut.Markup).DoesNotContain("College / University");
     }
 
     [Test]
@@ -885,8 +749,25 @@ public class OnboardingNavigationRenderTests
         SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Student");
         cut.Render();
 
-        await Assert.That(cut.Markup).Contains("Name of education institute");
-        await Assert.That(cut.Markup).DoesNotContain("Name of company");
+        await Assert.That(cut.Markup).Contains("College / University");
+        await Assert.That(cut.Markup).Contains("Start typing your college name");
+        await Assert.That(cut.Markup).Contains("balanced representation across colleges");
+        await Assert.That(cut.Markup).DoesNotContain("Company / Organization");
+    }
+
+    [Test]
+    public async Task NewUserProfile_IndependentStatus_RevealsCompanyField()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
+
+        var cut = ctx.RenderComponent<NewUserProfile>();
+        SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Independent / Freelancer");
+        cut.Render();
+
+        await Assert.That(cut.Markup).Contains("Company / Organization");
+        await Assert.That(cut.Markup).DoesNotContain("College / University");
     }
 
     [Test]
@@ -922,7 +803,7 @@ public class OnboardingNavigationRenderTests
         SetModelProperty(cut.Instance, "_model", "LastName", "User");
         SetModelProperty(cut.Instance, "_model", "Email", "dev@bethuya.local");
         SetModelProperty(cut.Instance, "_model", "MobileNumber", "+91 98765 43210");
-        SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Employee");
+        SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Working Professional");
         SetModelProperty(cut.Instance, "_model", "CompanyName", "GitHub");
         SetModelProperty(cut.Instance, "_model", "City", "Mumbai");
         SetModelProperty(cut.Instance, "_model", "State", "Maharashtra");
@@ -933,17 +814,18 @@ public class OnboardingNavigationRenderTests
 
         var inputValues = JoinInputValues(cut);
 
-        await Assert.That(cut.Markup).Contains("Name of company");
-        await Assert.That(cut.Markup).DoesNotContain("Name of education institute");
-        await Assert.That(inputValues).Contains("1234");
+        await Assert.That(cut.Markup).Contains("Company / Organization");
+        await Assert.That(cut.Markup).DoesNotContain("College / University");
+        await Assert.That(cut.Markup).DoesNotContain("Last 4 digits of ID");
+        await Assert.That(inputValues).DoesNotContain("1234");
         await Assert.That(inputValues).Contains("Dev");
         await Assert.That(inputValues).Contains("User");
         await Assert.That(inputValues).Contains("dev@bethuya.local");
         await Assert.That(inputValues).Contains("+91 98765 43210");
         await Assert.That(inputValues).Contains("GitHub");
         await Assert.That(inputValues).Contains("Mumbai");
-        await Assert.That(inputValues).Contains("Maharashtra");
-        await Assert.That(inputValues).Contains("400001");
+        await Assert.That(cut.Markup).DoesNotContain("State / Province");
+        await Assert.That(cut.Markup).DoesNotContain("Postal Code");
         await Assert.That(inputValues).Contains("India");
     }
 
@@ -989,8 +871,10 @@ public class OnboardingNavigationRenderTests
 
         var cut = ctx.RenderComponent<AideProfile>();
 
-        await Assert.That(cut.Markup).Contains("Your privacy, respected");
-        await Assert.That(cut.Markup).Contains("Good reasons to answer");
+        await Assert.That(cut.Markup).Contains("Why we ask:");
+        await Assert.That(cut.Markup).Contains("To plan accessible events");
+        await Assert.That(cut.Markup).Contains("To improve inclusion over time");
+        await Assert.That(cut.Markup).Contains("used only in aggregate");
         await Assert.That(cut.Markup).Contains("Save &amp; Finish");
     }
 
@@ -1002,12 +886,10 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
         var cut = ctx.RenderComponent<AideProfile>();
-        SetModelProperty(cut.Instance, "_model", "GenderIdentity", "Prefer to self-describe");
-        SetModelProperty(cut.Instance, "_model", "SelfDescribeGender", "Non-binary femme");
         SetModelProperty(cut.Instance, "_model", "Disability", "Physical / mobility");
         SetModelProperty(cut.Instance, "_model", "DisabilityDetails", "Wheelchair ramp access and aisle seat");
         SetModelProperty(cut.Instance, "_model", "DietaryRequirements", "Vegetarian");
-        SetModelProperty(cut.Instance, "_model", "Neighborhood", "Andheri");
+        SetModelProperty(cut.Instance, "_model", "UnderrepresentedInTech", "Yes");
         SetModelProperty(cut.Instance, "_model", "LanguageProficiency", "English, Hindi");
         SetModelProperty(cut.Instance, "_model", "AdditionalSupport", "Quiet seating");
         cut.Render();
@@ -1016,11 +898,10 @@ public class OnboardingNavigationRenderTests
         var inputValues = JoinInputValues(cut);
         var textAreaValues = JoinTextareaValues(cut);
 
-        await Assert.That(cut.Markup).Contains("Self-describe your gender");
+        await Assert.That(cut.Markup).Contains("underrepresented in tech communities");
         await Assert.That(cut.Markup).Contains("disability-details-wrapper");
-        await Assert.That(inputValues).Contains("Non-binary femme");
+        await Assert.That(cut.Markup).Contains("employment-radio-group");
         await Assert.That(inputValues).Contains("Vegetarian");
-        await Assert.That(inputValues).Contains("Andheri");
         await Assert.That(inputValues).Contains("English, Hindi");
         await Assert.That(inputValues).Contains("Quiet seating");
         await Assert.That(textAreaValues).Contains("Wheelchair ramp access and aisle seat");
@@ -1072,26 +953,26 @@ public class OnboardingNavigationRenderTests
         await Assert.That(saveButton.HasAttribute("disabled")).IsTrue();
 
         aideSource.SetResult(new AideProfileDto(
-            "Woman",
             null,
-            "25–34",
+            null,
+            null,
             null,
             null,
             "Physical / mobility",
             "Step-free access helps.",
             "Vegetarian",
             null,
-            "Parent / guardian",
             null,
             null,
-            "Bandra",
-            "Public transport",
-            "Middle class",
+            null,
+            null,
+            null,
+            null,
             null,
             null,
             "English, Hindi",
-            "Bachelor's degree",
-            "Previous event",
+            null,
+            "Yes",
             "Quiet seating if possible"));
 
         cut.WaitForAssertion(() =>
@@ -1110,6 +991,11 @@ public class OnboardingNavigationRenderTests
             if (!string.Equals(GetModelProperty(cut.Instance, "_model", "AdditionalSupport"), "Quiet seating if possible", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Expected the saved support notes to hydrate.");
+            }
+
+            if (!string.Equals(GetModelProperty(cut.Instance, "_model", "UnderrepresentedInTech"), "Yes", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected the saved inclusion signal to hydrate.");
             }
         });
     }

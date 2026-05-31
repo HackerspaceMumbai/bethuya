@@ -89,7 +89,7 @@
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.5.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.7" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.7" />
-    <PackageVersion Include="Nerdbank.MessagePack" Version="1.1.62" />
+    <PackageVersion Include="Nerdbank.MessagePack" Version="1.2.4" />
     <!-- Scalar - API documentation -->
     <PackageVersion Include="Scalar.AspNetCore" Version="2.13.22" />
     <PackageVersion Include="Scalar.Aspire" Version="0.9.22" />

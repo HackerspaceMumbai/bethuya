@@ -397,7 +397,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task ApiAuthentication_NoneProvider_EmployeeWithoutCompany_ReturnsValidationProblem()
+    public async Task ApiAuthentication_NoneProvider_WorkingProfessionalWithoutCompany_ReturnsValidationProblem()
     {
         var repository = Substitute.For<IAttendeeProfileRepository>();
 
@@ -422,7 +422,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             null,
             "Passport",
             "1234",
-            "Employee",
+            "Working Professional",
             null,
             null,
             "Mumbai",
@@ -433,7 +433,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
         var body = await response.Content.ReadAsStringAsync();
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        await Assert.That(body).Contains("Company name is required when employment status is Employee.");
+        await Assert.That(body).Contains("Company / Organization is required for working professionals and independent attendees.");
         await repository.DidNotReceive().CreateAsync(Arg.Any<AttendeeProfile>(), Arg.Any<CancellationToken>());
     }
 
@@ -488,7 +488,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task ApiAuthentication_NoneProvider_LinkedInUrlAloneDoesNotSatisfyEmployeeRequirement()
+    public async Task ApiAuthentication_NoneProvider_LinkedInUrlAloneDoesNotSatisfyWorkingProfessionalRequirement()
     {
         var existingProfile = new AttendeeProfile
         {
@@ -498,7 +498,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             Email = "dev@bethuya.local",
             GovernmentPhotoIdType = "Passport",
             GovernmentIdLastFour = "1234",
-            OccupationStatus = "Employee",
+            OccupationStatus = "Working Professional",
             LinkedInMemberId = string.Empty,
             GitHubLogin = string.Empty,
             GitHubProfileUrl = string.Empty,
@@ -533,7 +533,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
         var body = await response.Content.ReadAsStringAsync();
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        await Assert.That(body).Contains("LinkedIn is required for full-time employed applicants.");
+        await Assert.That(body).Contains("LinkedIn is required for working professionals.");
         await repository.DidNotReceive().UpdateAsync(Arg.Any<AttendeeProfile>(), Arg.Any<CancellationToken>());
     }
 
@@ -564,7 +564,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             "+91 98765 43210",
             "Passport",
             "1234",
-            "Employee",
+            "Working Professional",
             "GitHub",
             null,
             "Mumbai",
@@ -610,7 +610,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
         await Assert.That(status.IsSocialConnectionsComplete).IsTrue();
         await Assert.That(status.IsAideProfileComplete).IsTrue();
         await Assert.That(social).IsNotNull();
-        await Assert.That(social!.OccupationStatus).IsEqualTo("Employee");
+        await Assert.That(social!.OccupationStatus).IsEqualTo("Working Professional");
         await Assert.That(social.LinkedInMemberId).IsEqualTo("yrZCpj2Z12");
         await Assert.That(social.LinkedInProfileUrl).IsEqualTo("https://www.linkedin.com/in/dev-user");
         await Assert.That(social.GitHubLogin).IsEqualTo("dev-user");
@@ -635,7 +635,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             MobileNumber = "+91 98765 43210",
             GovernmentPhotoIdType = "Passport",
             GovernmentIdLastFour = "1234",
-            OccupationStatus = "Employee",
+            OccupationStatus = "Working Professional",
             CompanyName = "GitHub",
             LinkedInMemberId = "yrZCpj2Z12",
             LinkedInProfileUrl = "https://www.linkedin.com/in/dev-user",
@@ -679,7 +679,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             "+91 91234 56789",
             "Passport",
             "9876",
-            "Employee",
+            "Working Professional",
             "GitHub India",
             null,
             "Pune",

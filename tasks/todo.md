@@ -16,6 +16,30 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-05-31] Refine institution and organization capture in onboarding
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Improve mandatory onboarding employment branching so institution/company data is captured with clearer labels, better role-driven requirements, and lower-friction inputs for curation quality.
+- **Acceptance:** ✅ Employment options reduced to Student, Working Professional, and Independent / Freelancer. ✅ Student path now shows only one required field labeled "College / University" with placeholder "Start typing your college name" and college-balance helper text. ✅ Working Professional and Independent / Freelancer paths now show only one required "Company / Organization" field with organization-balance helper text. ✅ Backend mandatory-profile validation and social requirement messaging updated to align with the new statuses while preserving legacy compatibility. ✅ Onboarding/auth tests updated and `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (169/169).
+
+## [2026-05-31] Redesign social verification step (onboarding step 2)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Refactor `/registration/social` to remove manual LinkedIn URL/handle-driven UX, present action-first LinkedIn/GitHub verification cards with clear status and motivation messaging, and enforce role-based required-provider gating before continue.
+- **Acceptance:** ✅ Removed manual LinkedIn URL entry from Step 2 and kept the flow OAuth action-driven via two provider cards only. ✅ Added verification header (`LinkedIn ✅/❌`, `GitHub ✅/❌`), benefit messaging, and simplified right panel to the requested 3-step “What happens next” sequence. ✅ Cards now show required-role labels (“Required for working professionals” / “Required for students”) with connected/not-connected status and connect actions. ✅ Continue remains disabled until required-provider gating is satisfied (GitHub for students, LinkedIn for working professionals), while both can still be connected for stronger signal. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (168/168).
+
+## [2026-05-31] Simplify mandatory onboarding profile form
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Refactor `/registration/mandatory` to remove heavy identity-verification UI from onboarding, keep profile setup low-friction, and align copy/layout with the new registration-time curation data collection approach.
+- **Acceptance:** ✅ Removed the Identity Document inputs (government ID type + last 4 digits) from the onboarding UI and restructured into Personal Details, Professional Context, and minimal Location (city + country). ✅ Updated heading/card/sidebar/footer copy to the requested “Let’s set up your Bethuya profile”, merged “Why we ask” + “Next” guidance, and added the GitHub/LinkedIn next-step hint. ✅ Relaxed mandatory-profile request validation so government-ID fields are no longer required by onboarding saves. ✅ Updated onboarding render + curation E2E tests for the new form shape and messaging. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (172/172).
+
+## [2026-05-31] Revamp registration flow for curation data and dev toggle
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Update the user event-registration flow so curation-relevant data is captured during registration, wire that data through shared/backend contracts into inclusion-signal generation, and add a development toggle that allows running the full onboarding registration flow instead of the default bypass path.
+- **Acceptance:** ✅ `/events/{eventId}/registrations` now captures neighborhood, language proficiency, educational background, and socioeconomic background with updated consent copy, then sends them via `CreateRegistrationDto`. ✅ Backend `CreateRegistrationRequest` + registration endpoint now validate curation-source completeness and build inclusion signals from registration data (with authenticated-profile/email fallback when needed). ✅ AppHost now supports `ONBOARDING_ENABLE_FLOW_IN_DEVELOPMENT=true` (or `Onboarding:EnableFlowInDevelopment`) to disable onboarding bypass in development and run the full `/registration/mandatory -> /registration/social -> /registration/aide` flow. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (172/172).
+
 ## [2026-05-23] Fix planner draft 404
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
