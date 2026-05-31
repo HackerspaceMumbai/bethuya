@@ -50,6 +50,10 @@ public sealed record CurationProfileSummaryResponse(
     int PastAcceptedCount,
     int PastAttendedCount,
     bool HasOrganizerStandoutContribution,
+    int? GitHubRepoCount,
+    bool IsGitHubLinked,
+    bool IsLinkedInVerified,
+    int MemberSinceYear,
     IReadOnlyList<string> Tags);
 
 public sealed record CurationReliabilityResponse(
@@ -70,7 +74,8 @@ public sealed record CurationRecommendationResponse(
     string Label,
     string Tone,
     string Summary,
-    IReadOnlyList<string> Highlights);
+    IReadOnlyList<string> Highlights,
+    string? AssessmentText = null);
 
 public sealed record ApplyCurationDecisionRequest(
     string Action,

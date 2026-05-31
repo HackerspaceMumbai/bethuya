@@ -62,7 +62,11 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
                     Summary = new AttendeePublicSummary(
                         profile.OccupationStatus,
                         profile.CompanyName,
-                        profile.EducationInstitute)
+                        profile.EducationInstitute,
+                        GitHubRepoCount: null,
+                        IsGitHubLinked: !string.IsNullOrWhiteSpace(profile.GitHubLogin) || !string.IsNullOrWhiteSpace(profile.GitHubProfileUrl),
+                        IsLinkedInVerified: !string.IsNullOrWhiteSpace(profile.LinkedInMemberId) || !string.IsNullOrWhiteSpace(profile.LinkedInProfileUrl),
+                        MemberSinceYear: profile.CreatedAt.Year)
                 })
                 .First())
             .ToDictionaryAsync(

@@ -149,6 +149,10 @@ public sealed class CurationFairnessService
             PastAcceptedCount: pastAcceptedCount,
             PastAttendedCount: pastAttendedCount,
             HasOrganizerStandoutContribution: hasOrganizerStandoutContribution,
+            GitHubRepoCount: publicSummary?.GitHubRepoCount,
+            IsGitHubLinked: publicSummary?.IsGitHubLinked ?? false,
+            IsLinkedInVerified: publicSummary?.IsLinkedInVerified ?? false,
+            MemberSinceYear: publicSummary?.MemberSinceYear ?? registration.RegisteredAt.Year,
             Tags: tags);
     }
 
@@ -258,10 +262,16 @@ public sealed class CurationFairnessService
             .Where(dimension => !dimension.IsSuppressed && dimension.DeficitPercent > 0)
             .OrderByDescending(dimension => dimension.DeficitPercent)
             .ToList();
+        var strongestPositiveDimension = impact.DeltaPercentByDimension
+            .Where(item => item.Value > 0.0001)
+            .OrderByDescending(item => item.Value)
+            .Select(item => ToDimensionLabel(item.Key))
+            .FirstOrDefault();
 
         string label;
         string tone;
         string summary;
+        string? assessmentText;
 
         if (strongestPositiveDelta > 0.02
             && intent.Evidence is "High" or "Medium"
@@ -269,26 +279,51 @@ public sealed class CurationFairnessService
         {
             label = "Returning standout";
             tone = "positive";
-            summary = "Organizer-marked contribution in a past meetup plus current fairness impact make this a standout returning candidate for human review.";
+            summary = "Returning standout";
+            assessmentText = BuildAssessmentText(
+            [
+                "+ Proven standout contribution",
+                "+ Strong intent",
+                strongestPositiveDimension is null ? null : $"+ Fairness gain ({strongestPositiveDimension})",
+                "\u26a0\ufe0f Org concentration risk"
+            ]);
         }
         else if (strongestPositiveDelta > 0.02 && intent.Evidence is "High" or "Medium")
         {
             label = "Strong new candidate";
             tone = "positive";
-            summary = "Concrete intent signal detected. Review alongside fairness impact, but no organizer-marked standout contribution is linked yet.";
+            summary = "Strong new candidate";
+            assessmentText = BuildAssessmentText(
+            [
+                "+ Strong intent",
+                strongestPositiveDimension is null ? null : $"+ Fairness gain ({strongestPositiveDimension})",
+                "\u26a0\ufe0f Org concentration risk"
+            ]);
         }
         else if (registration.Status == RegistrationStatus.Waitlisted
                  || reliability.HasHistory && reliability.Score < 45)
         {
             label = "Needs manual trade-off review";
             tone = "warning";
-            summary = "Past follow-through or current review state suggests a closer organizer review before approving.";
+            summary = "Needs manual trade-off review";
+            assessmentText = BuildAssessmentText(
+            [
+                $"\u26a0\ufe0f Reliability concern ({reliability.Score}/100)",
+                strongestPositiveDimension is null ? "+ Review fairness impact" : $"+ Review fairness impact ({strongestPositiveDimension})",
+                "\u26a0\ufe0f Human trade-off review needed"
+            ]);
         }
         else
         {
             label = "Good exploratory attendee";
             tone = "neutral";
-            summary = "Fair candidate to review with queue context, intent signal, and cohort balance together.";
+            summary = "Good exploratory attendee";
+            assessmentText = BuildAssessmentText(
+            [
+                "+ Exploratory attendee profile",
+                strongestPositiveDimension is null ? "+ Fairness impact is neutral" : $"+ Fairness gain ({strongestPositiveDimension})",
+                "\u26a0\ufe0f Review alongside reliability"
+            ]);
         }
 
         var highlights = new List<string>();
@@ -319,7 +354,8 @@ public sealed class CurationFairnessService
             Label: label,
             Tone: tone,
             Summary: summary,
-            Highlights: highlights.Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+            Highlights: highlights.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            AssessmentText: assessmentText);
     }
 
     private static FairnessDimensionProgressResponse BuildGeoProgress(
@@ -598,6 +634,9 @@ public sealed class CurationFairnessService
         var sign = value >= 0 ? "+" : string.Empty;
         return $"{sign}{value * 100:F1}%";
     }
+
+    private static string BuildAssessmentText(IEnumerable<string?> lines)
+        => string.Join('\n', lines.Where(line => !string.IsNullOrWhiteSpace(line)));
 
     private static bool IsUnderrepresentedEducation(EducationBucket bucket)
         => bucket is EducationBucket.SchoolOrLower

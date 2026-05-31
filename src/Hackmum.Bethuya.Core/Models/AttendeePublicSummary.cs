@@ -6,4 +6,8 @@ namespace Hackmum.Bethuya.Core.Models;
 public sealed record AttendeePublicSummary(
     string? OccupationStatus,
     string? CompanyName,
-    string? EducationInstitute);
+    string? EducationInstitute,
+    int? GitHubRepoCount,
+    bool IsGitHubLinked,
+    bool IsLinkedInVerified,
+    int MemberSinceYear);

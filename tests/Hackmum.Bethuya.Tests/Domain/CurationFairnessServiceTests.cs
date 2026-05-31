@@ -225,6 +225,7 @@ public class CurationFairnessServiceTests
 
         await Assert.That(recommendation.Label).IsEqualTo("Strong new candidate");
         await Assert.That(recommendation.Label.Contains("standout", StringComparison.OrdinalIgnoreCase)).IsFalse();
+        await Assert.That(recommendation.AssessmentText).IsEqualTo("+ Strong intent\n+ Fairness gain (Geo)\n⚠️ Org concentration risk");
     }
 
     [Test]
