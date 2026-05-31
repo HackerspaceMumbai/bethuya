@@ -167,6 +167,14 @@
         string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassSocialConnections"), "true", StringComparison.OrdinalIgnoreCase);
     private static bool IsMandatoryBypassEnabled =>
         string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"), "true", StringComparison.OrdinalIgnoreCase);
+    private static string NormalizeUnderrepresentedSignal(string? value)
+        => value switch
+        {
+            "Yes" => "Yes",
+            "No" => "No",
+            "Prefer not to say" => "Prefer not to say",
+            _ => ""
+        };
 
     private static IReadOnlyList<SelectOption<string>> Opts(params string[] values) =>
         [new SelectOption<string>("", "Prefer not to say"), ..values.Select(v => new SelectOption<string>(v, v))];
@@ -247,7 +255,7 @@
                 CaregivingResponsibilities: null,
                 LanguageProficiency: N(_model.LanguageProficiency),
                 EducationalBackground: null,
-                HowDidYouHear: N(_model.UnderrepresentedInTech),
+                HowDidYouHear: N(NormalizeUnderrepresentedSignal(_model.UnderrepresentedInTech)),
                 AdditionalSupport: N(_model.AdditionalSupport)));
 
             Navigation.NavigateTo("/");
@@ -275,7 +283,7 @@
         _model.Neurodiversity = profile.Neurodiversity ?? "";
         _model.LanguageProficiency = profile.LanguageProficiency ?? "";
         _model.AdditionalSupport = profile.AdditionalSupport ?? "";
-        _model.UnderrepresentedInTech = profile.HowDidYouHear ?? "";
+        _model.UnderrepresentedInTech = NormalizeUnderrepresentedSignal(profile.HowDidYouHear);
     }
 
     private sealed class AideProfileModel

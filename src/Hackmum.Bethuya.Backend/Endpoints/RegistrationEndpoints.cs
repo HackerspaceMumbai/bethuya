@@ -35,9 +35,7 @@ public static class RegistrationEndpoints
                 request.SocioeconomicBackground);
 
             var profileInclusionSource = await ResolveProfileInclusionSourceAsync(user, request.Email, profileRepo, ct);
-            var effectiveInclusionSource = IsCompleteInclusionSource(requestInclusionSource)
-                ? requestInclusionSource
-                : profileInclusionSource;
+            var effectiveInclusionSource = MergeInclusionSource(requestInclusionSource, profileInclusionSource);
 
             if (!IsCompleteInclusionSource(effectiveInclusionSource))
             {
@@ -92,20 +90,49 @@ public static class RegistrationEndpoints
         var userId = user.FindFirst("sub")?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (!string.IsNullOrWhiteSpace(userId))
+        if (string.IsNullOrWhiteSpace(userId))
         {
-            var profile = await profileRepo.GetByUserIdAsync(userId, ct);
-            if (profile is not null)
-            {
-                return new AttendeeInclusionSource(
-                    profile.Neighborhood,
-                    profile.LanguageProficiency,
-                    profile.EducationalBackground,
-                    profile.SocioeconomicBackground);
-            }
+            return null;
+        }
+
+        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        if (profile is not null)
+        {
+            return new AttendeeInclusionSource(
+                profile.Neighborhood,
+                profile.LanguageProficiency,
+                profile.EducationalBackground,
+                profile.SocioeconomicBackground);
+        }
+
+        var claimedEmail = user.FindFirst(ClaimTypes.Email)?.Value
+            ?? user.FindFirst("email")?.Value;
+        if (string.IsNullOrWhiteSpace(claimedEmail)
+            || !string.Equals(claimedEmail, email, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
         }
 
         return await profileRepo.GetInclusionSourceByEmailAsync(email, ct);
+    }
+
+    private static AttendeeInclusionSource? MergeInclusionSource(
+        AttendeeInclusionSource? requestSource,
+        AttendeeInclusionSource? profileSource)
+    {
+        if (requestSource is null && profileSource is null)
+        {
+            return null;
+        }
+
+        static string? Pick(string? primary, string? fallback)
+            => !string.IsNullOrWhiteSpace(primary) ? primary : fallback;
+
+        return new AttendeeInclusionSource(
+            Pick(requestSource?.Neighborhood, profileSource?.Neighborhood),
+            Pick(requestSource?.LanguageProficiency, profileSource?.LanguageProficiency),
+            Pick(requestSource?.EducationalBackground, profileSource?.EducationalBackground),
+            Pick(requestSource?.SocioeconomicBackground, profileSource?.SocioeconomicBackground));
     }
 
     private static bool IsCompleteInclusionSource(AttendeeInclusionSource? source)

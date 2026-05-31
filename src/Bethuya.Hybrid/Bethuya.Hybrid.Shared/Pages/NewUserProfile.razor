@@ -279,7 +279,10 @@
         {
             "Employee" or "Full time employed" or "Full-time employed" => "Working Professional",
             "Self-employed" or "Founder" or "Freelancer" => "Independent / Freelancer",
-            _ => occupationStatus
+            "Student" => "Student",
+            "Working Professional" => "Working Professional",
+            "Independent / Freelancer" => "Independent / Freelancer",
+            _ => null
         };
 
     private sealed class MandatoryProfileModel : IValidatableObject
