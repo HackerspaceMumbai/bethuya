@@ -102,12 +102,24 @@ public sealed partial class CurationSampleSeeder(
             var source = persona.ToSource(index);
 
             attendeeProfiles.Add(CreateProfile(identity, persona, source));
+            
+            // Create edge case distribution: ~40% waitlisted or low-reliability patterns
+            var registrationStatus = index switch
+            {
+                // 15% waitlisted
+                _ when index % 7 == 0 => RegistrationStatus.Waitlisted,
+                // 15% pending (will be paired with cancellation history for low reliability)
+                _ when index % 7 == 1 => RegistrationStatus.Pending,
+                // Rest pending
+                _ => RegistrationStatus.Pending
+            };
+            
             reviewableRegistrants.Add(CreateRegistration(
                 currentEvent.Id,
                 identity,
                 persona,
                 source,
-                index % 6 == 0 ? RegistrationStatus.Waitlisted : RegistrationStatus.Pending,
+                registrationStatus,
                 now.AddDays(-(index % 9 + 1)),
                 index));
 
@@ -152,9 +164,15 @@ public sealed partial class CurationSampleSeeder(
     {
         var source = persona.ToSource(index + 3);
         var registrations = new List<Registration>();
-        var historyPattern = index % 5;
+        var historyPattern = index % 8; // Increased from 5 to 8 for more variation
 
-        if (historyPattern is 1 or 3)
+        // 25% (pattern 0-1): No history → low intent signal, "needs review"
+        if (historyPattern is 0 or 1)
+        {
+            // Empty - no registrations added
+        }
+        // 25% (pattern 2-3): Reliable attendees - CheckedIn both events
+        else if (historyPattern is 2 or 3)
         {
             registrations.Add(CreateHistoricalRegistration(
                 historyEventOneId,
@@ -164,21 +182,17 @@ public sealed partial class CurationSampleSeeder(
                 RegistrationStatus.CheckedIn,
                 now.AddMonths(-4).AddDays(index % 6),
                 organizerMarkedStandout: historyPattern == 3));
-        }
-
-        if (historyPattern is 2 or 3)
-        {
             registrations.Add(CreateHistoricalRegistration(
                 historyEventTwoId,
                 identity,
                 persona,
                 source,
-                historyPattern == 2 ? RegistrationStatus.Accepted : RegistrationStatus.CheckedIn,
+                RegistrationStatus.CheckedIn,
                 now.AddMonths(-2).AddDays(index % 8),
                 organizerMarkedStandout: false));
         }
-
-        if (historyPattern == 4)
+        // 25% (pattern 4-5): Unreliable - cancellations or no-shows
+        else if (historyPattern is 4 or 5)
         {
             registrations.Add(CreateHistoricalRegistration(
                 historyEventOneId,
@@ -187,6 +201,39 @@ public sealed partial class CurationSampleSeeder(
                 source,
                 RegistrationStatus.Cancelled,
                 now.AddMonths(-4).AddDays(index % 4),
+                organizerMarkedStandout: false));
+            if (historyPattern == 5)
+            {
+                // Some have multiple cancellations
+                registrations.Add(CreateHistoricalRegistration(
+                    historyEventTwoId,
+                    identity,
+                    persona,
+                    source,
+                    RegistrationStatus.Cancelled,
+                    now.AddMonths(-2).AddDays(index % 3),
+                    organizerMarkedStandout: false));
+            }
+        }
+        // 25% (pattern 6-7): Mixed - some attendance + cancellation
+        else if (historyPattern is 6 or 7)
+        {
+            var firstEventStatus = historyPattern == 6 ? RegistrationStatus.CheckedIn : RegistrationStatus.Accepted;
+            registrations.Add(CreateHistoricalRegistration(
+                historyEventOneId,
+                identity,
+                persona,
+                source,
+                firstEventStatus,
+                now.AddMonths(-4).AddDays(index % 5),
+                organizerMarkedStandout: false));
+            registrations.Add(CreateHistoricalRegistration(
+                historyEventTwoId,
+                identity,
+                persona,
+                source,
+                RegistrationStatus.Cancelled,
+                now.AddMonths(-2).AddDays(index % 4),
                 organizerMarkedStandout: false));
         }
 

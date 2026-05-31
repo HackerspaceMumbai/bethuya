@@ -67,6 +67,10 @@ public sealed record CurationProfileSummaryDto(
     int PastAcceptedCount,
     int PastAttendedCount,
     bool HasOrganizerStandoutContribution,
+    int? GitHubRepoCount,
+    bool IsGitHubLinked,
+    bool IsLinkedInVerified,
+    int MemberSinceYear,
     IReadOnlyList<string> Tags);
 
 public sealed record CurationReliabilityDto(
@@ -87,7 +91,8 @@ public sealed record CurationRecommendationDto(
     string Label,
     string Tone,
     string Summary,
-    IReadOnlyList<string> Highlights);
+    IReadOnlyList<string> Highlights,
+    string? AssessmentText = null);
 
 public sealed record ApplyCurationDecisionDto(
     string Action,
