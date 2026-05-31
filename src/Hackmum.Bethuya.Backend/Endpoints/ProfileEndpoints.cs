@@ -114,8 +114,8 @@ public static class ProfileEndpoints
                     FirstName = request.FirstName,
                     LastName = request.LastName,
                     Email = request.Email,
-                    GovernmentPhotoIdType = request.GovernmentPhotoIdType,
-                    GovernmentIdLastFour = request.GovernmentIdLastFour,
+                    GovernmentPhotoIdType = request.GovernmentPhotoIdType ?? string.Empty,
+                    GovernmentIdLastFour = request.GovernmentIdLastFour ?? string.Empty,
                     LinkedInMemberId = string.Empty,
                     LinkedInProfileUrl = null,
                     GitHubLogin = string.Empty,
@@ -293,10 +293,10 @@ public static class ProfileEndpoints
         profile.LastName = request.LastName;
         profile.Email = request.Email;
         profile.MobileNumber = request.MobileNumber;
-        profile.GovernmentPhotoIdType = request.GovernmentPhotoIdType;
-        profile.GovernmentIdLastFour = request.GovernmentIdLastFour;
+        profile.GovernmentPhotoIdType = string.IsNullOrWhiteSpace(request.GovernmentPhotoIdType) ? string.Empty : request.GovernmentPhotoIdType;
+        profile.GovernmentIdLastFour = string.IsNullOrWhiteSpace(request.GovernmentIdLastFour) ? string.Empty : request.GovernmentIdLastFour;
         profile.OccupationStatus = request.OccupationStatus;
-        profile.CompanyName = string.Equals(request.OccupationStatus, "Employee", StringComparison.Ordinal)
+        profile.CompanyName = IsCompanyRequiredOccupation(request.OccupationStatus)
             ? request.CompanyName
             : null;
         profile.EducationInstitute = string.Equals(request.OccupationStatus, "Student", StringComparison.Ordinal)
@@ -405,7 +405,7 @@ public static class ProfileEndpoints
         {
             errors[nameof(SaveSocialProfileRequest.LinkedInMemberId)] =
             [
-                "LinkedIn is required for full-time employed applicants. Connecting GitHub as well improves your chances for selection."
+                "LinkedIn is required for working professionals. Connecting GitHub as well improves your chances for selection."
             ];
         }
 
@@ -445,12 +445,23 @@ public static class ProfileEndpoints
             && (!IsGitHubRequired(profile.OccupationStatus) || (!string.IsNullOrWhiteSpace(profile.GitHubLogin) && !string.IsNullOrWhiteSpace(profile.GitHubProfileUrl)));
 
     private static bool IsLinkedInRequired(string? occupationStatus)
-        => string.Equals(occupationStatus, "Employee", StringComparison.Ordinal)
+        => string.Equals(occupationStatus, "Working Professional", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Employee", StringComparison.Ordinal)
             || string.Equals(occupationStatus, "Full time employed", StringComparison.Ordinal)
             || string.Equals(occupationStatus, "Full-time employed", StringComparison.Ordinal);
 
     private static bool IsGitHubRequired(string? occupationStatus)
         => string.Equals(occupationStatus, "Student", StringComparison.Ordinal);
+
+    private static bool IsCompanyRequiredOccupation(string? occupationStatus)
+        => string.Equals(occupationStatus, "Working Professional", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Independent / Freelancer", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Employee", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Self-employed", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Founder", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Freelancer", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Full time employed", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Full-time employed", StringComparison.Ordinal);
 
     private static bool IsMandatoryBypassEnabled()
         => string.Equals(
