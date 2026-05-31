@@ -30,4 +30,8 @@ public sealed record CreateRegistrationDto(
     string FullName,
     string Email,
     string? Bio,
-    List<string> Interests);
+    List<string> Interests,
+    string? Neighborhood,
+    string? LanguageProficiency,
+    string? EducationalBackground,
+    string? SocioeconomicBackground);

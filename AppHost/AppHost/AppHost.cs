@@ -36,6 +36,15 @@ var linkedInScope1 = GetAppHostSettingOrDefault(
     "SocialConnections:LinkedIn:Scopes:1",
     "Parameters:oauth-linkedin-scope-1",
     "oauth-linkedin-scope-1");
+var enableOnboardingFlowInDevelopment = string.Equals(
+    Environment.GetEnvironmentVariable("ONBOARDING_ENABLE_FLOW_IN_DEVELOPMENT")
+        ?? GetAppHostSettingOrDefault(
+            "false",
+            "Onboarding:EnableFlowInDevelopment",
+            "Parameters:onboarding-enable-flow-in-development",
+            "onboarding-enable-flow-in-development"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
 
 string GetAppHostSetting(params string[] keys)
 {
@@ -127,8 +136,10 @@ var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("mi
     .WithReference(sql)
     .WaitFor(sql);
 
-var onboardingBypassSocialConnections = builder.ExecutionContext.IsPublishMode ? "false" : "true";
-var onboardingBypassMandatoryProfile = builder.ExecutionContext.IsPublishMode ? "false" : "true";
+var shouldBypassOnboardingInCurrentEnvironment = !builder.ExecutionContext.IsPublishMode
+    && !enableOnboardingFlowInDevelopment;
+var onboardingBypassSocialConnections = shouldBypassOnboardingInCurrentEnvironment ? "true" : "false";
+var onboardingBypassMandatoryProfile = shouldBypassOnboardingInCurrentEnvironment ? "true" : "false";
 
 var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
     .WithReference(sql)
