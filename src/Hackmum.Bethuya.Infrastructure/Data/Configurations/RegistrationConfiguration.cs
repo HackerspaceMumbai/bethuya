@@ -22,10 +22,44 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
         builder.Property(r => r.Bio)
             .HasMaxLength(2000);
 
+        builder.Property(r => r.Intent)
+            .HasMaxLength(4000);
+
+        builder.Property(r => r.Goals)
+            .HasMaxLength(1000);
+
         builder.Property(r => r.Interests)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
                 v => JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? new List<string>());
+
+        builder.Property(r => r.ContributionPreferences)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
+                v => JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? new List<string>());
+
+        builder.Property(r => r.ExperienceLevel)
+            .HasMaxLength(50);
+
+        builder.Property(r => r.AttendanceLikelihood)
+            .HasMaxLength(50);
+
+        builder.Property(r => r.TravelRequirement)
+            .HasMaxLength(50);
+
+        builder.Property(r => r.DietaryRequirements)
+            .HasMaxLength(500);
+
+        builder.Property(r => r.AccessibilityNeeds)
+            .HasMaxLength(1000);
+
+        builder.Property(r => r.GovernmentIdFileName)
+            .HasMaxLength(260);
+
+        builder.Property(r => r.GovernmentIdContentType)
+            .HasMaxLength(100);
+
+        builder.Property(r => r.GovernmentIdProtectedPayload);
 
         builder.Property(r => r.InclusionSignals)
             .HasConversion(

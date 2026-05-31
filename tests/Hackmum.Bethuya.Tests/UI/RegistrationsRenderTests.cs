@@ -21,6 +21,7 @@ public class RegistrationsRenderTests
 
         var eventId = Guid.Parse("019e263d-effb-7a55-86ec-170baeee3718");
         var registrationApi = Substitute.For<IRegistrationApi>();
+        var profileApi = Substitute.For<IProfileApi>();
         registrationApi.GetByEventIdAsync(eventId, Arg.Any<CancellationToken>()).Returns(
             Task.FromResult(new List<RegistrationDto>
             {
@@ -46,7 +47,24 @@ public class RegistrationsRenderTests
                     DateTimeOffset.UtcNow)
             }));
 
+        profileApi.GetMandatoryProfileAsync(Arg.Any<CancellationToken>()).Returns(
+            Task.FromResult(new MandatoryProfileDto(
+                "Attendee",
+                "One",
+                "one@example.com",
+                "+91 9876543210",
+                "Passport",
+                "1234",
+                "Employee",
+                "Hackerspace Mumbai",
+                null,
+                "Mumbai",
+                "Maharashtra",
+                "400001",
+                "India")));
+
         ctx.Services.AddSingleton(registrationApi);
+        ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
         var cut = ctx.RenderComponent<Registrations>(parameters => parameters.Add(p => p.EventId, eventId));
@@ -57,6 +75,10 @@ public class RegistrationsRenderTests
         await Assert.That(cut.Markup).Contains("Attendee Two");
         await Assert.That(cut.Markup).Contains("one@example.com");
         await Assert.That(cut.Markup).Contains("Accepted");
+        await Assert.That(cut.Markup).Contains("1. Intent");
+        await Assert.That(cut.Markup).Contains("How likely are you to attend?");
+        await Assert.That(cut.Markup).Contains("Upload Government ID");
+        await Assert.That(cut.Markup).DoesNotContain("registration-name-field");
     }
 
     private static BunitCtx CreateContext()

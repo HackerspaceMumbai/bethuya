@@ -10,7 +10,7 @@ public sealed class InclusionSignalsNormalizer
 {
     private static readonly Regex LanguageSplitRegex = new(@"[,;/\|]+", RegexOptions.Compiled);
 
-    public InclusionSignals FromSource(AttendeeInclusionSource? source)
+    public InclusionSignals FromSource(Hackmum.Bethuya.Core.Models.AttendeeInclusionSource? source)
     {
         if (source is null)
         {
