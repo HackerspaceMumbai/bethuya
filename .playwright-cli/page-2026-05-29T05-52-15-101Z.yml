@@ -1,0 +1,94 @@
+- generic [ref=e113]:
+  - navigation "Main navigation" [ref=e115]:
+    - link "Hackerspace Mumbai - Dashboard" [ref=e117] [cursor=pointer]:
+      - /url: ""
+      - img [ref=e118]
+      - generic [ref=e122]:
+        - generic [ref=e123]: Hackerspace
+        - generic [ref=e124]: Mumbai
+    - generic [ref=e125]:
+      - generic [ref=e126]:
+        - link "Dashboard" [ref=e128] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e129]
+          - text: Dashboard
+        - link "Events" [ref=e135] [cursor=pointer]:
+          - /url: events
+          - img [ref=e136]
+          - text: Events
+      - generic [ref=e138]:
+        - generic [ref=e139]: Organizer Tools
+        - paragraph [ref=e141]: ℹ️ Select an event to access agent workflows and curation. Agent features are accessed from event detail pages.
+      - link "Profile" [ref=e144] [cursor=pointer]:
+        - /url: profile
+        - img [ref=e145]
+        - text: Profile
+  - main [ref=e148]:
+    - generic [ref=e150]:
+      - text: Dev User
+      - button "Log out" [ref=e152]
+    - article [ref=e153]:
+      - generic [ref=e154]:
+        - generic [ref=e155]:
+          - generic [ref=e156]:
+            - heading "Events" [active] [level=1] [ref=e157]
+            - generic [ref=e158]: "3"
+          - generic [ref=e159]:
+            - button "Plan Event" [ref=e161] [cursor=pointer]:
+              - img [ref=e162]
+              - text: Plan Event
+            - combobox [ref=e164]:
+              - option "All Statuses" [selected]
+              - option "Draft"
+              - option "Planning"
+              - option "Registration Open"
+              - option "In Progress"
+              - option "Completed"
+              - option "Cancelled"
+            - button "Date ↑" [ref=e165] [cursor=pointer]
+        - generic [ref=e166]:
+          - generic [ref=e169]:
+            - generic [ref=e170]:
+              - heading "Community Systems Night Jan 2026" [level=3] [ref=e172]
+              - paragraph [ref=e173]: Historical event used for seeded curation attendance history.
+              - generic [ref=e174]:
+                - generic [ref=e175]: Completed
+                - generic [ref=e176]: No Agenda
+                - generic [ref=e177]: Meetup
+              - generic [ref=e178]:
+                - generic [ref=e179]: 📍 Mumbai
+                - generic [ref=e180]: 👥 40
+                - generic [ref=e181]: 📅 Jan 24, 2026
+            - generic [ref=e182]:
+              - button "View Schedule →" [ref=e184] [cursor=pointer]
+              - button "Registrations" [ref=e185] [cursor=pointer]
+          - generic [ref=e188]:
+            - generic [ref=e189]:
+              - heading "Open Hardware Jam Mar 2026" [level=3] [ref=e191]
+              - paragraph [ref=e192]: Historical event used for seeded curation attendance history.
+              - generic [ref=e193]:
+                - generic [ref=e194]: Completed
+                - generic [ref=e195]: No Agenda
+                - generic [ref=e196]: Workshop
+              - generic [ref=e197]:
+                - generic [ref=e198]: 📍 Mumbai
+                - generic [ref=e199]: 👥 35
+                - generic [ref=e200]: 📅 Mar 22, 2026
+            - generic [ref=e201]:
+              - button "View Schedule →" [ref=e203] [cursor=pointer]
+              - button "Registrations" [ref=e204] [cursor=pointer]
+          - generic [ref=e207]:
+            - generic [ref=e208]:
+              - heading "Curation Sandbox 29 May 05:03" [level=3] [ref=e210]
+              - paragraph [ref=e211]: Generated sandbox event for exercising curation fairness, queue, and reliability edge cases.
+              - generic [ref=e212]:
+                - generic [ref=e213]: RegistrationOpen
+                - generic [ref=e214]: No Agenda
+                - generic [ref=e215]: Conference
+              - generic [ref=e216]:
+                - generic [ref=e217]: 📍 Hackerspace Mumbai
+                - generic [ref=e218]: 👥 25
+                - generic [ref=e219]: 📅 Jun 16, 2026
+            - generic [ref=e220]:
+              - button "View Schedule →" [ref=e222] [cursor=pointer]
+              - button "Registrations" [ref=e223] [cursor=pointer]
