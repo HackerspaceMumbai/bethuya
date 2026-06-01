@@ -57,6 +57,8 @@ public class RegistrationsRenderTests
         await Assert.That(cut.Markup).Contains("Attendee Two");
         await Assert.That(cut.Markup).Contains("one@example.com");
         await Assert.That(cut.Markup).Contains("Accepted");
+        await Assert.That(cut.Markup).Contains("registration-name-field");
+        await Assert.That(cut.Markup).Contains("Submit Registration");
     }
 
     private static BunitCtx CreateContext()
