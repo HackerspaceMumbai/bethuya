@@ -15,11 +15,15 @@ public class RegistrationFlowTests : BethuyaE2ETest
         var submitBtn = Page.GetByRole(AriaRole.Button, new() { Name = "Submit Registration" });
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
-        await Page.GetByPlaceholder("Tell us what draws you to this event and why it matters to you.").FillAsync("I want to meet builders and contribute to the event.");
-        await Page.GetByLabel("Present/demo").CheckAsync();
-        await Page.GetByLabel("Advanced").CheckAsync();
-        await Page.GetByLabel("Definitely").CheckAsync();
-        await Page.GetByLabel("Within city").CheckAsync();
+        await Page.GetByPlaceholder("Full name").FillAsync("Test Attendee");
+        await Page.GetByPlaceholder("Email").FillAsync("test@example.com");
+        await Page.GetByPlaceholder("Short bio (optional)").FillAsync("A passionate developer");
+        await Page.GetByPlaceholder("Interests (comma-separated)").FillAsync("AI, Blazor, .NET");
+        await Page.GetByPlaceholder("Neighbourhood / area (required for curation)").FillAsync("Dadar");
+        await Page.GetByPlaceholder("Languages spoken (required for curation)").FillAsync("English, Marathi");
+        await Page.GetByPlaceholder("Highest education level (required for curation)").FillAsync("Undergraduate");
+        await Page.GetByPlaceholder("Socioeconomic background (required for curation)").FillAsync("Middle income");
+        await Page.GetByTestId("consent-checkbox").CheckAsync();
 
         await submitBtn.ClickAsync();
 

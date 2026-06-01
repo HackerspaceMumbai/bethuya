@@ -30,13 +30,19 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
 
         builder.Property(r => r.Interests)
             .HasConversion(
-                v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
-                v => JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? new List<string>());
+                v => JsonSerializer.Serialize(v ?? [], JsonSerializerOptions.Default),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? []
+                    : JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? [])
+            .HasDefaultValue("[]");
 
         builder.Property(r => r.ContributionPreferences)
             .HasConversion(
-                v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
-                v => JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? new List<string>());
+                v => JsonSerializer.Serialize(v ?? [], JsonSerializerOptions.Default),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? []
+                    : JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? [])
+            .HasDefaultValue("[]");
 
         builder.Property(r => r.ExperienceLevel)
             .HasMaxLength(50);

@@ -24,11 +24,11 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<Hackmum.Bethuya.Core.Models.AttendeeInclusionSource?> GetInclusionSourceByEmailAsync(string email, CancellationToken ct = default)
+    public async Task<AttendeeInclusionSource?> GetInclusionSourceByEmailAsync(string email, CancellationToken ct = default)
         => await db.AttendeeProfiles
             .AsNoTracking()
             .Where(p => p.Email == email)
-            .Select(p => new Hackmum.Bethuya.Core.Models.AttendeeInclusionSource(
+            .Select(p => new AttendeeInclusionSource(
                 p.Neighborhood,
                 p.LanguageProficiency,
                 p.EducationalBackground,

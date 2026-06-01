@@ -19,7 +19,9 @@ public sealed class Registration
     public string? TravelRequirement { get; set; }
     public string? DietaryRequirements { get; set; }
     public string? AccessibilityNeeds { get; set; }
+    [JsonIgnore]
     public string? GovernmentIdFileName { get; set; }
+    [JsonIgnore]
     public string? GovernmentIdContentType { get; set; }
     [JsonIgnore]
     public string? GovernmentIdProtectedPayload { get; set; }
