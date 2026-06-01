@@ -15,5 +15,5 @@ public interface IAttendeeProfileRepository
     Task UpdateAsync(AttendeeProfile profile, CancellationToken ct = default);
 
     /// <summary>Returns a minimal profile projection used for inclusion-signal derivation.</summary>
-    Task<Hackmum.Bethuya.Core.Models.AttendeeInclusionSource?> GetInclusionSourceByEmailAsync(string email, CancellationToken ct = default);
+    Task<AttendeeInclusionSource?> GetInclusionSourceByEmailAsync(string email, CancellationToken ct = default);
 }
