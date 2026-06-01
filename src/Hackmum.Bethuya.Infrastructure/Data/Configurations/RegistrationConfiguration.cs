@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Hackmum.Bethuya.Core.Models;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -9,6 +10,11 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
 {
     public void Configure(EntityTypeBuilder<Registration> builder)
     {
+        var stringListComparer = new ValueComparer<List<string>>(
+            (left, right) => left!.SequenceEqual(right!),
+            values => values.Aggregate(0, (hash, value) => HashCode.Combine(hash, value.GetHashCode(StringComparison.Ordinal))),
+            values => values.ToList());
+
         builder.HasKey(r => r.Id);
 
         builder.Property(r => r.FullName)
@@ -28,19 +34,21 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
         builder.Property(r => r.Goals)
             .HasMaxLength(1000);
 
-        builder.Property(r => r.Interests)
+        var interestsProperty = builder.Property(r => r.Interests)
             .HasConversion(
                 v => JsonSerializer.Serialize(v ?? new List<string>(), JsonSerializerOptions.Default),
                 v => string.IsNullOrWhiteSpace(v)
                     ? new List<string>()
                     : JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? new List<string>());
+        interestsProperty.Metadata.SetValueComparer(stringListComparer);
 
-        builder.Property(r => r.ContributionPreferences)
+        var contributionPreferencesProperty = builder.Property(r => r.ContributionPreferences)
             .HasConversion(
                 v => JsonSerializer.Serialize(v ?? new List<string>(), JsonSerializerOptions.Default),
                 v => string.IsNullOrWhiteSpace(v)
                     ? new List<string>()
                     : JsonSerializer.Deserialize<List<string>>(v, JsonSerializerOptions.Default) ?? new List<string>());
+        contributionPreferencesProperty.Metadata.SetValueComparer(stringListComparer);
 
         builder.Property(r => r.ExperienceLevel)
             .HasMaxLength(50);
