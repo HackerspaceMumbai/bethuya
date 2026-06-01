@@ -1,0 +1,233 @@
+- generic [ref=e113]:
+  - navigation "Main navigation" [ref=e115]:
+    - link "Hackerspace Mumbai - Dashboard" [ref=e117] [cursor=pointer]:
+      - /url: ""
+      - img [ref=e118]
+      - generic [ref=e122]:
+        - generic [ref=e123]: Hackerspace
+        - generic [ref=e124]: Mumbai
+    - generic [ref=e125]:
+      - generic [ref=e126]:
+        - link "Dashboard" [ref=e128] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e129]
+          - text: Dashboard
+        - link "Events" [ref=e135] [cursor=pointer]:
+          - /url: events
+          - img [ref=e136]
+          - text: Events
+      - generic [ref=e138]:
+        - generic [ref=e139]: Organizer Tools
+        - link "Agent Workflows" [ref=e225] [cursor=pointer]:
+          - /url: agents/019e721e-07c7-76a1-b9f9-e6bf333aa69b
+          - img [ref=e226]
+          - text: Agent Workflows
+        - link "Curation" [ref=e230] [cursor=pointer]:
+          - /url: curation/019e721e-07c7-76a1-b9f9-e6bf333aa69b
+          - img [ref=e231]
+          - text: Curation
+      - link "Profile" [ref=e144] [cursor=pointer]:
+        - /url: profile
+        - img [ref=e145]
+        - text: Profile
+  - main [ref=e148]:
+    - generic [ref=e150]:
+      - text: Dev User
+      - button "Log out" [ref=e152]
+    - article [ref=e153]:
+      - generic [ref=e232]:
+        - button "← Back to Event" [ref=e233] [cursor=pointer]
+        - heading "Registrations" [active] [level=1] [ref=e234]
+        - generic [ref=e235]:
+          - generic [ref=e237]:
+            - heading "Registered Attendees" [level=2] [ref=e238]
+            - generic [ref=e239]:
+              - generic [ref=e240]:
+                - generic [ref=e241]: Asha Patel seed-0529050351-019e72-selected-000@example.com
+                - generic [ref=e242]: CheckedIn
+              - generic [ref=e243]:
+                - generic [ref=e244]: Rohan Patel seed-0529050351-019e72-selected-001@example.com
+                - generic [ref=e245]: Accepted
+              - generic [ref=e246]:
+                - generic [ref=e247]: Mira Patel seed-0529050351-019e72-selected-002@example.com
+                - generic [ref=e248]: Accepted
+              - generic [ref=e249]:
+                - generic [ref=e250]: Dev Patel seed-0529050351-019e72-selected-003@example.com
+                - generic [ref=e251]: CheckedIn
+              - generic [ref=e252]:
+                - generic [ref=e253]: Isha Patel seed-0529050351-019e72-selected-004@example.com
+                - generic [ref=e254]: Accepted
+              - generic [ref=e255]:
+                - generic [ref=e256]: Kabir Patel seed-0529050351-019e72-selected-005@example.com
+                - generic [ref=e257]: Accepted
+              - generic [ref=e258]:
+                - generic [ref=e259]: Naina Patel seed-0529050351-019e72-selected-006@example.com
+                - generic [ref=e260]: CheckedIn
+              - generic [ref=e261]:
+                - generic [ref=e262]: Arjun Patel seed-0529050351-019e72-selected-007@example.com
+                - generic [ref=e263]: Accepted
+              - generic [ref=e264]:
+                - generic [ref=e265]: Kabir Das seed-0529050351-019e72-review-035@example.com
+                - generic [ref=e266]: Pending
+              - generic [ref=e267]:
+                - generic [ref=e268]: Tara Patel seed-0529050351-019e72-review-008@example.com
+                - generic [ref=e269]: Pending
+              - generic [ref=e270]:
+                - generic [ref=e271]: Arjun Sharma seed-0529050351-019e72-review-017@example.com
+                - generic [ref=e272]: Pending
+              - generic [ref=e273]:
+                - generic [ref=e274]: Isha Nair seed-0529050351-019e72-review-044@example.com
+                - generic [ref=e275]: Pending
+              - generic [ref=e276]:
+                - generic [ref=e277]: Naina Kulkarni seed-0529050351-019e72-review-026@example.com
+                - generic [ref=e278]: Pending
+              - generic [ref=e279]:
+                - generic [ref=e280]: Dev Nair seed-0529050351-019e72-review-043@example.com
+                - generic [ref=e281]: Pending
+              - generic [ref=e282]:
+                - generic [ref=e283]: Arjun Patel seed-0529050351-019e72-review-007@example.com
+                - generic [ref=e284]: Pending
+              - generic [ref=e285]:
+                - generic [ref=e286]: Naina Sharma seed-0529050351-019e72-review-016@example.com
+                - generic [ref=e287]: Pending
+              - generic [ref=e288]:
+                - generic [ref=e289]: Kabir Kulkarni seed-0529050351-019e72-review-025@example.com
+                - generic [ref=e290]: Pending
+              - generic [ref=e291]:
+                - generic [ref=e292]: Isha Das seed-0529050351-019e72-review-034@example.com
+                - generic [ref=e293]: Pending
+              - generic [ref=e294]:
+                - generic [ref=e295]: Isha Kulkarni seed-0529050351-019e72-review-024@example.com
+                - generic [ref=e296]: Waitlisted
+              - generic [ref=e297]:
+                - generic [ref=e298]: Kabir Sharma seed-0529050351-019e72-review-015@example.com
+                - generic [ref=e299]: Pending
+              - generic [ref=e300]:
+                - generic [ref=e301]: Naina Patel seed-0529050351-019e72-review-006@example.com
+                - generic [ref=e302]: Waitlisted
+              - generic [ref=e303]:
+                - generic [ref=e304]: Mira Nair seed-0529050351-019e72-review-042@example.com
+                - generic [ref=e305]: Waitlisted
+              - generic [ref=e306]:
+                - generic [ref=e307]: Dev Das seed-0529050351-019e72-review-033@example.com
+                - generic [ref=e308]: Pending
+              - generic [ref=e309]:
+                - generic [ref=e310]: Isha Sharma seed-0529050351-019e72-review-014@example.com
+                - generic [ref=e311]: Pending
+              - generic [ref=e312]:
+                - generic [ref=e313]: Mira Das seed-0529050351-019e72-review-032@example.com
+                - generic [ref=e314]: Pending
+              - generic [ref=e315]:
+                - generic [ref=e316]: Kabir Patel seed-0529050351-019e72-review-005@example.com
+                - generic [ref=e317]: Pending
+              - generic [ref=e318]:
+                - generic [ref=e319]: Rohan Nair seed-0529050351-019e72-review-041@example.com
+                - generic [ref=e320]: Pending
+              - generic [ref=e321]:
+                - generic [ref=e322]: Dev Kulkarni seed-0529050351-019e72-review-023@example.com
+                - generic [ref=e323]: Pending
+              - generic [ref=e324]:
+                - generic [ref=e325]: Vikram Nair seed-0529050351-019e72-review-049@example.com
+                - generic [ref=e326]: Pending
+              - generic [ref=e327]:
+                - generic [ref=e328]: Isha Patel seed-0529050351-019e72-review-004@example.com
+                - generic [ref=e329]: Pending
+              - generic [ref=e330]:
+                - generic [ref=e331]: Asha Nair seed-0529050351-019e72-review-040@example.com
+                - generic [ref=e332]: Pending
+              - generic [ref=e333]:
+                - generic [ref=e334]: Rohan Das seed-0529050351-019e72-review-031@example.com
+                - generic [ref=e335]: Pending
+              - generic [ref=e336]:
+                - generic [ref=e337]: Dev Sharma seed-0529050351-019e72-review-013@example.com
+                - generic [ref=e338]: Pending
+              - generic [ref=e339]:
+                - generic [ref=e340]: Mira Kulkarni seed-0529050351-019e72-review-022@example.com
+                - generic [ref=e341]: Pending
+              - generic [ref=e342]:
+                - generic [ref=e343]: Vikram Das seed-0529050351-019e72-review-039@example.com
+                - generic [ref=e344]: Pending
+              - generic [ref=e345]:
+                - generic [ref=e346]: Rohan Kulkarni seed-0529050351-019e72-review-021@example.com
+                - generic [ref=e347]: Pending
+              - generic [ref=e348]:
+                - generic [ref=e349]: Tara Nair seed-0529050351-019e72-review-048@example.com
+                - generic [ref=e350]: Waitlisted
+              - generic [ref=e351]:
+                - generic [ref=e352]: Mira Sharma seed-0529050351-019e72-review-012@example.com
+                - generic [ref=e353]: Waitlisted
+              - generic [ref=e354]:
+                - generic [ref=e355]: Asha Das seed-0529050351-019e72-review-030@example.com
+                - generic [ref=e356]: Waitlisted
+              - generic [ref=e357]:
+                - generic [ref=e358]: Dev Patel seed-0529050351-019e72-review-003@example.com
+                - generic [ref=e359]: Pending
+              - generic [ref=e360]:
+                - generic [ref=e361]: Asha Kulkarni seed-0529050351-019e72-review-020@example.com
+                - generic [ref=e362]: Pending
+              - generic [ref=e363]:
+                - generic [ref=e364]: Vikram Kulkarni seed-0529050351-019e72-review-029@example.com
+                - generic [ref=e365]: Pending
+              - generic [ref=e366]:
+                - generic [ref=e367]: Arjun Nair seed-0529050351-019e72-review-047@example.com
+                - generic [ref=e368]: Pending
+              - generic [ref=e369]:
+                - generic [ref=e370]: Mira Patel seed-0529050351-019e72-review-002@example.com
+                - generic [ref=e371]: Pending
+              - generic [ref=e372]:
+                - generic [ref=e373]: Tara Das seed-0529050351-019e72-review-038@example.com
+                - generic [ref=e374]: Pending
+              - generic [ref=e375]:
+                - generic [ref=e376]: Rohan Sharma seed-0529050351-019e72-review-011@example.com
+                - generic [ref=e377]: Pending
+              - generic [ref=e378]:
+                - generic [ref=e379]: Naina Nair seed-0529050351-019e72-review-046@example.com
+                - generic [ref=e380]: Pending
+              - generic [ref=e381]:
+                - generic [ref=e382]: Rohan Patel seed-0529050351-019e72-review-001@example.com
+                - generic [ref=e383]: Pending
+              - generic [ref=e384]:
+                - generic [ref=e385]: Arjun Das seed-0529050351-019e72-review-037@example.com
+                - generic [ref=e386]: Pending
+              - generic [ref=e387]:
+                - generic [ref=e388]: Asha Sharma seed-0529050351-019e72-review-010@example.com
+                - generic [ref=e389]: Pending
+              - generic [ref=e390]:
+                - generic [ref=e391]: Tara Kulkarni seed-0529050351-019e72-review-028@example.com
+                - generic [ref=e392]: Pending
+              - generic [ref=e393]:
+                - generic [ref=e394]: Vikram Sharma seed-0529050351-019e72-review-019@example.com
+                - generic [ref=e395]: Pending
+              - generic [ref=e396]:
+                - generic [ref=e397]: Naina Das seed-0529050351-019e72-review-036@example.com
+                - generic [ref=e398]: Waitlisted
+              - generic [ref=e399]:
+                - generic [ref=e400]: Kabir Nair seed-0529050351-019e72-review-045@example.com
+                - generic [ref=e401]: Pending
+              - generic [ref=e402]:
+                - generic [ref=e403]: Vikram Patel seed-0529050351-019e72-review-009@example.com
+                - generic [ref=e404]: Pending
+              - generic [ref=e405]:
+                - generic [ref=e406]: Arjun Kulkarni seed-0529050351-019e72-review-027@example.com
+                - generic [ref=e407]: Pending
+              - generic [ref=e408]:
+                - generic [ref=e409]: Asha Patel seed-0529050351-019e72-review-000@example.com
+                - generic [ref=e410]: Waitlisted
+              - generic [ref=e411]:
+                - generic [ref=e412]: Tara Sharma seed-0529050351-019e72-review-018@example.com
+                - generic [ref=e413]: Waitlisted
+          - generic [ref=e415]:
+            - heading "Register" [level=2] [ref=e416]
+            - generic [ref=e417]:
+              - textbox "Full name" [ref=e419]
+              - textbox "Email" [ref=e421]
+              - textbox "Short bio (optional)" [ref=e423]
+              - textbox "Interests (comma-separated)" [ref=e425]
+              - generic [ref=e426]:
+                - checkbox "I consent to the collection and processing of my email for event registration. See our privacy policy." [ref=e427]
+                - generic [ref=e428]:
+                  - text: I consent to the collection and processing of my email for event registration. See our
+                  - link "privacy policy" [ref=e429] [cursor=pointer]:
+                    - /url: /privacy
+                  - text: .
+              - button "Submit Registration" [disabled] [ref=e431]

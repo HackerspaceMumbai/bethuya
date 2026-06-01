@@ -7,4 +7,5 @@ public sealed record AttendeeInclusionSource(
     string? Neighborhood,
     string? LanguageProficiency,
     string? EducationalBackground,
-    string? SocioeconomicBackground);
+    string? SocioeconomicBackground,
+    string? GenderIdentity = null);

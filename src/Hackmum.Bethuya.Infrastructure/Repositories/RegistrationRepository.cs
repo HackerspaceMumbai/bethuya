@@ -16,6 +16,35 @@ public sealed class RegistrationRepository(BethuyaDbContext db) : IRegistrationR
             .OrderBy(r => r.RegisteredAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<Registration>>> GetHistoricalByEmailsAsync(
+        IReadOnlyCollection<string> emails,
+        Guid excludedEventId,
+        CancellationToken ct = default)
+    {
+        if (emails.Count == 0)
+        {
+            return new Dictionary<string, IReadOnlyList<Registration>>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var normalizedEmails = emails
+            .Where(email => !string.IsNullOrWhiteSpace(email))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var registrations = await db.Registrations
+            .AsNoTracking()
+            .Where(r => normalizedEmails.Contains(r.Email) && r.EventId != excludedEventId)
+            .OrderByDescending(r => r.RegisteredAt)
+            .ToListAsync(ct);
+
+        return registrations
+            .GroupBy(registration => registration.Email, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<Registration>)group.ToList(),
+                StringComparer.OrdinalIgnoreCase);
+    }
+
     public async Task<Registration> CreateAsync(Registration entity, CancellationToken ct = default)
     {
         db.Registrations.Add(entity);

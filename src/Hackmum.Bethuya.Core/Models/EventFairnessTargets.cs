@@ -24,6 +24,9 @@ public sealed class EventFairnessTargets
     /// <summary>Optional target minimum ratio for underrepresented socioeconomic buckets.</summary>
     public double? UnderrepresentedSocioeconomicMinPercent { get; set; }
 
+    /// <summary>Target minimum ratio for consented gender diversity signals in the selected cohort.</summary>
+    public double GenderDiversityMinPercent { get; set; } = 0.40;
+
     /// <summary>k-anonymity threshold for fairness breakdown visibility.</summary>
     public int KAnonymityThreshold { get; set; } = DefaultKAnonymityThreshold;
 }

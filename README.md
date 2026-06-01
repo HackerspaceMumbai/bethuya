@@ -538,6 +538,54 @@ dotnet run --project src/Hackmum.Bethuya.App -f net10.0-maccatalyst
 
 ***
 
+## 🧩 Curation View — Operator Workflow & UI Contracts
+
+This section documents the current Curation Intelligence interaction model so future contributors can change it safely.
+
+### Suggest Starting Cohort (human-in-the-loop)
+
+1. Click **Suggest Starting Cohort** in the fairness action block.
+2. Configure strategy, cohort size, and optional constraints in the modal.
+3. Generate suggestions; the system marks candidates as **Suggested** (assistive only).
+4. Review rationale and manually approve/waitlist/reject from the sticky action tray.
+5. Use **Remove from Suggestions**, **Add to Suggestions**, or **Clear Suggestions** at any time.
+
+> Guardrail: Suggestions are reversible and never auto-approve attendees.
+
+### Queue behavior after generation
+
+- Queue automatically focuses suggested registrants after generation.
+- Search/status filters are reset so suggested results are not accidentally hidden.
+- Suggested registrants are visually tagged in a fixed card slot to keep card dimensions stable.
+- Clearing suggestions restores neutral queue behavior.
+
+### Fairness and impact reading model
+
+- **High Impact** chips are the primary fairness attention lane.
+- **Stable** chips remain compact to reduce cognitive load.
+- Impact preview shows concise gains/risks; lower-priority risk items are collapsed.
+- Copy in reliability/intent sections is decision-oriented and metric-linked.
+
+### Layout invariants (do not regress)
+
+- Profile pane uses scrollable content with a bottom action row.
+- Sticky decision/action tray must remain visible at the bottom of the detail pane.
+- Modal overlays must capture interactions above queue/content layers.
+
+### Implementation guidance
+
+- Prefer Blazor Blueprint component composition over custom CSS.
+- Keep custom CSS focused on structure/overflow/sticky constraints.
+- Preserve `data-test` selectors for curation E2E and render tests.
+
+### Primary files for curation UX work
+
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Components/Pages/CurationView.razor`
+- `src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Components/Pages/CurationView.razor.css`
+- `tests/Hackmum.Bethuya.Tests/UI/CurationViewRenderTests.cs`
+
+***
+
 ## 👥 Contributing (Copilot‑first, Human‑reviewed)
 
 * Namespace: **`Hackmum.Bethuya.*`**
