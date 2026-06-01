@@ -1,0 +1,39 @@
+- generic [ref=e2]:
+  - navigation "Main navigation" [ref=e4]:
+    - link "Hackerspace Mumbai - Dashboard" [ref=e6] [cursor=pointer]:
+      - /url: ""
+      - img [ref=e7]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Hackerspace
+        - generic [ref=e13]: Mumbai
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - link "Dashboard" [ref=e17] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e18]
+          - text: Dashboard
+        - link "Events" [ref=e24] [cursor=pointer]:
+          - /url: events
+          - img [ref=e25]
+          - text: Events
+      - generic [ref=e27]:
+        - generic [ref=e28]: Organizer Tools
+        - link "Agent Workflows" [ref=e30] [cursor=pointer]:
+          - /url: agents/019e6fa2-5acf-719e-8b90-0824c94cc9ab
+          - img [ref=e31]
+          - text: Agent Workflows
+        - link "Curation" [ref=e35] [cursor=pointer]:
+          - /url: curation/019e6fa2-5acf-719e-8b90-0824c94cc9ab
+          - img [ref=e36]
+          - text: Curation
+      - link "Profile" [ref=e39] [cursor=pointer]:
+        - /url: profile
+        - img [ref=e40]
+        - text: Profile
+  - main [ref=e43]:
+    - generic [ref=e45]:
+      - text: Dev User
+      - button "Log out" [ref=e47]
+    - article [ref=e48]:
+      - alert [ref=e51]:
+        - generic [ref=e52]: Unable to load curation data right now.

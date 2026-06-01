@@ -17,4 +17,6 @@ public sealed class InclusionSignals
     public bool HasLocalLanguage { get; set; }
     public EducationBucket EducationBucket { get; set; } = EducationBucket.Unknown;
     public SocioeconomicBucket? SocioeconomicBucket { get; set; }
+    public bool OrganizerMarkedStandout { get; set; }
+    public bool HasGenderDiversitySignal { get; set; }
 }
