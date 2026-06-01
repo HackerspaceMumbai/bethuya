@@ -1,0 +1,49 @@
+- generic [ref=e2]:
+  - navigation "Main navigation" [ref=e4]:
+    - link "Hackerspace Mumbai - Dashboard" [ref=e6] [cursor=pointer]:
+      - /url: ""
+      - img [ref=e7]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Hackerspace
+        - generic [ref=e13]: Mumbai
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - link "Dashboard" [ref=e17] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e18]
+          - text: Dashboard
+        - link "Events" [ref=e24] [cursor=pointer]:
+          - /url: events
+          - img [ref=e25]
+          - text: Events
+      - generic [ref=e27]:
+        - generic [ref=e28]: Organizer Tools
+        - paragraph [ref=e30]: ℹ️ Select an event to access agent workflows and curation. Agent features are accessed from event detail pages.
+      - link "Profile" [ref=e33] [cursor=pointer]:
+        - /url: profile
+        - img [ref=e34]
+        - text: Profile
+  - main [ref=e37]:
+    - generic [ref=e39]:
+      - text: Dev User
+      - button "Log out" [ref=e41]
+    - article [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - heading "Events" [active] [level=1] [ref=e46]
+            - generic [ref=e47]: "0"
+          - generic [ref=e48]:
+            - button "Plan Event" [ref=e50] [cursor=pointer]:
+              - img [ref=e51]
+              - text: Plan Event
+            - combobox [ref=e53]:
+              - option "All Statuses" [selected]
+              - option "Draft"
+              - option "Planning"
+              - option "Registration Open"
+              - option "In Progress"
+              - option "Completed"
+              - option "Cancelled"
+            - button "Date ↑" [ref=e54] [cursor=pointer]
+        - paragraph [ref=e56]: No events match the selected filter.

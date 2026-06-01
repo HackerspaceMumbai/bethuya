@@ -17,8 +17,13 @@ public class RegistrationFlowTests : BethuyaE2ETest
 
         await Page.GetByPlaceholder("Full name").FillAsync("Test Attendee");
         await Page.GetByPlaceholder("Email").FillAsync("test@example.com");
-        await Page.GetByPlaceholder("Short bio").FillAsync("A passionate developer");
-        await Page.GetByPlaceholder("Interests").FillAsync("AI, Blazor, .NET");
+        await Page.GetByPlaceholder("Short bio (optional)").FillAsync("A passionate developer");
+        await Page.GetByPlaceholder("Interests (comma-separated)").FillAsync("AI, Blazor, .NET");
+        await Page.GetByPlaceholder("Neighbourhood / area (required for curation)").FillAsync("Dadar");
+        await Page.GetByPlaceholder("Languages spoken (required for curation)").FillAsync("English, Marathi");
+        await Page.GetByPlaceholder("Highest education level (required for curation)").FillAsync("Undergraduate");
+        await Page.GetByPlaceholder("Socioeconomic background (required for curation)").FillAsync("Middle income");
+        await Page.GetByTestId("consent-checkbox").CheckAsync();
 
         await submitBtn.ClickAsync();
 
