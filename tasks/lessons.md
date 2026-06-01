@@ -18,6 +18,13 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 <!-- Lessons are appended here as they are discovered -->
 
+## [2026-05-28] Standout is an organizer contribution mark, not attendance inference
+
+- **What happened:** The first curation standout rule treated high reliability or attendance history as enough to call a registrant a standout.
+- **Root cause:** The model conflated "attended before" with the organizer's separate post-meetup judgment that an attendee made a stellar contribution.
+- **Fix:** Added an explicit organizer-marked standout signal on privacy-safe inclusion history and wired curation recommendations/UI labels to that signal instead of attendance count or reliability score.
+- **Prevention:** When a curation label represents human judgment, model it as an explicit persisted signal and avoid inferring it from adjacent metrics like RSVP follow-through.
+
 ## [2026-05-23] Mapping a minimal API route still needs its service registered in DI
 
 - **What happened:** After wiring the planning-cycle endpoints into the backend host, the backend still failed to start and the planner flow remained broken.

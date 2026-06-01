@@ -63,9 +63,21 @@
                         <div data-test="registration-interests-field">
                             <BbInput @bind-Value="newInterests" Placeholder="Interests (comma-separated)" />
                         </div>
+                        <div data-test="registration-neighborhood-field">
+                            <BbInput @bind-Value="newNeighborhood" Placeholder="Neighbourhood / area (required for curation)" />
+                        </div>
+                        <div data-test="registration-languages-field">
+                            <BbInput @bind-Value="newLanguageProficiency" Placeholder="Languages spoken (required for curation)" />
+                        </div>
+                        <div data-test="registration-education-field">
+                            <BbInput @bind-Value="newEducationalBackground" Placeholder="Highest education level (required for curation)" />
+                        </div>
+                        <div data-test="registration-socioeconomic-field">
+                            <BbInput @bind-Value="newSocioeconomicBackground" Placeholder="Socioeconomic background (required for curation)" />
+                        </div>
                     <div class="flex items-center gap-2">
                         <input type="checkbox" id="consentCheckbox" @bind="consentGiven" required data-test="consent-checkbox" />
-                        <label for="consentCheckbox" class="text-sm">I consent to the collection and processing of my email for event registration. See our <a href="/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</label>
+                        <label for="consentCheckbox" class="text-sm">I consent to the collection and processing of my registration details (including curation context) for fair attendee curation. See our <a href="/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</label>
                     </div>
                     <div data-test="submit-registration-btn">
                         <BbButton Variant="ButtonVariant.Default" OnClick="Register" Disabled="@(!consentGiven)">Submit Registration</BbButton>
@@ -85,6 +97,10 @@
     private string newEmail = "";
     private string newBio = "";
     private string newInterests = "";
+    private string newNeighborhood = "";
+    private string newLanguageProficiency = "";
+    private string newEducationalBackground = "";
+    private string newSocioeconomicBackground = "";
     private bool consentGiven = false;
     private string? _errorMessage;
 
@@ -118,11 +134,22 @@
     {
         if (string.IsNullOrWhiteSpace(newName) || string.IsNullOrWhiteSpace(newEmail) || !consentGiven)
         {
+            _errorMessage = "Full name, email, and consent are required before submitting registration.";
             return;
         }
 
         if (!newEmail.Contains('@') || !newEmail.Contains('.'))
         {
+            _errorMessage = "Enter a valid email address before submitting registration.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newNeighborhood)
+            || string.IsNullOrWhiteSpace(newLanguageProficiency)
+            || string.IsNullOrWhiteSpace(newEducationalBackground)
+            || string.IsNullOrWhiteSpace(newSocioeconomicBackground))
+        {
+            _errorMessage = "Neighbourhood, languages, education, and socioeconomic background are required for curation.";
             return;
         }
 
@@ -135,7 +162,11 @@
                 newName,
                 newEmail,
                 string.IsNullOrWhiteSpace(newBio) ? null : newBio,
-                newInterests.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList()));
+                newInterests.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList(),
+                newNeighborhood.Trim(),
+                newLanguageProficiency.Trim(),
+                newEducationalBackground.Trim(),
+                newSocioeconomicBackground.Trim()));
 
             registrations.Add(created);
 
@@ -143,6 +174,10 @@
             newEmail = "";
             newBio = "";
             newInterests = "";
+            newNeighborhood = "";
+            newLanguageProficiency = "";
+            newEducationalBackground = "";
+            newSocioeconomicBackground = "";
             consentGiven = false;
         }
         catch (Refit.ApiException)

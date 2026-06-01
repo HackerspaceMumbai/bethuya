@@ -1,7 +1,9 @@
 @page "/curation/{EventId:guid}"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireCurator)]
+@using System.Globalization
 @using Bethuya.Hybrid.Shared.Services
+@using BlazorBlueprint.Icons.Lucide.Components
 @inject ICurationApi CurationApi
 @inject NavigationManager Navigation
 
@@ -11,7 +13,7 @@
     @if (_errorMessage is not null)
     {
         <div data-test="curation-error">
-            <BbAlert Variant="AlertVariant.Danger" Class="mb-3">
+            <BbAlert Variant="AlertVariant.Danger">
                 @_errorMessage
             </BbAlert>
         </div>
@@ -25,240 +27,676 @@
     }
     else if (_dashboard is not null)
     {
-        <section class="curation-header">
-            <div>
-                <p class="eyebrow">Mumbai AI &amp; Robotics Summit</p>
-                <h1>Fairness Budget</h1>
-            </div>
-
-            <div class="header-stats">
-                <div>
-                    <p class="value">@_dashboard.Applicants</p>
-                    <p class="label">Applicants</p>
-                </div>
-                <div>
-                    <p class="value">@_dashboard.Capacity</p>
-                    <p class="label">Capacity</p>
-                </div>
-            </div>
-
-                <div class="header-actions">
-                    <div data-test="generate-curation-proposal-btn">
-                        <BbButton Variant="ButtonVariant.Default"
-                              Disabled="@(!CanGenerateProposal)"
-                              OnClick="GenerateProposalAsync"
-                              Class="w-full">
-                            @(_isGeneratingProposal ? "Generating..." : "Generate Curation Proposal")
-                        </BbButton>
+        <section class="curation-topbar">
+            <BbCard Class="curation-topbar-card">
+                <BbCardContent Class="topbar-content">
+                <div class="topbar-main">
+                    <div>
+                        <p class="eyebrow">@_dashboard.EventTitle</p>
+                        <h1 class="hero-title">Curation Intelligence</h1>
                     </div>
-                    <p class="helper-text">
-                        @if (_lastProposalGeneratedAt is null)
-                        {
-                            <span>@GenerateProposalHint</span>
-                        }
-                        else
-                        {
-                            <span>@GenerateProposalHint</span>
-                        }
-                    </p>
-                </div>
-        </section>
 
-        <section class="fairness-strip" data-test="fairness-dimensions">
-            @foreach (var dimension in _dashboard.Dimensions)
-            {
-                <article class="fairness-tile" data-test="fairness-dimension-card">
-                    <div class="tile-row">
-                        <p class="tile-title">@dimension.Dimension</p>
-                        <p class="tile-target">Target @ToPercent(dimension.TargetPercent)</p>
+                    <div class="hero-stats" aria-label="Curation totals">
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">@_dashboard.Applicants</span>
+                            <span class="hero-stat-label">Applicants</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">@_dashboard.Capacity</span>
+                            <span class="hero-stat-label">Capacity</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">@FilteredRegistrants.Count</span>
+                            <span class="hero-stat-label">In review</span>
+                        </div>
                     </div>
-                    <div class="meter">
-                        <div class="meter-fill" style="width: @ToProgressWidth(dimension.CurrentPercent, dimension.TargetPercent)%"></div>
+
+                    <div class="projection-chip">
+                        <p>@(SelectedRegistrant is null ? "Select a registrant to activate impact projection." : $"Impact projection active for {SelectedRegistrant.FullName}")</p>
+                        <span class="online-dot" aria-hidden="true"></span>
                     </div>
-                    <p class="tile-current">Current @ToPercent(dimension.CurrentPercent)</p>
-                    @if (dimension.IsSuppressed)
+                </div>
+
+                <div class="fairness-layout-stack" data-test="fairness-dimensions">
+                    <div class="fairness-status-summary" data-test="fairness-status-summary">
+                        <BbAlert Variant="@BudgetHealthSummary.AlertVariant">
+                            @BudgetHealthSummary.Text
+                        </BbAlert>
+                    </div>
+                    @if (HasSuggestedCohort)
                     {
-                        <p class="tile-alert muted" data-test="fairness-suppressed">@dimension.Alert</p>
+                        <div class="cohort-ready-banner" data-test="suggested-cohort-banner">
+                            <BbAlert Variant="AlertVariant.Success">
+                                Suggested cohort ready
+                            </BbAlert>
+                        </div>
                     }
-                    else if (dimension.Alert is not null)
-                    {
-                        <p class="tile-alert" data-test="fairness-deficit-alert">@dimension.Alert</p>
-                    }
-                </article>
-            }
-        </section>
 
-        <section class="workbench">
-            <BbCard Class="queue-panel">
-                <div class="panel-head">
-                    <h2>Registrant Queue</h2>
-                    <BbBadge Variant="BadgeVariant.Secondary">@FilteredRegistrants.Count Unreviewed</BbBadge>
-                </div>
-
-                <div class="queue-controls">
-                    <input class="queue-search"
-                           placeholder="Search registrants..."
-                           @bind="_searchQuery"
-                           @bind:event="oninput"
-                           @bind:after="EnsureSelectedRegistrant" />
-                    <select class="queue-filter" @bind="_statusFilter" @bind:after="EnsureSelectedRegistrant">
-                        <option>All</option>
-                        <option>Pending</option>
-                        <option>Waitlisted</option>
-                    </select>
-                </div>
-
-                @if (FilteredRegistrants.Count == 0)
-                {
-                    <p class="empty-queue">No registrants match the active filter.</p>
-                }
-                else
-                {
-                    <div class="queue-list" data-test="curation-registrant-list">
-                        @foreach (var registrant in FilteredRegistrants)
-                        {
-                            var isSelected = registrant.RegistrationId == SelectedRegistrant?.RegistrationId;
-                            <button type="button"
-                                    class="@(isSelected ? "queue-item selected" : "queue-item")"
-                                    @onclick="() => SelectRegistrant(registrant.RegistrationId)"
-                                    data-test="curation-registrant-card">
-                                <div class="item-head">
-                                    <div>
-                                        <p class="name">@registrant.FullName</p>
-                                        <p class="email">@registrant.Email</p>
+                    <div class="fairness-chip-stack">
+                        <div class="metric-cluster high-impact-cluster" data-test="high-impact-chip-section">
+                            <div class="high-impact-layout-row" data-test="high-impact-layout-row">
+                                <div class="high-impact-left">
+                                    <span class="section-kicker">HIGH IMPACT</span>
+                                    <div class="metric-row fairness-chip-row">
+                                        @foreach (var chip in HighImpactBudgetChips)
+                                        {
+                                            <article class="@GetBudgetChipClass(chip)"
+                                                     @key="@($"High Impact:{chip.Label}:{_selectedRegistrationId}")"
+                                                     title="@chip.SemanticLabel"
+                                                     data-test="@chip.TestId">
+                                                <div class="metric-chip-head">
+                                                   <span class="metric-chip-label">@chip.Label</span>
+                                                   <div class="metric-chip-value-row @(chip.IsHighlighted ? "metric-value-changed" : string.Empty)">
+                                                       <span class="metric-total">@chip.Value</span>
+                                                       @if (HasActiveProjection)
+                                                       {
+                                                           <em class="delta-slot @GetBudgetDeltaClass(chip)">
+                                                               @if (chip.ShowDelta && chip.Delta is not null)
+                                                               {
+                                                                   <span class="delta-indicator" aria-hidden="true">@GetBudgetDeltaIndicator(chip)</span>
+                                                                   <span>@chip.Delta</span>
+                                                               }
+                                                           </em>
+                                                       }
+                                                   </div>
+                                               </div>
+                                            </article>
+                                        }
                                     </div>
-                                    <BbBadge Variant="BadgeVariant.Outline">@registrant.Status</BbBadge>
                                 </div>
-                                <div class="item-tags">
-                                    @foreach (var interest in registrant.Interests.Take(2))
-                                    {
-                                        <BbBadge Variant="BadgeVariant.Secondary">@interest</BbBadge>
-                                    }
+                                <div class="high-impact-action" data-test="high-impact-action-block">
+                                    <div data-test="generate-curation-proposal-btn">
+                                        <BbButton Variant="ButtonVariant.Default"
+                                                  Disabled="@(!CanGenerateProposal)"
+                                                  OnClick="OpenSuggestionModal"
+                                                  Class="justify-center">
+                                            @if (_isGeneratingProposal)
+                                            {
+                                                <LucideIcon Name="loader-circle" Size="16" Class="spin" />
+                                                <span>Generating...</span>
+                                            }
+                                            else
+                                            {
+                                                <LucideIcon Name="sparkles" Size="16" />
+                                                <span>Suggest Starting Cohort ✅</span>
+                                            }
+                                        </BbButton>
+                                    </div>
+                                    <p class="helper-text fairness-actions-message">@GenerateProposalHint</p>
                                 </div>
-                                <p class="impact-line">@registrant.Impact.Explanation</p>
-                            </button>
-                        }
-                    </div>
-                }
-            </BbCard>
-
-            <div class="right-column">
-                <BbCard Class="profile-panel">
-                    <p class="eyebrow">Community Profile</p>
-                    @if (SelectedRegistrant is null)
-                    {
-                        <p class="helper-text">Select a registrant to inspect profile and impact.</p>
-                    }
-                    else
-                    {
-                        <div class="profile-hero">
-                            <h2>@SelectedRegistrant.FullName</h2>
-                            <p>@SelectedRegistrant.Email</p>
-                            <div class="profile-tags">
-                                <BbBadge Variant="BadgeVariant.Outline">@SelectedRegistrant.Status</BbBadge>
-                                @foreach (var interest in SelectedRegistrant.Interests.Take(3))
-                                {
-                                    <BbBadge Variant="BadgeVariant.Secondary">@interest</BbBadge>
-                                }
                             </div>
                         </div>
 
-                        <div class="profile-grid">
-                            <BbCard Class="info-card">
-                                <h3>Impact if approved</h3>
-                                <p class="small-muted" data-test="impact-explanation">@SelectedRegistrant.Impact.Explanation</p>
+                        <div class="metric-cluster stable-cluster" data-test="stable-chip-section">
+                            <span class="section-kicker">@($"Stable ({StableBudgetChips.Count})")</span>
+                            <div class="metric-row fairness-chip-row">
+                                @foreach (var chip in StableBudgetChips)
+                                {
+                                    <article class="@GetBudgetChipClass(chip)"
+                                             @key="@($"Stable:{chip.Label}:{_selectedRegistrationId}")"
+                                             title="@chip.SemanticLabel"
+                                             data-test="@chip.TestId">
+                                        <div class="metric-chip-head">
+                                            <span class="metric-chip-label">@chip.Label</span>
+                                            <div class="metric-chip-value-row @(chip.IsHighlighted ? "metric-value-changed" : string.Empty)">
+                                                <span class="metric-total">@chip.Value</span>
+                                                @if (HasActiveProjection)
+                                                {
+                                                    <em class="delta-slot @GetBudgetDeltaClass(chip)">
+                                                        @if (chip.ShowDelta && chip.Delta is not null)
+                                                        {
+                                                            <span class="delta-indicator" aria-hidden="true">@GetBudgetDeltaIndicator(chip)</span>
+                                                            <span>@chip.Delta</span>
+                                                        }
+                                                    </em>
+                                                }
+                                            </div>
+                                        </div>
+                                    </article>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                </BbCardContent>
+            </BbCard>
+        </section>
+
+        @if (_isSuggestionModalOpen)
+        {
+            <div class="cohort-modal-overlay" role="presentation" data-test="cohort-suggestion-modal">
+                <BbCard Class="cohort-modal-card">
+                    <BbCardHeader>
+                        <div class="panel-head">
+                            <div>
+                                <BbCardTitle>Suggest Starting Cohort</BbCardTitle>
+                                <p class="panel-copy">Advisory-only shortlist. You keep full control of final decisions.</p>
+                            </div>
+                        </div>
+                    </BbCardHeader>
+                    <BbCardContent Class="cohort-modal-content">
+                        <BbFormFieldSelect TValue="string"
+                                           @bind-Value="_cohortStrategy"
+                                           Label="Strategy">
+                            <BbSelectItem Value="@("Balanced")" Text="Balanced" />
+                            <BbSelectItem Value="@("Fairness-first")" Text="Fairness-first" />
+                            <BbSelectItem Value="@("Reliability-first")" Text="Reliability-first" />
+                            <BbSelectItem Value="@("Discovery mode")" Text="Discovery mode" />
+                        </BbFormFieldSelect>
+
+                        <div class="form-group">
+                            <BbLabel For="cohort-size-input">Cohort size</BbLabel>
+                            <BbNumericInput TValue="int"
+                                            Id="cohort-size-input"
+                                            Min="1"
+                                            Max="100"
+                                            Step="1"
+                                            @bind-Value="_cohortSize" />
+                        </div>
+
+                        <div class="cohort-constraints">
+                            <p class="mini-label">Optional constraints</p>
+                            <label class="cohort-checkbox-row">
+                                <input type="checkbox" @bind="_limitOrgConcentration" />
+                                <span>Limit org concentration</span>
+                            </label>
+                            <label class="cohort-checkbox-row">
+                                <input type="checkbox" @bind="_avoidLowReliability" />
+                                <span>Avoid low reliability</span>
+                            </label>
+                            <label class="cohort-checkbox-row">
+                                <input type="checkbox" @bind="_enforceFirstTimerShare" />
+                                <span>Ensure first-timers %</span>
+                            </label>
+                            @if (_enforceFirstTimerShare)
+                            {
+                                <div class="form-group">
+                                    <BbLabel For="first-timer-target-input">First-timer target (%)</BbLabel>
+                                    <BbNumericInput TValue="int"
+                                                    Id="first-timer-target-input"
+                                                    Min="0"
+                                                    Max="100"
+                                                    Step="1"
+                                                    @bind-Value="_firstTimerTargetPercent" />
+                                </div>
+                            }
+                        </div>
+
+                        @if (_isGeneratingProposal)
+                        {
+                            <div class="cohort-loading-steps" data-test="cohort-loading-steps">
+                                @for (var i = 0; i < CohortGenerationSteps.Count; i++)
+                                {
+                                    var stateClass = i < _generationStepIndex
+                                        ? "done"
+                                        : i == _generationStepIndex ? "active" : string.Empty;
+                                    <p class="cohort-step @stateClass">@CohortGenerationSteps[i]</p>
+                                }
+                            </div>
+                        }
+
+                        <div class="cohort-modal-actions">
+                            <BbButton Variant="ButtonVariant.Outline"
+                                      OnClick="CloseSuggestionModal"
+                                      Disabled="@_isGeneratingProposal">
+                                Cancel
+                            </BbButton>
+                            <BbButton Variant="ButtonVariant.Default"
+                                      data-test="generate-suggestions-btn"
+                                      OnClick="GenerateSuggestedCohortAsync"
+                                      Disabled="@_isGeneratingProposal">
+                                Generate Suggestions
+                            </BbButton>
+                        </div>
+                    </BbCardContent>
+                </BbCard>
+            </div>
+        }
+
+        <section class="workbench-grid">
+            <BbCard Class="queue-panel p-0">
+                <BbCardHeader Class="px-5 pt-4 pb-2">
+                    <div class="panel-head">
+                        <div>
+                            <BbCardTitle Class="panel-title">Registrant Queue</BbCardTitle>
+                            <p class="panel-copy">
+                                @(ShowOnlySuggestedQueue
+                                    ? "Showing suggested starting cohort first. Clear suggestions to return to the full queue."
+                                    : "Compact review queue sorted for manual curation.")
+                            </p>
+                        </div>
+                        <BbBadge Variant="BadgeVariant.Secondary">@FilteredRegistrants.Count Registrants</BbBadge>
+                    </div>
+                </BbCardHeader>
+                <BbCardContent Class="queue-panel-content px-5 pb-4 pt-0 space-y-3">
+                    <div class="queue-controls">
+                        <div class="search-field" data-test="curation-search-field">
+                            <span class="search-field-label">
+                                <LucideIcon Name="search" Size="13" Class="search-label-icon" />
+                                Search
+                            </span>
+                            <BbInput @bind-Value="_searchQuery"
+                                     @bind-Value:after="OnFiltersChanged"
+                                     Placeholder="Search registrants..." />
+                        </div>
+
+                        <BbFormFieldSelect TValue="string"
+                                           @bind-Value="_sortOption"
+                                           @bind-Value:after="OnFiltersChanged"
+                                           Label="Sort">
+                            <BbSelectItem Value="@("Balanced")" Text="Balanced" />
+                            <BbSelectItem Value="@("Newest")" Text="Newest" />
+                            <BbSelectItem Value="@("Reliability")" Text="Reliability" />
+                            <BbSelectItem Value="@("FirstTimers")" Text="First timers" />
+                        </BbFormFieldSelect>
+
+                        <BbFormFieldSelect TValue="string"
+                                           @bind-Value="_statusFilter"
+                                           @bind-Value:after="OnFiltersChanged"
+                                           Label="Status">
+                            <BbSelectItem Value="@("All")" Text="All" />
+                            <BbSelectItem Value="@("Pending")" Text="Pending" />
+                            <BbSelectItem Value="@("Waitlisted")" Text="Waitlisted" />
+                            <BbSelectItem Value="@("Accepted")" Text="Accepted" />
+                            <BbSelectItem Value="@("CheckedIn")" Text="Checked in" />
+                        </BbFormFieldSelect>
+                    </div>
+
+                    @if (FilteredRegistrants.Count == 0)
+                    {
+                        <p class="empty-queue">No registrants match the active filter.</p>
+                    }
+                    else
+                    {
+                        <div class="queue-list" data-test="curation-registrant-list">
+                            @foreach (var registrant in FilteredRegistrants)
+                            {
+                                var isSelected = registrant.RegistrationId == _selectedRegistrationId;
+                                <button type="button"
+                                        class="queue-item @(isSelected ? "selected" : string.Empty)"
+                                        @onclick="() => SelectRegistrant(registrant.RegistrationId)"
+                                        aria-pressed="@isSelected"
+                                        data-selected="@isSelected"
+                                        data-test="curation-registrant-card">
+                                    <div class="queue-item-head">
+                                        <div class="identity-block">
+                                            <span class="avatar-pill" aria-hidden="true">@GetInitials(registrant.FullName)</span>
+                                            <div class="queue-identity-copy">
+                                                <div class="queue-title-row">
+                                                    <p class="queue-name">@registrant.FullName</p>
+                                                    @if (registrant.Profile.IsFirstTimer)
+                                                    {
+                                                        <BbBadge Variant="BadgeVariant.Outline">First timer</BbBadge>
+                                                    }
+                                                </div>
+                                                <p class="queue-headline">@registrant.Profile.Headline</p>
+                                                <p class="queue-organization">@registrant.Profile.Organization</p>
+                                            </div>
+                                        </div>
+                                        <div class="queue-signal-stack">
+                                            <BbBadge Variant="@GetQueuePrimaryBadgeVariant(registrant)"
+                                                     Class="queue-primary-badge">
+                                                @GetQueuePrimaryBadgeLabel(registrant)
+                                            </BbBadge>
+                                            @if (IsSuggestedRegistrant(registrant))
+                                            {
+                                                        <span class="queue-suggested-badge" data-test="queue-suggested-badge">
+                                                            <BbBadge Variant="BadgeVariant.Secondary" Class="queue-suggested-pill">
+                                                                <span class="queue-suggested-icon" aria-hidden="true">
+                                                                    <LucideIcon Name="circle-check" Size="12" />
+                                                                </span>
+                                                                <span class="queue-suggested-text">Suggested</span>
+                                                            </BbBadge>
+                                                        </span>
+                                            }
+                                            @if (isSelected)
+                                            {
+                                                        <span class="projection-active">Projection live</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="badge-row">
+                                        @foreach (var tag in GetQueueSignalTags(registrant))
+                                        {
+                                            <BbBadge Variant="BadgeVariant.Outline"
+                                                     Class="@GetQueueTagClass(tag)">
+                                                @tag
+                                            </BbBadge>
+                                        }
+                                    </div>
+                                </button>
+                            }
+                        </div>
+                    }
+                </BbCardContent>
+            </BbCard>
+
+            <div class="detail-stack">
+                <div class="detail-scroll">
+                    <BbCard Class="profile-panel">
+                        <BbCardContent Class="profile-content">
+                        @if (SelectedRegistrant is null)
+                        {
+                            <div class="empty-detail">
+                                <p class="eyebrow">Selected registrant</p>
+                                <h2 class="panel-title">Choose someone from the queue</h2>
+                                <p class="panel-copy">Use search, status, or sort controls to narrow the queue, then inspect impact and recommendation details here.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="selected-hero">
+                            <div class="selected-hero-main">
+                                <div class="hero-avatar-shell">
+                                    <span class="hero-avatar" aria-hidden="true">@GetInitials(SelectedRegistrant.FullName)</span>
+                                    <BbBadge Variant="@GetRecommendationBadgeVariant(SelectedRegistrant.Recommendation.Tone)">
+                                        @GetQueueSignalLabel(SelectedRegistrant)
+                                    </BbBadge>
+                                </div>
+                                <div class="selected-copy space-y-2">
+                                    <p class="eyebrow">@SelectedRegistrant.Profile.Headline</p>
+                                    <div class="space-y-1">
+                                        <h2 class="selected-name">@SelectedRegistrant.FullName</h2>
+                                        <p class="selected-meta">@SelectedRegistrant.Email • @SelectedRegistrant.Profile.Organization</p>
+                                    </div>
+                                    <div class="status-signals" data-test="status-signals">
+                                        <BbBadge Variant="@GetStatusVariant(SelectedRegistrant.Status)">@SelectedRegistrant.Status</BbBadge>
+                                        @if (HasFairnessLift(SelectedRegistrant))
+                                        {
+                                            <BbBadge Variant="BadgeVariant.Secondary" Class="status-lift-chip">Fairness lift detected</BbBadge>
+                                        }
+                                    </div>
+                                    <div class="trust-signals" data-test="trust-signals">
+                                        @if (SelectedRegistrant.Profile.IsGitHubLinked)
+                                        {
+                                            <span class="trust-chip" title="Active builder / technical profile">
+                                                🐙 @GetGitHubTrustLabel(SelectedRegistrant.Profile)
+                                            </span>
+                                        }
+                                        @if (SelectedRegistrant.Profile.IsLinkedInVerified)
+                                        {
+                                            <span class="trust-chip" title="Verified professional identity">
+                                                🔗 LinkedIn verified
+                                            </span>
+                                        }
+                                        <span class="trust-chip" title="Platform tenure and participation history">
+                                            🕒 Member since @SelectedRegistrant.Profile.MemberSinceYear
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="detail-grid">
+                            <BbCard Class="metric-panel attendance-panel p-4">
+                                <div class="attendance-bar">
+                                    <div class="attendance-icon" aria-hidden="true">
+                                        <LucideIcon Name="shield-check" Size="22" />
+                                    </div>
+                                    <div class="attendance-copy" title="@SelectedRegistrant.Reliability.Summary">
+                                        <h3 class="panel-title-sm">Attendance Etiquette</h3>
+                                        <p class="mini-label">Historical reliability data</p>
+                                    </div>
+                                    <div class="attendance-score">
+                                        <strong title="@GetReliabilityClassification(SelectedRegistrant)">@GetReliabilityClassification(SelectedRegistrant)</strong>
+                                        <span title="@GetReliabilityPrimaryLine(SelectedRegistrant)">@GetReliabilityPrimaryLine(SelectedRegistrant)</span>
+                                        <span class="attendance-subline" title="@GetReliabilitySecondaryLine(SelectedRegistrant)">@GetReliabilitySecondaryLine(SelectedRegistrant)</span>
+                                    </div>
+                                </div>
+                            </BbCard>
+                        </div>
+
+                        <BbCard Class="intent-panel">
+                            <BbCardContent Class="intent-panel-content">
+                                <div class="panel-head">
+                                    <div>
+                                        <p class="eyebrow">Event intent insight</p>
+                                        <h3 class="panel-title">Why this person wants to attend</h3>
+                                    </div>
+                                    <BbBadge Variant="BadgeVariant.Outline">@GetIntentPersonaLabel(SelectedRegistrant.Intent)</BbBadge>
+                                </div>
+
+                                <div class="signal-grid">
+                                    <div class="signal-card">
+                                        <span class="mini-label">Specificity</span>
+                                        <strong>@GetIntentSpecificityLabel(SelectedRegistrant.Intent.Specificity)</strong>
+                                    </div>
+                                    <div class="signal-card signal-card-positive">
+                                        <span class="mini-label">Evidence</span>
+                                        <strong>@GetIntentEvidenceLabel(SelectedRegistrant.Intent.Evidence)</strong>
+                                    </div>
+                                    <div class="signal-card">
+                                        <span class="mini-label">Authenticity</span>
+                                        <strong>@GetIntentAuthenticityLabel(SelectedRegistrant.Intent.Authenticity)</strong>
+                                    </div>
+                                </div>
+
+                                <div class="explanation-panel">
+                                    <p class="mini-label">Interpretation</p>
+                                    <p class="small-muted interpretation-copy" data-test="intent-interpretation-summary">
+                                        @BuildIntentInterpretationSummary(SelectedRegistrant.Intent)
+                                    </p>
+                                </div>
+
+                                <div class="explanation-panel">
+                                    <p class="mini-label">Registrant-provided answer</p>
+                                    <div class="answer-preview" title="@SelectedRegistrant.Intent.Summary" data-test="intent-answer-preview">
+                                        @((Microsoft.AspNetCore.Components.MarkupString)BuildHighlightedAnswerMarkup(SelectedRegistrant.Intent.Summary, SelectedRegistrant.Intent.Signals))
+                                    </div>
+                                </div>
+                            </BbCardContent>
+                        </BbCard>
+
+                        <BbCard Class="metric-panel impact-panel">
+                            <BbCardContent Class="impact-panel-content">
+                                <div class="panel-head">
+                                    <div>
+                                        <p class="eyebrow">Impact if approved</p>
+                                        <h3 class="panel-title-sm">Projected fairness and cohort shift</h3>
+                                    </div>
+                                    <BbBadge Variant="@GetImpactProjectionBadgeVariant(SelectedRegistrant.Impact)">
+                                        @GetImpactProjectionBadgeText(SelectedRegistrant.Impact)
+                                    </BbBadge>
+                                </div>
+                                <div class="impact-summary-row">
+                                    <p class="small-muted" data-test="impact-explanation">@SelectedRegistrant.Impact.Explanation</p>
+                                    <div class="impact-net @(GetImpactNetClass(SelectedRegistrant.Impact))" data-test="impact-net-effect">
+                                        <span>Net effect</span>
+                                        <strong>@GetImpactNetLabel(SelectedRegistrant.Impact)</strong>
+                                    </div>
+                                </div>
                                 @if (SelectedRegistrant.Impact.IsSuppressed)
                                 {
                                     <p class="small-muted" data-test="impact-suppressed">Preview suppressed by anonymity threshold.</p>
                                 }
                                 else
                                 {
-                                    <div class="delta-list" data-test="impact-deltas">
-                                        @foreach (var delta in SelectedRegistrant.Impact.DeltaPercentByDimension)
-                                        {
-                                            <BbBadge Variant="BadgeVariant.Secondary">@ToDimensionLabel(delta.Key): @ToDeltaPercent(delta.Value)</BbBadge>
-                                        }
-                                    </div>
-                                }
-                            </BbCard>
+                                    var fairnessGroups = BuildImpactFairnessGroups();
+                                    var organizationDelta = ImpactProjectedUniqueOrganizationCount - CurrentUniqueOrganizationCount;
+                                    var concentration = GetTopOrganizationConcentration(ImpactProjectedCohort);
+                                    var reliabilityDelta = (ImpactProjectedAverageReliability - CurrentAverageReliability) / 100d;
+                                    <div class="impact-wireframe" data-test="impact-deltas">
+                                        <section class="impact-col">
+                                            <p class="mini-label">Fairness</p>
+                                            <div class="impact-group-stack" data-test="impact-fairness-groups">
+                                                @foreach (var group in fairnessGroups)
+                                                {
+                                                    <div class="impact-group" data-test="@($"impact-group-{group.Key}")">
+                                                        <p class="impact-group-label @group.State">@group.Title</p>
+                                                        @if (group.ShowDelta)
+                                                        {
+                                                            var visibleRows = group.Key.Equals("risks", StringComparison.Ordinal)
+                                                                ? group.Rows.Take(2).ToArray()
+                                                                : group.Rows;
+                                                            var hiddenRiskCount = group.Key.Equals("risks", StringComparison.Ordinal)
+                                                                ? Math.Max(group.Rows.Count - visibleRows.Count, 0)
+                                                                : 0;
 
-                            <BbCard Class="info-card">
-                                <h3>Curation Insights</h3>
-                                @if (_dashboard.CurationInsights.Count == 0)
-                                {
-                                    <p class="small-muted">No insight highlights yet. Generate proposal to refresh guidance.</p>
-                                }
-                                else
-                                {
-                                    <div class="insight-list" data-test="curation-insights-list">
-                                        @foreach (var insight in _dashboard.CurationInsights.Take(4))
-                                        {
-                                            <p>@insight</p>
-                                        }
+                                                            @if (visibleRows.Count == 0)
+                                                            {
+                                                                <p class="impact-empty-summary">@group.EmptySummary</p>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="impact-list">
+                                                                    @foreach (var row in visibleRows)
+                                                                    {
+                                                                        <p class="impact-line-item">
+                                                                            <span>@group.Prefix@row.Label</span>
+                                                                            <strong class="@row.State">@row.Value</strong>
+                                                                        </p>
+                                                                    }
+                                                                </div>
+                                                                @if (hiddenRiskCount > 0)
+                                                                {
+                                                                    <p class="impact-collapsed-risks"
+                                                                       data-test="impact-risks-collapsed"
+                                                                       title="@BuildCollapsedRiskTooltip(group.Rows)">
+                                                                        ... +@hiddenRiskCount more risks
+                                                                    </p>
+                                                                }
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <p class="impact-neutral-summary">
+                                                                @(group.Rows.Count == 0
+                                                                    ? group.EmptySummary
+                                                                    : $"~ {group.Rows.Count} hidden")
+                                                            </p>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        </section>
+                                        <section class="impact-col">
+                                            <p class="mini-label">Cohort</p>
+                                            <div class="impact-list">
+                                                <p class="impact-line-item">
+                                                    <span>Organizations</span>
+                                                    <strong class="@(organizationDelta >= 0 ? "positive" : "warning")">@(organizationDelta >= 0 ? "+" : string.Empty)@organizationDelta</strong>
+                                                </p>
+                                                <p class="impact-line-item">
+                                                    <span>Top-org concentration</span>
+                                                    <strong class="@(concentration > 0.18 ? "warning" : "positive")">@ToPercent(concentration)</strong>
+                                                </p>
+                                            </div>
+                                        </section>
+                                        <section class="impact-col">
+                                            <p class="mini-label">Reliability</p>
+                                            <div class="impact-list">
+                                                <p class="impact-line-item">
+                                                    <span>Avg RSVP</span>
+                                                    <strong class="@(reliabilityDelta >= 0 ? "positive" : "warning")">@($"{reliabilityDelta:+0.0;-0.0;0.0}")</strong>
+                                                </p>
+                                            </div>
+                                        </section>
+                                        <section class="impact-col">
+                                            <p class="mini-label"
+                                               title="System interpretation based on signals">
+                                                Assessment
+                                            </p>
+                                            <p class="assessment-text">@SelectedRegistrant.Recommendation.Label</p>
+                                            <div class="assessment-lines" data-test="assessment-lines">
+                                                @foreach (var line in GetAssessmentLines(SelectedRegistrant.Recommendation))
+                                                {
+                                                    <p class="small-muted assessment-line">@line</p>
+                                                }
+                                            </div>
+                                        </section>
                                     </div>
                                 }
-                            </BbCard>
-                        </div>
+                            </BbCardContent>
+                        </BbCard>
+
+                        @if (SelectedRegistrant is not null
+                            && TryGetSuggestionEntry(SelectedRegistrant, out var suggestionEntry)
+                            && suggestionEntry is not null)
+                        {
+                            <div data-test="suggestion-review-panel">
+                                <BbCard Class="metric-panel suggestion-review-panel">
+                                    <BbCardContent>
+                                        <div class="panel-head">
+                                            <div>
+                                                <p class="eyebrow">Suggested review</p>
+                                                <h3 class="panel-title-sm">Why this candidate is in the suggested cohort</h3>
+                                            </div>
+                                            <BbBadge Variant="BadgeVariant.Outline">@(suggestionEntry.IsManual ? "Manual add" : "Auto suggestion")</BbBadge>
+                                        </div>
+                                        <div class="assessment-lines">
+                                            <p class="small-muted assessment-line">Fairness contribution: @suggestionEntry.FairnessContribution</p>
+                                            <p class="small-muted assessment-line">Intent strength: @suggestionEntry.IntentStrength</p>
+                                            <p class="small-muted assessment-line">Org diversity: @suggestionEntry.OrgDiversity</p>
+                                            <p class="small-muted assessment-line">Reliability: @suggestionEntry.Reliability</p>
+                                        </div>
+                                    </BbCardContent>
+                                </BbCard>
+                            </div>
+                        }
+
                     }
-                </BbCard>
+                        </BbCardContent>
+                    </BbCard>
+                </div>
 
-                <BbCard Class="targets-panel">
-                    <div class="panel-head">
-                        <h2>Fairness Targets</h2>
-                        <BbBadge Variant="BadgeVariant.Outline">Configured in Event Setup</BbBadge>
-                    </div>
-
-                    @if (_dashboard is not null)
-                    {
-                        <div class="targets-summary" data-test="curation-fairness-targets-summary">
-                            <div class="target-summary-row">
-                                <span>Geo</span>
-                                <strong>@ToPercent(_dashboard.Targets.GeoOutsideDominantMinPercent)</strong>
-                            </div>
-                            <div class="target-summary-row">
-                                <span>Language</span>
-                                <strong>@ToPercent(_dashboard.Targets.LocalLanguageMinPercent)</strong>
-                            </div>
-                            <div class="target-summary-row">
-                                <span>Education</span>
-                                <strong>@ToPercent(_dashboard.Targets.UnderrepresentedEducationMinPercent)</strong>
-                            </div>
-                            <div class="target-summary-row">
-                                <span>k-anonymity</span>
-                                <strong>@_dashboard.Targets.KAnonymityThreshold</strong>
-                            </div>
-                            @if (_dashboard.Targets.EnableSocioeconomicDimension)
+                <section class="action-tray">
+                    <div class="tray-right">
+                        @if (SelectedRegistrant is not null)
+                        {
+                            <p class="suggested-action tone-@SelectedRegistrant.Recommendation.Tone"
+                               title="Final recommendation — you remain in control"
+                               data-test="suggested-action-text">
+                                @GetDecisionGuidanceMessage(SelectedRegistrant.Recommendation.Tone)
+                            </p>
+                        }
+                        <div class="tray-actions">
+                            @if (SelectedRegistrant is not null)
                             {
-                                <div class="target-summary-row">
-                                    <span>Socioeconomic</span>
-                                    <strong>@ToPercent(_dashboard.Targets.UnderrepresentedSocioeconomicMinPercent ?? 0)</strong>
-                                </div>
+                                <BbButton Variant="ButtonVariant.Outline"
+                                          Disabled="@(!CanToggleSuggestionForSelection)"
+                                          OnClick="ToggleSuggestionForSelectedRegistrant"
+                                          data-test="toggle-suggestion-btn">
+                                    <LucideIcon Name="sparkles" Size="15" />
+                                    @(IsSuggestedRegistrant(SelectedRegistrant) ? "Remove from Suggestions" : "Add to Suggestions")
+                                </BbButton>
                             }
+                            <BbButton Variant="ButtonVariant.Outline"
+                                      Disabled="@(!HasSuggestedCohort)"
+                                      OnClick="ClearSuggestions"
+                                      data-test="clear-suggestions-btn">
+                                <LucideIcon Name="rotate-ccw" Size="15" />
+                                Clear Suggestions
+                            </BbButton>
+                            <BbButton Variant="ButtonVariant.Outline"
+                                      Disabled="@(!CanApplyDecision)"
+                                      OnClick="@(() => ApplyDecisionAsync("reject"))"
+                                      data-test="curation-reject-btn"
+                                      Class="btn-reject">
+                                <LucideIcon Name="ban" Size="15" />
+                                Reject
+                            </BbButton>
+                            <BbButton Variant="ButtonVariant.Secondary"
+                                      Disabled="@(!CanApplyDecision)"
+                                      OnClick="@(() => ApplyDecisionAsync("waitlist"))"
+                                      data-test="curation-waitlist-btn"
+                                      Class="btn-waitlist">
+                                <LucideIcon Name="hourglass" Size="15" />
+                                Waitlist
+                            </BbButton>
+                            <BbButton Variant="ButtonVariant.Default"
+                                      Disabled="@(!CanApplyDecision)"
+                                      OnClick="@(() => ApplyDecisionAsync("approve"))"
+                                      data-test="curation-approve-btn"
+                                      Class="btn-approve">
+                                <LucideIcon Name="circle-check" Size="15" />
+                                @(_isApplyingDecision ? "Applying..." : "Approve for Seat")
+                            </BbButton>
                         </div>
-                    }
-
-                    <p class="small-muted">
-                        Edit these event-level settings before registrations open. Curation only reads them as aggregate guidance.
-                    </p>
-
-                    <button type="button"
-                            class="settings-link"
-                            data-test="curation-fairness-settings-link"
-                            @onclick="OpenEventSetup">
-                        Open event setup
-                    </button>
-                </BbCard>
-            </div>
-        </section>
-
-        <section class="action-tray">
-            <p class="small-muted">
-                Guidance-only mode. Curation decisions stay human-approved for @SelectedRegistrant?.FullName.
-            </p>
-            <div class="tray-actions">
-                <BbButton Variant="ButtonVariant.Outline" Disabled="true">Reject</BbButton>
-                <BbButton Variant="ButtonVariant.Secondary" Disabled="true">Waitlist</BbButton>
-                <BbButton Variant="ButtonVariant.Default" Disabled="true">Approve for Seat</BbButton>
+                    </div>
+                </section>
             </div>
         </section>
     }
@@ -270,22 +708,196 @@
     private CurationDashboardDto? _dashboard;
     private bool _isLoading = true;
     private bool _isGeneratingProposal;
+    private bool _isSuggestionModalOpen;
+    private bool _isApplyingDecision;
     private Guid? _selectedRegistrationId;
     private DateTimeOffset? _lastProposalGeneratedAt;
+    private int _generationStepIndex = -1;
     private string _searchQuery = string.Empty;
     private string _statusFilter = "All";
+    private string _sortOption = "Balanced";
+    private bool _showSuggestedOnly;
+    private string _cohortStrategy = "Balanced";
+    private int _cohortSize = 20;
+    private bool _limitOrgConcentration = true;
+    private bool _avoidLowReliability;
+    private bool _enforceFirstTimerShare;
+    private int _firstTimerTargetPercent = 30;
     private string? _errorMessage;
+    private readonly Dictionary<Guid, SuggestionEntry> _suggestedCohort = [];
+    private static readonly IReadOnlyList<string> CohortGenerationSteps =
+    [
+        "Evaluating intent",
+        "Checking fairness",
+        "Selecting candidates"
+    ];
+    private const double FirstTimerTarget = 0.30;
+    private const double UnderrepTarget = 0.30;
+    private const int OrgMixTarget = 8;
+    private const int ReliabilityTarget = 70;
+    private const double MaxOrgConcentrationLimit = 0.40;
 
-    private bool CanGenerateProposal => !_isLoading && !_isGeneratingProposal && _dashboard is not null && HasMeaningfulProposalOpportunity;
+    private int EligibleSuggestionCount => _dashboard?.Registrants.Count(IsEligibleForSuggestion) ?? 0;
+    private bool CanGenerateProposal => !_isLoading && !_isGeneratingProposal && _dashboard is not null;
+    private bool CanApplyDecision => !_isLoading && !_isApplyingDecision && SelectedRegistrant is not null;
+    private bool CanToggleSuggestionForSelection => SelectedRegistrant is not null && IsEligibleForSuggestion(SelectedRegistrant);
+    private bool HasSuggestedCohort => _suggestedCohort.Count > 0;
+    private bool ShowOnlySuggestedQueue => _showSuggestedOnly && HasSuggestedCohort;
+    private bool HasActiveProjection => HasSuggestedCohort || SelectedRegistrant is not null;
 
     private string GenerateProposalHint
         => _dashboard is null
             ? "Loading proposal state..."
-            : !HasMeaningfulProposalOpportunity
-                ? "Generate proposal is disabled until the current dashboard shows a visible fairness delta or insight."
-                : _lastProposalGeneratedAt is null
-                    ? "No proposal run in this session yet."
-                    : $"Last generated at {_lastProposalGeneratedAt.Value.ToLocalTime():HH:mm:ss}.";
+            : _isGeneratingProposal
+                ? "Generating suggested cohort..."
+                : HasSuggestedCohort
+                    ? $"{_suggestedCohort.Count} suggested — review, adjust, or clear."
+                    : EligibleSuggestionCount == 0
+                        ? "All registrants are finalized for this session."
+                        : _lastProposalGeneratedAt is null
+                            ? "No proposal run in this session yet."
+                            : $"Last generated at {_lastProposalGeneratedAt.Value.ToLocalTime():HH:mm:ss}.";
+
+    private IReadOnlyList<BudgetChip> BudgetChips
+    {
+        get
+        {
+            if (_dashboard is null)
+            {
+                return [];
+            }
+
+            return ApplyImpactHighlights(
+            [
+                BuildDimensionChip("gender", "Gender", _dashboard.GenderProgress, "core-gender-chip"),
+                BuildRatioChip(
+                    label: "First Timer",
+                    currentRatio: CurrentFirstTimerShare,
+                    targetRatio: FirstTimerTarget,
+                    delta: ProjectedFirstTimerShare - CurrentFirstTimerShare,
+                    testId: "core-first-timer-chip"),
+                BuildRatioChip(
+                    label: "Equity",
+                    currentRatio: CurrentUnderrepShare,
+                    targetRatio: UnderrepTarget,
+                    delta: ProjectedUnderrepShare - CurrentUnderrepShare,
+                    testId: "core-underrep-chip"),
+                BuildDimensionChip("geo", "Geography", FindDimension("geo"), "fairness-dimension-card"),
+                BuildDimensionChip("language", "Language", FindDimension("language"), "fairness-dimension-card"),
+                BuildDimensionChip("education", "Education", FindDimension("education"), "fairness-dimension-card"),
+                BuildDimensionChip("socioeconomic", "Inclusion", FindDimension("socioeconomic"), "fairness-dimension-card"),
+                BuildCountChip(
+                    label: "Organization",
+                    currentValue: CurrentUniqueOrganizationCount,
+                    targetValue: OrgMixTarget,
+                    delta: ProjectedUniqueOrganizationCount - CurrentUniqueOrganizationCount,
+                    testId: "cohort-org-chip"),
+                BuildCountChip(
+                    label: "Reliability",
+                    currentValue: CurrentAverageReliability,
+                    targetValue: ReliabilityTarget,
+                    delta: ProjectedAverageReliability - CurrentAverageReliability,
+                    testId: "cohort-reliability-chip",
+                    isPercent: true)
+            ]);
+        }
+    }
+
+    private IReadOnlyList<BudgetChip> HighImpactBudgetChips => HasActiveProjection
+        ? BudgetChips.Where(chip => chip.IsHighlighted).ToList()
+        : [];
+
+    private IReadOnlyList<BudgetChip> StableBudgetChips => HasActiveProjection
+        ? BudgetChips.Where(chip => !chip.IsHighlighted).ToList()
+        : BudgetChips.ToList();
+
+    private FairnessHealthSummary BudgetHealthSummary
+    {
+        get
+        {
+            var riskChips = BudgetChips
+                .Where(chip => chip.SignedDelta < -0.0001)
+                .OrderBy(chip => chip.SignedDelta)
+                .Take(2)
+                .ToList();
+
+            if (riskChips.Count == 0)
+            {
+                return new(AlertVariant.Success, "🟢 Fairness status: On track");
+            }
+
+            var highestRisk = riskChips
+                .Select(chip => Math.Abs(chip.SignedDelta))
+                .DefaultIfEmpty()
+                .Max();
+            var riskList = string.Join(" and ", riskChips.Select(chip => chip.Label));
+
+            return highestRisk >= 0.08
+                ? new(AlertVariant.Danger, $"🔴 Fairness status: Needs attention — monitor {riskList}")
+                : new(AlertVariant.Info, $"🟡 Fairness status: Minor imbalance — monitor {riskList}");
+        }
+    }
+
+    private IReadOnlyList<CurationRegistrantDto> CurrentCohort
+        => _dashboard?.Registrants
+            .Where(IsSelectedStatus)
+            .ToList() ?? [];
+
+    private IReadOnlyList<CurationRegistrantDto> BudgetProjectedCohort
+    {
+        get
+        {
+            var current = CurrentCohort.ToList();
+            if (HasSuggestedCohort)
+            {
+                foreach (var registrant in _dashboard?.Registrants.Where(IsSuggestedRegistrant) ?? [])
+                {
+                    if (current.All(existing => existing.RegistrationId != registrant.RegistrationId))
+                    {
+                        current.Add(registrant);
+                    }
+                }
+
+                return current;
+            }
+
+            if (SelectedRegistrant is null || current.Any(r => r.RegistrationId == SelectedRegistrant.RegistrationId))
+            {
+                return current;
+            }
+
+            current.Add(SelectedRegistrant);
+            return current;
+        }
+    }
+
+    private IReadOnlyList<CurationRegistrantDto> ImpactProjectedCohort
+    {
+        get
+        {
+            var current = CurrentCohort.ToList();
+            if (SelectedRegistrant is null || current.Any(r => r.RegistrationId == SelectedRegistrant.RegistrationId))
+            {
+                return current;
+            }
+
+            current.Add(SelectedRegistrant);
+            return current;
+        }
+    }
+
+    private double CurrentFirstTimerShare => Ratio(CurrentCohort.Count(r => r.Profile.IsFirstTimer), CurrentCohort.Count);
+    private double ProjectedFirstTimerShare => Ratio(BudgetProjectedCohort.Count(r => r.Profile.IsFirstTimer), BudgetProjectedCohort.Count);
+    private double ImpactProjectedFirstTimerShare => Ratio(ImpactProjectedCohort.Count(r => r.Profile.IsFirstTimer), ImpactProjectedCohort.Count);
+    private double CurrentUnderrepShare => AverageDimensionProgress([_dashboard?.GenderProgress, FindDimension("education"), FindDimension("socioeconomic")]);
+    private double ProjectedUnderrepShare => ClampPercent(CurrentUnderrepShare + AverageBudgetDelta(["gender", "education", "socioeconomic"]));
+    private double ImpactProjectedUnderrepShare => ClampPercent(CurrentUnderrepShare + AverageImpactDelta(["gender", "education", "socioeconomic"]));
+    private int CurrentUniqueOrganizationCount => CountUniqueOrganizations(CurrentCohort);
+    private int ProjectedUniqueOrganizationCount => CountUniqueOrganizations(BudgetProjectedCohort);
+    private int ImpactProjectedUniqueOrganizationCount => CountUniqueOrganizations(ImpactProjectedCohort);
+    private int CurrentAverageReliability => AverageReliability(CurrentCohort);
+    private int ProjectedAverageReliability => AverageReliability(BudgetProjectedCohort);
+    private int ImpactProjectedAverageReliability => AverageReliability(ImpactProjectedCohort);
 
     private IReadOnlyList<CurationRegistrantDto> FilteredRegistrants
     {
@@ -303,21 +915,147 @@
                 query = query.Where(r =>
                     r.FullName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
                     r.Email.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    r.Profile.Organization.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
                     r.Interests.Any(i => i.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)));
             }
 
             if (!string.Equals(_statusFilter, "All", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(r => string.Equals(r.Status, _statusFilter, StringComparison.OrdinalIgnoreCase));
+                var normalizedStatusFilter = NormalizeStatusKey(_statusFilter);
+                query = query.Where(r => string.Equals(NormalizeStatusKey(r.Status), normalizedStatusFilter, StringComparison.Ordinal));
             }
+
+            if (ShowOnlySuggestedQueue)
+            {
+                query = query.Where(IsSuggestedRegistrant);
+            }
+
+            query = _sortOption switch
+            {
+                "Newest" => query.OrderByDescending(IsSuggestedRegistrant)
+                    .ThenByDescending(r => r.RegisteredAt),
+                "Reliability" => query.OrderByDescending(IsSuggestedRegistrant)
+                    .ThenByDescending(r => r.Reliability.HasHistory)
+                    .ThenByDescending(r => r.Reliability.Score)
+                    .ThenBy(r => r.FullName),
+                "FirstTimers" => query.OrderByDescending(IsSuggestedRegistrant)
+                    .ThenByDescending(r => r.Profile.IsFirstTimer)
+                    .ThenByDescending(r => SumPositiveImpact(r.Impact))
+                    .ThenBy(r => r.FullName),
+                _ => query.OrderByDescending(IsSuggestedRegistrant)
+                    .ThenByDescending(r => GetBalancedScore(r))
+                    .ThenByDescending(r => r.RegisteredAt)
+            };
 
             return query.ToList();
         }
     }
 
-    private CurationRegistrantDto? SelectedRegistrant =>
-        FilteredRegistrants.FirstOrDefault(r => r.RegistrationId == _selectedRegistrationId)
-        ?? FilteredRegistrants.FirstOrDefault();
+    private CurationRegistrantDto? SelectedRegistrant
+        => FilteredRegistrants.FirstOrDefault(r => r.RegistrationId == _selectedRegistrationId);
+
+    private BudgetChip BuildDimensionChip(string key, string label, FairnessDimensionProgressDto? dimension, string testId)
+    {
+        if (dimension is null)
+        {
+            return new BudgetChip(
+                Label: label,
+                Value: "--",
+                Delta: null,
+                SemanticLabel: "No data",
+                Icon: string.Empty,
+                State: "neutral",
+                IsAffected: false,
+                IsHighlighted: false,
+                ShowDelta: false,
+                SignedDelta: 0,
+                TestId: testId);
+        }
+
+        var delta = GetBudgetProjectionDelta(key);
+        var projectedValue = ClampPercent(dimension.CurrentPercent + (HasActiveProjection ? delta : 0));
+        var isAffected = HasActiveProjection && Math.Abs(delta) > 0.0001;
+        var projectedGap = dimension.TargetPercent - projectedValue;
+        var thresholdState = dimension.IsSuppressed
+            ? "suppressed"
+            : projectedGap > 0.0001
+                ? "warning"
+                : "neutral";
+        var state = GetBudgetMovementState(thresholdState, delta, isAffected);
+        var semantic = dimension.IsSuppressed
+            ? "Suppressed"
+            : projectedGap > 0.0001
+                ? "Below target"
+                : "On track";
+
+        return new BudgetChip(
+            Label: label,
+            Value: ToPercent(projectedValue),
+            Delta: HasActiveProjection && isAffected ? ToDeltaPercent(delta) : null,
+            SemanticLabel: semantic,
+            Icon: GetStateIcon(state),
+            State: state,
+            IsAffected: isAffected,
+            IsHighlighted: false,
+            ShowDelta: false,
+            SignedDelta: delta,
+            TestId: testId);
+    }
+
+    private BudgetChip BuildRatioChip(string label, double currentRatio, double targetRatio, double delta, string testId)
+    {
+        var projectedValue = ClampPercent(currentRatio + (HasActiveProjection ? delta : 0));
+        var isAffected = HasActiveProjection && Math.Abs(delta) > 0.0001;
+        var thresholdState = projectedValue + 0.0001 < targetRatio ? "warning" : "neutral";
+        var state = GetBudgetMovementState(thresholdState, delta, isAffected);
+        return new BudgetChip(
+            Label: label,
+            Value: ToPercent(projectedValue),
+            Delta: HasActiveProjection && isAffected ? ToDeltaPercent(delta) : null,
+            SemanticLabel: projectedValue + 0.0001 < targetRatio ? "Below target" : "On track",
+            Icon: GetStateIcon(state),
+            State: state,
+            IsAffected: isAffected,
+            IsHighlighted: false,
+            ShowDelta: false,
+            SignedDelta: delta,
+            TestId: testId);
+    }
+
+    private BudgetChip BuildCountChip(string label, int currentValue, int targetValue, int delta, string testId, bool isPercent = false)
+    {
+        var projectedValue = currentValue + (HasActiveProjection ? delta : 0);
+        var isAffected = HasActiveProjection && delta != 0;
+        var thresholdState = projectedValue < targetValue ? "warning" : "neutral";
+        var state = GetBudgetMovementState(thresholdState, delta, isAffected);
+        return new BudgetChip(
+            Label: label,
+            Value: isPercent ? $"{projectedValue}%" : projectedValue.ToString(CultureInfo.InvariantCulture),
+            Delta: HasActiveProjection && isAffected ? $"{(delta > 0 ? "+" : string.Empty)}{delta}{(isPercent ? "%" : string.Empty)}" : null,
+            SemanticLabel: projectedValue < targetValue ? "Below target" : "On track",
+            Icon: GetStateIcon(state),
+            State: state,
+            IsAffected: isAffected,
+            IsHighlighted: false,
+            ShowDelta: false,
+            SignedDelta: delta,
+            TestId: testId);
+    }
+
+    private static string GetBudgetMovementState(string thresholdState, double delta, bool isAffected)
+    {
+        if (!isAffected || thresholdState == "suppressed")
+        {
+            return thresholdState;
+        }
+
+        return delta switch
+        {
+            > 0.0001 => "positive",
+            < -0.0001 => "warning",
+            _ => thresholdState
+        };
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -332,11 +1070,23 @@
         try
         {
             _dashboard = await CurationApi.GetDashboardAsync(EventId);
-            EnsureSelectedRegistrant();
+            ReconcileSuggestionsWithDashboard();
+            EnsureSelectedRegistrant(autoSelectWhenMissing: false);
         }
-        catch (Exception)
+        catch (Refit.ApiException)
         {
+            _dashboard = null;
             _errorMessage = "Unable to load curation data right now.";
+        }
+        catch (HttpRequestException)
+        {
+            _dashboard = null;
+            _errorMessage = "Unable to reach the server. Please try again.";
+        }
+        catch (TaskCanceledException)
+        {
+            _dashboard = null;
+            _errorMessage = "Loading the curation dashboard timed out. Please try again.";
         }
         finally
         {
@@ -344,24 +1094,118 @@
         }
     }
 
-    private async Task GenerateProposalAsync()
+    private void OpenSuggestionModal()
     {
+        if (!CanGenerateProposal)
+        {
+            return;
+        }
+
+        _isSuggestionModalOpen = true;
+        _generationStepIndex = -1;
+        _errorMessage = null;
+    }
+
+    private void CloseSuggestionModal()
+    {
+        if (_isGeneratingProposal)
+        {
+            return;
+        }
+
+        _isSuggestionModalOpen = false;
+        _generationStepIndex = -1;
+    }
+
+    private async Task GenerateSuggestedCohortAsync()
+    {
+        if (_dashboard is null)
+        {
+            return;
+        }
+
         _isGeneratingProposal = true;
         _errorMessage = null;
+        _generationStepIndex = 0;
 
         try
         {
-            _dashboard = await CurationApi.GenerateProposalAsync(EventId, new GenerateCurationProposalDto("curation-ui"));
+            await Task.Delay(180);
+            _generationStepIndex = 1;
+            StateHasChanged();
+
+            var eligible = _dashboard.Registrants.Where(IsEligibleForSuggestion).ToList();
+            if (eligible.Count == 0)
+            {
+                _suggestedCohort.Clear();
+                _lastProposalGeneratedAt = DateTimeOffset.Now;
+                _isSuggestionModalOpen = false;
+                return;
+            }
+
+            var ranked = RankForSuggestion(eligible);
+            await Task.Delay(180);
+            _generationStepIndex = 2;
+            StateHasChanged();
+
+            var targetSize = Math.Clamp(_cohortSize, 1, 100);
+            var selected = SelectSuggestedCohort(ranked, targetSize);
+
+            _suggestedCohort.Clear();
+            foreach (var registrant in selected)
+            {
+                _suggestedCohort[registrant.RegistrationId] = CreateSuggestionEntry(registrant, isManual: false);
+            }
+
+            _showSuggestedOnly = _suggestedCohort.Count > 0;
+            _searchQuery = string.Empty;
+            _statusFilter = "All";
             _lastProposalGeneratedAt = DateTimeOffset.Now;
-            EnsureSelectedRegistrant();
-        }
-        catch (Exception)
-        {
-            _errorMessage = "Failed to generate curation proposal.";
+            _isSuggestionModalOpen = false;
+            EnsureSelectedRegistrant(autoSelectWhenMissing: true);
         }
         finally
         {
             _isGeneratingProposal = false;
+            _generationStepIndex = -1;
+        }
+    }
+
+    private async Task ApplyDecisionAsync(string action)
+    {
+        if (SelectedRegistrant is null)
+        {
+            return;
+        }
+
+        _isApplyingDecision = true;
+        _errorMessage = null;
+
+        try
+        {
+            _dashboard = await CurationApi.ApplyDecisionAsync(
+                EventId,
+                SelectedRegistrant.RegistrationId,
+                new ApplyCurationDecisionDto(action, BuildDecisionReason(action, SelectedRegistrant)));
+
+            ReconcileSuggestionsWithDashboard();
+            EnsureSelectedRegistrant(autoSelectWhenMissing: false);
+        }
+        catch (Refit.ApiException)
+        {
+            _errorMessage = "We couldn't save that curation decision right now.";
+        }
+        catch (HttpRequestException)
+        {
+            _errorMessage = "Unable to reach the server while saving the curation decision.";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Saving the curation decision timed out. Please try again.";
+        }
+        finally
+        {
+            _isApplyingDecision = false;
         }
     }
 
@@ -370,12 +1214,12 @@
         _selectedRegistrationId = registrationId;
     }
 
-    private void OpenEventSetup()
+    private void OnFiltersChanged()
     {
-        Navigation.NavigateTo($"/events/plan?edit={EventId}");
+        EnsureSelectedRegistrant(autoSelectWhenMissing: false);
     }
 
-    private void EnsureSelectedRegistrant()
+    private void EnsureSelectedRegistrant(bool autoSelectWhenMissing)
     {
         if (FilteredRegistrants.Count == 0)
         {
@@ -383,11 +1227,70 @@
             return;
         }
 
-        if (_selectedRegistrationId is null || FilteredRegistrants.All(r => r.RegistrationId != _selectedRegistrationId))
+        if (_selectedRegistrationId is not null && FilteredRegistrants.Any(r => r.RegistrationId == _selectedRegistrationId))
         {
-            _selectedRegistrationId = FilteredRegistrants[0].RegistrationId;
+            return;
+        }
+
+        _selectedRegistrationId = autoSelectWhenMissing
+            ? FilteredRegistrants[0].RegistrationId
+            : null;
+    }
+
+    private bool IsSuggestedRegistrant(CurationRegistrantDto? registrant)
+        => registrant is not null && _suggestedCohort.ContainsKey(registrant.RegistrationId);
+
+    private bool TryGetSuggestionEntry(CurationRegistrantDto registrant, out SuggestionEntry? entry)
+        => _suggestedCohort.TryGetValue(registrant.RegistrationId, out entry);
+
+    private void ToggleSuggestionForSelectedRegistrant()
+    {
+        if (SelectedRegistrant is null || !CanToggleSuggestionForSelection)
+        {
+            return;
+        }
+
+        if (_suggestedCohort.Remove(SelectedRegistrant.RegistrationId))
+        {
+            return;
+        }
+
+        _suggestedCohort[SelectedRegistrant.RegistrationId] = CreateSuggestionEntry(SelectedRegistrant, isManual: true);
+    }
+
+    private void ClearSuggestions()
+    {
+        _suggestedCohort.Clear();
+        _showSuggestedOnly = false;
+        EnsureSelectedRegistrant(autoSelectWhenMissing: false);
+    }
+
+    private void ReconcileSuggestionsWithDashboard()
+    {
+        if (_dashboard is null || _suggestedCohort.Count == 0)
+        {
+            return;
+        }
+
+        var validIds = _dashboard.Registrants
+            .Where(IsEligibleForSuggestion)
+            .Select(registrant => registrant.RegistrationId)
+            .ToHashSet();
+
+        foreach (var suggestionId in _suggestedCohort.Keys.Where(id => !validIds.Contains(id)).ToList())
+        {
+            _suggestedCohort.Remove(suggestionId);
         }
     }
+
+    private static string BuildDecisionReason(string action, CurationRegistrantDto registrant)
+        => action switch
+        {
+            "approve" => $"Approved from curation workbench for {registrant.FullName}.",
+            "waitlist" => $"Moved to waitlist from curation workbench for {registrant.FullName}.",
+            "reject" => $"Rejected from curation workbench for {registrant.FullName}.",
+            _ => $"Updated from curation workbench for {registrant.FullName}."
+        };
 
     private static string ToPercent(double value) => $"{value * 100:F0}%";
 
@@ -396,6 +1299,261 @@
         var sign = value >= 0 ? "+" : "";
         return $"{sign}{value * 100:F1}%";
     }
+
+    private static double ParsePercent(string value)
+    {
+        var numeric = value.Replace("%", string.Empty, StringComparison.Ordinal).Trim();
+        return double.TryParse(numeric, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : 0;
+    }
+
+    private FairnessDimensionProgressDto? FindDimension(string key)
+    {
+        if (_dashboard is null)
+        {
+            return null;
+        }
+
+        if (key.Equals("gender", StringComparison.OrdinalIgnoreCase))
+        {
+            return _dashboard.GenderProgress;
+        }
+
+        return _dashboard.Dimensions.FirstOrDefault(d =>
+            d.Dimension.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+            d.Dimension.Contains(key, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private double GetBudgetProjectionDelta(string key)
+    {
+        if (!HasActiveProjection)
+        {
+            return 0;
+        }
+
+        if (HasSuggestedCohort)
+        {
+            return _dashboard?.Registrants
+                       .Where(IsSuggestedRegistrant)
+                       .SelectMany(registrant => registrant.Impact.DeltaPercentByDimension)
+                       .Where(delta => DimensionKeyMatches(delta.Key, key))
+                       .Sum(delta => delta.Value)
+                   ?? 0;
+        }
+
+        if (SelectedRegistrant is null)
+        {
+            return 0;
+        }
+
+        return SelectedRegistrant.Impact.DeltaPercentByDimension
+            .FirstOrDefault(delta => DimensionKeyMatches(delta.Key, key))
+            .Value;
+    }
+
+    private double GetImpactProjectionDelta(string key)
+    {
+        if (SelectedRegistrant is null)
+        {
+            return 0;
+        }
+
+        return SelectedRegistrant.Impact.DeltaPercentByDimension
+            .FirstOrDefault(delta => DimensionKeyMatches(delta.Key, key))
+            .Value;
+    }
+
+    private static bool DimensionKeyMatches(string impactKey, string budgetKey)
+    {
+        var normalizedImpactKey = NormalizeDimensionKey(impactKey);
+        var normalizedBudgetKey = NormalizeDimensionKey(budgetKey);
+
+        return normalizedImpactKey.Equals(normalizedBudgetKey, StringComparison.Ordinal)
+            || normalizedImpactKey.Contains(normalizedBudgetKey, StringComparison.Ordinal)
+            || normalizedBudgetKey.Contains(normalizedImpactKey, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeDimensionKey(string key)
+    {
+        var normalized = key.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "lang" => "language",
+            "edu" => "education",
+            "inclusion" => "socioeconomic",
+            "underrep" or "underrepresented" or "underrepresentation" => "socioeconomic",
+            _ => normalized
+        };
+    }
+
+    private IReadOnlyList<BudgetChip> ApplyImpactHighlights(IReadOnlyList<BudgetChip> chips)
+    {
+        if (!HasActiveProjection)
+        {
+            return chips.Select(chip => chip with { IsHighlighted = false, ShowDelta = false }).ToList();
+        }
+
+        if (chips.Count == 0)
+        {
+            return chips;
+        }
+
+        var highlightedLabels = new HashSet<string>(StringComparer.Ordinal);
+        var strongestPositive = chips
+            .Where(chip => chip.SignedDelta > 0.0001)
+            .OrderByDescending(chip => chip.SignedDelta)
+            .FirstOrDefault();
+        var strongestNegative = chips
+            .Where(chip => chip.SignedDelta < -0.0001)
+            .OrderBy(chip => chip.SignedDelta)
+            .FirstOrDefault();
+
+        if (strongestPositive is not null)
+        {
+            highlightedLabels.Add(strongestPositive.Label);
+        }
+
+        if (strongestNegative is not null)
+        {
+            highlightedLabels.Add(strongestNegative.Label);
+        }
+
+        if (highlightedLabels.Count == 0)
+        {
+            var fallback = chips
+                .Where(chip => Math.Abs(chip.SignedDelta) > 0.0001)
+                .OrderByDescending(chip => Math.Abs(chip.SignedDelta))
+                .FirstOrDefault();
+
+            if (fallback is not null)
+            {
+                highlightedLabels.Add(fallback.Label);
+            }
+        }
+
+        return chips
+            .Select(chip => chip with
+            {
+                IsHighlighted = highlightedLabels.Contains(chip.Label),
+                ShowDelta = highlightedLabels.Contains(chip.Label) && chip.Delta is not null
+            })
+            .OrderBy(chip => BudgetChipOrder(chip.Label))
+            .ToList();
+    }
+
+    private static int BudgetChipOrder(string label)
+        => label switch
+        {
+            "Gender" => 0,
+            "First Timer" => 1,
+            "Equity" => 2,
+            "Geography" => 3,
+            "Language" => 4,
+            "Education" => 5,
+            "Inclusion" => 6,
+            "Organization" => 7,
+            "Reliability" => 8,
+            _ => 99
+        };
+
+    private static string GetBudgetDeltaClass(BudgetChip chip)
+    {
+        if (!chip.ShowDelta || chip.Delta is null)
+        {
+            return "empty";
+        }
+
+        return $"metric-delta {chip.State} {(chip.IsHighlighted ? "delta-changed" : string.Empty)}";
+    }
+
+    private string GetBudgetChipClass(BudgetChip chip)
+    {
+        var toneClass = chip.State == "suppressed"
+            ? "suppressed"
+            : HasActiveProjection
+                ? chip.IsHighlighted ? chip.State : "neutral"
+                : chip.State;
+        var emphasisClass = HasActiveProjection
+            ? chip.IsHighlighted ? "highlighted" : "deemphasized"
+            : string.Empty;
+
+        return $"metric-chip {toneClass} {emphasisClass}".Trim();
+    }
+
+    private double AverageBudgetDelta(IReadOnlyCollection<string> keys)
+    {
+        var deltas = keys
+            .Select(GetBudgetProjectionDelta)
+            .Where(delta => Math.Abs(delta) > 0.0001)
+            .ToList();
+
+        return deltas.Count == 0 ? 0 : deltas.Average();
+    }
+
+    private double AverageImpactDelta(IReadOnlyCollection<string> keys)
+    {
+        var deltas = keys
+            .Select(GetImpactProjectionDelta)
+            .Where(delta => Math.Abs(delta) > 0.0001)
+            .ToList();
+
+        return deltas.Count == 0 ? 0 : deltas.Average();
+    }
+
+    private static double Ratio(int numerator, int denominator)
+        => denominator <= 0 ? 0 : (double)numerator / denominator;
+
+    private static double AverageDimensionProgress(IEnumerable<FairnessDimensionProgressDto?> dimensions)
+    {
+        var visibleDimensions = dimensions
+            .Where(dimension => dimension is not null && !dimension.IsSuppressed)
+            .Select(dimension => dimension!.CurrentPercent)
+            .ToList();
+
+        return visibleDimensions.Count == 0 ? 0 : visibleDimensions.Average();
+    }
+
+    private static double ClampPercent(double value)
+        => Math.Clamp(value, 0, 1);
+
+    private static int CountUniqueOrganizations(IEnumerable<CurationRegistrantDto> registrants)
+        => registrants
+            .Select(r => r.Profile.Organization)
+            .Where(organization => !string.IsNullOrWhiteSpace(organization))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+
+    private static int AverageReliability(IEnumerable<CurationRegistrantDto> registrants)
+    {
+        var reliabilityScores = registrants
+            .Where(r => r.Reliability.HasHistory)
+            .Select(r => r.Reliability.Score)
+            .ToList();
+
+        return reliabilityScores.Count == 0
+            ? 0
+            : (int)Math.Round(reliabilityScores.Average(), MidpointRounding.AwayFromZero);
+    }
+
+    private static bool IsSelectedStatus(CurationRegistrantDto registrant)
+        => NormalizeStatusKey(registrant.Status) is "accepted" or "checkedin";
+
+    private static string GetStateIcon(string state)
+        => state switch
+        {
+            "positive" => "✓",
+            "warning" => "⚠",
+            _ => string.Empty
+        };
+
+    private static string GetBudgetDeltaIndicator(BudgetChip chip)
+        => chip.SignedDelta switch
+        {
+            > 0.0001 => "↑",
+            < -0.0001 => "↓",
+            _ => "•"
+        };
 
     private static double ToProgressWidth(double current, double target)
     {
@@ -407,14 +1565,789 @@
         return Math.Clamp((current / target) * 100, 0, 100);
     }
 
-    private static string ToDimensionLabel(string key) => key switch
+    private static string ToDimensionLabel(string key)
     {
-        "geo" => "Geo",
-        "language" => "Language",
-        "education" => "Education",
-        "socioeconomic" => "Socioeconomic",
-        _ => key
+        if (key.Equals("geo", StringComparison.OrdinalIgnoreCase) || key.Contains("geo", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Geo";
+        }
+
+        if (key.Equals("gender", StringComparison.OrdinalIgnoreCase) || key.Contains("gender", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Gender";
+        }
+
+        if (key.Equals("language", StringComparison.OrdinalIgnoreCase) || key.Contains("language", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Lang";
+        }
+
+        if (key.Equals("education", StringComparison.OrdinalIgnoreCase) || key.Contains("education", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Edu";
+        }
+
+        if (key.Equals("socioeconomic", StringComparison.OrdinalIgnoreCase) || key.Contains("socio", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Inclusion";
+        }
+
+        return key;
+    }
+
+    private static string GetQueueSignalLabel(CurationRegistrantDto registrant)
+    {
+        if (registrant.Recommendation.Tone == "positive"
+            && registrant.Profile.HasOrganizerStandoutContribution)
+        {
+            return "Standout";
+        }
+
+        if (registrant.Recommendation.Tone == "positive")
+        {
+            return registrant.Profile.IsFirstTimer ? "Strong new" : "High impact";
+        }
+
+        if (registrant.Intent.Evidence == "Low")
+        {
+            return "Low intent";
+        }
+
+        return registrant.Profile.IsFirstTimer ? "New voice" : "Review";
+    }
+
+    private static string GetGitHubTrustLabel(CurationProfileSummaryDto profile)
+        => profile.GitHubRepoCount is > 0
+            ? $"GitHub • {profile.GitHubRepoCount.Value} repos"
+            : "GitHub linked";
+
+    private static string GetQueuePrimaryBadgeLabel(CurationRegistrantDto registrant)
+    {
+        if (registrant.Recommendation.Tone == "positive"
+            && (registrant.Profile.HasOrganizerStandoutContribution || registrant.Intent.Evidence == "High"))
+        {
+            return "High Signal";
+        }
+
+        if (registrant.Recommendation.Tone == "warning"
+            || registrant.Intent.Evidence == "Low")
+        {
+            return "REVIEW";
+        }
+
+        return "Stable Fit";
+    }
+
+    private static BadgeVariant GetQueuePrimaryBadgeVariant(CurationRegistrantDto registrant)
+        => GetQueuePrimaryBadgeLabel(registrant) switch
+        {
+            "High Signal" => BadgeVariant.Default,
+            "Stable Fit" => BadgeVariant.Secondary,
+            _ => BadgeVariant.Outline
+        };
+
+    private static string GetQueueTagClass(string tag)
+        => tag.StartsWith("+", StringComparison.Ordinal) ? "queue-signal-tag overflow" : "queue-signal-tag";
+
+    private static IReadOnlyList<string> GetQueueSignalTags(CurationRegistrantDto registrant)
+    {
+        var tags = new List<(string Label, int Priority)>();
+        var hasStandout = registrant.Profile.HasOrganizerStandoutContribution;
+
+        // 1) impact signals
+        if (hasStandout)
+        {
+            tags.Add(("⭐ Standout", 1));
+        }
+        else if (registrant.Recommendation.Tone == "positive")
+        {
+            tags.Add((registrant.Profile.IsFirstTimer ? "⭐ Strong new" : "⭐ High impact", 1));
+        }
+
+        // 2) intent signals
+        if (registrant.Intent.Evidence == "Low")
+        {
+            tags.Add(("Low intent", 2));
+        }
+        else if (registrant.Intent.Evidence == "High")
+        {
+            tags.Add(("High intent", 2));
+        }
+
+        // 3) fairness signals
+        var fairnessSignals = new List<string>();
+
+        if (HasPositiveImpactIn(registrant, "org"))
+        {
+            fairnessSignals.Add("🌱 New Org");
+        }
+
+        if (HasPositiveImpactIn(registrant, "language"))
+        {
+            fairnessSignals.Add("+ Lang boost");
+        }
+
+        if (HasPositiveImpactIn(registrant, "geo"))
+        {
+            fairnessSignals.Add("+ Geo boost");
+        }
+
+        if (HasPositiveImpactIn(registrant, "education"))
+        {
+            fairnessSignals.Add("+ Edu boost");
+        }
+
+        if (HasPositiveImpactIn(registrant, "socioeconomic"))
+        {
+            fairnessSignals.Add("+ Inclusion boost");
+        }
+
+        tags.AddRange(fairnessSignals.Select(signal => (signal, 3)));
+
+        if (tags.Count == 0)
+        {
+            tags.Add((registrant.Profile.IsFirstTimer ? "🆕 New voice" : "Balanced", 1));
+        }
+
+        if (tags.Count <= 2)
+        {
+            return tags.Select(tag => tag.Label).ToList();
+        }
+
+        var visible = tags.Take(2).Select(tag => tag.Label).ToList();
+        visible.Add($"+{tags.Count - 2}");
+        return visible;
+    }
+
+    private static bool HasPositiveImpactIn(CurationRegistrantDto registrant, string key)
+        => registrant.Impact.DeltaPercentByDimension
+            .Any(delta => delta.Value > 0.0001 && DimensionKeyMatches(delta.Key, key));
+
+    private static string GetStrongestPositiveDeltaLabel(CurationRegistrantDto registrant)
+    {
+        var strongest = registrant.Impact.DeltaPercentByDimension
+            .Where(delta => delta.Value > 0)
+            .OrderByDescending(delta => delta.Value)
+            .FirstOrDefault();
+
+        return strongest.Key is null
+            ? string.Empty
+            : $"+ {ToDimensionLabel(strongest.Key)} boost";
+    }
+
+    private static Microsoft.AspNetCore.Components.MarkupString RenderHighlightedAnswer(string answer, IReadOnlyList<string> signals)
+        => new(BuildHighlightedAnswerMarkup(answer, signals));
+
+    private static string BuildHighlightedAnswerMarkup(string answer, IReadOnlyList<string> signals)
+    {
+        var terms = BuildAnswerHighlightTerms(answer, signals);
+        if (terms.Count == 0)
+        {
+            return System.Net.WebUtility.HtmlEncode(answer);
+        }
+
+        var pattern = string.Join("|", terms.OrderByDescending(term => term.Length).Select(System.Text.RegularExpressions.Regex.Escape));
+        var regex = new System.Text.RegularExpressions.Regex(
+            $@"\b({pattern})\b",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        var markup = new System.Text.StringBuilder();
+        var lastIndex = 0;
+
+        foreach (System.Text.RegularExpressions.Match match in regex.Matches(answer))
+        {
+            if (match.Index > lastIndex)
+            {
+                markup.Append(System.Net.WebUtility.HtmlEncode(answer[lastIndex..match.Index]));
+            }
+
+            markup.Append("<span class=\"answer-highlight\">");
+            markup.Append(System.Net.WebUtility.HtmlEncode(match.Value));
+            markup.Append("</span>");
+            lastIndex = match.Index + match.Length;
+        }
+
+        if (lastIndex < answer.Length)
+        {
+            markup.Append(System.Net.WebUtility.HtmlEncode(answer[lastIndex..]));
+        }
+
+        return markup.ToString();
+    }
+
+    private static IReadOnlyList<string> BuildAnswerHighlightTerms(string answer, IReadOnlyList<string> signals)
+    {
+        var terms = new List<string>();
+
+        void AddTerm(string term)
+        {
+            if (!string.IsNullOrWhiteSpace(term)
+                && answer.Contains(term, StringComparison.OrdinalIgnoreCase)
+                && !terms.Any(existing => existing.Equals(term, StringComparison.OrdinalIgnoreCase)))
+            {
+                terms.Add(term);
+            }
+        }
+
+        foreach (var signal in signals)
+        {
+            if (signal.Contains("builder", StringComparison.OrdinalIgnoreCase))
+            {
+                AddTerm("build");
+                AddTerm("building");
+                AddTerm("project");
+                AddTerm("projects");
+                AddTerm("prototype");
+            }
+
+            if (signal.Contains("community", StringComparison.OrdinalIgnoreCase))
+            {
+                AddTerm("community");
+                AddTerm("collaborate");
+                AddTerm("collaboration");
+                AddTerm("network");
+                AddTerm("networking");
+                AddTerm("meet");
+            }
+
+            if (signal.Contains("fairness", StringComparison.OrdinalIgnoreCase))
+            {
+                AddTerm("fairness");
+                AddTerm("inclusion");
+                AddTerm("equity");
+            }
+        }
+
+        foreach (var term in new[]
+                 {
+                     "AI",
+                     "research",
+                     "build",
+                     "building",
+                     "project",
+                     "projects",
+                     "tools",
+                     "tool",
+                     "community",
+                     "collaborate",
+                     "collaboration",
+                     "network",
+                     "networking",
+                     "learn",
+                     "mentor",
+                     "mentoring",
+                     "accessibility",
+                     "inclusion",
+                     "equity",
+                     "open source",
+                     "hardware",
+                     "design",
+                     "IoT"
+                 })
+        {
+            if (terms.Count >= 3)
+            {
+                break;
+            }
+
+            AddTerm(term);
+        }
+
+        return terms;
+    }
+
+    private static string BuildIntentInterpretationSummary(CurationIntentInsightDto intent)
+    {
+        if (intent.Authenticity == "Low")
+            return "⚠️ Review intent — authenticity signal is weak";
+        if (intent.Specificity == "Low")
+            return "⚠️ Review intent — specificity signal is weak";
+        if (intent.Evidence == "Low")
+            return "⚠️ Review intent — evidence signal is weak";
+        return "✅ Strong intent — no concerns";
+    }
+
+    private const double MaterialImpactDeltaThreshold = 0.02;
+
+    private IReadOnlyList<ImpactMetricRow> BuildImpactFairnessRows()
+        =>
+        [
+            BuildImpactMetricRow("Gender", GetImpactProjectionDelta("gender")),
+            BuildImpactMetricRow("Geography", GetImpactProjectionDelta("geo")),
+            BuildImpactMetricRow("Language", GetImpactProjectionDelta("language")),
+            BuildImpactMetricRow("Education", GetImpactProjectionDelta("education")),
+            BuildImpactMetricRow("Inclusion", GetImpactProjectionDelta("socioeconomic")),
+            BuildImpactMetricRow("First Timer", ImpactProjectedFirstTimerShare - CurrentFirstTimerShare),
+            BuildImpactMetricRow("Equity", ImpactProjectedUnderrepShare - CurrentUnderrepShare)
+        ];
+
+    private IReadOnlyList<ImpactMetricGroup> BuildImpactFairnessGroups()
+    {
+        var rows = BuildImpactFairnessRows();
+        var improvements = rows.Where(row => row.State.Equals("positive", StringComparison.Ordinal)).ToArray();
+        var risks = rows
+            .Where(row => row.State.Equals("warning", StringComparison.Ordinal))
+            .OrderByDescending(row => Math.Abs(ParsePercent(row.Value)))
+            .ToArray();
+        var neutral = rows.Where(row => row.State.Equals("neutral", StringComparison.Ordinal)).ToArray();
+
+        return
+        [
+            new ImpactMetricGroup("improvements", "IMPROVEMENTS", "positive", "+ ", ShowDelta: true, Rows: improvements, EmptySummary: "No meaningful uplift"),
+            new ImpactMetricGroup("risks", "RISKS", "warning", "- ", ShowDelta: true, Rows: risks, EmptySummary: "No meaningful risk"),
+            new ImpactMetricGroup("neutral", "NEUTRAL", "neutral", "~ ", ShowDelta: false, Rows: neutral, EmptySummary: "~ None")
+        ];
+    }
+
+    private static ImpactMetricRow BuildImpactMetricRow(string label, double delta)
+    {
+        var state = Math.Abs(delta) < MaterialImpactDeltaThreshold ? "neutral" : delta > 0 ? "positive" : "warning";
+        return new ImpactMetricRow(label, ToDeltaPercent(delta), state);
+    }
+
+    private static string BuildCollapsedRiskTooltip(IReadOnlyList<ImpactMetricRow> rows)
+        => string.Join("\n", rows.Skip(2).Select(row => $"- {row.Label} {row.Value}"));
+
+    private static double GetTopOrganizationConcentration(IReadOnlyList<CurationRegistrantDto> cohort)
+    {
+        if (cohort.Count == 0)
+        {
+            return 0;
+        }
+
+        var highestOrganizationCount = cohort
+            .Select(registrant => registrant.Profile.Organization)
+            .Where(organization => !string.IsNullOrWhiteSpace(organization))
+            .GroupBy(organization => organization, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.Count())
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return Ratio(highestOrganizationCount, cohort.Count);
+    }
+
+    private static string GetImpactNetLabel(ImpactPreviewDto impact)
+        => impact.DeltaPercentByDimension.Values.Sum() switch
+        {
+            > 0.0001 => "Positive",
+            < -0.0001 => "Negative",
+            _ => "Neutral"
+        };
+
+    private static string GetImpactNetClass(ImpactPreviewDto impact)
+        => impact.DeltaPercentByDimension.Values.Sum() switch
+        {
+            > 0.0001 => "positive",
+            < -0.0001 => "warning",
+            _ => "neutral"
+        };
+
+    private static string GetImpactProjectionBadgeText(ImpactPreviewDto impact)
+        => impact.DeltaPercentByDimension.Values.Sum() switch
+        {
+            > 0.0001 => "Fairness lift",
+            < -0.0001 => "Risk drift",
+            _ => "Neutral shift"
+        };
+
+    private static BadgeVariant GetImpactProjectionBadgeVariant(ImpactPreviewDto impact)
+        => impact.DeltaPercentByDimension.Values.Sum() switch
+        {
+            > 0.0001 => BadgeVariant.Default,
+            < -0.0001 => BadgeVariant.Destructive,
+            _ => BadgeVariant.Outline
+        };
+
+    private static bool HasFairnessLift(CurationRegistrantDto registrant)
+        => registrant.Impact.DeltaPercentByDimension.Values.Any(value => value > 0.0001);
+
+    private static string GetReliabilityClassification(CurationRegistrantDto registrant)
+    {
+        var reliability = registrant.Reliability;
+        if (!reliability.HasHistory)
+        {
+            return "⚪ No history — rely on intent and impact";
+        }
+
+        return reliability.Score >= 85
+            ? "✅ Reliable — low attendance risk"
+            : "⚠️ Review carefully — moderate reliability";
+    }
+
+    private static string GetReliabilityPrimaryLine(CurationRegistrantDto registrant)
+    {
+        var reliability = registrant.Reliability;
+        if (!reliability.HasHistory)
+        {
+            return "No attendance history — use intent and impact";
+        }
+
+        return reliability.Score >= 85
+            ? "Attendance pattern supports approval confidence"
+            : "⚠️ Review carefully — moderate attendance reliability";
+    }
+
+    private string GetReliabilitySecondaryLine(CurationRegistrantDto registrant)
+    {
+        var reliability = registrant.Reliability;
+        if (!reliability.HasHistory)
+        {
+            return "First-time or no prior attendance history";
+        }
+
+        var percentile = GetReliabilityPercentile(registrant);
+        if (percentile <= 0)
+        {
+            return "Reliability history present; cohort percentile pending";
+        }
+
+        return $"{percentile}{GetOrdinalSuffix(percentile)} percentile within the event cohort";
+    }
+
+    private int GetReliabilityPercentile(CurationRegistrantDto registrant)
+    {
+        if (_dashboard is null || !registrant.Reliability.HasHistory)
+        {
+            return 0;
+        }
+
+        var scores = _dashboard.Registrants
+            .Where(r => r.Reliability.HasHistory)
+            .Select(r => r.Reliability.Score)
+            .ToList();
+
+        if (scores.Count == 0)
+        {
+            return 0;
+        }
+
+        var scoresAtOrBelow = scores.Count(score => score <= registrant.Reliability.Score);
+        return (int)Math.Round((scoresAtOrBelow * 100d) / scores.Count, MidpointRounding.AwayFromZero);
+    }
+
+    private static string GetOrdinalSuffix(int value)
+    {
+        var abs = Math.Abs(value);
+        var tens = abs % 100;
+        if (tens is 11 or 12 or 13)
+        {
+            return "th";
+        }
+
+        return (abs % 10) switch
+        {
+            1 => "st",
+            2 => "nd",
+            3 => "rd",
+            _ => "th"
+        };
+    }
+
+    private static string GetInitials(string fullName)
+    {
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
+        };
+    }
+
+    private static string GetFairnessStatusLabel(FairnessDimensionProgressDto dimension)
+        => dimension.IsSuppressed
+            ? "Suppressed"
+            : dimension.NeededCount > 0
+                ? "Below target"
+                : "On track";
+
+    private static string GetIntentSpecificityLabel(string specificity)
+        => specificity switch
+        {
+            "High" => "Clear and focused",
+            "Medium" => "Clear and focused",
+            "Low" => "Needs sharper focus",
+            _ => specificity
+        };
+
+    private static string GetIntentEvidenceLabel(string evidence)
+        => evidence switch
+        {
+            "High" => "Some examples provided",
+            "Medium" => "Some examples provided",
+            "Low" => "Limited supporting evidence",
+            _ => evidence
+        };
+
+    private static string GetIntentAuthenticityLabel(string authenticity)
+        => authenticity switch
+        {
+            "High" => "Reasonably genuine response",
+            "Medium" => "Reasonably genuine response",
+            "Low" => "Authenticity needs validation",
+            _ => authenticity
+        };
+
+    private static IReadOnlyList<string> GetAssessmentLines(CurationRecommendationDto recommendation)
+    {
+        var source = recommendation.AssessmentText ?? recommendation.Summary ?? string.Empty;
+        return source.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static string GetIntentPersonaLabel(CurationIntentInsightDto intent)
+    {
+        if (intent.Signals.Any(signal => signal.Contains("builder", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "Contributing";
+        }
+
+        if (intent.Signals.Any(signal => signal.Contains("community", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "Community-minded";
+        }
+
+        if (intent.Signals.Any(signal => signal.Contains("review", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "Needs review";
+        }
+
+        return "Exploring";
+    }
+
+    private static string GetFairnessDelta(FairnessDimensionProgressDto dimension)
+        => dimension.IsSuppressed
+            ? "Awaiting k-anonymity"
+            : dimension.DeficitPercent > 0
+                ? $"-{dimension.DeficitPercent * 100:F1}% vs target"
+                : $"+{(dimension.CurrentPercent - dimension.TargetPercent) * 100:F1}% vs target";
+
+    private static string GetFairnessTileClass(FairnessDimensionProgressDto dimension)
+        => dimension.IsSuppressed
+            ? "suppressed"
+            : dimension.NeededCount > 0 ? "warning" : "positive";
+
+    private static BadgeVariant GetStatusVariant(string status) => status switch
+    {
+        _ when NormalizeStatusKey(status) == "accepted" => BadgeVariant.Default,
+        _ when NormalizeStatusKey(status) == "waitlisted" => BadgeVariant.Secondary,
+        _ when NormalizeStatusKey(status) == "rejected" => BadgeVariant.Destructive,
+        _ => BadgeVariant.Outline
     };
+
+    private static BadgeVariant GetRecommendationBadgeVariant(string tone) => tone switch
+    {
+        "positive" => BadgeVariant.Default,
+        "warning" => BadgeVariant.Outline,
+        _ => BadgeVariant.Secondary
+    };
+
+    private static string GetDecisionGuidanceMessage(string tone) => tone switch
+    {
+        "positive" => "✅ Approve — improves fairness with no major risks",
+        "warning" => "⚠️ Consider waitlisting — moderate impact",
+        _ => "❌ Reject — low signal and low impact"
+    };
+
+    private static double SumPositiveImpact(ImpactPreviewDto impact)
+        => impact.DeltaPercentByDimension.Values.Where(value => value > 0).Sum();
+
+    private static double GetBalancedScore(CurationRegistrantDto registrant)
+    {
+        var baseScore = SumPositiveImpact(registrant.Impact) * 100;
+        baseScore += registrant.Profile.IsFirstTimer ? 4 : 0;
+        baseScore += registrant.Intent.Evidence switch
+        {
+            "High" => 4,
+            "Medium" => 2,
+            _ => 0
+        };
+        baseScore += registrant.Reliability.HasHistory ? registrant.Reliability.Score / 25.0 : 1;
+        return baseScore;
+    }
+
+    private bool IsEligibleForSuggestion(CurationRegistrantDto registrant)
+        => NormalizeStatusKey(registrant.Status) is not ("accepted" or "checkedin" or "rejected" or "cancelled");
+
+    private static string NormalizeStatusKey(string? status)
+        => status?
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToLowerInvariant()
+           ?? string.Empty;
+
+    private IReadOnlyList<CurationRegistrantDto> RankForSuggestion(IReadOnlyList<CurationRegistrantDto> registrants)
+        => registrants
+            .OrderByDescending(ScoreSuggestionCandidate)
+            .ThenByDescending(registrant => registrant.RegisteredAt)
+            .ToList();
+
+    private double ScoreSuggestionCandidate(CurationRegistrantDto registrant)
+    {
+        var fairnessGain = registrant.Impact.DeltaPercentByDimension.Values.Where(value => value > 0).Sum() * 100;
+        var fairnessRisk = Math.Abs(registrant.Impact.DeltaPercentByDimension.Values.Where(value => value < 0).Sum()) * 100;
+        var intentBoost = registrant.Intent.Evidence switch
+        {
+            "High" => 12,
+            "Medium" => 6,
+            _ => 1
+        };
+        var reliabilityBoost = !registrant.Reliability.HasHistory
+            ? 3
+            : registrant.Reliability.Score / 8.0;
+        var discoveryBoost = registrant.Profile.IsFirstTimer ? 4 : 0;
+        var orgPenalty = registrant.Impact.DeltaPercentByDimension
+            .Where(delta => DimensionKeyMatches(delta.Key, "org"))
+            .Select(delta => delta.Value)
+            .FirstOrDefault() < -0.0001
+            ? 4
+            : 0;
+
+        var baseScore = fairnessGain - fairnessRisk + intentBoost + reliabilityBoost + discoveryBoost - orgPenalty;
+
+        return _cohortStrategy switch
+        {
+            "Fairness-first" => baseScore + fairnessGain * 0.8 - fairnessRisk * 0.2,
+            "Reliability-first" => baseScore + reliabilityBoost * 2.3 - fairnessRisk * 0.15,
+            "Discovery mode" => baseScore + discoveryBoost * 2.5 - reliabilityBoost * 0.2,
+            _ => baseScore
+        };
+    }
+
+    private IReadOnlyList<CurationRegistrantDto> SelectSuggestedCohort(IReadOnlyList<CurationRegistrantDto> ranked, int targetSize)
+    {
+        var selected = new List<CurationRegistrantDto>(targetSize);
+
+        foreach (var registrant in ranked)
+        {
+            if (selected.Count >= targetSize)
+            {
+                break;
+            }
+
+            if (_avoidLowReliability && IsLowReliability(registrant))
+            {
+                continue;
+            }
+
+            if (_limitOrgConcentration && WouldExceedOrgConcentration(selected, registrant))
+            {
+                continue;
+            }
+
+            selected.Add(registrant);
+        }
+
+        if (selected.Count < targetSize)
+        {
+            foreach (var registrant in ranked.Where(candidate => selected.All(existing => existing.RegistrationId != candidate.RegistrationId)))
+            {
+                if (selected.Count >= targetSize)
+                {
+                    break;
+                }
+
+                selected.Add(registrant);
+            }
+        }
+
+        if (_enforceFirstTimerShare)
+        {
+            EnsureFirstTimerTarget(selected, ranked, targetSize);
+        }
+
+        return selected.Take(targetSize).ToList();
+    }
+
+    private static bool IsLowReliability(CurationRegistrantDto registrant)
+        => registrant.Reliability.HasHistory && registrant.Reliability.Score < 60;
+
+    private bool WouldExceedOrgConcentration(IReadOnlyCollection<CurationRegistrantDto> selected, CurationRegistrantDto candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate.Profile.Organization) || selected.Count < 2)
+        {
+            return false;
+        }
+
+        var orgCount = selected.Count(existing =>
+            string.Equals(existing.Profile.Organization, candidate.Profile.Organization, StringComparison.OrdinalIgnoreCase));
+        var projectedShare = (double)(orgCount + 1) / (selected.Count + 1);
+
+        return projectedShare > MaxOrgConcentrationLimit;
+    }
+
+    private void EnsureFirstTimerTarget(List<CurationRegistrantDto> selected, IReadOnlyList<CurationRegistrantDto> ranked, int targetSize)
+    {
+        var requiredFirstTimers = (int)Math.Ceiling(targetSize * Math.Clamp(_firstTimerTargetPercent / 100d, 0, 1));
+        var currentFirstTimers = selected.Count(registrant => registrant.Profile.IsFirstTimer);
+        if (currentFirstTimers >= requiredFirstTimers)
+        {
+            return;
+        }
+
+        var replacementPool = selected
+            .Where(registrant => !registrant.Profile.IsFirstTimer)
+            .OrderBy(ScoreSuggestionCandidate)
+            .ToList();
+        var firstTimerCandidates = ranked
+            .Where(registrant => registrant.Profile.IsFirstTimer && selected.All(existing => existing.RegistrationId != registrant.RegistrationId))
+            .ToList();
+
+        foreach (var replacement in replacementPool)
+        {
+            if (currentFirstTimers >= requiredFirstTimers || firstTimerCandidates.Count == 0)
+            {
+                break;
+            }
+
+            var candidate = firstTimerCandidates[0];
+            firstTimerCandidates.RemoveAt(0);
+
+            var replaceIndex = selected.FindIndex(existing => existing.RegistrationId == replacement.RegistrationId);
+            if (replaceIndex < 0)
+            {
+                continue;
+            }
+
+            selected[replaceIndex] = candidate;
+            currentFirstTimers++;
+        }
+    }
+
+    private SuggestionEntry CreateSuggestionEntry(CurationRegistrantDto registrant, bool isManual)
+    {
+        var fairnessContribution = registrant.Impact.DeltaPercentByDimension
+            .Where(delta => delta.Value > 0.0001)
+            .OrderByDescending(delta => delta.Value)
+            .Take(2)
+            .Select(delta => $"{ToDimensionLabel(delta.Key)} {ToDeltaPercent(delta.Value)}")
+            .ToList();
+        var fairnessSummary = fairnessContribution.Count == 0
+            ? "Balanced impact with no clear fairness lift"
+            : string.Join(", ", fairnessContribution);
+
+        var intentStrength = registrant.Intent.Evidence switch
+        {
+            "High" => "High evidence and authentic signal",
+            "Medium" => "Moderate evidence, verify intent details",
+            _ => "Weak evidence signal, review authenticity"
+        };
+
+        var orgDiversity = registrant.Impact.DeltaPercentByDimension
+            .FirstOrDefault(delta => DimensionKeyMatches(delta.Key, "org"))
+            .Value switch
+            {
+                > 0.0001 => "Improves organization mix",
+                < -0.0001 => "May concentrate organization representation",
+                _ => "Neutral org-mix effect"
+            };
+
+        var reliability = !registrant.Reliability.HasHistory
+            ? "No history — validate with intent and impact"
+            : registrant.Reliability.Score >= ReliabilityTarget
+                ? $"Reliable attendance signal ({registrant.Reliability.Score}%)"
+                : $"Moderate attendance reliability ({registrant.Reliability.Score}%)";
+
+        return new SuggestionEntry(isManual, fairnessSummary, intentStrength, orgDiversity, reliability);
+    }
 
     private bool HasMeaningfulProposalOpportunity
     {
@@ -440,4 +2373,28 @@
                 r.Impact.DeltaPercentByDimension.Values.Any(value => Math.Abs(value) > 0.0001));
         }
     }
+
+
+    private sealed record ImpactMetricRow(string Label, string Value, string State);
+    private sealed record ImpactMetricGroup(string Key, string Title, string State, string Prefix, bool ShowDelta, IReadOnlyList<ImpactMetricRow> Rows, string EmptySummary);
+
+    private sealed record FairnessHealthSummary(AlertVariant AlertVariant, string Text);
+    private sealed record SuggestionEntry(
+        bool IsManual,
+        string FairnessContribution,
+        string IntentStrength,
+        string OrgDiversity,
+        string Reliability);
+    private sealed record BudgetChip(
+        string Label,
+        string Value,
+        string? Delta,
+        string SemanticLabel,
+        string Icon,
+        string State,
+        bool IsAffected,
+        bool IsHighlighted,
+        bool ShowDelta,
+        double SignedDelta,
+        string TestId);
 }

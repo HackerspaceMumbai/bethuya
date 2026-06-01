@@ -50,4 +50,5 @@ public sealed record EventFairnessTargetsContract(
     double UnderrepresentedEducationMinPercent = 0.25,
     bool EnableSocioeconomicDimension = false,
     double? UnderrepresentedSocioeconomicMinPercent = null,
-    int KAnonymityThreshold = 5);
+    int KAnonymityThreshold = 5,
+    double GenderDiversityMinPercent = 0.40);
