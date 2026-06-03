@@ -1,6 +1,4 @@
 using Microsoft.Playwright;
-using System.Text.Json;
-
 namespace Hackmum.Bethuya.E2E.Tests;
 
 [TestClass]
@@ -104,16 +102,16 @@ public class EventFlowTests : BethuyaE2ETest
     }
 
     [TestMethod]
-    public async Task EventDetail_HybridViewer_ShouldToggleBetweenMarkdownAndJsonTabs()
+    public async Task EventDetail_PlannerInsights_ShouldRenderReasoningWithoutRawJson()
     {
         // Create event and generate planner draft
         await GotoWithBudgetAsync("/events/plan");
         var submitBtn = Page.Locator("[data-test='publish-event-btn'] button");
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
-        var uniqueTitle = $"E2E Hybrid {Guid.NewGuid().ToString("N")[..8]}";
+        var uniqueTitle = $"E2E Insights {Guid.NewGuid().ToString("N")[..8]}";
         await Page.GetByPlaceholder("Event title").FillAsync(uniqueTitle);
-        await Page.GetByPlaceholder("Event description").FillAsync("Hybrid viewer E2E coverage");
+        await Page.GetByPlaceholder("Event description").FillAsync("Planner reasoning E2E coverage");
         await submitBtn.ClickAsync();
         await WaitForClientSideNavigationAsync(
             "/events$",
@@ -135,45 +133,16 @@ public class EventFlowTests : BethuyaE2ETest
         await Assertions.Expect(draftBtn).ToBeEnabledAsync();
         await draftBtn.ClickAsync();
 
-        // Wait for markdown editor to appear (default tab)
+        // Wait for markdown editor and readable reasoning panels to appear.
         var markdownEditor = Page.Locator("[data-test='planner-markdown-editor'] textarea");
         await Assertions.Expect(markdownEditor).ToBeVisibleAsync(new() { Timeout = PerformanceBudgets.FormSubmitMs });
+        await Assertions.Expect(Page.GetByText("Planner Insights")).ToBeVisibleAsync();
+        await Assertions.Expect(Page.GetByText("Constraints")).ToBeVisibleAsync();
+        await Assertions.Expect(Page.GetByText("Rationale")).ToBeVisibleAsync();
+        await Assertions.Expect(Page.GetByText("Risks & Mitigations")).ToBeVisibleAsync();
 
-        // Verify JSON viewer is initially hidden
-        var jsonViewer = Page.Locator("[data-test='planner-json-viewer']");
-        await Assertions.Expect(jsonViewer).ToBeHiddenAsync();
-
-        // Click JSON tab
-        var schemaTab = Page.Locator("[data-test='planner-tab-schema']");
-        await schemaTab.ClickAsync();
-
-        // Verify JSON viewer is now visible
-        await Assertions.Expect(jsonViewer).ToBeVisibleAsync();
-        
-        // Verify it contains valid JSON structure
-        var jsonContent = await jsonViewer.TextContentAsync();
-        
-        if (string.IsNullOrEmpty(jsonContent))
-            throw new InvalidOperationException("JSON content is empty");
-
-        // Parse JSON and validate structure
-        using var doc = System.Text.Json.JsonDocument.Parse(jsonContent);
-        var root = doc.RootElement;
-        
-        if (!root.TryGetProperty("agendaVersion", out _))
-            throw new InvalidOperationException("JSON missing required property: agendaVersion");
-        if (!root.TryGetProperty("event", out _))
-            throw new InvalidOperationException("JSON missing required property: event");
-        if (!root.TryGetProperty("agenda", out _))
-            throw new InvalidOperationException("JSON missing required property: agenda");
-
-        // Click back to Markdown tab
-        var markdownTab = Page.Locator("[data-test='planner-tab-markdown']");
-        await markdownTab.ClickAsync();
-
-        // Verify markdown editor is visible again
-        await Assertions.Expect(markdownEditor).ToBeVisibleAsync();
-        await Assertions.Expect(jsonViewer).ToBeHiddenAsync();
+        // Raw schema tabs/viewers are intentionally removed from the UI.
+        await Assertions.Expect(Page.Locator("[data-test='planner-json-viewer']")).ToHaveCountAsync(0);
+        await Assertions.Expect(Page.Locator("[data-test='planner-tab-schema']")).ToHaveCountAsync(0);
     }
 }
-
