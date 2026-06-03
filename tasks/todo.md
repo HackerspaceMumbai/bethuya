@@ -17,6 +17,90 @@ All work items must be added here **before** writing code (plan-first protocol).
 ## Active Tasks
 
 
+
+## [2026-05-26] Add Show Agent Timeline overlay
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Add a toggle to Event Detail timeline that overlays agent planning intelligence, including energy levels, track balancing, and pacing decisions on each timeline block.
+- **Acceptance:** ✅ `Show Agent Timeline` toggle appears in the timeline header. ✅ Enabling it adds visible energy, track-balance, and pacing-decision overlays to blocks. ✅ Default timeline remains clean when disabled. ✅ Dark-theme compatibility is preserved. ✅ Shared project build passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`.
+
+## [2026-05-26] Enhance timeline continuity and duration scaling
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Strengthen the Event Detail schedule timeline so it reads as a continuous event flow, with stronger vertical connection, subtle gradient flow line, duration-aware block spacing, and updated type colors (talk blue, workshop purple, break neutral).
+- **Acceptance:** ✅ Timeline axis is visually stronger and continuous with a subtle gradient flow line. ✅ Block spacing/height reflects session duration via per-block CSS variables. ✅ Type colors match the requested mapping: talk blue, workshop purple, break neutral. ✅ Dark-theme compatibility is preserved. ✅ Shared project build passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`.
+
+## [2026-05-26] Refactor Refine Schedule into actionable steering panel
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Convert Event Detail refinement chips from passive local notes into actionable planner steering controls that show inline applying state, append conversational prompts, and invoke the planner with constraints.
+- **Acceptance:** ✅ Shorten/add-networking/rebalance chips invoke planner generation with steering constraints. ✅ Inline `Applying: ...` status appears during execution. ✅ Add networking is sent as a schedule-modifying constraint. ✅ Chips disable during generation/published cycles. ✅ Shared project build passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`.
+
+## [2026-05-26] Add visual diff highlights to agent-generated schedule blocks
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Mark newly generated and updated Event Detail timeline blocks after planner drafts with visible tags, accent borders/glow, and insertion animation so users can immediately see the agent's impact.
+- **Acceptance:** ✅ New blocks show a `New` tag and glow. ✅ Modified blocks show an `Updated` tag and accent border. ✅ Generated insertions animate using the existing timeline entrance/reveal motion. ✅ Previous schedule state is compared before applying a redraft using stable block IDs. ✅ Shared project build passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`.
+
+## [2026-05-26] Add Agent Reasoning layer to timeline blocks
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Add per-block reasoning metadata to Event Detail timeline cards, including why each block was placed there, its role in the event flow, and a compact visual indicator such as optimized/balanced.
+- **Acceptance:** ✅ Each timeline block renders accessible expandable reasoning metadata. ✅ Reasoning includes flow role and placement rationale, including early keynote and talk-to-workshop continuity cases. ✅ Compact optimized/balanced indicators are shown on cards. ✅ Dark-theme-compatible CSS added. ✅ Shared project build passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`.
+
+## [2026-05-26] Consolidate Agent Console cycle context metadata
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Remove the separate Cycle Context card from Event Detail and move Cycle ID, Thread ID, and agent status into compact metadata badges in the Agent Console header. Preserve the existing `planner-cycle-meta` selector on the new inline metadata container.
+- **Acceptance:** ✅ Agent Console header contains cycle/thread/status metadata. ✅ Separate Cycle Context card is removed. ✅ `planner-cycle-meta` remains on the inline metadata container. ✅ Shared project build passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`.
+
+## [2026-05-26] Make Event Detail Agent Console feel live while drafting
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Enhance the Event Detail Agent Console drafting flow with progressive "Planner is generating schedule..." state, animated dots, intermediate reasoning steps, and incremental typing messages before the planner API result is applied. Preserve the existing planner lifecycle and selectors.
+- **Acceptance:** ✅ Draft CTA uses the existing generating state while the console shows live planner activity. ✅ Planner messages type in incrementally with a caret. ✅ Intermediate reasoning steps render (`Analyzing constraints...`, `Balancing session types...`, `Optimizing flow for engagement...`) with active/completed states. ✅ Subtle delay simulation precedes the planner API call without changing the backend contract. ✅ Reduced-motion handling disables new animations. ✅ Build: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` — 0 errors, 0 warnings.
+
+## [2026-05-26] Add micro-interactions to Event Detail for perceived responsiveness
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Add (1) explicit "Generating draft…" CTA state, (2) shimmer skeleton loaders in timeline while `isAiDrafting && sessions empty`, (3) CSS-only entrance transitions on new timeline blocks, (4) `is-new-block` reveal highlight on AI-generated cards cleared on interaction, (5) `timeline-is-updating` overlay when re-drafting over existing sessions. Respect `prefers-reduced-motion`. Preserve all data-test selectors and lifecycle behavior.
+- **Acceptance:** ✅ ai-draft-btn shows "⏳ Generating draft…" while drafting. ✅ Skeleton renders in middle panel under `data-test="timeline-skeleton"` when `isAiDrafting && sessions empty`. ✅ New AI blocks have `is-new-block` card-shell class set from `_newlyGeneratedBlockIds`; cleared on edit/move/delete/approve/clear-all. ✅ `event-flow-item` entrance animation plays on new DOM nodes. ✅ `prefers-reduced-motion` block disables all animations. ✅ Build: 0 errors, 0 warnings.
+
+## [2026-05-26] Add Agent Session status bar to Event Detail page
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Add a compact horizontal `Agent Session` status bar above the three-column schedule editor. Show shortened PlanningCycle ID (8 hex chars, or `no cycle`), truncated ConversationId (12 chars), and agent status (`idle` / `generating` / `completed` / `locked`) with an animated pulse during generation. Use monospaced pills, accent colors, and dark-mode-compatible theme tokens. Preserve all existing selectors and lifecycle behavior.
+- **Acceptance:** ✅ Status bar renders above schedule-editor grid with `data-test="agent-session-status"`. ✅ Cycle pill (`data-test="agent-session-cycle-id"`), Thread pill (`data-test="agent-session-thread-id"`), Status pill (`data-test="agent-session-agent-status"`) all present. ✅ Animated pulse present only during `isAiDrafting`. ✅ All required selectors preserved. ✅ Build: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` — 0 errors, 0 warnings.
+
+## [2026-05-26] Improve Event Detail visual hierarchy — AI-first command center
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Make agent CTA primary/accented and full-width in Agent Console; add icon pill to "Proposed by Agent" badge; subdue timeline CRUD icons to utility weight; accent agent-driven elements (console header, thread, review insights, focus block) with restrained luminous primary color. Preserve all selectors, lifecycle behavior, dark mode.
+- **Acceptance:** ✅ Draft CTA full-width + clearly accented (`ai-draft-cta` with primary gradient border/glow, inner button stretched to 100%). ✅ ProposedByAgent renders as `.status-badge-proposed-by-agent` icon pill with 🤖 prefix in both page header and Agent Console badge. ✅ Session CRUD buttons muted to `opacity: 0.38` at rest, restore to full on row hover/focus-within (`session-actions`). ✅ Agent Console card has primary accent border + glow (`agent-console-card`); header has accent underline rule (`agent-console-header`); Planner Insights panel has accent border (`agent-reasoning-card`); Review card header has accent left-edge strip (`review-card-header`). ✅ All required selectors preserved. ✅ Build: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` — 0 errors, 0 warnings.
+
+## [2026-05-26] Replace JSON schema display with structured review insight cards
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** In the Human Review section of `EventDetail.razor`, replace any raw JSON/schema-first display with structured insight cards (Objectives → blue bullet list, Constraints → yellow warning cards, Risks → red list with mitigation highlights, Next Actions → checklist). Keep raw JSON accessible via a collapsible `View Raw Schema` toggle hidden by default. Preserve all selectors, lifecycle behavior, dark mode, and right-side Agent Reasoning panel.
+- **Acceptance:** ✅ New `data-test` selectors added: `review-insights`, `review-raw-schema-toggle`, `review-raw-schema-viewer`, `review-insight-objectives`, `review-insight-constraints`, `review-insight-risks`, `review-insight-next-actions`. ✅ All required selectors preserved. ✅ Raw schema collapsible (`_showRawSchema` bool + `ToggleRawSchema()`). ✅ Build: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` — 0 errors, 0 warnings.
+
+## [2026-05-26] Refactor left panel into interactive Agent Console
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Refactor the AI Planner / Agent Interaction left panel in `EventDetail.razor` into a live Agent Console. Move "Draft Schedule with AI" to prominent primary button at panel top; replace static planner card with conversational thread showing user+agent messages; add typing indicator when `isAiDrafting`; add Refine Schedule inputs (organizer constraints + target duration, UI-state only); add prompt chips (shorten event, add networking block, rebalance sessions) that update local thread state; keep refined command-center aesthetic compatible with existing timeline pass and dark mode.
+- **Acceptance:** ✅ All required data-test selectors preserved (`schedule-editor`, `session-card`, `add-session-btn`, `ai-draft-btn`, `planner-cycle-meta`, `approve-btn`, `publish-btn`, `start-new-cycle-btn`). ✅ New selectors added: `agent-console-thread`, `refine-inputs`, `prompt-chips`, `chip-shorten-event`, `chip-add-networking`, `chip-rebalance`. ✅ Existing lifecycle behavior (draft/approve/publish/reload/start-new-cycle/clear-all/add/edit/move/delete) unchanged. ✅ `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` passed — 0 errors, 0 warnings.
+
+## [2026-05-26] Refine event detail schedule into event-flow timeline
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Transform only the middle Event Detail schedule panel from stacked cards into a stronger left-axis vertical timeline while preserving planner lifecycle behavior and required `data-test` selectors.
+- **Acceptance:** ✅ Timeline uses a left-aligned time axis with start/end alignment, deterministic review focus (first non-break block, else first block), and type-safe accents for talk/workshop/break/other. ✅ Existing draft/approve/publish/reload/start-new-cycle/clear-all/add/edit/move/delete behavior and required selectors are preserved. ✅ Validation passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`.
+
+## [2026-05-25] Refactor event detail planner into agent-console layout
+- **Status:** done
+- **Agent/Owner:** Trinity (Frontend Dev)
+- **Description:** Refactor `EventDetail.razor` so the planner flow uses a cohesive three-column command-center layout: agent interaction and cycle context on the left, a dominant timeline agenda editor in the center, and readable reasoning insights from planner JSON on the right.
+- **Acceptance:** ✅ `EventDetail.razor` now uses a responsive three-column agent-console layout with a dominant timeline agenda editor, left-side Planner/User thread and cycle context, and right-side readable constraints/rationale/risks insight cards instead of raw JSON/schema tabs. ✅ Preserved planner draft, approve, publish, reload, start-new-cycle, clear-all, add/edit/move/delete session actions and required `data-test` selectors. ✅ Updated E2E coverage to assert readable Planner insights and absence of raw JSON UI. ✅ Validation passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`; `dotnet build .\tests\Hackmum.Bethuya.E2E\Hackmum.Bethuya.E2E.csproj --no-restore -v minimal`. ✅ Live Aspire visual proof captured at `artifacts\event-detail-agent-layout.png`.
 ## [2026-05-28] Fix live curation split-pane scrolling
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
