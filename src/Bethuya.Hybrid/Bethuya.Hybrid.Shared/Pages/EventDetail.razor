@@ -2018,7 +2018,8 @@
             StateHasChanged();
             var previousSnapshots = sessions
                 .Select(SessionSnapshot.From)
-                .ToDictionary(snapshot => snapshot.StableKey, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(snapshot => snapshot.StableKey, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
             await Task.Delay(220);
             for (var stepIndex = 0; stepIndex < PlannerReasoningSteps.Length; stepIndex++)
