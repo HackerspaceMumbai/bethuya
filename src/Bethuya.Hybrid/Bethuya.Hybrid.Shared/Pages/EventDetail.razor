@@ -1143,9 +1143,13 @@
 
     private async Task ApplyPromptChipAsync(string chipLabel, string constraintText)
     {
-        _refineConstraints = string.IsNullOrWhiteSpace(_refineConstraints)
-            ? constraintText
-            : $"{_refineConstraints.TrimEnd(';', ' ')}; {constraintText}";
+        if (!ContainsEquivalentConstraintToken(_refineConstraints, constraintText))
+        {
+            _refineConstraints = string.IsNullOrWhiteSpace(_refineConstraints)
+                ? constraintText
+                : $"{_refineConstraints.TrimEnd(';', ' ')}; {constraintText}";
+        }
+
         _applyingSteeringLabel = chipLabel;
         _consoleMessages.Add(new("User", $"Refine schedule: {chipLabel}"));
         await DraftWithAiAsync(constraintText, chipLabel);
@@ -1382,7 +1386,7 @@
         }
 
         if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !constraints.Any(item => string.Equals(item, steeringPrompt, StringComparison.OrdinalIgnoreCase)))
+            !ContainsEquivalentConstraintToken(_refineConstraints, steeringPrompt))
         {
             constraints.Add(steeringPrompt.Trim());
         }
@@ -1394,6 +1398,35 @@
 
         return constraints.Count == 0 ? null : string.Join(Environment.NewLine, constraints);
     }
+
+    private static bool ContainsEquivalentConstraintToken(string? constraints, string? candidate)
+    {
+        var normalizedCandidate = NormalizeConstraintToken(candidate);
+        if (string.IsNullOrEmpty(normalizedCandidate))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(constraints))
+        {
+            return false;
+        }
+
+        foreach (var token in constraints.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (string.Equals(NormalizeConstraintToken(token), normalizedCandidate, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string NormalizeConstraintToken(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : value.Trim().TrimEnd(';').Trim();
 
     // ── Human-in-the-Loop actions ──
 
@@ -1486,10 +1519,15 @@
     private void ClearAll()
     {
         sessions.Clear();
+        editSnapshots.Clear();
         _newlyGeneratedBlockIds.Clear();
         _updatedGeneratedBlockIds.Clear();
+        _activeCycle = null;
+        _plannerMarkdown = string.Empty;
+        _showRawSchema = false;
         agendaStatus = ScheduleStatus.Draft;
         statusMessage = null;
+        InitConsoleMessages();
     }
 
     private async Task LoadPlanningCycleAsync()
