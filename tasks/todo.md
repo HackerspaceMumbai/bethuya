@@ -16,6 +16,7 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+<<<<<<< HEAD
 ## [2026-05-28] Fix live curation split-pane scrolling
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
@@ -213,6 +214,19 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Copilot CLI
 - **Description:** Update the user event-registration flow so curation-relevant data is captured during registration, wire that data through shared/backend contracts into inclusion-signal generation, and add a development toggle that allows running the full onboarding registration flow instead of the default bypass path.
 - **Acceptance:** ✅ `/events/{eventId}/registrations` now captures neighborhood, language proficiency, educational background, and socioeconomic background with updated consent copy, then sends them via `CreateRegistrationDto`. ✅ Backend `CreateRegistrationRequest` + registration endpoint now validate curation-source completeness and build inclusion signals from registration data (with authenticated-profile/email fallback when needed). ✅ AppHost now supports `ONBOARDING_ENABLE_FLOW_IN_DEVELOPMENT=true` (or `Onboarding:EnableFlowInDevelopment`) to disable onboarding bypass in development and run the full `/registration/mandatory -> /registration/social -> /registration/aide` flow. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (172/172).
+=======
+## [2026-06-03] Sync EventDetail ClearAll with cycle/review draft state
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Verify and fix stale cycle/review state after `ClearAll` so header/session bar/review editor align with `Draft` status.
+- **Acceptance:** ✅ `ClearAll` now clears `_activeCycle`, `_plannerMarkdown`, review visibility (`_showRawSchema`), and refreshes console thread state via `InitConsoleMessages()` while preserving minimal behavior. ✅ `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` passed.
+
+## [2026-06-03] Deduplicate prompt chip constraints in EventDetail planner request
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Verify and fix duplicate constraint emission when prompt chips append text to `_refineConstraints` and the same steering prompt is passed to `BuildPlannerConstraints`.
+- **Acceptance:** ✅ `ApplyPromptChipAsync` only appends new chip text when an equivalent semicolon token is not already present. ✅ `BuildPlannerConstraints` skips appending `steeringPrompt` when an equivalent normalized token already exists in `_refineConstraints`. ✅ `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` passed.
+>>>>>>> 4a5e048 (feat(EventDetail): Prevent duplicate prompt chip constraints and enhance ClearAll functionality)
 
 ## [2026-05-26] Add Show Agent Timeline overlay
 - **Status:** done
