@@ -1313,10 +1313,7 @@
     private string? statusMessage;
     private string _refineConstraints = string.Empty;
     private int? _targetDurationMinutes;
-    private List<ConsoleMessage> _consoleMessages = [];
-    private string _refineConstraints = string.Empty;
-    private int? _targetDurationMinutes;
-    private List<ConsoleMessage> _consoleMessages = [];
+    private readonly List<ConsoleMessage> _consoleMessages = [];
     private PlanningCycleDto? _activeCycle;
     private string _plannerMarkdown = string.Empty;
     private readonly Dictionary<Guid, SessionViewModel> editSnapshots = new();
@@ -1327,23 +1324,8 @@
     private string? _plannerLiveStatus;
     private string? _applyingSteeringLabel;
     private bool _showAgentTimeline;
-    private bool _showRawSchema;
-    private HashSet<Guid> _newlyGeneratedBlockIds = [];
-    private HashSet<Guid> _updatedGeneratedBlockIds = [];
-    private int _activePlannerReasoningStep = -1;
-    private string? _plannerLiveStatus;
-    private string? _applyingSteeringLabel;
-    private bool _showAgentTimeline;
     private bool isCyclePublished => _activeCycle?.Status == "Published";
     private bool CanPublish => _activeCycle?.Status == "ReadyToPublish" && _activeCycle.ActiveDraft is not null;
-    private PlanningAgendaJsonDto? ActiveAgendaJson => _activeCycle?.ActiveDraft?.AgendaJson;
-    private IEnumerable<SessionViewModel> OrderedSessions => sessions.OrderBy(s => s.Order);
-    private SessionViewModel? FocusedReviewSession =>
-        OrderedSessions.FirstOrDefault(session => NormalizeSessionFormat(session.Format) != "break")
-        ?? OrderedSessions.FirstOrDefault();
-    private bool HasPlannerInsights =>
-        ActiveAgendaJson is not null &&
-        (GetConstraints().Any() || GetRationaleItems().Any() || GetRiskItems().Any());
     private PlanningAgendaJsonDto? ActiveAgendaJson => _activeCycle?.ActiveDraft?.AgendaJson;
     private IEnumerable<SessionViewModel> OrderedSessions => sessions.OrderBy(s => s.Order);
     private SessionViewModel? FocusedReviewSession =>
