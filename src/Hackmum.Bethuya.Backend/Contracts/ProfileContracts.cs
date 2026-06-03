@@ -32,8 +32,8 @@ public sealed record SaveMandatoryProfileRequest(
     [Required, MaxLength(100)] string LastName,
     [Required, EmailAddress, MaxLength(200)] string Email,
     [MaxLength(30)] string? MobileNumber,
-    [Required, MaxLength(100)] string GovernmentPhotoIdType,
-    [Required, RegularExpression(@"^\d{4}$", ErrorMessage = "Government ID last four digits must be exactly 4 digits.")] string GovernmentIdLastFour,
+    [MaxLength(100)] string? GovernmentPhotoIdType,
+    [RegularExpression(@"^\d{4}$", ErrorMessage = "Government ID last four digits must be exactly 4 digits.")] string? GovernmentIdLastFour,
     [Required, MaxLength(200)] string? OccupationStatus,
     [MaxLength(200)] string? CompanyName,
     [MaxLength(200)] string? EducationInstitute,
@@ -44,20 +44,30 @@ public sealed record SaveMandatoryProfileRequest(
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (string.Equals(OccupationStatus, "Employee", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(CompanyName))
+        if (IsCompanyRequiredOccupation(OccupationStatus) && string.IsNullOrWhiteSpace(CompanyName))
         {
             yield return new ValidationResult(
-                "Company name is required when employment status is Employee.",
+                "Company / Organization is required for working professionals and independent attendees.",
                 [nameof(CompanyName)]);
         }
 
         if (string.Equals(OccupationStatus, "Student", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(EducationInstitute))
         {
             yield return new ValidationResult(
-                "Education institute is required when employment status is Student.",
+                "College / University is required when employment status is Student.",
                 [nameof(EducationInstitute)]);
         }
     }
+
+    private static bool IsCompanyRequiredOccupation(string? occupationStatus)
+        => string.Equals(occupationStatus, "Working Professional", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Independent / Freelancer", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Employee", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Self-employed", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Founder", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Freelancer", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Full time employed", StringComparison.Ordinal)
+            || string.Equals(occupationStatus, "Full-time employed", StringComparison.Ordinal);
 }
 
 /// <summary>Current verified social profile details for the signed-in user.</summary>

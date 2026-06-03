@@ -6,8 +6,8 @@
     <MauiVersion>9.0.21</MauiVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.3.2" />
-    <PackageVersion Include="Aspire.Hosting.Foundry" Version="13.3.2-preview.1.26263.11" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.3.5" />
+    <PackageVersion Include="Aspire.Hosting.Foundry" Version="13.3.5-preview.1.26270.6" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
     <!-- Azure Monitor / Application Insights - enabled via APPLICATIONINSIGHTS_CONNECTION_STRING env var -->
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.4.0" />
@@ -48,13 +48,13 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.7" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.7" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7" />
-    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.3.2" />
+    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.3.5" />
     <!-- Aspire hosting for SQL Server (AppHost) -->
-    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.3.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.3.5" />
     <!-- Aspire hosting for Key Vault (AppHost) - provisions Key Vault; azd stores secret params here -->
-    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.3.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.3.5" />
     <!-- Aspire hosting for Keycloak (AppHost - local OIDC testing) -->
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.3.2-preview.1.26263.11" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.3.5-preview.1.26270.6" />
     <!-- ASP.NET Core TestHost for minimal-API endpoint testing -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.6" />
     <!-- Testing - TUnit (not xUnit/NUnit per project standards) -->
@@ -89,7 +89,7 @@
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.5.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.7" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.7" />
-    <PackageVersion Include="Nerdbank.MessagePack" Version="1.1.62" />
+    <PackageVersion Include="Nerdbank.MessagePack" Version="1.2.4" />
     <!-- Scalar - API documentation -->
     <PackageVersion Include="Scalar.AspNetCore" Version="2.13.22" />
     <PackageVersion Include="Scalar.Aspire" Version="0.9.22" />

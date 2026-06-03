@@ -91,7 +91,8 @@ public sealed record EventFairnessTargetsDto(
     double UnderrepresentedEducationMinPercent = 0.25,
     bool EnableSocioeconomicDimension = false,
     double? UnderrepresentedSocioeconomicMinPercent = null,
-    int KAnonymityThreshold = 5);
+    int KAnonymityThreshold = 5,
+    double GenderDiversityMinPercent = 0.40);
 
 /// <summary>Request for a signed Cloudinary direct-upload session.</summary>
 public sealed record CreateDirectImageUploadSessionRequest(

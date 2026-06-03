@@ -1,0 +1,65 @@
+- generic [ref=e2]:
+  - navigation "Main navigation" [ref=e4]:
+    - link "Hackerspace Mumbai - Dashboard" [ref=e6] [cursor=pointer]:
+      - /url: ""
+      - img [ref=e7]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Hackerspace
+        - generic [ref=e13]: Mumbai
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - link "Dashboard" [ref=e17] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e18]
+          - text: Dashboard
+        - link "Events" [ref=e24] [cursor=pointer]:
+          - /url: events
+          - img [ref=e25]
+          - text: Events
+      - generic [ref=e27]:
+        - generic [ref=e28]: Organizer Tools
+        - paragraph [ref=e30]: ℹ️ Select an event to access agent workflows and curation. Agent features are accessed from event detail pages.
+      - link "Profile" [ref=e33] [cursor=pointer]:
+        - /url: profile
+        - img [ref=e34]
+        - text: Profile
+  - main [ref=e37]:
+    - generic [ref=e39]:
+      - text: Dev User
+      - button "Log out" [ref=e41]
+    - article [ref=e42]:
+      - link "Skip to main content" [ref=e43] [cursor=pointer]:
+        - /url: "#dashboard-main"
+      - main "Dashboard" [ref=e44]:
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic "Event statistics" [ref=e47]:
+              - generic [ref=e49]:
+                - generic [ref=e50]:
+                  - heading "Total Events" [level=3] [ref=e51]
+                  - img [ref=e53]
+                - generic [ref=e57]: "0"
+              - generic [ref=e59]:
+                - generic [ref=e60]:
+                  - heading "Drafts" [level=3] [ref=e61]
+                  - alert [ref=e63]: ⚠️
+                - generic [ref=e64]: "0"
+              - generic [ref=e66]:
+                - generic [ref=e67]:
+                  - heading "Upcoming" [level=3] [ref=e68]
+                  - img [ref=e70]
+                - generic [ref=e74]: "0"
+              - generic [ref=e76]:
+                - generic [ref=e77]:
+                  - heading "Completed" [level=3] [ref=e78]
+                  - img [ref=e80]
+                - generic [ref=e84]: "0"
+            - button "Plan New Event" [ref=e86] [cursor=pointer]:
+              - img [ref=e87]
+              - text: Plan New Event
+          - paragraph [ref=e92]: No upcoming events — plan one below!
+        - region "All events" [ref=e93]:
+          - heading "Events" [level=2] [ref=e94]
+          - generic [ref=e95]:
+            - paragraph [ref=e96]: No events yet.
+            - paragraph [ref=e97]: Plan your first community event to get started!
