@@ -79,6 +79,9 @@
   - Animated pulse (`.agent-session-pulse`) is rendered conditionally only inside the status pill during `isAiDrafting` — keeps the bar visually silent when the agent is not running.
   - `data-test` selectors on the bar and each pill (`agent-session-status`, `agent-session-cycle-id`, `agent-session-thread-id`, `agent-session-agent-status`) are stable targets for E2E assertions.
   - Validation: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` — 0 errors, 0 warnings.** Replaced the two-card static Agent Interaction / Conversation Thread panel with a unified live Agent Console.
+  - Validation: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` — 0 errors, 0 warnings.
+
+- **EventDetail Agent Console:** Replaced the two-card static Agent Interaction / Conversation Thread panel with a unified live Agent Console.
   - Draft button is the primary CTA at panel top (`data-test="ai-draft-btn"` preserved). The status dot, console header, and scrollable chat thread are all in one card so the hierarchy is immediately legible.
   - `_consoleMessages: List<ConsoleMessage>` accumulates through the lifecycle: `InitConsoleMessages()` seeds from current cycle state on page/reload; draft, approve, publish, and start-new-cycle each append or reset the thread appropriately.
   - Typing indicator (`agent-console-typing-indicator`) is an extra `.agent-console-msg--planner` row appended only while `isAiDrafting`, keeping the thread as the single source of truth for streaming state.
@@ -92,6 +95,7 @@
   - When a status badge needs custom rendering for one variant, render a conditional `<span>` with bespoke CSS instead of trying to parameterise `BbBadge`; keep the `BbBadge` path for all other variants so BB styling stays for the mainstream cases.
 
 ** Replaced the bare markdown-editor-only Human Review card with a structured insight deck above the draft editor.
+- **Human Review insight deck:** Replaced the bare markdown-editor-only Human Review card with a structured insight deck above the draft editor.
   - Four semantically-colored cards (objectives=blue, constraints=yellow, risks=red, next-actions=green) extracted from `ActiveAgendaJson`; each card only renders when its data is non-empty.
   - Raw schema stays accessible via a collapsible `View Raw Schema` toggle (`_showRawSchema` bool + `ToggleRawSchema()`), hidden by default, with `data-test="review-raw-schema-toggle"` and `data-test="review-raw-schema-viewer"`.
   - `GetObjectives()` and `GetNextActions()` added alongside existing `GetConstraints()`/`GetRiskItems()`; `GetRawSchemaJson()` serializes via `System.Text.Json` with `WriteIndented=true`.
