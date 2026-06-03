@@ -93,7 +93,7 @@
   - `opacity` + `:has(hover)` / `focus-within` on the CRUD action group (`.session-actions`) is the cleanest way to make utility controls secondary without removing them or adding JS — the row's `event-flow-card-shell` context already captures hover.
   - When a status badge needs custom rendering for one variant, render a conditional `<span>` with bespoke CSS instead of trying to parameterise `BbBadge`; keep the `BbBadge` path for all other variants so BB styling stays for the mainstream cases.
 
-** Replaced the bare markdown-editor-only Human Review card with a structured insight deck above the draft editor.
+- **Human Review insight deck:** Replaced the bare markdown-editor-only Human Review card with a structured insight deck above the draft editor.
   - Four semantically-colored cards (objectives=blue, constraints=yellow, risks=red, next-actions=green) extracted from `ActiveAgendaJson`; each card only renders when its data is non-empty.
   - Raw schema stays accessible via a collapsible `View Raw Schema` toggle (`_showRawSchema` bool + `ToggleRawSchema()`), hidden by default, with `data-test="review-raw-schema-toggle"` and `data-test="review-raw-schema-viewer"`.
   - `GetObjectives()` and `GetNextActions()` added alongside existing `GetConstraints()`/`GetRiskItems()`; `GetRawSchemaJson()` serializes via `System.Text.Json` with `WriteIndented=true`.
