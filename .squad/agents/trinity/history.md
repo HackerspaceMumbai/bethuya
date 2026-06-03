@@ -78,7 +78,9 @@
   - Status transitions (`idle` → `generating` → `completed` → `locked`) are computed from existing state (`isAiDrafting`, `isCyclePublished`, `ActiveDraft`) so no new state fields are needed; pure derived rendering.
   - Animated pulse (`.agent-session-pulse`) is rendered conditionally only inside the status pill during `isAiDrafting` — keeps the bar visually silent when the agent is not running.
   - `data-test` selectors on the bar and each pill (`agent-session-status`, `agent-session-cycle-id`, `agent-session-thread-id`, `agent-session-agent-status`) are stable targets for E2E assertions.
-  - Validation: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` — 0 errors, 0 warnings.** Replaced the two-card static Agent Interaction / Conversation Thread panel with a unified live Agent Console.
+  - Validation: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` — 0 errors, 0 warnings.
+
+- **EventDetail Agent Console:** Replaced the two-card static Agent Interaction / Conversation Thread panel with a unified live Agent Console.
   - Draft button is the primary CTA at panel top (`data-test="ai-draft-btn"` preserved). The status dot, console header, and scrollable chat thread are all in one card so the hierarchy is immediately legible.
   - `_consoleMessages: List<ConsoleMessage>` accumulates through the lifecycle: `InitConsoleMessages()` seeds from current cycle state on page/reload; draft, approve, publish, and start-new-cycle each append or reset the thread appropriately.
   - Typing indicator (`agent-console-typing-indicator`) is an extra `.agent-console-msg--planner` row appended only while `isAiDrafting`, keeping the thread as the single source of truth for streaming state.
