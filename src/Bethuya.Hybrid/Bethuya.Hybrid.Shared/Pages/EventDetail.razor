@@ -1155,9 +1155,13 @@
 
     private async Task ApplyPromptChipAsync(string chipLabel, string constraintText)
     {
-        _refineConstraints = string.IsNullOrWhiteSpace(_refineConstraints)
-            ? constraintText
-            : $"{_refineConstraints.TrimEnd(';', ' ')}; {constraintText}";
+        if (!ContainsEquivalentConstraintToken(_refineConstraints, constraintText))
+        {
+            _refineConstraints = string.IsNullOrWhiteSpace(_refineConstraints)
+                ? constraintText
+                : $"{_refineConstraints.TrimEnd(';', ' ')}; {constraintText}";
+        }
+
         _applyingSteeringLabel = chipLabel;
         _consoleMessages.Add(new("User", $"Refine schedule: {chipLabel}"));
         await DraftWithAiAsync(constraintText, chipLabel);
@@ -1394,30 +1398,6 @@
         }
 
         if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !constraints.Any(item => string.Equals(item, steeringPrompt, StringComparison.OrdinalIgnoreCase)))
-        {
-            constraints.Add(steeringPrompt.Trim());
-        }
-
-        if (_targetDurationMinutes is { } targetDuration)
-        {
-            constraints.Add($"Target total duration: {targetDuration.ToString(System.Globalization.CultureInfo.InvariantCulture)} minutes.");
-        }
-
-        return constraints.Count == 0 ? null : string.Join(Environment.NewLine, constraints);
-    }
-
-    
-
-    private string? BuildPlannerConstraints(string? steeringPrompt)
-    {
-        var constraints = new List<string>();
-        if (!string.IsNullOrWhiteSpace(_refineConstraints))
-        {
-            constraints.Add(_refineConstraints.Trim());
-        }
-
-        if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
             !ContainsEquivalentConstraintToken(_refineConstraints, steeringPrompt))
         {
             constraints.Add(steeringPrompt.Trim());
@@ -1551,11 +1531,14 @@
     private void ClearAll()
     {
         sessions.Clear();
+        editSnapshots.Clear();
         _newlyGeneratedBlockIds.Clear();
         _updatedGeneratedBlockIds.Clear();
+        _activeCycle = null;
+        _plannerMarkdown = string.Empty;
+        _showRawSchema = false;
         agendaStatus = ScheduleStatus.Draft;
         statusMessage = null;
-        InitConsoleMessages();
         InitConsoleMessages();
     }
 
