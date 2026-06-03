@@ -20,6 +20,15 @@ Use this skill for:
 
 ## Rules
 
+### 0) Agent-control page composition
+
+- For agent-control pages, use a three-surface composition when the workflow has both human review and machine reasoning:
+  - left/context rail: agent conversation, lifecycle state, cycle/conversation identifiers, primary agent CTA
+  - center/work rail: dominant human-editable artifact (timeline, draft, queue, or decision surface)
+  - right/reasoning rail: readable typed insights extracted from contracts; do not expose raw JSON unless the user explicitly asks for a diagnostic view
+- Keep existing `data-test` selectors attached to stable semantic containers when changing visual structure.
+- Use theme tokens (`bg-card`, `border-border`, `text-muted-foreground`, `bg-muted/...`) so the composition survives dark mode.
+
 ### 1) Render modes are Web-only
 
 - Never implement render-mode logic inside Hybrid code paths.
