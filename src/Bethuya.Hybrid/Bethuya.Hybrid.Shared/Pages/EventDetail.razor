@@ -706,7 +706,7 @@
     private string? statusMessage;
     private string _refineConstraints = string.Empty;
     private int? _targetDurationMinutes;
-    private List<ConsoleMessage> _consoleMessages = [];
+    private readonly List<ConsoleMessage> _consoleMessages = [];
     private PlanningCycleDto? _activeCycle;
     private string _plannerMarkdown = string.Empty;
     private readonly Dictionary<Guid, SessionViewModel> editSnapshots = new();
