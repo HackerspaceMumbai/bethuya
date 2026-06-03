@@ -29,7 +29,8 @@ public sealed class InclusionSignalsNormalizer
             SpeaksKonkani = speaksKonkani,
             HasLocalLanguage = speaksMarathi || speaksKonkani,
             EducationBucket = NormalizeEducationBucket(source.EducationalBackground),
-            SocioeconomicBucket = NormalizeSocioeconomicBucket(source.SocioeconomicBackground)
+            SocioeconomicBucket = NormalizeSocioeconomicBucket(source.SocioeconomicBackground),
+            HasGenderDiversitySignal = HasGenderDiversitySignal(source.GenderIdentity)
         };
     }
 
@@ -183,6 +184,17 @@ public sealed class InclusionSignalsNormalizer
 
     private static bool ContainsAny(string value, params string[] tokens)
         => tokens.Any(value.Contains);
+
+    private static bool HasGenderDiversitySignal(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        var value = raw.ToLowerInvariant();
+        return ContainsAny(value, "woman", "female", "non-binary", "nonbinary", "trans", "self-describe", "self describe");
+    }
 
     private static string RemoveDiacritics(string value)
     {

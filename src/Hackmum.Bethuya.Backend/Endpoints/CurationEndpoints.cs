@@ -1,9 +1,11 @@
 using Hackmum.Bethuya.Agents.Contracts;
 using Hackmum.Bethuya.Agents.Base;
 using Hackmum.Bethuya.Backend.Contracts;
-using Hackmum.Bethuya.Backend.Services;
+using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
+using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Repositories;
+using System.Security.Claims;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -17,6 +19,7 @@ public static class CurationEndpoints
             Guid eventId,
             IEventRepository eventRepo,
             IRegistrationRepository registrationRepo,
+            IAttendeeProfileRepository attendeeProfileRepo,
             CurationFairnessService fairnessService,
             CancellationToken ct) =>
         {
@@ -27,7 +30,7 @@ public static class CurationEndpoints
             }
 
             var registrations = await registrationRepo.GetByEventIdAsync(eventId, ct);
-            var dashboard = fairnessService.BuildDashboard(evt, registrations);
+            var dashboard = await fairnessService.BuildDashboardAsync(evt, registrations, attendeeProfileRepo, registrationRepo, ct: ct);
             return Results.Ok(dashboard);
         });
 
@@ -37,6 +40,7 @@ public static class CurationEndpoints
             IAgent<CuratorRequest, CuratorResponse> curator,
             IEventRepository eventRepo,
             IRegistrationRepository registrationRepo,
+            IAttendeeProfileRepository attendeeProfileRepo,
             CurationFairnessService fairnessService,
             CancellationToken ct) =>
         {
@@ -81,7 +85,76 @@ public static class CurationEndpoints
                 .Concat(response.Insights.FirstComeSignals)
                 .ToList();
 
-            var dashboard = fairnessService.BuildDashboard(evt, registrations, insights);
+            var dashboard = await fairnessService.BuildDashboardAsync(
+                evt,
+                registrations,
+                attendeeProfileRepo,
+                registrationRepo,
+                insights,
+                ct);
+            return Results.Ok(dashboard);
+        });
+
+        group.MapPost("/{eventId:guid}/registrants/{registrationId:guid}/decision", async (
+            Guid eventId,
+            Guid registrationId,
+            ApplyCurationDecisionRequest request,
+            ClaimsPrincipal user,
+            IEventRepository eventRepo,
+            IRegistrationRepository registrationRepo,
+            IAttendeeProfileRepository attendeeProfileRepo,
+            IDecisionRepository decisionRepo,
+            CurationFairnessService fairnessService,
+            CancellationToken ct) =>
+        {
+            var evt = await eventRepo.GetByIdAsync(eventId, ct);
+            if (evt is null)
+            {
+                return Results.NotFound("Event not found");
+            }
+
+            var registration = await registrationRepo.GetByIdAsync(registrationId, ct);
+            if (registration is null || registration.EventId != eventId)
+            {
+                return Results.NotFound("Registrant not found");
+            }
+
+            var (status, type) = request.Action.Trim().ToLowerInvariant() switch
+            {
+                "approve" => (RegistrationStatus.Accepted, DecisionType.Approve),
+                "waitlist" => (RegistrationStatus.Waitlisted, DecisionType.Defer),
+                "reject" => (RegistrationStatus.Rejected, DecisionType.Reject),
+                _ => throw new InvalidOperationException("Unsupported curation decision action.")
+            };
+
+            registration.Status = status;
+            await registrationRepo.UpdateAsync(registration, ct);
+
+            var decidedBy = user.FindFirst("email")?.Value
+                            ?? user.Identity?.Name
+                            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                            ?? "curation-ui";
+
+            var decision = new Decision
+            {
+                EntityType = "registration",
+                EntityId = registration.Id,
+                Type = type,
+                Status = DecisionStatus.Applied,
+                DecidedBy = decidedBy,
+                Reason = request.Reason
+            };
+
+            await decisionRepo.CreateAsync(decision, ct);
+
+            var registrations = await registrationRepo.GetByEventIdAsync(eventId, ct);
+            var dashboard = await fairnessService.BuildDashboardAsync(
+                evt,
+                registrations,
+                attendeeProfileRepo,
+                registrationRepo,
+                ct: ct);
+
             return Results.Ok(dashboard);
         });
     }

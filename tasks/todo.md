@@ -99,6 +99,118 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Trinity (Frontend Dev)
 - **Description:** Refactor `EventDetail.razor` so the planner flow uses a cohesive three-column command-center layout: agent interaction and cycle context on the left, a dominant timeline agenda editor in the center, and readable reasoning insights from planner JSON on the right.
 - **Acceptance:** ✅ `EventDetail.razor` now uses a responsive three-column agent-console layout with a dominant timeline agenda editor, left-side Planner/User thread and cycle context, and right-side readable constraints/rationale/risks insight cards instead of raw JSON/schema tabs. ✅ Preserved planner draft, approve, publish, reload, start-new-cycle, clear-all, add/edit/move/delete session actions and required `data-test` selectors. ✅ Updated E2E coverage to assert readable Planner insights and absence of raw JSON UI. ✅ Validation passed: `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal`; `dotnet build .\tests\Hackmum.Bethuya.E2E\Hackmum.Bethuya.E2E.csproj --no-restore -v minimal`. ✅ Live Aspire visual proof captured at `artifacts\event-detail-agent-layout.png`.
+## [2026-05-28] Fix live curation split-pane scrolling
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Use live browser inspection to fix the remaining curation layout issue where the queue/profile panes expand with their content instead of scrolling independently.
+- **Acceptance:** ✅ The document no longer owns the curation scroll (`scrollHeight == clientHeight`). ✅ The Fairness Budget and decision tray stay visible around the bounded workbench. ✅ Live Playwright inspection proves the queue list scrolls independently (`scrollTop` changes with content taller than the viewport) and the profile detail pane scrolls independently after selecting a registrant. ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj --no-restore -v quiet` and `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v quiet` passed (184/184).
+
+## [2026-05-28] Fix fixed workbench scrolling
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Replace remaining page-level scrolling behavior by making the curation workbench itself fixed between the Fairness Budget rail and decision rail.
+- **Acceptance:** ✅ `.workbench-grid` is now `position: fixed` with `top: var(--curation-topbar-height)` and `bottom: var(--curation-tray-height)`, so the browser page cannot scroll queue/profile together. ✅ Increased top rail height variables so the queue/profile panes start below the full Fairness Budget. ✅ Restarted Aspire `web`. ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj --no-restore -v quiet` passed. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v quiet` passed (184/184).
+
+## [2026-05-28] Fix curation scroll container regression
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Fix the regression where the queue/profile still scrolled together by correcting the fixed-rail shell box model and adding regression coverage for the split scroll containers.
+- **Acceptance:** ✅ `.curation-shell` now uses `box-sizing: border-box` so reserved top/bottom rail padding stays inside the viewport height instead of creating page-level scroll. ✅ Added a CSS regression test for bounded curation scroll panes. ✅ Restarted the Aspire `web` resource. ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal` passed. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (184/184).
+
+## [2026-05-28] Make curation panes scroll independently
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Keep the selected registrant card visible in the left queue while scrolling the right profile details by making the queue and profile panes independent scroll containers.
+- **Acceptance:** ✅ `.curation-shell` now prevents page-level scrolling between the fixed rails, `.workbench-grid` is bounded to the remaining viewport height, `.queue-list` owns left-pane scrolling, and `.detail-stack` owns right-pane scrolling. ✅ Restarted the Aspire `web` resource. ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal` passed. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (183/183).
+
+## [2026-05-28] Fix Fairness Budget CSS isolation
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Fix the top rail still appearing in normal document flow by ensuring fixed positioning applies to a native element scoped by the page CSS, not only to the Blazor Blueprint card root.
+- **Acceptance:** ✅ Wrapped the Fairness Budget `BbCard` in a native `.curation-topbar` section and moved the Blueprint card styling to `.curation-topbar-card`, so fixed positioning is applied by the page-scoped CSS. ✅ Restarted the Aspire `web` resource after clearing the locked process. ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal` passed. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (183/183).
+
+## [2026-05-28] Restore curation fixed rails
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Fix the regression where the Fairness Budget still vanished while scrolling and the bottom decision tray disappeared after the scroll-container change.
+- **Acceptance:** ✅ Replaced fragile sticky behavior with viewport-fixed top and bottom rails. ✅ Restored reserved top/bottom spacing so content scrolls under the pinned Fairness Budget and decision tray without hiding them. ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal` passed. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (183/183).
+
+## [2026-05-28] Make fairness budget sticky
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Keep the Fairness Budget visible while scrolling the curation workbench so selecting registrants in the queue shows immediate top-bar impact context.
+- **Acceptance:** ✅ Updated `.curation-topbar` sticky behavior with explicit sticky inset and higher z-index/layering so it remains pinned above scrolling content. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (183/183). ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal` passed.
+
+## [2026-05-28] Fix fairness sticky follow-up
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Address the follow-up where the fairness budget still scrolled out of view by making the curation shell itself the scroll container and binding the workbench to available viewport height.
+- **Acceptance:** ✅ `.curation-shell` now uses fixed viewport height with internal vertical scrolling, and `.workbench-grid` now uses `flex: 1; min-height: 0;` to keep the top bar pinned while content scrolls beneath it. ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal` passed. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (183/183).
+
+## [2026-05-28] Rework selection-driven fairness budget
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Update the curation top bar to match the requested Fairness Budget model: Core/Gender/First Timer/Underrep, Diversity/Geo/Lang/Edu/Inclusion, Cohort Health/Org/Reliability. It should show current cohort state by default and reveal deltas, chip glow, and affected/unaffected emphasis only after selecting a registrant.
+- **Acceptance:** ✅ The top bar is grouped as Core, Diversity, and Cohort Health with Gender, First Timer, Underrep, Geo, Lang, Edu, Inclusion, Org, and Reliability chips. ✅ Deltas are hidden until a registrant is selected; selection reveals deltas, affected glow, and unaffected dimming. ✅ Regression coverage, `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal`, `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal`, and `dotnet build AppHost\AppHost\AppHost.csproj -v minimal` pass.
+
+## [2026-05-28] Subdue neutral curation impact copy
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Align queue-card impact copy with the wireframe by keeping green treatment only for positive fairness deltas and muting the "No positive fairness delta" state.
+- **Acceptance:** ✅ Queue cards now apply `impact-line positive` only when there is a positive fairness delta and `impact-line subdued` for neutral/no-positive copy. ✅ Regression coverage asserts the subdued class for no-positive-delta text. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (183/183) and `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal` passed.
+
+## [2026-05-28] Add curation gender core chip and click feedback
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Match the wireframe more closely by adding the missing Gender chip as the first Core metric without exposing per-registrant gender, and improve the queue-card click microinteraction so the active registrant clearly drives the projection/detail state.
+- **Acceptance:** ✅ Gender appears first in the Core metric row as a k-anonymized aggregate signal derived from consented profile data, without exposing per-registrant gender. ✅ Clicking a registrant sets `aria-pressed`, highlights the selected card, shows "Projection live", and updates the projection banner/detail state. ✅ Regression coverage passed with `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` (182/182), plus web and AppHost builds.
+
+## [2026-05-28] Align standout with organizer-marked contribution
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Ensure curation only presents a registrant as a standout when an organizer explicitly marked a past meetup contribution as standout; high intent, fairness lift, or attendance history alone should use a different label.
+- **Acceptance:** ✅ Added an explicit `OrganizerMarkedStandout` signal and surfaced it as `HasOrganizerStandoutContribution` in curation profile summaries. ✅ Backend recommendations and the queue badge only show Standout when that organizer-marked contribution exists. ✅ Regression coverage proves no-history positive candidates use Strong new, while organizer-marked returning candidates use Returning standout. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (180/180), `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal` passed, and `dotnet build AppHost\AppHost\AppHost.csproj -v minimal` passed after clearing running resource locks.
+
+## [2026-05-28] Enforce oversubscribed curation seed data
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Ensure the dev curation seeder always creates more mock registrants than the sandbox venue capacity so the generated event actually requires curation, even when a low reviewable count is requested.
+- **Acceptance:** ✅ Seeder clamps requested reviewable registrants above venue capacity, so even low requests generate a curation-worthy oversubscribed event. ✅ Regression coverage proves low requests still create more reviewable registrants than capacity. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed (176/176).
+
+## [2026-05-26] Redesign curation intelligence workbench
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Rework `/curation/{eventId}` to align much more closely with the curation intelligence wireframe using Blazor Blueprint-first composition, minimal page CSS, and real backend/shared contract support for the richer decision panels.
+- **Acceptance:** ✅ The curation page now follows the provided command-center wireframe more closely with a sticky fairness top bar, metric clusters, a split queue/detail workbench, selected-attendee intelligence panels, and a sticky human decision bar. ✅ The implementation uses Blazor Blueprint cards, inputs, selects, buttons, badges, and Lucide icons, with page CSS constrained to the split-pane shell and wireframe-specific visual treatments. ✅ `dotnet build src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj -v minimal`, `dotnet build AppHost\AppHost\AppHost.csproj -v minimal`, and `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -v minimal` passed.
+
+## [2026-05-26] Add curation seed command
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Add a dev-only backend seed flow plus an Aspire dashboard command so organizers can generate a fresh curation sandbox event with about 50 varied registrants and historical attendance edge cases.
+- **Acceptance:** ✅ Backend exposes a dev-only curation seed action, AppHost surfaces the backend seed command, the seed creates a curation-ready event with reviewable registrants plus fairness/reliability edge cases, and focused/full validation passes.
+## [2026-05-31] Refine institution and organization capture in onboarding
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Improve mandatory onboarding employment branching so institution/company data is captured with clearer labels, better role-driven requirements, and lower-friction inputs for curation quality.
+- **Acceptance:** ✅ Employment options reduced to Student, Working Professional, and Independent / Freelancer. ✅ Student path now shows only one required field labeled "College / University" with placeholder "Start typing your college name" and college-balance helper text. ✅ Working Professional and Independent / Freelancer paths now show only one required "Company / Organization" field with organization-balance helper text. ✅ Backend mandatory-profile validation and social requirement messaging updated to align with the new statuses while preserving legacy compatibility. ✅ Onboarding/auth tests updated and `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (169/169).
+
+## [2026-05-31] Redesign social verification step (onboarding step 2)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Refactor `/registration/social` to remove manual LinkedIn URL/handle-driven UX, present action-first LinkedIn/GitHub verification cards with clear status and motivation messaging, and enforce role-based required-provider gating before continue.
+- **Acceptance:** ✅ Removed manual LinkedIn URL entry from Step 2 and kept the flow OAuth action-driven via two provider cards only. ✅ Added verification header (`LinkedIn ✅/❌`, `GitHub ✅/❌`), benefit messaging, and simplified right panel to the requested 3-step “What happens next” sequence. ✅ Cards now show required-role labels (“Required for working professionals” / “Required for students”) with connected/not-connected status and connect actions. ✅ Continue remains disabled until required-provider gating is satisfied (GitHub for students, LinkedIn for working professionals), while both can still be connected for stronger signal. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (168/168).
+
+## [2026-05-31] Simplify mandatory onboarding profile form
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Refactor `/registration/mandatory` to remove heavy identity-verification UI from onboarding, keep profile setup low-friction, and align copy/layout with the new registration-time curation data collection approach.
+- **Acceptance:** ✅ Removed the Identity Document inputs (government ID type + last 4 digits) from the onboarding UI and restructured into Personal Details, Professional Context, and minimal Location (city + country). ✅ Updated heading/card/sidebar/footer copy to the requested “Let’s set up your Bethuya profile”, merged “Why we ask” + “Next” guidance, and added the GitHub/LinkedIn next-step hint. ✅ Relaxed mandatory-profile request validation so government-ID fields are no longer required by onboarding saves. ✅ Updated onboarding render + curation E2E tests for the new form shape and messaging. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (172/172).
+
+## [2026-05-31] Revamp registration flow for curation data and dev toggle
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Update the user event-registration flow so curation-relevant data is captured during registration, wire that data through shared/backend contracts into inclusion-signal generation, and add a development toggle that allows running the full onboarding registration flow instead of the default bypass path.
+- **Acceptance:** ✅ `/events/{eventId}/registrations` now captures neighborhood, language proficiency, educational background, and socioeconomic background with updated consent copy, then sends them via `CreateRegistrationDto`. ✅ Backend `CreateRegistrationRequest` + registration endpoint now validate curation-source completeness and build inclusion signals from registration data (with authenticated-profile/email fallback when needed). ✅ AppHost now supports `ONBOARDING_ENABLE_FLOW_IN_DEVELOPMENT=true` (or `Onboarding:EnableFlowInDevelopment`) to disable onboarding bypass in development and run the full `/registration/mandatory -> /registration/social -> /registration/aide` flow. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (172/172).
 
 ## [2026-05-23] Fix planner draft 404
 - **Status:** done
@@ -119,7 +231,7 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Acceptance:** ✅ Removed the stale `ImageUploadResponse` Refit method from `IEventApi` after confirming the backend no longer exposes `/api/images/upload`. ✅ Fixed the malformed duplicate `group.MapDelete` declaration in `EventEndpoints`. ✅ `dotnet build Bethuya.slnx` now succeeds cleanly.
 
 ## [2026-05-16] Add privacy-safe inclusion signals to curation fairness budget
-- **Status:** in-progress
+- **Status:** done
 - **Agent/Owner:** Copilot CLI
 - **Description:** Extend registration/profile-to-curation flow with derived InclusionSignals, organizer-configurable per-event fairness targets, fairness aggregation + impact preview, and UI updates that never expose raw sensitive AIDE responses.
 - **Acceptance:** Backend persists derived geo/language/education/socioeconomic signals and per-event fairness targets; curation dashboard shows current/target/deficit + alerts + impact preview; sensitive raw fields never surface in curation APIs/UI; new unit + E2E coverage passes with curation screenshot artifact.
@@ -293,7 +405,7 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Acceptance:** ✅ CreateEventDialog persists events via POST /api/events. ✅ Home and Events pages load from GET /api/events. ✅ "New Event" button added to Events.razor. ✅ Server-side validation on POST/PUT (title, capacity, dates, createdBy). ✅ EventResponse DTO replaces raw entities. ✅ Success/error toast notifications integrated. ✅ data-test selectors on all interactive elements. ✅ E2E selectors fixed. ✅ TUnit tests: 64/64 pass. ✅ Solution builds: 0 errors, 0 warnings.
 
 ## [2025-07-17] Dashboard UX Revamp — Blazor Blueprint Components
-- **Status:** in-progress
+- **Status:** done
 - **Agent/Owner:** Copilot CLI
 - **Description:** Decompose monolithic Home.razor into reusable Razor components using Blazor Blueprint (BbCard, BbButton, BbBadge, BbAlert, BbDialog) and Lucide icons. Match refreshed design mockup with golden glow effects, horizontal meta layout, dark theme.
 - **Acceptance:** Home.razor is a thin orchestrator (~100 lines) composing AiInsightsBanner, StatCard, FeaturedEventCard, CreateEventDialog, EventCard components. All inline SVGs replaced with LucideIcon. Solution builds cleanly.
@@ -337,3 +449,34 @@ All work items must be added here **before** writing code (plan-first protocol).
 ## Completed Tasks
 
 <!-- Move done tasks here -->
+
+## [2026-05-28] Polish curation profile header
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Fix the selected profile header so the avatar and registrant identity align like the wireframe, avoiding the empty horizontal gap caused by the name wrapping below the image.
+- **Acceptance:** ✅ The selected profile header now keeps the avatar and identity in a compact side-by-side grid, with the history/projection summary aligned below the identity instead of stealing horizontal space. ✅ Live Playwright inspection on Rohan Das confirmed the identity column is beside the avatar and no longer drops below it. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v quiet` passed (184/184).
+
+
+## [2026-05-28] Polish curation attendance etiquette card
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Redesign the selected profile attendance etiquette card into a compact horizontal reliability bar aligned with the wireframe, reducing wasted space in the profile section.
+- **Acceptance:** ✅ The card now shows icon, title/subtitle, reliability score, and attended count in a polished single-row layout. ✅ Live Playwright validation on Naina Patel confirmed the panel is 82px tall with a 48px horizontal bar instead of the previous stacked layout. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v quiet` passed (184/184).
+
+## [2026-05-28] Stabilize curation fairness budget chips
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Make Fairness Budget chips keep consistent dimensions across registrant selection changes and remove wasted space in the top rail highlighted in the screenshot.
+- **Acceptance:** ✅ Metric chips now have fixed 6.35rem x 3.85rem geometry and stable internal value/label tracks. ✅ Group spacing and topbar padding are more compact, and the reserved rail height now matches the live topbar. ✅ Live Playwright validation confirmed all 9 chips stayed 102x62 before selection and after selecting two different registrants, with no horizontal overflow and a 1px topbar/workbench gap. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v quiet` passed (184/184).
+
+## [2026-05-28] Synchronize curation fairness bar deltas
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Fix Fairness Budget chip overlap/gaps and ensure selected registrant impact deltas shown in queue/profile are reflected in the top Fairness Budget chips.
+- **Acceptance:** ✅ Underrep/Inclusion no longer overlap, and Diversity/Cohort Health spacing is compact with 11px group gaps. ✅ The top bar now maps `Lang`, `Edu`, and `Inclusion` impact deltas back to the corresponding budget chips and no longer suppresses projections for accepted/selected registrants. ✅ Live validation on Mira Patel showed Gender, Underrep, Geo, Lang, Edu, and Inclusion chips receiving affected state and deltas matching the Impact if Approved panel, with no horizontal overflow. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v quiet` passed (184/184).
+
+## [2026-05-28] Reflow fairness budget to two-row layout
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Place Core chips on the first row and Diversity + Cohort Health chips on the second row, keeping full chip names visible and renaming Underrep to Access Equity.
+- **Acceptance:** Core renders as row 1, Diversity and Cohort Health render as row 2, chip labels are not ellipsized (except long term replaced by Access Equity), and tests/live UI checks pass.

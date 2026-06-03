@@ -17,6 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
+builder.Services.AddDataProtection();
 builder.Services.AddOpenApi();
 
 builder.AddServiceDefaults();
@@ -42,6 +43,7 @@ builder.Services
 builder.Services.AddScoped<IAgentInvoker, FoundryResponsesInvoker>();
 builder.Services.AddScoped<InclusionSignalsNormalizer>();
 builder.Services.AddScoped<CurationFairnessService>();
+builder.Services.AddScoped<CurationSampleSeeder>();
 builder.Services.AddScoped<PlanningCycleService>();
 
 var app = builder.Build();
@@ -55,6 +57,7 @@ if (app.Environment.IsDevelopment())
 
     app.MapOpenApi();
     app.MapScalarApiReference();
+    app.MapDevelopmentEndpoints();
 }
 
 app.UseSecurityDefaults();
