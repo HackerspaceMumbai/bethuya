@@ -827,11 +827,11 @@ Implemented; awaiting reviewer/Anvil evidence before merge if required by routin
 
 ## Context
 
-Trinity's event-flow timeline layout uses display: grid with lign-self: start/end on the time items, but without lign-content: space-between on the container the end time stacks below the start time rather than pinning to the bottom of the stretched grid row.
+Trinity's event-flow timeline layout uses display: grid with align-self: start/end on the time items, but without align-content: space-between on the container the end time stacks below the start time rather than pinning to the bottom of the stretched grid row.
 
 ## Decision
 
-Apply lign-content: space-between on .event-flow-time-axis grid container to pin end times to the lower card axis instead of clustering under start times.
+Apply align-content: space-between on .event-flow-time-axis grid container to pin end times to the lower card axis instead of clustering under start times.
 
 ## Why
 
