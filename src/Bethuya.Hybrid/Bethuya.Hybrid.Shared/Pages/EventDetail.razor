@@ -712,7 +712,7 @@
     private readonly Dictionary<Guid, SessionViewModel> editSnapshots = new();
     private bool _showRawSchema;
     private HashSet<Guid> _newlyGeneratedBlockIds = [];
-    private HashSet<Guid> _updatedGeneratedBlockIds = [];
+    private readonly HashSet<Guid> _updatedGeneratedBlockIds = [];
     private int _activePlannerReasoningStep = -1;
     private string? _plannerLiveStatus;
     private string? _applyingSteeringLabel;
