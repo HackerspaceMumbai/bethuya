@@ -28,37 +28,10 @@ public static class RegistrationEndpoints
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
-            var requestInclusionSource = new AttendeeInclusionSource(
-                request.Neighborhood,
-                request.LanguageProficiency,
-                request.EducationalBackground,
-                request.SocioeconomicBackground);
-
             var profileInclusionSource = await ResolveProfileInclusionSourceAsync(user, request.Email, profileRepo, ct);
-            var effectiveInclusionSource = MergeInclusionSource(requestInclusionSource, profileInclusionSource);
-
-            if (!IsCompleteInclusionSource(effectiveInclusionSource))
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    [nameof(CreateRegistrationRequest.Neighborhood)] =
-                    [
-                        "Neighborhood is required for curation fairness calculations."
-                    ],
-                    [nameof(CreateRegistrationRequest.LanguageProficiency)] =
-                    [
-                        "Languages spoken are required for curation fairness calculations."
-                    ],
-                    [nameof(CreateRegistrationRequest.EducationalBackground)] =
-                    [
-                        "Educational background is required for curation fairness calculations."
-                    ],
-                    [nameof(CreateRegistrationRequest.SocioeconomicBackground)] =
-                    [
-                        "Socioeconomic background is required for curation fairness calculations."
-                    ]
-                });
-            }
+            var inclusionSignals = profileInclusionSource is not null
+                ? inclusionSignalsNormalizer.FromSource(profileInclusionSource)
+                : new InclusionSignals();
 
             var reg = new Registration
             {
@@ -67,11 +40,43 @@ public static class RegistrationEndpoints
                 Email = request.Email,
                 Bio = request.Bio,
                 Interests = request.Interests,
-                InclusionSignals = inclusionSignalsNormalizer.FromSource(effectiveInclusionSource)
+                Intent = request.Intent,
+                Goals = request.Goals,
+                ContributionPreferences = request.ContributionPreferences,
+                ExperienceLevel = request.ExperienceLevel,
+                DietaryRequirements = request.DietaryRequirements,
+                AccessibilityNeeds = request.AccessibilityNeeds,
+                InclusionSignals = inclusionSignals
             };
 
             var created = await repo.CreateAsync(reg, ct);
             return Results.Created($"/api/registrations/{created.Id}", created);
+        });
+
+        group.MapPost("/{id:guid}/government-id", async (
+            Guid id,
+            IFormFile file,
+            IRegistrationRepository repo,
+            CancellationToken ct) =>
+        {
+            if (file.Length > 10 * 1024 * 1024)
+                return Results.Problem("File exceeds the 10 MB limit.", statusCode: 413);
+
+            var reg = await repo.GetByIdAsync(id, ct);
+            if (reg is null)
+                return Results.NotFound();
+
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, ct);
+
+            // Payload stored as base64; production implementation should encrypt before persisting.
+            reg.GovernmentIdFileName = file.FileName;
+            reg.GovernmentIdContentType = file.ContentType;
+            reg.GovernmentIdProtectedPayload = Convert.ToBase64String(ms.ToArray());
+            reg.GovernmentIdUploadedAt = DateTimeOffset.UtcNow;
+
+            await repo.UpdateAsync(reg, ct);
+            return Results.NoContent();
         });
 
         group.MapDelete("/{id:guid}", async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
@@ -116,29 +121,4 @@ public static class RegistrationEndpoints
         return await profileRepo.GetInclusionSourceByEmailAsync(email, ct);
     }
 
-    private static AttendeeInclusionSource? MergeInclusionSource(
-        AttendeeInclusionSource? requestSource,
-        AttendeeInclusionSource? profileSource)
-    {
-        if (requestSource is null && profileSource is null)
-        {
-            return null;
-        }
-
-        static string? Pick(string? primary, string? fallback)
-            => !string.IsNullOrWhiteSpace(primary) ? primary : fallback;
-
-        return new AttendeeInclusionSource(
-            Pick(requestSource?.Neighborhood, profileSource?.Neighborhood),
-            Pick(requestSource?.LanguageProficiency, profileSource?.LanguageProficiency),
-            Pick(requestSource?.EducationalBackground, profileSource?.EducationalBackground),
-            Pick(requestSource?.SocioeconomicBackground, profileSource?.SocioeconomicBackground));
-    }
-
-    private static bool IsCompleteInclusionSource(AttendeeInclusionSource? source)
-        => source is not null
-            && !string.IsNullOrWhiteSpace(source.Neighborhood)
-            && !string.IsNullOrWhiteSpace(source.LanguageProficiency)
-            && !string.IsNullOrWhiteSpace(source.EducationalBackground)
-            && !string.IsNullOrWhiteSpace(source.SocioeconomicBackground);
 }

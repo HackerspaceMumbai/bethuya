@@ -23,18 +23,9 @@
             }
             else
             {
-                @if (agendaStatus == ScheduleStatus.ProposedByAgent)
-            {
-                <span class="status-badge-proposed-by-agent" aria-label="Proposed by Agent">
-                    <span aria-hidden="true">🤖</span> Proposed by Agent
-                </span>
-            }
-            else
-            {
                 <BbBadge Variant="@GetStatusBadgeVariant(agendaStatus)">
-                        @GetStatusDisplayText(agendaStatus)
-                    </BbBadge>
-            }
+                    @GetStatusDisplayText(agendaStatus)
+                </BbBadge>
             }
         </div>
         <p class="text-sm text-muted-foreground">
@@ -49,30 +40,6 @@
         </p>
     </div>
 
-    @* Agent Session status bar — compact telemetry strip above the command-center grid *@
-    <div data-test="agent-session-status" class="agent-session-status mb-4" role="status" aria-label="Agent session status">
-        <span class="agent-session-label" aria-hidden="true">Agent Session</span>
-        <div class="agent-session-pills">
-            <span data-test="agent-session-cycle-id" class="agent-session-pill">
-                <span class="agent-session-pill-key">Cycle</span>
-                <span class="agent-session-pill-val">@GetShortCycleId()</span>
-            </span>
-            <span data-test="agent-session-thread-id" class="agent-session-pill">
-                <span class="agent-session-pill-key">Thread</span>
-                <span class="agent-session-pill-val">@GetShortConversationId()</span>
-            </span>
-            <span data-test="agent-session-agent-status" class="agent-session-pill agent-session-pill--status @GetAgentStatusPillClass()" aria-label="Agent status: @GetAgentStatusText()">
-                @if (isAiDrafting)
-                {
-                    <span class="agent-session-pulse" aria-hidden="true"></span>
-                }
-                @GetAgentStatusText()
-            </span>
-        </div>
-    </div>
-
-    @* Schedule Editor - agent-console three-column layout *@
-    <div data-test="schedule-editor" class="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-6">
     @* Agent Session status bar — compact telemetry strip above the command-center grid *@
     <div data-test="agent-session-status" class="agent-session-status mb-4" role="status" aria-label="Agent session status">
         <span class="agent-session-label" aria-hidden="true">Agent Session</span>
@@ -1420,28 +1387,6 @@
         }
 
         if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !constraints.Any(item => string.Equals(item, steeringPrompt, StringComparison.OrdinalIgnoreCase)))
-        {
-            constraints.Add(steeringPrompt.Trim());
-        }
-
-        if (_targetDurationMinutes is { } targetDuration)
-        {
-            constraints.Add($"Target total duration: {targetDuration.ToString(System.Globalization.CultureInfo.InvariantCulture)} minutes.");
-        }
-
-        return constraints.Count == 0 ? null : string.Join(Environment.NewLine, constraints);
-    }
-
-    private string? BuildPlannerConstraints(string? steeringPrompt)
-    {
-        var constraints = new List<string>();
-        if (!string.IsNullOrWhiteSpace(_refineConstraints))
-        {
-            constraints.Add(_refineConstraints.Trim());
-        }
-
-        if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
             !ContainsEquivalentConstraintToken(_refineConstraints, steeringPrompt))
         {
             constraints.Add(steeringPrompt.Trim());
@@ -1483,58 +1428,6 @@
         string.IsNullOrWhiteSpace(value)
             ? string.Empty
             : value.Trim().TrimEnd(';').Trim();
-
-    private string? BuildPlannerConstraints(string? steeringPrompt)
-    {
-        var constraints = new List<string>();
-        if (!string.IsNullOrWhiteSpace(_refineConstraints))
-        {
-            constraints.Add(_refineConstraints.Trim());
-        }
-
-        if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !ContainsEquivalentConstraintToken(_refineConstraints, steeringPrompt))
-        {
-            constraints.Add(steeringPrompt.Trim());
-        }
-
-        if (_targetDurationMinutes is { } targetDuration)
-        {
-            constraints.Add($"Target total duration: {targetDuration.ToString(System.Globalization.CultureInfo.InvariantCulture)} minutes.");
-        }
-
-        return constraints.Count == 0 ? null : string.Join(Environment.NewLine, constraints);
-    }
-
-    private static bool ContainsEquivalentConstraintToken(string? constraints, string? candidate)
-    {
-        var normalizedCandidate = NormalizeConstraintToken(candidate);
-        if (string.IsNullOrEmpty(normalizedCandidate))
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(constraints))
-        {
-            return false;
-        }
-
-        foreach (var token in constraints.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-        {
-            if (string.Equals(NormalizeConstraintToken(token), normalizedCandidate, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static string NormalizeConstraintToken(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? string.Empty
-            : value.Trim().TrimEnd(';').Trim();
-
     // ── Human-in-the-Loop actions ──
 
     private async Task ApproveScheduleAsync()

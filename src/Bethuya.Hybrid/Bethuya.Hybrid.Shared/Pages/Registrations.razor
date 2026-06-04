@@ -2,6 +2,8 @@
 @attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireAttendee)]
 @rendermode InteractiveServer
 @inject IRegistrationApi RegistrationApi
+@using Microsoft.AspNetCore.Components.Forms
+@using BlazorBlueprint.Components
 
 <PageTitle>Registrations — Bethuya</PageTitle>
 
@@ -50,38 +52,108 @@
         <div>
             <BbCard Class="p-4">
                 <h2 class="text-lg font-semibold mb-4">Register</h2>
-                    <div class="grid gap-3">
+                <div class="grid gap-4">
+
+                    @* Section 0 — Contact *@
+                    <BbFormSection Title="Your Details">
                         <div data-test="registration-name-field">
-                            <BbInput @bind-Value="newName" Placeholder="Full name" />
+                            <BbFormFieldInput Label="Full name" @bind-Value="_newName" Required />
                         </div>
                         <div data-test="registration-email-field">
-                            <BbInput @bind-Value="newEmail" Placeholder="Email" />
+                            <BbFormFieldInput Label="Email" @bind-Value="_newEmail" Required />
                         </div>
-                        <div data-test="registration-bio-field">
-                            <BbTextarea @bind-Value="newBio" Placeholder="Short bio (optional)" />
+                        <div class="form-group" data-test="registration-bio-field">
+                            <BbLabel>Short bio (optional)</BbLabel>
+                            @* BbFormFieldTextarea does not exist in BB 3.x — using standalone BbTextarea with manual wrapper *@
+                            <BbTextarea @bind-Value="_newBio" MaxLength="500" ShowCharacterCount />
                         </div>
                         <div data-test="registration-interests-field">
-                            <BbInput @bind-Value="newInterests" Placeholder="Interests (comma-separated)" />
+                            <BbFormFieldInput Label="Interests (comma-separated)" @bind-Value="_newInterests" />
                         </div>
-                        <div data-test="registration-neighborhood-field">
-                            <BbInput @bind-Value="newNeighborhood" Placeholder="Neighbourhood / area (required for curation)" />
+                    </BbFormSection>
+
+                    @* Section 1 — Intent *@
+                    <BbFormSection Title="Intent" Description="Help us understand why you want to attend.">
+                        <div class="form-group" data-test="registration-why-attend-field">
+                            <BbLabel>Why do you want to attend this event? *</BbLabel>
+                            @* BbFormFieldTextarea does not exist in BB 3.x — using standalone BbTextarea with manual wrapper *@
+                            <BbTextarea @bind-Value="_whyAttend" MaxLength="1000" ShowCharacterCount Required />
                         </div>
-                        <div data-test="registration-languages-field">
-                            <BbInput @bind-Value="newLanguageProficiency" Placeholder="Languages spoken (required for curation)" />
+                        <div class="form-group" data-test="registration-goals-field">
+                            <BbLabel>What do you hope to achieve? (optional)</BbLabel>
+                            @* BbFormFieldTextarea does not exist in BB 3.x — using standalone BbTextarea with manual wrapper *@
+                            <BbTextarea @bind-Value="_goals" MaxLength="500" ShowCharacterCount />
                         </div>
-                        <div data-test="registration-education-field">
-                            <BbInput @bind-Value="newEducationalBackground" Placeholder="Highest education level (required for curation)" />
+                        <div class="form-group" data-test="registration-contribution-field">
+                            <BbLabel>How would you like to contribute?</BbLabel>
+                            <div class="grid gap-1 mt-1">
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" @bind="_contribLearn" data-test="contrib-learn" /> Learn
+                                </label>
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" @bind="_contribHelp" data-test="contrib-help" /> Help others
+                                </label>
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" @bind="_contribShare" data-test="contrib-share" /> Share knowledge
+                                </label>
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" @bind="_contribPresent" data-test="contrib-present" /> Present/demo
+                                </label>
+                            </div>
                         </div>
-                        <div data-test="registration-socioeconomic-field">
-                            <BbInput @bind-Value="newSocioeconomicBackground" Placeholder="Socioeconomic background (required for curation)" />
+                    </BbFormSection>
+
+                    @* Section 2 — Experience *@
+                    <BbFormSection Title="Experience">
+                        <div data-test="registration-experience-field">
+                            <BbFormFieldRadioGroup Label="Your experience level" @bind-Value="_experienceLevel">
+                                <BbRadioGroupItem Value="@("Beginner")" Label="Beginner" />
+                                <BbRadioGroupItem Value="@("Intermediate")" Label="Intermediate" />
+                                <BbRadioGroupItem Value="@("Advanced")" Label="Advanced" />
+                                <BbRadioGroupItem Value="@("Expert")" Label="Expert" />
+                            </BbFormFieldRadioGroup>
                         </div>
+                    </BbFormSection>
+
+                    @* Section 3 — Event Requirements *@
+                    <BbFormSection Title="Event Requirements">
+                        <div class="form-group" data-test="registration-gov-id-field">
+                            <BbLabel>Government ID *</BbLabel>
+                            @* BB FileUpload has no BbFormFieldFileUpload wrapper — using standalone BbFileUpload with manual wrapper *@
+                            <div data-test="gov-id-upload">
+                                <BbFileUpload FilesChanged="HandleGovIdSelected"
+                                              Accept=".jpg,.jpeg,.png,.pdf"
+                                              MaxFileSize="@(10 * 1024 * 1024)"
+                                              MaxFileCount="1"
+                                              OnValidationError="@(err => _govIdValidationError = err.Message)" />
+                            </div>
+                            <p class="text-sm text-muted-foreground mt-1">Required for event security. Stored securely.</p>
+                            @if (!string.IsNullOrWhiteSpace(_govIdValidationError))
+                            {
+                                <p class="text-sm text-destructive mt-1">@_govIdValidationError</p>
+                            }
+                        </div>
+                        <div class="form-group" data-test="registration-dietary-field">
+                            <BbLabel>Dietary requirements (optional)</BbLabel>
+                            @* BbFormFieldTextarea does not exist in BB 3.x — using standalone BbTextarea with manual wrapper *@
+                            <BbTextarea @bind-Value="_dietaryRequirements" MaxLength="300" ShowCharacterCount />
+                        </div>
+                        <div class="form-group" data-test="registration-accessibility-field">
+                            <BbLabel>Accessibility needs (optional)</BbLabel>
+                            @* BbFormFieldTextarea does not exist in BB 3.x — using standalone BbTextarea with manual wrapper *@
+                            <BbTextarea @bind-Value="_accessibilityNeeds" MaxLength="300" ShowCharacterCount />
+                        </div>
+                    </BbFormSection>
+
                     <div class="flex items-center gap-2">
-                        <input type="checkbox" id="consentCheckbox" @bind="consentGiven" required data-test="consent-checkbox" />
-                        <label for="consentCheckbox" class="text-sm">I consent to the collection and processing of my registration details (including curation context) for fair attendee curation. See our <a href="/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</label>
+                        <input type="checkbox" id="consentCheckbox" @bind="_consentGiven" required data-test="consent-checkbox" />
+                        <label for="consentCheckbox" class="text-sm">I consent to the collection and processing of my registration details for fair attendee curation. See our <a href="/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</label>
                     </div>
+
                     <div data-test="submit-registration-btn">
-                        <BbButton Variant="ButtonVariant.Default" OnClick="Register" Disabled="@(!consentGiven)">Submit Registration</BbButton>
+                        <BbButton Variant="ButtonVariant.Default" OnClick="Register" Disabled="@(!_consentGiven)">Submit Registration</BbButton>
                     </div>
+
                 </div>
             </BbCard>
         </div>
@@ -93,16 +165,39 @@
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private List<RegistrationDto> registrations = [];
-    private string newName = "";
-    private string newEmail = "";
-    private string newBio = "";
-    private string newInterests = "";
-    private string newNeighborhood = "";
-    private string newLanguageProficiency = "";
-    private string newEducationalBackground = "";
-    private string newSocioeconomicBackground = "";
-    private bool consentGiven = false;
+
+    // Contact
+    private string _newName = "";
+    private string _newEmail = "";
+    private string _newBio = "";
+    private string _newInterests = "";
+
+    // Section 1 — Intent
+    private string _whyAttend = "";
+    private string _goals = "";
+    private bool _contribLearn;
+    private bool _contribHelp;
+    private bool _contribShare;
+    private bool _contribPresent;
+
+    // Section 2 — Experience
+    private string _experienceLevel = "";
+
+    // Section 3 — Event Requirements
+    private IBrowserFile? _governmentIdFile;
+    private string _govIdValidationError = "";
+    private string _dietaryRequirements = "";
+    private string _accessibilityNeeds = "";
+
+    // Consent & submit state
+    private bool _consentGiven;
     private string? _errorMessage;
+
+    /// <summary>
+    /// Holds the registration ID after a successful create but before Gov ID upload completes.
+    /// Prevents orphaned rows by skipping the create step on retry.
+    /// </summary>
+    private Guid? _pendingRegistrationId;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -129,27 +224,35 @@
         }
     }
 
-    // User must provide explicit consent before registration (PII compliance for Email)
+    private void HandleGovIdSelected(IReadOnlyList<FileUploadItem> files)
+    {
+        _govIdValidationError = "";
+        _governmentIdFile = files.Count > 0 ? files[0].File : null;
+    }
+
     private async Task Register()
     {
-        if (string.IsNullOrWhiteSpace(newName) || string.IsNullOrWhiteSpace(newEmail) || !consentGiven)
+        if (string.IsNullOrWhiteSpace(_newName) || string.IsNullOrWhiteSpace(_newEmail) || !_consentGiven)
         {
-            _errorMessage = "Full name, email, and consent are required before submitting registration.";
+            _errorMessage = "Full name, email, and consent are required before submitting.";
             return;
         }
 
-        if (!newEmail.Contains('@') || !newEmail.Contains('.'))
+        if (!_newEmail.Contains('@') || !_newEmail.Contains('.'))
         {
-            _errorMessage = "Enter a valid email address before submitting registration.";
+            _errorMessage = "Enter a valid email address.";
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(newNeighborhood)
-            || string.IsNullOrWhiteSpace(newLanguageProficiency)
-            || string.IsNullOrWhiteSpace(newEducationalBackground)
-            || string.IsNullOrWhiteSpace(newSocioeconomicBackground))
+        if (string.IsNullOrWhiteSpace(_whyAttend))
         {
-            _errorMessage = "Neighbourhood, languages, education, and socioeconomic background are required for curation.";
+            _errorMessage = "Please tell us why you want to attend — this is required.";
+            return;
+        }
+
+        if (_governmentIdFile is null && _pendingRegistrationId is null)
+        {
+            _errorMessage = "A Government ID upload is required for event security.";
             return;
         }
 
@@ -157,28 +260,41 @@
 
         try
         {
-            var created = await RegistrationApi.CreateAsync(new CreateRegistrationDto(
-                EventId,
-                newName,
-                newEmail,
-                string.IsNullOrWhiteSpace(newBio) ? null : newBio,
-                newInterests.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList(),
-                newNeighborhood.Trim(),
-                newLanguageProficiency.Trim(),
-                newEducationalBackground.Trim(),
-                newSocioeconomicBackground.Trim()));
+            // Step 1 — Create registration (skip if retrying after a failed upload)
+            if (_pendingRegistrationId is null)
+            {
+                var contributions = BuildContributionList();
+                var created = await RegistrationApi.CreateAsync(new CreateRegistrationDto(
+                    EventId,
+                    _newName,
+                    _newEmail,
+                    string.IsNullOrWhiteSpace(_newBio) ? null : _newBio,
+                    _newInterests.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList(),
+                    _whyAttend.Trim(),
+                    string.IsNullOrWhiteSpace(_goals) ? null : _goals.Trim(),
+                    contributions,
+                    string.IsNullOrWhiteSpace(_experienceLevel) ? null : _experienceLevel,
+                    string.IsNullOrWhiteSpace(_dietaryRequirements) ? null : _dietaryRequirements.Trim(),
+                    string.IsNullOrWhiteSpace(_accessibilityNeeds) ? null : _accessibilityNeeds.Trim()));
 
-            registrations.Add(created);
+                registrations.Add(created);
+                _pendingRegistrationId = created.Id;
+            }
 
-            newName = "";
-            newEmail = "";
-            newBio = "";
-            newInterests = "";
-            newNeighborhood = "";
-            newLanguageProficiency = "";
-            newEducationalBackground = "";
-            newSocioeconomicBackground = "";
-            consentGiven = false;
+            // Step 2 — Upload Government ID
+            if (_governmentIdFile is not null)
+            {
+                await using var stream = _governmentIdFile.OpenReadStream(maxAllowedSize: 10L * 1024 * 1024);
+                var part = new Refit.StreamPart(stream, _governmentIdFile.Name, _governmentIdFile.ContentType);
+                await RegistrationApi.UploadGovernmentIdAsync(_pendingRegistrationId!.Value, part);
+            }
+
+            // Both steps succeeded — reset form
+            ResetForm();
+        }
+        catch (Refit.ApiException ex) when (_pendingRegistrationId is not null)
+        {
+            _errorMessage = $"Registration saved, but ID upload failed (HTTP {(int)ex.StatusCode}). Click 'Submit Registration' again to retry the upload.";
         }
         catch (Refit.ApiException)
         {
@@ -192,6 +308,37 @@
         {
             _errorMessage = "The request timed out. Please try again.";
         }
+    }
+
+    private List<string> BuildContributionList()
+    {
+        List<string> list = [];
+        if (_contribLearn) list.Add("Learn");
+        if (_contribHelp) list.Add("Help others");
+        if (_contribShare) list.Add("Share knowledge");
+        if (_contribPresent) list.Add("Present/demo");
+        return list;
+    }
+
+    private void ResetForm()
+    {
+        _newName = "";
+        _newEmail = "";
+        _newBio = "";
+        _newInterests = "";
+        _whyAttend = "";
+        _goals = "";
+        _contribLearn = false;
+        _contribHelp = false;
+        _contribShare = false;
+        _contribPresent = false;
+        _experienceLevel = "";
+        _governmentIdFile = null;
+        _govIdValidationError = "";
+        _dietaryRequirements = "";
+        _accessibilityNeeds = "";
+        _consentGiven = false;
+        _pendingRegistrationId = null;
     }
 
     private static BadgeVariant GetStatusVariant(string status) => status switch
