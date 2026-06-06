@@ -180,7 +180,6 @@ var plannerHosted = builder
     .WaitFor(plannerChatModel)
     .PublishAsHostedAgent(foundryProject);
 
-
 // Migration service - runs EF Core migrations then exits; backend waits for it to complete.
 // IMPORTANT: run `dotnet ef migrations add InitialCreate --project src/Hackmum.Bethuya.Infrastructure`
 // before the first Azure deployment.
