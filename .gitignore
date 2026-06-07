@@ -70,4 +70,15 @@ obj/
 *.tgz
 *.exe
 
+# Aspire deployment artifacts
+manifest.json
+*.bicep
+
+# Aspire generated infra
+infra/
+.azure/
+
+AppHost/AppHost/manifest.json
+AppHost/AppHost/*.bicep
+
 

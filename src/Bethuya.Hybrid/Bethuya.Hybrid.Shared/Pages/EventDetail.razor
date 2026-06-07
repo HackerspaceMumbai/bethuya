@@ -23,18 +23,9 @@
             }
             else
             {
-                @if (agendaStatus == ScheduleStatus.ProposedByAgent)
-            {
-                <span class="status-badge-proposed-by-agent" aria-label="Proposed by Agent">
-                    <span aria-hidden="true">🤖</span> Proposed by Agent
-                </span>
-            }
-            else
-            {
                 <BbBadge Variant="@GetStatusBadgeVariant(agendaStatus)">
-                        @GetStatusDisplayText(agendaStatus)
-                    </BbBadge>
-            }
+                    @GetStatusDisplayText(agendaStatus)
+                </BbBadge>
             }
         </div>
         <p class="text-sm text-muted-foreground">
@@ -73,31 +64,6 @@
 
     @* Schedule Editor - agent-console three-column layout *@
     <div data-test="schedule-editor" class="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-6">
-    @* Agent Session status bar — compact telemetry strip above the command-center grid *@
-    <div data-test="agent-session-status" class="agent-session-status mb-4" role="status" aria-label="Agent session status">
-        <span class="agent-session-label" aria-hidden="true">Agent Session</span>
-        <div class="agent-session-pills">
-            <span data-test="agent-session-cycle-id" class="agent-session-pill">
-                <span class="agent-session-pill-key">Cycle</span>
-                <span class="agent-session-pill-val">@GetShortCycleId()</span>
-            </span>
-            <span data-test="agent-session-thread-id" class="agent-session-pill">
-                <span class="agent-session-pill-key">Thread</span>
-                <span class="agent-session-pill-val">@GetShortConversationId()</span>
-            </span>
-            <span data-test="agent-session-agent-status" class="agent-session-pill agent-session-pill--status @GetAgentStatusPillClass()" aria-label="Agent status: @GetAgentStatusText()">
-                @if (isAiDrafting)
-                {
-                    <span class="agent-session-pulse" aria-hidden="true"></span>
-                }
-                @GetAgentStatusText()
-            </span>
-        </div>
-    </div>
-
-    @* Schedule Editor - agent-console three-column layout *@
-    <div data-test="schedule-editor" class="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-6">
-
         @* ── Left Panel: Agent Console ── *@
         <aside class="xl:col-span-3 space-y-4">
 
@@ -509,6 +475,42 @@
             </BbCard>
 
             @if (!string.IsNullOrWhiteSpace(_plannerMarkdown))
+                @if (showAddForm)
+                {
+                    <BbCard Class="mt-5 p-4 border border-border bg-muted/20">
+                        <h3 class="mb-3 font-semibold">Add Timeline Block</h3>
+                        <div class="space-y-3">
+                            <BbInput @bind-Value="newSession.Title" Placeholder="Session title (required)" />
+                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <BbInput @bind-Value="newSession.Speaker" Placeholder="Speaker name" />
+                                <BbInput @bind-Value="newSession.Format" Placeholder="Format tag" />
+                            </div>
+                            <div class="flex flex-wrap gap-3">
+                                <input type="time" value="@newSession.StartTime"
+                                       @onchange="@(e => newSession.StartTime = e.Value?.ToString() ?? "09:00")"
+                                       class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm" />
+                                <input type="time" value="@newSession.EndTime"
+                                       @onchange="@(e => newSession.EndTime = e.Value?.ToString() ?? "09:30")"
+                                       class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm" />
+                            </div>
+                            <BbTextarea @bind-Value="newSession.Description" Placeholder="Session description" />
+                            <div class="flex gap-2">
+                                <BbButton Variant="ButtonVariant.Default"
+                                          OnClick="AddSession"
+                                          Disabled="@string.IsNullOrWhiteSpace(newSession.Title)">
+                                    Add
+                                </BbButton>
+                                <BbButton Variant="ButtonVariant.Ghost"
+                                          OnClick="@(() => showAddForm = false)">
+                                    Cancel
+                                </BbButton>
+                            </div>
+                        </div>
+                    </BbCard>
+                }
+            </BbCard>
+
+            @if (!string.IsNullOrWhiteSpace(_plannerMarkdown))
             {
                 <BbCard Class="p-5 border border-border bg-card">
                     <div class="review-card-header mb-4">
@@ -517,7 +519,56 @@
                         <p class="mt-1 text-sm text-muted-foreground">
                             Review the Planner's reasoning, edit the draft if needed, then approve.
                         </p>
+                <BbCard Class="p-5 border border-border bg-card">
+                    <div class="review-card-header mb-4">
+                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Human Review</p>
+                        <h3 class="mt-1 font-semibold">Review Required</h3>
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            Review the Planner's reasoning, edit the draft if needed, then approve.
+                        </p>
                     </div>
+
+                    @* ── Structured Insight Deck ── *@
+                    @if (ActiveAgendaJson is not null)
+                    {
+                        <div class="review-insight-deck" data-test="review-insights">
+                            <div class="review-insight-deck-grid">
+
+                                @* Objectives — blue *@
+                                @if (GetObjectives().Any())
+                                {
+                                    <div class="review-insight-card review-insight-card--objectives" data-test="review-insight-objectives">
+                                        <div class="review-insight-card-header">
+                                            <span class="review-insight-icon" aria-hidden="true">🎯</span>
+                                            <h4 class="review-insight-title">Objectives</h4>
+                                            <span class="review-insight-count">@GetObjectives().Count()</span>
+                                        </div>
+                                        <ul class="review-insight-list">
+                                            @foreach (var objective in GetObjectives())
+                                            {
+                                                <li>@objective</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+
+                                @* Constraints — yellow/warning *@
+                                @if (GetConstraints().Any())
+                                {
+                                    <div class="review-insight-card review-insight-card--constraints" data-test="review-insight-constraints">
+                                        <div class="review-insight-card-header">
+                                            <span class="review-insight-icon" aria-hidden="true">⚠️</span>
+                                            <h4 class="review-insight-title">Constraints</h4>
+                                            <span class="review-insight-count">@GetConstraints().Count()</span>
+                                        </div>
+                                        <ul class="review-insight-list">
+                                            @foreach (var constraint in GetConstraints())
+                                            {
+                                                <li>@constraint</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
 
                     @* ── Structured Insight Deck ── *@
                     @if (ActiveAgendaJson is not null)
@@ -619,9 +670,73 @@
                                     <pre class="review-raw-schema-viewer" data-test="review-raw-schema-viewer" aria-label="Raw JSON schema">@GetRawSchemaJson()</pre>
                                 }
                             </div>
+                                @* Risks — red *@
+                                @if (GetRiskItems().Any())
+                                {
+                                    <div class="review-insight-card review-insight-card--risks" data-test="review-insight-risks">
+                                        <div class="review-insight-card-header">
+                                            <span class="review-insight-icon" aria-hidden="true">⚡</span>
+                                            <h4 class="review-insight-title">Risks</h4>
+                                            <span class="review-insight-count">@GetRiskItems().Count()</span>
+                                        </div>
+                                        <div class="review-insight-risks-list">
+                                            @foreach (var risk in GetRiskItems())
+                                            {
+                                                <div class="review-insight-risk-item">
+                                                    <p class="review-insight-risk-label">@risk.Risk</p>
+                                                    <p class="review-insight-risk-mitigation">↳ @risk.Mitigation</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+
+                                @* Next Actions — green/neutral checklist *@
+                                @if (GetNextActions().Any())
+                                {
+                                    <div class="review-insight-card review-insight-card--next-actions" data-test="review-insight-next-actions">
+                                        <div class="review-insight-card-header">
+                                            <span class="review-insight-icon" aria-hidden="true">☑</span>
+                                            <h4 class="review-insight-title">Next Actions</h4>
+                                            <span class="review-insight-count">@GetNextActions().Count()</span>
+                                        </div>
+                                        <ul class="review-insight-checklist">
+                                            @foreach (var action in GetNextActions())
+                                            {
+                                                <li>
+                                                    <span class="review-insight-action-owner">@action.Owner</span>
+                                                    @action.Action
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+
+                            @* Raw Schema — collapsible, hidden by default *@
+                            <div class="mt-3">
+                                <button class="review-raw-schema-toggle"
+                                        data-test="review-raw-schema-toggle"
+                                        @onclick="ToggleRawSchema"
+                                        type="button"
+                                        aria-expanded="@_showRawSchema.ToString().ToLowerInvariant()">
+                                    <span aria-hidden="true">@(_showRawSchema ? "▲" : "▼")</span>
+                                    @(_showRawSchema ? "Hide Raw Schema" : "View Raw Schema")
+                                </button>
+                                @if (_showRawSchema)
+                                {
+                                    <pre class="review-raw-schema-viewer" data-test="review-raw-schema-viewer" aria-label="Raw JSON schema">@GetRawSchemaJson()</pre>
+                                }
+                            </div>
                         </div>
                     }
 
+                    <div data-test="planner-markdown-editor" class="mt-5">
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Edit Draft</p>
+                        <BbTextarea @bind-Value="_plannerMarkdown" Rows="10" />
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap gap-2">
                     <div data-test="planner-markdown-editor" class="mt-5">
                         <p class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Edit Draft</p>
                         <BbTextarea @bind-Value="_plannerMarkdown" Rows="10" />
@@ -700,6 +815,63 @@
 
             <BbCard Class="p-4 border border-border bg-card">
                 <h3 class="mb-3 font-semibold">Publish Controls</h3>
+        </main>
+
+        @* ── Right Panel: Planner reasoning, no raw JSON ── *@
+        <aside class="xl:col-span-3 space-y-4">
+            <BbCard Class="p-4 border border-border bg-card agent-reasoning-card">
+                <div class="agent-reasoning-header mb-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Agent Reasoning</p>
+                    <h2 class="mt-1 text-lg font-semibold">Planner Insights</h2>
+                </div>
+
+                @if (!HasPlannerInsights)
+                {
+                    <p class="text-sm text-muted-foreground">
+                        Insights appear here after Planner drafts an agenda. No raw schema view is shown.
+                    </p>
+                }
+                else
+                {
+                    <div class="space-y-4">
+                        <section>
+                            <h3 class="mb-2 text-sm font-semibold">Constraints</h3>
+                            <ul class="space-y-2">
+                                @foreach (var constraint in GetConstraints())
+                                {
+                                    <li class="rounded-lg border border-border bg-muted/30 p-3 text-sm">@constraint</li>
+                                }
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h3 class="mb-2 text-sm font-semibold">Rationale</h3>
+                            <div class="space-y-2">
+                                @foreach (var tradeoff in GetRationaleItems())
+                                {
+                                    <div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">@tradeoff</div>
+                                }
+                            </div>
+                        </section>
+
+                        <section>
+                            <h3 class="mb-2 text-sm font-semibold">Risks & Mitigations</h3>
+                            <div class="space-y-2">
+                                @foreach (var risk in GetRiskItems())
+                                {
+                                    <div class="rounded-lg border border-border bg-muted/30 p-3">
+                                        <p class="text-sm font-medium">@risk.Risk</p>
+                                        <p class="mt-1 text-sm text-muted-foreground">@risk.Mitigation</p>
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                    </div>
+                }
+            </BbCard>
+
+            <BbCard Class="p-4 border border-border bg-card">
+                <h3 class="mb-3 font-semibold">Publish Controls</h3>
                 <div class="flex flex-col gap-2">
                     <div data-test="publish-btn">
                         <BbButton Variant="ButtonVariant.Outline"
@@ -718,8 +890,11 @@
                 </div>
                 <p class="mt-3 text-sm text-muted-foreground">
                     Approval opens publish. Publish locks the cycle.
+                <p class="mt-3 text-sm text-muted-foreground">
+                    Approval opens publish. Publish locks the cycle.
                 </p>
             </BbCard>
+        </aside>
         </aside>
     </div>
 </div>
@@ -740,6 +915,9 @@
     private string _refineConstraints = string.Empty;
     private int? _targetDurationMinutes;
     private readonly List<ConsoleMessage> _consoleMessages = [];
+    private string _refineConstraints = string.Empty;
+    private int? _targetDurationMinutes;
+    private readonly List<ConsoleMessage> _consoleMessages = [];
     private PlanningCycleDto? _activeCycle;
     private string _plannerMarkdown = string.Empty;
     private readonly Dictionary<Guid, SessionViewModel> editSnapshots = new();
@@ -750,8 +928,23 @@
     private string? _plannerLiveStatus;
     private string? _applyingSteeringLabel;
     private bool _showAgentTimeline;
+    private bool _showRawSchema;
+    private HashSet<Guid> _newlyGeneratedBlockIds = [];
+    private readonly HashSet<Guid> _updatedGeneratedBlockIds = [];
+    private int _activePlannerReasoningStep = -1;
+    private string? _plannerLiveStatus;
+    private string? _applyingSteeringLabel;
+    private bool _showAgentTimeline;
     private bool isCyclePublished => _activeCycle?.Status == "Published";
     private bool CanPublish => _activeCycle?.Status == "ReadyToPublish" && _activeCycle.ActiveDraft is not null;
+    private PlanningAgendaJsonDto? ActiveAgendaJson => _activeCycle?.ActiveDraft?.AgendaJson;
+    private IEnumerable<SessionViewModel> OrderedSessions => sessions.OrderBy(s => s.Order);
+    private SessionViewModel? FocusedReviewSession =>
+        OrderedSessions.FirstOrDefault(session => NormalizeSessionFormat(session.Format) != "break")
+        ?? OrderedSessions.FirstOrDefault();
+    private bool HasPlannerInsights =>
+        ActiveAgendaJson is not null &&
+        (GetConstraints().Any() || GetRationaleItems().Any() || GetRiskItems().Any());
     private PlanningAgendaJsonDto? ActiveAgendaJson => _activeCycle?.ActiveDraft?.AgendaJson;
     private IEnumerable<SessionViewModel> OrderedSessions => sessions.OrderBy(s => s.Order);
     private SessionViewModel? FocusedReviewSession =>
@@ -809,14 +1002,70 @@
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public string BlockId { get; set; } = "";
+        public string BlockId { get; set; } = "";
         public string Title { get; set; } = "";
         public string Speaker { get; set; } = "";
         public string StartTime { get; set; } = "09:00";
         public string EndTime { get; set; } = "09:30";
         public string Description { get; set; } = "";
         public string Format { get; set; } = "session";
+        public string Format { get; set; } = "session";
         public int Order { get; set; }
         public bool IsEditing { get; set; }
+    }
+
+    private static readonly string[] PlannerReasoningSteps =
+    [
+        "Analyzing constraints...",
+        "Balancing session types...",
+        "Optimizing flow for engagement..."
+    ];
+
+    private sealed class ConsoleMessage(string role, string text, bool isStreaming = false)
+    {
+        public string Role { get; } = role;
+        public string Text { get; set; } = text;
+        public bool IsStreaming { get; set; } = isStreaming;
+    }
+
+    private sealed record TimelineReasoning(string FlowRole, string Indicator, string IndicatorKey, string WhyPlaced);
+
+    private sealed record TimelineIntelligence(
+        int EnergyLevel,
+        string EnergyLabel,
+        string TrackBalance,
+        string PacingDecision);
+
+    private sealed record SessionSnapshot(
+        Guid Id,
+        string StableKey,
+        string Title,
+        string Speaker,
+        string StartTime,
+        string EndTime,
+        string Description,
+        string Format,
+        int Order)
+    {
+        public static SessionSnapshot From(SessionViewModel session) => new(
+            session.Id,
+            GetBlockStableKey(session),
+            NormalizeDiffValue(session.Title),
+            NormalizeDiffValue(session.Speaker),
+            NormalizeDiffValue(session.StartTime),
+            NormalizeDiffValue(session.EndTime),
+            NormalizeDiffValue(session.Description),
+            NormalizeDiffValue(session.Format),
+            session.Order);
+
+        public bool Matches(PlanningAgendaBlockDto block, int order) =>
+            string.Equals(Title, NormalizeDiffValue(block.Title), StringComparison.Ordinal) &&
+            string.Equals(Speaker, NormalizeDiffValue(block.Speakers.FirstOrDefault()?.Name), StringComparison.Ordinal) &&
+            string.Equals(StartTime, NormalizeDiffValue(block.Start), StringComparison.Ordinal) &&
+            string.Equals(EndTime, NormalizeDiffValue(block.End), StringComparison.Ordinal) &&
+            string.Equals(Description, NormalizeDiffValue(block.Description), StringComparison.Ordinal) &&
+            string.Equals(Format, NormalizeDiffValue(block.Format), StringComparison.Ordinal) &&
+            Order == order;
     }
 
     private static readonly string[] PlannerReasoningSteps =
@@ -1263,6 +1512,373 @@
             !string.IsNullOrWhiteSpace(item.Risk) ||
             !string.IsNullOrWhiteSpace(item.Mitigation)) ?? [];
 
+    private static string GetFormatDisplay(string? format) =>
+        string.IsNullOrWhiteSpace(format) ? "session" : format.Trim();
+
+    private bool IsFocusedReviewBlock(SessionViewModel session) =>
+        FocusedReviewSession?.Id == session.Id;
+
+    private static string NormalizeSessionFormat(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            return "other";
+        }
+
+        return format.Trim().ToUpperInvariant() switch
+        {
+            "TALK" => "talk",
+            "WORKSHOP" => "workshop",
+            "BREAK" => "break",
+            _ => "other"
+        };
+    }
+
+    private static string GetTimelineItemClass(SessionViewModel session) =>
+        $"event-flow-item event-flow-item--{NormalizeSessionFormat(session.Format)}";
+
+    private string GetTimelineClass()
+    {
+        var updatingClass = isAiDrafting ? " timeline-is-updating" : string.Empty;
+        var agentClass = _showAgentTimeline ? " agent-timeline-visible" : string.Empty;
+        return $"event-flow-timeline{updatingClass}{agentClass}";
+    }
+
+    private static string GetTimelineItemStyle(SessionViewModel session)
+    {
+        var duration = GetSessionDurationMinutes(session);
+        var scaledHeight = Math.Clamp(6.8 + (duration / 30d * 1.4), 7.4, 14.5);
+        var scaledGap = Math.Clamp(0.72 + (duration / 90d * 0.45), 0.85, 1.55);
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"--event-duration-min:{duration};--event-block-min:{scaledHeight:0.##}rem;--event-flow-gap:{scaledGap:0.##}rem;");
+    }
+
+    private string GetTimelineCardShellClass(SessionViewModel session)
+    {
+        var focusClass = IsFocusedReviewBlock(session) ? " is-focus" : string.Empty;
+        var newClass = _newlyGeneratedBlockIds.Contains(session.Id) ? " is-new-block" : string.Empty;
+        var updatedClass = _updatedGeneratedBlockIds.Contains(session.Id) ? " is-updated-block" : string.Empty;
+        return $"event-flow-card-shell event-flow-card-shell--{NormalizeSessionFormat(session.Format)}{focusClass}{newClass}{updatedClass}";
+    }
+
+    private static string GetTimelineNodeClass(SessionViewModel session) =>
+        $"event-flow-node event-flow-node--{NormalizeSessionFormat(session.Format)}";
+
+    private static string GetTimelineTypeChipClass(SessionViewModel session) =>
+        $"event-flow-type-chip event-flow-type-chip--{NormalizeSessionFormat(session.Format)}";
+
+    private static string GetTimelineTimeLabel(SessionViewModel session) =>
+        $"{session.Title}, {session.StartTime} to {session.EndTime}";
+
+    private static int GetSessionDurationMinutes(SessionViewModel session)
+    {
+        if (!TimeOnly.TryParse(session.StartTime, System.Globalization.CultureInfo.InvariantCulture, out var start) ||
+            !TimeOnly.TryParse(session.EndTime, System.Globalization.CultureInfo.InvariantCulture, out var end))
+        {
+            return 30;
+        }
+
+        var duration = end - start;
+        if (duration.TotalMinutes <= 0)
+        {
+            duration = duration.Add(TimeSpan.FromHours(24));
+        }
+
+        return Math.Clamp((int)Math.Round(duration.TotalMinutes), 15, 240);
+    }
+
+    private static string GetReasoningIndicatorClass(TimelineReasoning reasoning) =>
+        $"event-flow-reasoning-chip event-flow-reasoning-chip--{reasoning.IndicatorKey}";
+
+    private static string GetEnergyMeterClass(int energyLevel) =>
+        $"agent-timeline-energy-meter agent-timeline-energy-meter--{energyLevel}";
+
+    private void ToggleAgentTimeline() => _showAgentTimeline = !_showAgentTimeline;
+
+    private TimelineIntelligence GetTimelineIntelligence(SessionViewModel session)
+    {
+        var ordered = OrderedSessions.ToList();
+        var index = ordered.FindIndex(item => item.Id == session.Id);
+        var safeIndex = index < 0 ? 0 : index;
+        var lastIndex = Math.Max(ordered.Count - 1, 0);
+        var format = NormalizeSessionFormat(session.Format);
+        var duration = GetSessionDurationMinutes(session);
+
+        if (format == "break")
+        {
+            return new(
+                1,
+                "Low - recovery",
+                "Neutral reset between content tracks",
+                "Cool-down beat protects attention before the next lift.");
+        }
+
+        if (safeIndex == 0)
+        {
+            return new(
+                2,
+                "Rising - warm-up",
+                "Foundation block before track divergence",
+                "Starts with shared context before asking for deeper attention.");
+        }
+
+        if (safeIndex == lastIndex)
+        {
+            return new(
+                1,
+                "Cool down",
+                "Final synthesis after mixed formats",
+                "Ends with lower intensity so attendees leave with a clear takeaway.");
+        }
+
+        if (format == "workshop")
+        {
+            return new(
+                3,
+                "Peak - active",
+                "Hands-on block balances talk-heavy stretches",
+                duration >= 60
+                    ? "Longer active segment is placed where energy can sustain practice."
+                    : "Compact practice slot keeps momentum without exhausting the room.");
+        }
+
+        return new(
+            2,
+            "Steady - concept",
+            "Talk block bridges adjacent formats",
+            "Keeps information density controlled before the flow shifts again.");
+    }
+
+    private string? GetDiffTagText(SessionViewModel session)
+    {
+        if (_newlyGeneratedBlockIds.Contains(session.Id))
+        {
+            return "New";
+        }
+
+        return _updatedGeneratedBlockIds.Contains(session.Id) ? "Updated" : null;
+    }
+
+    private string GetDiffTagClass(SessionViewModel session)
+    {
+        var modifier = _newlyGeneratedBlockIds.Contains(session.Id) ? "new" : "updated";
+        return $"event-flow-diff-chip event-flow-diff-chip--{modifier}";
+    }
+
+    private TimelineReasoning GetTimelineReasoning(SessionViewModel session)
+    {
+        var ordered = OrderedSessions.ToList();
+        var index = ordered.FindIndex(item => item.Id == session.Id);
+        var safeIndex = index < 0 ? 0 : index;
+        var format = NormalizeSessionFormat(session.Format);
+        var previousFormat = safeIndex > 0 ? NormalizeSessionFormat(ordered[safeIndex - 1].Format) : string.Empty;
+        var title = session.Title ?? string.Empty;
+
+        if (format == "break")
+        {
+            return new("Recovery beat", "balanced", "balanced",
+                "Creates breathing room between higher-intensity sessions so attendees can reset before the next block.");
+        }
+
+        if (format == "workshop" && previousFormat == "talk")
+        {
+            return new("Hands-on continuity", "optimized", "optimized",
+                "Workshop follows a concept talk for continuity, turning fresh context into practice while attention is still high.");
+        }
+
+        if (safeIndex == 0)
+        {
+            var why = title.Contains("keynote", StringComparison.OrdinalIgnoreCase)
+                ? "Placed keynote early to maximize attendance and anchor the event narrative before smaller sessions branch out."
+                : "Placed early as a warm-up so the room gets shared context before deeper or more interactive blocks.";
+            return new("Warm-up", "optimized", "optimized", why);
+        }
+
+        if (safeIndex >= Math.Max(ordered.Count - 1, 0))
+        {
+            return new("Wind-down", "balanced", "balanced",
+                "Positioned near the close to lower cognitive load and leave attendees with a clear final takeaway.");
+        }
+
+        if (format == "workshop")
+        {
+            return new("Peak engagement", "optimized", "optimized",
+                "Scheduled in the middle of the flow when attendees have enough context and energy for active participation.");
+        }
+
+        return new("Flow bridge", "balanced", "balanced",
+            "Placed here to balance pacing between adjacent formats and keep the agenda from feeling repetitive.");
+    }
+
+    private string GetUserThreadMessage() => _activeCycle is null
+        ? "Ready to request an AI schedule draft."
+        : _activeCycle.Status switch
+        {
+            "ReadyToPublish" => "Approved the Planner draft for publish.",
+            "Published" => "Published the approved schedule.",
+            _ when _activeCycle.ActiveDraft is not null => "Requested a draft and is reviewing edits.",
+            _ => "Started a planning cycle."
+        };
+
+    private string GetPlannerThreadMessage() => _activeCycle is null
+        ? "Waiting for a cycle."
+        : _activeCycle.Status switch
+        {
+            "Published" => "Cycle closed; future revisions need a fresh conversation.",
+            "ReadyToPublish" => "Draft reconciled with human edits.",
+            _ when isAiDrafting => "Drafting a timeline and reasoning pack…",
+            _ when _activeCycle.ActiveDraft is not null => "Returned agenda blocks, constraints, rationale, and risks.",
+            _ => "Cycle ready; no draft has been generated yet."
+        };
+
+    private string GetStatusDotClass() => isAiDrafting
+        ? "agent-console-status-dot agent-console-status-dot--active"
+        : isCyclePublished
+            ? "agent-console-status-dot agent-console-status-dot--locked"
+            : "agent-console-status-dot";
+
+    // ── Agent Session status bar helpers ──
+
+    private string GetShortCycleId() =>
+        _activeCycle is null
+            ? "no cycle"
+            : _activeCycle.CycleId.ToString("N")[..8];
+
+    private string GetShortConversationId()
+    {
+        var convId = _activeCycle?.ConversationId;
+        if (string.IsNullOrWhiteSpace(convId))
+            return "—";
+        return convId.Length <= 14 ? convId : string.Concat(convId.AsSpan(0, 14), "…");
+    }
+
+    private string GetAgentStatusText()
+    {
+        if (isAiDrafting) return "generating";
+        if (isCyclePublished) return "locked";
+        if (_activeCycle?.ActiveDraft is not null) return "completed";
+        return "idle";
+    }
+
+    private string GetAgentStatusPillClass() => GetAgentStatusText() switch
+    {
+        "generating" => "agent-session-pill--generating",
+        "locked" => "agent-session-pill--locked",
+        "completed" => "agent-session-pill--completed",
+        _ => "agent-session-pill--idle"
+    };
+
+    private void InitConsoleMessages()
+    {
+        _consoleMessages.Clear();
+        if (_activeCycle is null)
+        {
+            _consoleMessages.Add(new("User", "Ready to request an AI schedule draft."));
+            _consoleMessages.Add(new("Planner", "Waiting for a cycle to begin."));
+            return;
+        }
+
+        _consoleMessages.Add(new("User", GetUserThreadMessage()));
+        _consoleMessages.Add(new("Planner", GetPlannerThreadMessage()));
+        if (isCyclePublished)
+            _consoleMessages.Add(new("Planner", "Cycle closed. Start a new cycle for post-publish changes."));
+    }
+
+    private void UpdateTargetDuration(ChangeEventArgs e)
+    {
+        _targetDurationMinutes = int.TryParse(e.Value?.ToString(), out var v) ? v : null;
+    }
+
+    private async Task ApplyPromptChipAsync(string chipLabel, string constraintText)
+    {
+        if (!ContainsEquivalentConstraintToken(_refineConstraints, constraintText))
+        {
+            _refineConstraints = string.IsNullOrWhiteSpace(_refineConstraints)
+                ? constraintText
+                : $"{_refineConstraints.TrimEnd(';', ' ')}; {constraintText}";
+        }
+
+        _applyingSteeringLabel = chipLabel;
+        _consoleMessages.Add(new("User", $"Refine schedule: {chipLabel}"));
+        await DraftWithAiAsync(constraintText, chipLabel);
+    }
+
+    private Task ChipShortenEventAsync() =>
+        ApplyPromptChipAsync("Shorten event", "Shorten the event — reduce total duration without losing key talks.");
+
+    private Task ChipAddNetworkingAsync() =>
+        ApplyPromptChipAsync("Add networking block", "Add a dedicated networking block to the agenda and rebalance adjacent sessions around it.");
+
+    private Task ChipRebalanceAsync() =>
+        ApplyPromptChipAsync("Rebalance sessions", "Rebalance session durations so no single block dominates.");
+
+    private string GetPlannerReasoningStepClass(int stepIndex)
+    {
+        var stateClass = stepIndex < _activePlannerReasoningStep
+            ? "is-complete"
+            : stepIndex == _activePlannerReasoningStep
+                ? "is-active"
+                : "is-pending";
+        return $"agent-console-reasoning-step {stateClass}";
+    }
+
+    private async Task TypePlannerMessageAsync(string text)
+    {
+        var msg = new ConsoleMessage("Planner", string.Empty, isStreaming: true);
+        _consoleMessages.Add(msg);
+
+        for (var i = 1; i <= text.Length; i++)
+        {
+            msg.Text = text[..i];
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(18);
+        }
+
+        msg.IsStreaming = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private IEnumerable<string> GetConstraints() =>
+        ActiveAgendaJson?.Constraints.Where(item => !string.IsNullOrWhiteSpace(item)) ?? [];
+
+    private IEnumerable<string> GetObjectives() =>
+        ActiveAgendaJson?.Objectives.Where(item => !string.IsNullOrWhiteSpace(item)) ?? [];
+
+    private IEnumerable<PlanningAgendaActionDto> GetNextActions() =>
+        ActiveAgendaJson?.NextActions.Items.Where(item => !string.IsNullOrWhiteSpace(item.Action)) ?? [];
+
+    private void ToggleRawSchema() => _showRawSchema = !_showRawSchema;
+
+    private string GetRawSchemaJson()
+    {
+        if (ActiveAgendaJson is null)
+        {
+            return string.Empty;
+        }
+
+        return System.Text.Json.JsonSerializer.Serialize(
+            ActiveAgendaJson,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private IEnumerable<string> GetRationaleItems()
+    {
+        if (ActiveAgendaJson?.Rationale is null)
+        {
+            return [];
+        }
+
+        return ActiveAgendaJson.Rationale.KeyTradeoffs
+            .Concat(ActiveAgendaJson.Rationale.InclusionNotes)
+            .Where(item => !string.IsNullOrWhiteSpace(item));
+    }
+
+    private IEnumerable<PlanningAgendaRiskDto> GetRiskItems() =>
+        ActiveAgendaJson?.Risks.Items.Where(item =>
+            !string.IsNullOrWhiteSpace(item.Risk) ||
+            !string.IsNullOrWhiteSpace(item.Mitigation)) ?? [];
+
     // ── Session CRUD ──
 
     private void AddSession()
@@ -1280,6 +1896,7 @@
     private void DeleteSession(SessionViewModel session)
     {
         ClearDiffState(session.Id);
+        ClearDiffState(session.Id);
         sessions.Remove(session);
         ReorderSessions();
         statusMessage = null;
@@ -1287,6 +1904,7 @@
 
     private void MoveUp(SessionViewModel session)
     {
+        ClearDiffState(session.Id);
         ClearDiffState(session.Id);
         var other = sessions.Find(s => s.Order == session.Order - 1);
         if (other is null) return;
@@ -1296,6 +1914,7 @@
 
     private void MoveDown(SessionViewModel session)
     {
+        ClearDiffState(session.Id);
         ClearDiffState(session.Id);
         var other = sessions.Find(s => s.Order == session.Order + 1);
         if (other is null) return;
@@ -1315,15 +1934,18 @@
     private void StartEdit(SessionViewModel session)
     {
         ClearDiffState(session.Id);
+        ClearDiffState(session.Id);
         editSnapshots[session.Id] = new SessionViewModel
         {
             Id = session.Id,
+            BlockId = session.BlockId,
             BlockId = session.BlockId,
             Title = session.Title,
             Speaker = session.Speaker,
             StartTime = session.StartTime,
             EndTime = session.EndTime,
             Description = session.Description,
+            Format = session.Format,
             Format = session.Format,
             Order = session.Order
         };
@@ -1340,6 +1962,7 @@
             session.EndTime = snapshot.EndTime;
             session.Description = snapshot.Description;
             session.Format = snapshot.Format;
+            session.Format = snapshot.Format;
             editSnapshots.Remove(session.Id);
         }
         session.IsEditing = false;
@@ -1347,6 +1970,7 @@
 
     // ── AI Draft ──
 
+    private async Task DraftWithAiAsync(string? steeringPrompt = null, string? steeringLabel = null)
     private async Task DraftWithAiAsync(string? steeringPrompt = null, string? steeringLabel = null)
     {
         if (EventId == Guid.Empty)
@@ -1360,7 +1984,18 @@
             isAiDrafting = true;
             _activePlannerReasoningStep = -1;
             _plannerLiveStatus = "Planner is generating schedule";
+            _activePlannerReasoningStep = -1;
+            _plannerLiveStatus = "Planner is generating schedule";
             statusMessage = null;
+            if (!string.IsNullOrWhiteSpace(steeringLabel))
+            {
+                _applyingSteeringLabel = steeringLabel;
+            }
+
+            if (string.IsNullOrWhiteSpace(steeringPrompt))
+            {
+                _consoleMessages.Add(new("User", "Draft a schedule from the current event context."));
+            }
             if (!string.IsNullOrWhiteSpace(steeringLabel))
             {
                 _applyingSteeringLabel = steeringLabel;
@@ -1383,6 +2018,18 @@
                 await TypePlannerMessageAsync(PlannerReasoningSteps[stepIndex]);
                 await Task.Delay(280);
             }
+            var previousSnapshots = sessions
+                .Select(SessionSnapshot.From)
+                .GroupBy(snapshot => snapshot.StableKey, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+            await Task.Delay(220);
+            for (var stepIndex = 0; stepIndex < PlannerReasoningSteps.Length; stepIndex++)
+            {
+                _activePlannerReasoningStep = stepIndex;
+                await TypePlannerMessageAsync(PlannerReasoningSteps[stepIndex]);
+                await Task.Delay(280);
+            }
 
             _activeCycle ??= await PlanningCycleApi.StartCycleAsync(EventId, new StartPlanningCycleDto());
             _activeCycle = await PlanningCycleApi.GenerateDraftAsync(
@@ -1391,15 +2038,20 @@
                     WorkItemId: $"draft-{Guid.CreateVersion7():N}",
                     Constraints: BuildPlannerConstraints(steeringPrompt),
                     HumanEditedMarkdown: string.IsNullOrWhiteSpace(_plannerMarkdown) ? null : _plannerMarkdown,
+                    Constraints: BuildPlannerConstraints(steeringPrompt),
+                    HumanEditedMarkdown: string.IsNullOrWhiteSpace(_plannerMarkdown) ? null : _plannerMarkdown,
                     RequestedBy: "organizer"));
 
             ApplyDraftToUi(_activeCycle.ActiveDraft, previousSnapshots);
+            ApplyDraftToUi(_activeCycle.ActiveDraft, previousSnapshots);
             agendaStatus = ScheduleStatus.ProposedByAgent;
+            await TypePlannerMessageAsync("Returned agenda blocks, constraints, rationale, and risks. Review and approve to publish.");
             await TypePlannerMessageAsync("Returned agenda blocks, constraints, rationale, and risks. Review and approve to publish.");
         }
         catch (Refit.ApiException apiEx)
         {
             statusMessage = $"Planner draft failed: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
+            await TypePlannerMessageAsync($"Draft failed ({(int)apiEx.StatusCode}). Try again.");
             await TypePlannerMessageAsync($"Draft failed ({(int)apiEx.StatusCode}). Try again.");
         }
         finally
@@ -1408,81 +2060,13 @@
             _activePlannerReasoningStep = -1;
             _plannerLiveStatus = null;
             _applyingSteeringLabel = null;
+            _activePlannerReasoningStep = -1;
+            _plannerLiveStatus = null;
+            _applyingSteeringLabel = null;
         }
     }
 
-    private string? BuildPlannerConstraints(string? steeringPrompt)
-    {
-        var constraints = new List<string>();
-        if (!string.IsNullOrWhiteSpace(_refineConstraints))
-        {
-            constraints.Add(_refineConstraints.Trim());
-        }
-
-        if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !constraints.Any(item => string.Equals(item, steeringPrompt, StringComparison.OrdinalIgnoreCase)))
-        {
-            constraints.Add(steeringPrompt.Trim());
-        }
-
-        if (_targetDurationMinutes is { } targetDuration)
-        {
-            constraints.Add($"Target total duration: {targetDuration.ToString(System.Globalization.CultureInfo.InvariantCulture)} minutes.");
-        }
-
-        return constraints.Count == 0 ? null : string.Join(Environment.NewLine, constraints);
-    }
-
-    private string? BuildPlannerConstraints(string? steeringPrompt)
-    {
-        var constraints = new List<string>();
-        if (!string.IsNullOrWhiteSpace(_refineConstraints))
-        {
-            constraints.Add(_refineConstraints.Trim());
-        }
-
-        if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !ContainsEquivalentConstraintToken(_refineConstraints, steeringPrompt))
-        {
-            constraints.Add(steeringPrompt.Trim());
-        }
-
-        if (_targetDurationMinutes is { } targetDuration)
-        {
-            constraints.Add($"Target total duration: {targetDuration.ToString(System.Globalization.CultureInfo.InvariantCulture)} minutes.");
-        }
-
-        return constraints.Count == 0 ? null : string.Join(Environment.NewLine, constraints);
-    }
-
-    private static bool ContainsEquivalentConstraintToken(string? constraints, string? candidate)
-    {
-        var normalizedCandidate = NormalizeConstraintToken(candidate);
-        if (string.IsNullOrEmpty(normalizedCandidate))
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(constraints))
-        {
-            return false;
-        }
-
-        foreach (var token in constraints.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-        {
-            if (string.Equals(NormalizeConstraintToken(token), normalizedCandidate, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static string NormalizeConstraintToken(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? string.Empty
-            : value.Trim().TrimEnd(';').Trim();
+    
 
     private string? BuildPlannerConstraints(string? steeringPrompt)
     {
@@ -1557,8 +2141,12 @@
             ApplyDraftToUi(_activeCycle.ActiveDraft);
             _newlyGeneratedBlockIds.Clear();
             _updatedGeneratedBlockIds.Clear();
+            _newlyGeneratedBlockIds.Clear();
+            _updatedGeneratedBlockIds.Clear();
             agendaStatus = ScheduleStatus.ApprovedByHuman;
             statusMessage = "✅ Draft approved and reconciled. Publish to finalize and close this cycle.";
+            _consoleMessages.Add(new("User", "Approved the draft with edits."));
+            _consoleMessages.Add(new("Planner", "Draft reconciled with human edits. Ready to publish."));
             _consoleMessages.Add(new("User", "Approved the draft with edits."));
             _consoleMessages.Add(new("Planner", "Draft reconciled with human edits. Ready to publish."));
         }
@@ -1582,8 +2170,13 @@
             sessions.Clear();
             _newlyGeneratedBlockIds.Clear();
             _updatedGeneratedBlockIds.Clear();
+            _newlyGeneratedBlockIds.Clear();
+            _updatedGeneratedBlockIds.Clear();
             agendaStatus = ScheduleStatus.Draft;
             statusMessage = "🔁 New planning cycle started with a new conversation thread.";
+            _refineConstraints = string.Empty;
+            _targetDurationMinutes = null;
+            InitConsoleMessages();
             _refineConstraints = string.Empty;
             _targetDurationMinutes = null;
             InitConsoleMessages();
@@ -1616,6 +2209,8 @@
             statusMessage = "📢 Schedule published. This cycle is now closed and refinement is blocked.";
             _consoleMessages.Add(new("User", "Published the approved schedule."));
             _consoleMessages.Add(new("Planner", "Cycle closed. Immutable snapshot stored."));
+            _consoleMessages.Add(new("User", "Published the approved schedule."));
+            _consoleMessages.Add(new("Planner", "Cycle closed. Immutable snapshot stored."));
         }
         catch (Refit.ApiException apiEx)
         {
@@ -1632,8 +2227,15 @@
         _activeCycle = null;
         _plannerMarkdown = string.Empty;
         _showRawSchema = false;
+        editSnapshots.Clear();
+        _newlyGeneratedBlockIds.Clear();
+        _updatedGeneratedBlockIds.Clear();
+        _activeCycle = null;
+        _plannerMarkdown = string.Empty;
+        _showRawSchema = false;
         agendaStatus = ScheduleStatus.Draft;
         statusMessage = null;
+        InitConsoleMessages();
         InitConsoleMessages();
     }
 
@@ -1659,12 +2261,20 @@
         }
 
         InitConsoleMessages();
+
+        InitConsoleMessages();
     }
 
     private void ApplyDraftToUi(
         PlannerDraftDto? draft,
         IReadOnlyDictionary<string, SessionSnapshot>? previousSnapshots = null)
+    private void ApplyDraftToUi(
+        PlannerDraftDto? draft,
+        IReadOnlyDictionary<string, SessionSnapshot>? previousSnapshots = null)
     {
+        _newlyGeneratedBlockIds.Clear();
+        _updatedGeneratedBlockIds.Clear();
+
         _newlyGeneratedBlockIds.Clear();
         _updatedGeneratedBlockIds.Clear();
 
@@ -1709,8 +2319,69 @@
                 }
 
                 return session;
+            .Select((block, index) =>
+            {
+                var stableKey = GetBlockStableKey(block);
+                var order = index + 1;
+                SessionSnapshot? snapshot = null;
+                _ = previousSnapshots?.TryGetValue(stableKey, out snapshot);
+
+                var session = new SessionViewModel
+                {
+                    Id = snapshot?.Id ?? Guid.NewGuid(),
+                    BlockId = block.BlockId,
+                    Title = block.Title,
+                    Speaker = block.Speakers.FirstOrDefault()?.Name ?? string.Empty,
+                    StartTime = block.Start,
+                    EndTime = block.End,
+                    Description = block.Description,
+                    Format = block.Format,
+                    Order = order
+                };
+
+                if (previousSnapshots is not null)
+                {
+                    if (snapshot is null)
+                    {
+                        _newlyGeneratedBlockIds.Add(session.Id);
+                    }
+                    else if (!snapshot.Matches(block, order))
+                    {
+                        _updatedGeneratedBlockIds.Add(session.Id);
+                    }
+                }
+
+                return session;
             })
             .ToList();
+    }
+
+    private static string NormalizeDiffValue(string? value) => value?.Trim() ?? string.Empty;
+
+    private static string GetBlockStableKey(SessionViewModel session)
+    {
+        if (!string.IsNullOrWhiteSpace(session.BlockId))
+        {
+            return session.BlockId.Trim();
+        }
+
+        return $"{NormalizeDiffValue(session.Title)}|{NormalizeDiffValue(session.StartTime)}";
+    }
+
+    private static string GetBlockStableKey(PlanningAgendaBlockDto block)
+    {
+        if (!string.IsNullOrWhiteSpace(block.BlockId))
+        {
+            return block.BlockId.Trim();
+        }
+
+        return $"{NormalizeDiffValue(block.Title)}|{NormalizeDiffValue(block.Start)}";
+    }
+
+    private void ClearDiffState(Guid sessionId)
+    {
+        _newlyGeneratedBlockIds.Remove(sessionId);
+        _updatedGeneratedBlockIds.Remove(sessionId);
     }
 
     private static string NormalizeDiffValue(string? value) => value?.Trim() ?? string.Empty;
