@@ -153,7 +153,11 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
 
         try
         {
-            if (_client is null) { _client = await CreateClientAsync(ct); };
+            if (_client is null)
+            {
+                _client = await CreateClientAsync(ct);
+            }
+
             return _client;
         }
         finally
