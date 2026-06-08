@@ -63,7 +63,6 @@
             </span>
         </div>
     </div>
-
     @* Schedule Editor - agent-console three-column layout *@
     <div data-test="schedule-editor" class="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-6">
         @* ── Left Panel: Agent Console ── *@
@@ -1293,7 +1292,7 @@
     private readonly List<ConsoleMessage> _consoleMessages = [];
     private string _refineConstraints = string.Empty;
     private int? _targetDurationMinutes;
-    private readonly List<ConsoleMessage> _consoleMessages = [];
+    private List<ConsoleMessage> _consoleMessages = [];
     private PlanningCycleDto? _activeCycle;
     private string _plannerMarkdown = string.Empty;
     private readonly Dictionary<Guid, SessionViewModel> editSnapshots = new();
@@ -1306,7 +1305,7 @@
     private bool _showAgentTimeline;
     private bool _showRawSchema;
     private HashSet<Guid> _newlyGeneratedBlockIds = [];
-    private readonly HashSet<Guid> _updatedGeneratedBlockIds = [];
+    private HashSet<Guid> _updatedGeneratedBlockIds = [];
     private int _activePlannerReasoningStep = -1;
     private string? _plannerLiveStatus;
     private string? _applyingSteeringLabel;
@@ -2747,8 +2746,7 @@
             StateHasChanged();
             var previousSnapshots = sessions
                 .Select(SessionSnapshot.From)
-                .GroupBy(snapshot => snapshot.StableKey, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+                .ToDictionary(snapshot => snapshot.StableKey, StringComparer.OrdinalIgnoreCase);
 
             await Task.Delay(220);
             for (var stepIndex = 0; stepIndex < PlannerReasoningSteps.Length; stepIndex++)
@@ -2800,28 +2798,6 @@
             _plannerLiveStatus = null;
             _applyingSteeringLabel = null;
         }
-    }
-
-    private string? BuildPlannerConstraints(string? steeringPrompt)
-    {
-        var constraints = new List<string>();
-        if (!string.IsNullOrWhiteSpace(_refineConstraints))
-        {
-            constraints.Add(_refineConstraints.Trim());
-        }
-
-        if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !constraints.Any(item => string.Equals(item, steeringPrompt, StringComparison.OrdinalIgnoreCase)))
-        {
-            constraints.Add(steeringPrompt.Trim());
-        }
-
-        if (_targetDurationMinutes is { } targetDuration)
-        {
-            constraints.Add($"Target total duration: {targetDuration.ToString(System.Globalization.CultureInfo.InvariantCulture)} minutes.");
-        }
-
-        return constraints.Count == 0 ? null : string.Join(Environment.NewLine, constraints);
     }
 
     private string? BuildPlannerConstraints(string? steeringPrompt)
@@ -2980,6 +2956,7 @@
         editSnapshots.Clear();
         _newlyGeneratedBlockIds.Clear();
         _updatedGeneratedBlockIds.Clear();
+    
         _activeCycle = null;
         _plannerMarkdown = string.Empty;
         _showRawSchema = false;
@@ -2988,7 +2965,6 @@
         _updatedGeneratedBlockIds.Clear();
         agendaStatus = ScheduleStatus.Draft;
         statusMessage = null;
-        InitConsoleMessages();
         InitConsoleMessages();
     }
 
