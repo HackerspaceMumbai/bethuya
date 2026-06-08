@@ -67,13 +67,17 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
         // Assistant message stream
         session.On<AssistantMessageEvent>(msg =>
         {
-            Console.WriteLine(msg.Data.Content);
+            if (msg.Data.Content is not null)
+            {
+                responseBuilder.Append(msg.Data.Content);
+                Console.WriteLine(msg.Data.Content);
+            }
         });
 
-        // Session idle / completion
+        // Session completion
         session.On<SessionIdleEvent>(_ =>
         {
-            Console.WriteLine("Done");
+            done.TrySetResult();
         });
 
 
@@ -149,7 +153,7 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
 
         try
         {
-            _client ??= await CreateClientAsync(ct);
+            if (_client is null) { _client = await CreateClientAsync(ct); };
             return _client;
         }
         finally
