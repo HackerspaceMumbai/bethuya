@@ -23,18 +23,9 @@
             }
             else
             {
-                @if (agendaStatus == ScheduleStatus.ProposedByAgent)
-            {
-                <span class="status-badge-proposed-by-agent" aria-label="Proposed by Agent">
-                    <span aria-hidden="true">🤖</span> Proposed by Agent
-                </span>
-            }
-            else
-            {
                 <BbBadge Variant="@GetStatusBadgeVariant(agendaStatus)">
                         @GetStatusDisplayText(agendaStatus)
                     </BbBadge>
-            }
             }
         </div>
         <p class="text-sm text-muted-foreground">
@@ -1389,15 +1380,25 @@
     private string? BuildPlannerConstraints(string? steeringPrompt)
     {
         var constraints = new List<string>();
+        var normalizedConstraints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(_refineConstraints))
         {
-            constraints.Add(_refineConstraints.Trim());
+            foreach (var token in _refineConstraints.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                var normalizedToken = NormalizeConstraintToken(token);
+                if (string.IsNullOrEmpty(normalizedToken) || !normalizedConstraints.Add(normalizedToken))
+                {
+                    continue;
+                }
+
+                constraints.Add(normalizedToken);
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !constraints.Any(item => string.Equals(item, steeringPrompt, StringComparison.OrdinalIgnoreCase)))
+        var normalizedSteeringPrompt = NormalizeConstraintToken(steeringPrompt);
+        if (!string.IsNullOrEmpty(normalizedSteeringPrompt) && normalizedConstraints.Add(normalizedSteeringPrompt))
         {
-            constraints.Add(steeringPrompt.Trim());
+            constraints.Add(normalizedSteeringPrompt);
         }
 
         if (_targetDurationMinutes is { } targetDuration)
