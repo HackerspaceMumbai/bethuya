@@ -7,8 +7,7 @@ using Aspire.Hosting.Foundry;
 using Scalar.Aspire;
 
 var builder = DistributedApplication.CreateBuilder(args);
-builder.AddAzureContainerAppEnvironment("bethuya-env");
-
+var acaEnv = builder.AddAzureContainerAppEnvironment("bethuya-env");
 const int webHttpsPort = 7400;
 const int webHttpPort = 5095;
 const string gitHubCallbackPath = "/oauth/github/callback";
@@ -169,8 +168,7 @@ var plannerChatModel = foundryProject.AddModelDeployment(
     "planner-chat",
     FoundryModel.OpenAI.Gpt41);
 
-/*var aiPlatform = builder.ConfigureAIPlatform();
-*/
+
 var plannerHosted = builder
     .AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>(
         "planner-hosted")
@@ -178,8 +176,7 @@ var plannerHosted = builder
     .WithReference(foundryProject)
     .WithReference(plannerChatModel)
     .WaitFor(plannerChatModel)
-    .PublishAsHostedAgent(foundryProject);
-
+    .AsHostedAgent(foundryProject);
 
 // Migration service - runs EF Core migrations then exits; backend waits for it to complete.
 // IMPORTANT: run `dotnet ef migrations add InitialCreate --project src/Hackmum.Bethuya.Infrastructure`
