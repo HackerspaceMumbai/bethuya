@@ -1,19 +1,21 @@
-using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Text;
-using Aspire.Hosting.Azure;
+using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Azure.AppContainers;
 
 namespace AppHost.Extensions;
 
 public static class DatabaseExtensions
 {
-    public static IResourceBuilder<AzureSqlDatabaseResource> ConfigureDatabase(this IDistributedApplicationBuilder builder)
+        // Postgres keeps local development lightweight and avoids managed database provisioning friction.
+    public static IResourceBuilder<PostgresDatabaseResource>
+            ConfigureDatabase(
+                this IDistributedApplicationBuilder builder, IResourceBuilder<AzureContainerAppEnvironmentResource> acaEnv)
     {
-        var sql = builder.AddAzureSqlServer("sql")
-                                                            .RunAsContainer()
-                                                            .AddDatabase("BethuyaDb");
-        return sql;
-    }
+        var postgres = builder
+            .AddPostgres("postgres")
+            .WithComputeEnvironment(acaEnv);
 
+        var database = postgres.AddDatabase("BethuyaDb");
+
+        return database;
+    }
 }

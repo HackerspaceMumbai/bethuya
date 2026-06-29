@@ -17,31 +17,34 @@ public sealed partial class PendingImageUploadCleanupService(
         var interval = TimeSpan.FromMinutes(Math.Max(options.Value.PendingUploadCleanupIntervalMinutes, 5));
         using var timer = new PeriodicTimer(interval);
 
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        try
         {
-            try
+            while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                using var scope = scopeFactory.CreateScope();
-                var imageUploadService = scope.ServiceProvider.GetRequiredService<IImageUploadService>();
-                var cleanedCount = await imageUploadService.CleanupExpiredPendingUploadsAsync(stoppingToken);
-
-                if (cleanedCount > 0)
+                try
                 {
-                    LogDeletedExpiredPendingUploads(logger, cleanedCount);
+                    using var scope = scopeFactory.CreateScope();
+                    var imageUploadService = scope.ServiceProvider.GetRequiredService<IImageUploadService>();
+                    var cleanedCount = await imageUploadService.CleanupExpiredPendingUploadsAsync(stoppingToken);
+
+                    if (cleanedCount > 0)
+                    {
+                        LogDeletedExpiredPendingUploads(logger, cleanedCount);
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    LogPendingUploadCleanupIterationFailed(logger, ex);
+                }
+                catch (TimeoutException ex)
+                {
+                    LogPendingUploadCleanupIterationFailed(logger, ex);
                 }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (InvalidOperationException ex)
-            {
-                LogPendingUploadCleanupIterationFailed(logger, ex);
-            }
-            catch (TimeoutException ex)
-            {
-                LogPendingUploadCleanupIterationFailed(logger, ex);
-            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Expected during shutdown
         }
     }
 

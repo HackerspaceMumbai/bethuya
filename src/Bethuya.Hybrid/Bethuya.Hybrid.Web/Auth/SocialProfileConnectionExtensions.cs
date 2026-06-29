@@ -23,7 +23,7 @@ internal static class SocialProfileConnectionDefaults
 /// <summary>Registers and maps verified social profile connection flows for onboarding.</summary>
 public static class SocialProfileConnectionExtensions
 {
-    private static readonly string[] DefaultLinkedInOidcScopes = ["openid", "profile"];
+    private static readonly string[] _defaultLinkedInOidcScopes = ["openid", "profile"];
 
     public static WebApplicationBuilder AddSocialProfileConnectionAuthentication(this WebApplicationBuilder builder)
     {
@@ -52,6 +52,15 @@ public static class SocialProfileConnectionExtensions
                 oauth.CallbackPath = string.IsNullOrWhiteSpace(options.GitHub.CallbackPath)
                     ? "/signin-github-connect"
                     : options.GitHub.CallbackPath;
+                oauth.CorrelationCookie.SameSite =
+                      builder.Environment.IsDevelopment()
+                         ? SameSiteMode.Lax
+                         : SameSiteMode.None;
+
+                oauth.CorrelationCookie.SecurePolicy =
+                    builder.Environment.IsDevelopment()
+                        ? CookieSecurePolicy.SameAsRequest
+                        : CookieSecurePolicy.Always;
                 oauth.AuthorizationEndpoint = "https://github.com/login/oauth/authorize";
                 oauth.TokenEndpoint = "https://github.com/login/oauth/access_token";
                 oauth.UserInformationEndpoint = "https://api.github.com/user";
@@ -96,6 +105,16 @@ public static class SocialProfileConnectionExtensions
                 oauth.CallbackPath = string.IsNullOrWhiteSpace(options.LinkedIn.CallbackPath)
                     ? "/signin-linkedin-connect"
                     : options.LinkedIn.CallbackPath;
+                // ✅ FIX: Correlation cookie for ACA + local
+                oauth.CorrelationCookie.SameSite =
+                    builder.Environment.IsDevelopment()
+                        ? SameSiteMode.Lax
+                        : SameSiteMode.None;
+
+                oauth.CorrelationCookie.SecurePolicy =
+                    builder.Environment.IsDevelopment()
+                        ? CookieSecurePolicy.SameAsRequest
+                        : CookieSecurePolicy.Always;
                 oauth.AuthorizationEndpoint = "https://www.linkedin.com/oauth/v2/authorization";
                 oauth.TokenEndpoint = "https://www.linkedin.com/oauth/v2/accessToken";
                 oauth.UserInformationEndpoint = usesOpenIdConnect
@@ -273,7 +292,7 @@ public static class SocialProfileConnectionExtensions
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return configuredScopes.Length > 0 ? configuredScopes : DefaultLinkedInOidcScopes;
+        return configuredScopes.Length > 0 ? configuredScopes : _defaultLinkedInOidcScopes;
     }
 
     private static bool UsesLinkedInOpenIdConnect(IEnumerable<string> scopes)

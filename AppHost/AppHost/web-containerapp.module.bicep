@@ -89,9 +89,40 @@ resource web 'Microsoft.App/containerApps@2025-10-02-preview' = {
             }
             {
               name: 'ASPNETCORE_STATICWEBASSETS'
-              value: 'D:\\Projects\\bethuya\\src\\Bethuya.Hybrid\\Bethuya.Hybrid.Web\\obj\\Debug\\net10.0\\staticwebassets.development.json'
+              value: 'D:\\Projects\\bethuya.worktrees\\postgres\\src\\Bethuya.Hybrid\\Bethuya.Hybrid.Web\\obj\\Debug\\net10.0\\staticwebassets.development.json'
             }
-           
+            {
+              name: 'SocialConnections__GitHub__ClientId'
+              value: 'Ov23liOoR9dMeN5uOQrs'
+            }
+            {
+              name: 'SocialConnections__GitHub__ClientSecret'
+              value: 'REDACTED_GITHUB_SECRET'
+            }
+            {
+              name: 'SocialConnections__GitHub__CallbackPath'
+              value: '/oauth/github/callback'
+            }
+            {
+              name: 'SocialConnections__LinkedIn__ClientId'
+              value: '86rr1crp0npnmc'
+            }
+            {
+              name: 'SocialConnections__LinkedIn__ClientSecret'
+              value: 'REDACTED_LINKEDIN_SECRET'
+            }
+            {
+              name: 'SocialConnections__LinkedIn__CallbackPath'
+              value: '/oauth/linkedin/callback'
+            }
+            {
+              name: 'SocialConnections__LinkedIn__Scopes__0'
+              value: 'openid'
+            }
+            {
+              name: 'SocialConnections__LinkedIn__Scopes__1'
+              value: 'profile'
+            }
           ]
         }
       ]

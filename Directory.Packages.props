@@ -6,9 +6,11 @@
     <MauiVersion>9.0.21</MauiVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.4.2" />
-    <PackageVersion Include="Aspire.Hosting.Foundry" Version="13.4.2-preview.1.26303.6" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.4.3" />
+    <PackageVersion Include="Aspire.Hosting.Foundry" Version="13.4.3-preview.1.26305.13" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.4.3" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
+    <PackageVersion Include="MessagePack" Version="3.1.7" />
     <!-- Azure Monitor / Application Insights - enabled via APPLICATIONINSIGHTS_CONNECTION_STRING env var -->
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.5.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
@@ -43,25 +45,23 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
-    <!-- EF Core - Azure SQL (local SQL Server container via Aspire for dev) -->
+    <!-- EF Core - Postgres (local Postgres container via Aspire for dev) -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.8" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.8" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8" />
-    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.4.2" />
-    <!-- Aspire hosting for SQL Server (AppHost) -->
-    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.4.2" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.4.3" />
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
     <!-- Aspire hosting for Key Vault (AppHost) - provisions Key Vault; azd stores secret params here -->
-    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.4.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.4.3" />
     <!-- Aspire hosting for Keycloak (AppHost - local OIDC testing) -->
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.3.5-preview.1.26270.6" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.3-preview.1.26305.13" />
     <!-- ASP.NET Core TestHost for minimal-API endpoint testing -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.8" />
     <!-- Testing - TUnit (not xUnit/NUnit per project standards) -->
     <PackageVersion Include="TUnit" Version="1.51.0" />
     <!-- Aspire integration testing - DistributedApplicationTestingBuilder -->
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.4.2" />
-    <!-- Respawn - fast DB cleanup between integration tests (SqlServer adapter) -->
+    <!-- Respawn - fast DB cleanup between integration tests (Postgres adapter) -->
     <PackageVersion Include="Respawn" Version="7.0.0" />
     <!-- bUnit component rendering tests (bunit.web = no xUnit dependency, includes TestContext) -->
     <PackageVersion Include="bunit.web" Version="1.40.0" />

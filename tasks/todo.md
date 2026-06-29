@@ -16,6 +16,18 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-06-09] Fix Postgres filtered index SQL
+- **Status:** done
+- **Agent/Owner:** Codex
+- **Description:** Fix SQL Server bracket syntax left in EF model configuration that causes Npgsql `EnsureCreatedAsync` to fail while creating filtered indexes.
+- **Acceptance:** ✅ Filtered index metadata uses Postgres-compatible SQL. ✅ SQL Server raw-SQL pattern search found no remaining provider-specific EF configuration. ✅ Backend and migration service builds pass with isolated output folders.
+
+## [2026-06-09] Refactor backend and migration service for Postgres
+- **Status:** done
+- **Agent/Owner:** Codex
+- **Description:** Replace remaining SQL Server EF Core/Aspire wiring in Hackmum.Bethuya.Backend infrastructure and Bethuya.MigrationService with Postgres-compatible packages, DI, and schema bootstrap SQL.
+- **Acceptance:** ✅ Backend and migration service reference Postgres provider packages. ✅ Infrastructure and migration worker use Aspire/Npgsql DbContext registration. ✅ Pending image upload bootstrap SQL is Postgres-specific and provider-guarded. ✅ Integration fixture uses Npgsql + Respawn Postgres adapter. ✅ `dotnet build` passed for backend, migration service, and integration tests using isolated output folders. ⚠️ Direct AppHost build was blocked by an existing `Bethuya.Hybrid.Shared` obj-file lock; integration-test build compiled AppHost successfully through its project reference.
+
 <<<<<<< HEAD
 ## [2026-05-28] Fix live curation split-pane scrolling
 - **Status:** done

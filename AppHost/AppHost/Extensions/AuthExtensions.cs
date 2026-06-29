@@ -5,15 +5,17 @@ using System.Text;
 namespace AppHost.Extensions;
 
 
+using Aspire.Hosting.ApplicationModel;
+
 public sealed record SocialAuthSettings(
-   string GitHubClientId,
-   string GitHubClientSecret,
-   string GitHubCallbackPath,
-   string LinkedInClientId,
-   string LinkedInClientSecret,
-   string LinkedInCallbackPath,
-   string LinkedInScope0,
-   string LinkedInScope1);
+    IResourceBuilder<ParameterResource> GitHubClientId,
+    IResourceBuilder<ParameterResource> GitHubClientSecret,
+    string GitHubCallbackPath,
+    IResourceBuilder<ParameterResource> LinkedInClientId,
+    IResourceBuilder<ParameterResource> LinkedInClientSecret,
+    string LinkedInCallbackPath,
+    IResourceBuilder<ParameterResource> LinkedInScope0,
+    IResourceBuilder<ParameterResource> LinkedInScope1);
 
 public static  class AuthExtensions
 {

@@ -52,6 +52,7 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
+
     await dbContext.Database.EnsureCreatedAsync();
     await dbContext.EnsurePendingImageUploadSchemaAsync();
 
@@ -75,3 +76,4 @@ app.MapPlanningCycleEndpoints();
 app.MapDefaultEndpoints();
 
 app.Run();
+

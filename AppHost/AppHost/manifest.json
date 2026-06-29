@@ -12,14 +12,37 @@
         "userPrincipalId": ""
       }
     },
-    "sql": {
-      "type": "azure.bicep.v0",
-      "connectionString": "Server=tcp:{sql.outputs.sqlServerFqdn},1433;Encrypt=True;Authentication=\u0022Active Directory Default\u0022",
-      "path": "sql.module.bicep"
+    "postgres": {
+      "type": "container.v1",
+      "connectionString": "Host={postgres.bindings.tcp.host};Port={postgres.bindings.tcp.port};Username=postgres;Password={postgres-password.value}",
+      "image": "docker.io/library/postgres:18.3",
+      "deployment": {
+        "type": "azure.bicep.v0",
+        "path": "postgres-containerapp.module.bicep",
+        "params": {
+          "bethuya_env_outputs_azure_container_apps_environment_default_domain": "{bethuya-env.outputs.AZURE_CONTAINER_APPS_ENVIRONMENT_DEFAULT_DOMAIN}",
+          "bethuya_env_outputs_azure_container_apps_environment_id": "{bethuya-env.outputs.AZURE_CONTAINER_APPS_ENVIRONMENT_ID}",
+          "postgres_password_value": "{postgres-password.value}"
+        }
+      },
+      "env": {
+        "POSTGRES_HOST_AUTH_METHOD": "scram-sha-256",
+        "POSTGRES_INITDB_ARGS": "--auth-host=scram-sha-256 --auth-local=scram-sha-256",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "{postgres-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 5432
+        }
+      }
     },
     "BethuyaDb": {
       "type": "value.v0",
-      "connectionString": "{sql.connectionString};Database=BethuyaDb"
+      "connectionString": "{postgres.connectionString};Database=BethuyaDb"
     },
     "vault": {
       "type": "azure.bicep.v0",
@@ -35,8 +58,24 @@
         }
       }
     },
-
-   
+    "cloudinary-api-key": {
+      "type": "parameter.v0",
+      "value": "{cloudinary-api-key.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "cloudinary-api-secret": {
+      "type": "parameter.v0",
+      "value": "{cloudinary-api-secret.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "ai-foundrylocal-endpoint": {
       "type": "parameter.v0",
       "value": "{ai-foundrylocal-endpoint.inputs.value}",
@@ -63,8 +102,15 @@
           "type": "string"
         }
       }
-    }
-
+    },
+    "ai-azure-openai-key": {
+      "type": "parameter.v0",
+      "value": "{ai-azure-openai-key.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
     },
     "ai-azure-openai-model": {
       "type": "parameter.v0",
@@ -74,8 +120,15 @@
           "type": "string"
         }
       }
-    }
-    
+    },
+    "ai-openai-key": {
+      "type": "parameter.v0",
+      "value": "{ai-openai-key.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
     },
     "ai-openai-model": {
       "type": "parameter.v0",
@@ -167,18 +220,18 @@
           "bethuya_env_outputs_azure_container_registry_endpoint": "{bethuya-env.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT}",
           "bethuya_env_outputs_azure_container_registry_managed_identity_id": "{bethuya-env.outputs.AZURE_CONTAINER_REGISTRY_MANAGED_IDENTITY_ID}",
           "migration_service_containerimage": "{migration-service.containerImage}",
-          "migration_service_identity_outputs_id": "{migration-service-identity.outputs.id}",
-          "sql_outputs_sqlserverfqdn": "{sql.outputs.sqlServerFqdn}",
-          "migration_service_identity_outputs_clientid": "{migration-service-identity.outputs.clientId}"
+          "postgres_password_value": "{postgres-password.value}"
         }
       },
       "env": {
         "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
         "ConnectionStrings__BethuyaDb": "{BethuyaDb.connectionString}",
-        "BETHUYADB_HOST": "{sql.outputs.sqlServerFqdn}",
-        "BETHUYADB_PORT": "1433",
-        "BETHUYADB_URI": "mssql://{sql.outputs.sqlServerFqdn}:1433/BethuyaDb",
-        "BETHUYADB_JDBCCONNECTIONSTRING": "jdbc:sqlserver://{sql.outputs.sqlServerFqdn}:1433;database=BethuyaDb;encrypt=true;trustServerCertificate=false",
+        "BETHUYADB_HOST": "{postgres.bindings.tcp.host}",
+        "BETHUYADB_PORT": "{postgres.bindings.tcp.port}",
+        "BETHUYADB_USERNAME": "postgres",
+        "BETHUYADB_PASSWORD": "{postgres-password.value}",
+        "BETHUYADB_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/BethuyaDb",
+        "BETHUYADB_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/BethuyaDb",
         "BETHUYADB_DATABASENAME": "BethuyaDb"
       }
     },
@@ -196,13 +249,17 @@
           "backend_containerimage": "{backend.containerImage}",
           "backend_identity_outputs_id": "{backend-identity.outputs.id}",
           "backend_containerport": "{backend.containerPort}",
-          "sql_outputs_sqlserverfqdn": "{sql.outputs.sqlServerFqdn}",
+          "postgres_password_value": "{postgres-password.value}",
           "bethuya_project_outputs_endpoint": "{bethuya-project.outputs.endpoint}",
           "cloudinary_cloud_name_value": "{cloudinary-cloud-name.value}",
+          "cloudinary_api_key_value": "{cloudinary-api-key.value}",
+          "cloudinary_api_secret_value": "{cloudinary-api-secret.value}",
           "ai_foundrylocal_endpoint_value": "{ai-foundrylocal-endpoint.value}",
           "ai_ollama_endpoint_value": "{ai-ollama-endpoint.value}",
           "ai_azure_openai_endpoint_value": "{ai-azure-openai-endpoint.value}",
+          "ai_azure_openai_key_value": "{ai-azure-openai-key.value}",
           "ai_azure_openai_model_value": "{ai-azure-openai-model.value}",
+          "ai_openai_key_value": "{ai-openai-key.value}",
           "ai_openai_model_value": "{ai-openai-model.value}",
           "vault_outputs_vaulturi": "{vault.outputs.vaultUri}",
           "backend_identity_outputs_clientid": "{backend-identity.outputs.clientId}"
@@ -213,20 +270,26 @@
         "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
         "HTTP_PORTS": "{backend.bindings.http.targetPort}",
         "ConnectionStrings__BethuyaDb": "{BethuyaDb.connectionString}",
-        "BETHUYADB_HOST": "{sql.outputs.sqlServerFqdn}",
-        "BETHUYADB_PORT": "1433",
-        "BETHUYADB_URI": "mssql://{sql.outputs.sqlServerFqdn}:1433/BethuyaDb",
-        "BETHUYADB_JDBCCONNECTIONSTRING": "jdbc:sqlserver://{sql.outputs.sqlServerFqdn}:1433;database=BethuyaDb;encrypt=true;trustServerCertificate=false",
+        "BETHUYADB_HOST": "{postgres.bindings.tcp.host}",
+        "BETHUYADB_PORT": "{postgres.bindings.tcp.port}",
+        "BETHUYADB_USERNAME": "postgres",
+        "BETHUYADB_PASSWORD": "{postgres-password.value}",
+        "BETHUYADB_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/BethuyaDb",
+        "BETHUYADB_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/BethuyaDb",
         "BETHUYADB_DATABASENAME": "BethuyaDb",
         "PLANNER_HOSTED_HTTP": "{planner-hosted.bindings.http.url}",
         "services__planner-hosted__http__0": "{planner-hosted.bindings.http.url}",
         "PLANNER_HOSTED_HTTPS": "{planner-hosted.bindings.https.url}",
         "services__planner-hosted__https__0": "{planner-hosted.bindings.https.url}",
         "Cloudinary__CloudName": "{cloudinary-cloud-name.value}",
+        "Cloudinary__ApiKey": "{cloudinary-api-key.value}",
+        "Cloudinary__ApiSecret": "{cloudinary-api-secret.value}",
         "AI__Providers__FoundryLocal__Endpoint": "{ai-foundrylocal-endpoint.value}",
         "AI__Providers__Ollama__Endpoint": "{ai-ollama-endpoint.value}",
         "AI__Providers__AzureOpenAI__Endpoint": "{ai-azure-openai-endpoint.value}",
+        "AI__Providers__AzureOpenAI__ApiKey": "{ai-azure-openai-key.value}",
         "AI__Providers__AzureOpenAI__ModelId": "{ai-azure-openai-model.value}",
+        "AI__Providers__OpenAI__ApiKey": "{ai-openai-key.value}",
         "AI__Providers__OpenAI__ModelId": "{ai-openai-model.value}",
         "Onboarding__BypassMandatoryProfile": "false",
         "ConnectionStrings__vault": "{vault.connectionString}",
@@ -272,7 +335,15 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "Onboarding__BypassSocialConnections": "false",
         "Onboarding__BypassMandatoryProfile": "false",
-        "ASPNETCORE_STATICWEBASSETS": "D:\\Projects\\bethuya\\src\\Bethuya.Hybrid\\Bethuya.Hybrid.Web\\obj\\Debug\\net10.0\\staticwebassets.development.json",
+        "ASPNETCORE_STATICWEBASSETS": "D:\\Projects\\bethuya.worktrees\\postgres\\src\\Bethuya.Hybrid\\Bethuya.Hybrid.Web\\obj\\Debug\\net10.0\\staticwebassets.development.json",
+        "SocialConnections__GitHub__ClientId": "Ov23liOoR9dMeN5uOQrs",
+        "SocialConnections__GitHub__ClientSecret": "REDACTED_GITHUB_SECRET",
+        "SocialConnections__GitHub__CallbackPath": "/oauth/github/callback",
+        "SocialConnections__LinkedIn__ClientId": "86rr1crp0npnmc",
+        "SocialConnections__LinkedIn__ClientSecret": "REDACTED_LINKEDIN_SECRET",
+        "SocialConnections__LinkedIn__CallbackPath": "/oauth/linkedin/callback",
+        "SocialConnections__LinkedIn__Scopes__0": "openid",
+        "SocialConnections__LinkedIn__Scopes__1": "profile"
       },
       "bindings": {
         "http": {
@@ -303,33 +374,9 @@
         "principalId": "{planner-hosted-identity.outputs.principalId}"
       }
     },
-    "migration-service-identity": {
-      "type": "azure.bicep.v0",
-      "path": "migration-service-identity.module.bicep"
-    },
-    "migration-service-roles-sql": {
-      "type": "azure.bicep.v0",
-      "path": "migration-service-roles-sql.module.bicep",
-      "params": {
-        "sql_outputs_name": "{sql.outputs.name}",
-        "sql_outputs_sqlserveradminname": "{sql.outputs.sqlServerAdminName}",
-        "principalId": "{migration-service-identity.outputs.principalId}",
-        "principalName": "{migration-service-identity.outputs.principalName}"
-      }
-    },
     "backend-identity": {
       "type": "azure.bicep.v0",
       "path": "backend-identity.module.bicep"
-    },
-    "backend-roles-sql": {
-      "type": "azure.bicep.v0",
-      "path": "backend-roles-sql.module.bicep",
-      "params": {
-        "sql_outputs_name": "{sql.outputs.name}",
-        "sql_outputs_sqlserveradminname": "{sql.outputs.sqlServerAdminName}",
-        "principalId": "{backend-identity.outputs.principalId}",
-        "principalName": "{backend-identity.outputs.principalName}"
-      }
     },
     "backend-roles-vault": {
       "type": "azure.bicep.v0",
@@ -346,6 +393,26 @@
         "bethuya_foundry_outputs_name": "{bethuya-foundry.outputs.name}",
         "principalId": "{backend-identity.outputs.principalId}"
       }
+    },
+    "postgres-password": {
+      "type": "parameter.v0",
+      "value": "{postgres-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22
+            }
+          }
+        }
+      }
+    },
+    "postgres-password-uri-encoded": {
+      "type": "annotated.string",
+      "value": "{postgres-password.value}",
+      "filter": "uri"
     }
   }
 }
