@@ -1,0 +1,4 @@
+# Bethuya Gitleaks fingerprint allowlist
+# Add one fingerprint per line when triaging an approved false positive.
+# Example:
+# path:line:rule-id:fingerprint
