@@ -5,6 +5,7 @@ using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Repositories;
+using ServiceDefaults.Auth;
 using System.Security.Claims;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
@@ -13,9 +14,17 @@ public static class CurationEndpoints
 {
     public static void MapCurationEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/curation").WithTags("Curation");
+        MapCurationRoutes(app.MapGroup("/api/curator/curation")
+            .WithTags("Curation")
+            .RequireAuthorization(BethuyaPolicyNames.RequireCurator));
+        MapCurationRoutes(app.MapGroup("/api/curation")
+            .WithTags("Curation")
+            .RequireAuthorization(BethuyaPolicyNames.RequireCurator));
+    }
 
-        group.MapGet("/{eventId:guid}", async (
+    private static void MapCurationRoutes(RouteGroupBuilder group)
+    {
+        group.MapGet("/{eventId:guid}", static async (
             Guid eventId,
             IEventRepository eventRepo,
             IRegistrationRepository registrationRepo,

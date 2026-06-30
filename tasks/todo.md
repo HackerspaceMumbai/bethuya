@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-01] PR2 — Route-group separation (backend Minimal API)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI (stacked on PR #23)
+- **Description:** Reorganize flat `/api/{resource}` backend endpoints into role-based route groups (`/api/public/*` anonymous, `/api/attendee/*`, `/api/curator/*`, `/api/organizer/*`, `/api/admin/*`), applying each authorization policy ONCE at the group level via `MapGroup(...).RequireAuthorization(BethuyaPolicyNames.*)`. Keep legacy flat routes working for one release as thin aliases carrying the SAME policy (public reads stay anonymous), by extracting each handler into a private static method registered on both the new role group and the legacy path. Do NOT enable the authenticated FallbackPolicy (remains config-gated, default off). No domain model changes (that is PR4).
+- **Acceptance:** TUnit tests assert per-route metadata-level authorization (RequireAuthorization policy / AllowAnonymous) for representative endpoints in each new group AND that legacy aliases resolve with the same policy. `dotnet build` 0 warnings/0 errors; full `dotnet test tests/Hackmum.Bethuya.Tests` passes.
+- **Result:** ✅ 27 new `RouteGroupAuthorizationTests` assert metadata-level authorization for all five groups + legacy aliases. ✅ All 9 endpoint files refactored to shared `Map*Routes` registered on both the new role group and a legacy alias path (same policy; public/legacy reads anonymous). ✅ Backend builds 0 warnings/0 errors. ✅ Full suite 239/239 passes. ✅ FallbackPolicy untouched (still config-gated, default off). ✅ No domain model changes.
+
 ## [2026-06-30] Implement Key Vault-first secret architecture
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

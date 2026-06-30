@@ -5,6 +5,7 @@ using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
 using Microsoft.Extensions.Hosting;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -12,11 +13,19 @@ public static class AgentEndpoints
 {
     public static void MapAgentEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/agents")
+        MapAgentRoutes(app.MapGroup("/api/organizer/agents")
             .WithTags("Agents")
-            .RequireRateLimiting(RateLimitPolicies.Ai);
+            .RequireRateLimiting(RateLimitPolicies.Ai)
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer));
+        MapAgentRoutes(app.MapGroup("/api/agents")
+            .WithTags("Agents")
+            .RequireRateLimiting(RateLimitPolicies.Ai)
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer));
+    }
 
-        group.MapPost("/planner/{eventId:guid}", async (
+    private static void MapAgentRoutes(RouteGroupBuilder group)
+    {
+        group.MapPost("/planner/{eventId:guid}", static async (
             Guid eventId,
             InvokePlannerRequest request,
             IAgent<PlannerRequest, PlannerResponse> planner,

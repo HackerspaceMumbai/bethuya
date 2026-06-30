@@ -1,5 +1,6 @@
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -9,11 +10,19 @@ public static class PlanningCycleEndpoints
 
     public static void MapPlanningCycleEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/planning-cycles")
+        MapPlanningCycleRoutes(app.MapGroup("/api/organizer/planning-cycles")
             .WithTags("PlanningCycles")
-            .RequireRateLimiting(RateLimitPolicies.Ai);
+            .RequireRateLimiting(RateLimitPolicies.Ai)
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer));
+        MapPlanningCycleRoutes(app.MapGroup("/api/planning-cycles")
+            .WithTags("PlanningCycles")
+            .RequireRateLimiting(RateLimitPolicies.Ai)
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer));
+    }
 
-        group.MapGet("/events/{eventId:guid}/active", async (
+    private static void MapPlanningCycleRoutes(RouteGroupBuilder group)
+    {
+        group.MapGet("/events/{eventId:guid}/active", static async (
             Guid eventId,
             PlanningCycleService service,
             CancellationToken ct) =>
