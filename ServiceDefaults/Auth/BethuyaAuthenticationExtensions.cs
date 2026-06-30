@@ -146,6 +146,11 @@ public static class BethuyaAuthenticationExtensions
 
         var group = endpoints.MapGroup("/authentication");
 
+        // Login/logout must be reachable by unauthenticated users. Without this, enabling the
+        // authenticated fallback policy (Authorization:EnforceAuthenticatedFallback=true) would
+        // require authentication to reach the login route and deadlock the sign-in flow.
+        group.AllowAnonymous();
+
         if (authOptions.Provider == AuthProviderType.None)
         {
             group.MapGet("/login", (string? returnUrl) =>

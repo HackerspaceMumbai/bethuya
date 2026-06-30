@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Tests.Auth;
 
@@ -50,10 +51,10 @@ public class AuthorizationFallbackPolicyTests
         using var provider = builder.Services.BuildServiceProvider();
         var policyProvider = provider.GetRequiredService<IAuthorizationPolicyProvider>();
 
-        await Assert.That(await policyProvider.GetPolicyAsync("RequireOrganizer")).IsNotNull();
-        await Assert.That(await policyProvider.GetPolicyAsync("RequireCurator")).IsNotNull();
-        await Assert.That(await policyProvider.GetPolicyAsync("RequireAttendee")).IsNotNull();
-        await Assert.That(await policyProvider.GetPolicyAsync("RequireAdmin")).IsNotNull();
+        await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireOrganizer)).IsNotNull();
+        await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireCurator)).IsNotNull();
+        await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireAttendee)).IsNotNull();
+        await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireAdmin)).IsNotNull();
     }
 
     private static HostApplicationBuilder CreateBuilder(bool? enforceFallback)

@@ -22,7 +22,7 @@ public class BackendAccessTokenHandlerTests
         using var invoker = new HttpMessageInvoker(handler);
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://backend/api/events");
 
-        using var response = await invoker.SendAsync(request, CancellationToken.None);
+        _ = await invoker.SendAsync(request, CancellationToken.None);
 
         await Assert.That(capturing.CapturedAuthorization).IsNotNull();
         await Assert.That(capturing.CapturedAuthorization!.Scheme).IsEqualTo("Bearer");
@@ -41,7 +41,7 @@ public class BackendAccessTokenHandlerTests
         using var invoker = new HttpMessageInvoker(handler);
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://backend/api/events");
 
-        using var response = await invoker.SendAsync(request, CancellationToken.None);
+        _ = await invoker.SendAsync(request, CancellationToken.None);
 
         await Assert.That(capturing.CapturedAuthorization).IsNull();
     }
@@ -59,7 +59,7 @@ public class BackendAccessTokenHandlerTests
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://backend/api/events");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "preset-token");
 
-        using var response = await invoker.SendAsync(request, CancellationToken.None);
+        _ = await invoker.SendAsync(request, CancellationToken.None);
 
         await Assert.That(capturing.CapturedAuthorization!.Parameter).IsEqualTo("preset-token");
     }
@@ -72,12 +72,14 @@ public class BackendAccessTokenHandlerTests
 
     private sealed class CapturingHandler : HttpMessageHandler
     {
+        private static readonly HttpResponseMessage SharedOkResponse = new(HttpStatusCode.OK);
+
         public AuthenticationHeaderValue? CapturedAuthorization { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             CapturedAuthorization = request.Headers.Authorization;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            return Task.FromResult(SharedOkResponse);
         }
     }
 }
