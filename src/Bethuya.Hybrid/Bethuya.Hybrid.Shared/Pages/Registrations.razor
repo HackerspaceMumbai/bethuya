@@ -151,7 +151,7 @@
                     </div>
 
                     <div data-test="submit-registration-btn">
-                        <BbButton Variant="ButtonVariant.Default" OnClick="Register" Disabled="@(!_consentGiven)">Submit Registration</BbButton>
+                        <BbButton Variant="ButtonVariant.Default" OnClick="Register" Disabled="@(!_consentGiven || _isSubmitting)">Submit Registration</BbButton>
                     </div>
 
                 </div>
@@ -191,11 +191,12 @@
 
     // Consent & submit state
     private bool _consentGiven;
+    private bool _isSubmitting;
     private string? _errorMessage;
 
     /// <summary>
-    /// Holds the registration ID after a successful create but before Gov ID upload completes.
-    /// Prevents orphaned rows by skipping the create step on retry.
+    /// Holds the registration ID after create succeeds but before Gov ID upload succeeds.
+    /// Prevents duplicate registration records when the user retries an upload failure.
     /// </summary>
     private Guid? _pendingRegistrationId;
 
@@ -232,6 +233,11 @@
 
     private async Task Register()
     {
+        if (_isSubmitting)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(_newName) || string.IsNullOrWhiteSpace(_newEmail) || !_consentGiven)
         {
             _errorMessage = "Full name, email, and consent are required before submitting.";
@@ -250,13 +256,14 @@
             return;
         }
 
-        if (_governmentIdFile is null && _pendingRegistrationId is null)
+        if (_governmentIdFile is null)
         {
             _errorMessage = "A Government ID upload is required for event security.";
             return;
         }
 
         _errorMessage = null;
+        _isSubmitting = true;
 
         try
         {
@@ -307,6 +314,10 @@
         catch (TaskCanceledException)
         {
             _errorMessage = "The request timed out. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
         }
     }
 

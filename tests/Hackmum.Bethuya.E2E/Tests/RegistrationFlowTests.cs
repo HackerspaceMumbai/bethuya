@@ -28,7 +28,21 @@ public class RegistrationFlowTests : BethuyaE2ETest
         // Section 2 — Experience
         await Page.GetByTestId("registration-experience-field").GetByLabel("Intermediate").CheckAsync();
 
-        // Section 3 — Event Requirements (Gov ID file upload not exercised in auth-skipped test)
+        // Section 3 — Event Requirements
+        var fileInput = Page.Locator("[data-test='gov-id-upload'] input[type='file']");
+        Assert.IsTrue(await fileInput.CountAsync() > 0,
+            "Government ID file input ([data-test='gov-id-upload'] input[type='file']) not found on the page");
+
+        var pdfPath = Path.Combine(Path.GetTempPath(), "e2e-test-government-id.pdf");
+        await File.WriteAllBytesAsync(pdfPath, CreateMinimalPdf());
+        try
+        {
+            await fileInput.SetInputFilesAsync(pdfPath);
+        }
+        finally
+        {
+            File.Delete(pdfPath);
+        }
 
         await Page.GetByTestId("consent-checkbox").CheckAsync();
         await submitBtn.ClickAsync();
@@ -36,4 +50,6 @@ public class RegistrationFlowTests : BethuyaE2ETest
         var registrationRow = Page.Locator("[data-test='registration-row']").First;
         await Assertions.Expect(registrationRow).ToContainTextAsync("Test Attendee");
     }
+
+    private static byte[] CreateMinimalPdf() => "%PDF-1.1\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n"u8.ToArray();
 }
