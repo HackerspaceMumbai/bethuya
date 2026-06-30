@@ -16,6 +16,18 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-07-01] RequireAuthorization metadata breaks minimal test hosts lacking auth middleware
+- **What happened:** PR2 attached `RequireAuthorization(policy)` at the route-group level. Pre-existing functional endpoint tests (`EventEndpointValidationTests`, `ImageEndpointValidationTests`, `PlanningCycleEndpointValidationTests`) that spin up minimal `WebApplication`/`TestServer` hosts and call the (now-grouped) endpoints started failing with: "Endpoint ... contains authorization metadata, but a middleware was not found that supports authorization."
+- **Root cause:** ASP.NET Core throws at request time when an endpoint carries authorization metadata but the pipeline has no authorization middleware. The minimal test hosts mapped endpoints without `AddAuthorization()` / `UseAuthentication()` / `UseAuthorization()`.
+- **Fix:** Added a shared `TestAuthHost` helper (`AddTestAuthorization()` + `UseTestAuthorization()`) that registers the Bethuya policies and a permissive test authentication scheme authenticating every request as an `Admin` (which satisfies all four role policies). Wired it into the three affected test setups. This keeps those tests focused on handler behavior, not auth.
+- **Prevention:** Any minimal/integration test host that maps endpoints carrying `RequireAuthorization` must also register authorization services and add the auth middleware. Reuse `TestAuthHost` rather than re-rolling a scheme. Note: `RequireRateLimiting` metadata does NOT throw without `UseRateLimiter`, so only authorization needed wiring.
+
+## [2026-07-01] WebApplication endpoint metadata enumeration triggers RDF body inference
+- **What happened:** The PR2 metadata tests enumerate `((IEndpointRouteBuilder)app).DataSources.SelectMany(ds => ds.Endpoints)` to inspect `IAuthorizeData`/`IAllowAnonymous`. First run threw "Body was inferred but the method does not allow inferred body parameters."
+- **Root cause:** Enumerating the data source forces `RequestDelegateFactory` to materialize each endpoint's metadata, which runs parameter inference. Handler-injected service types that are not registered in DI are treated as inferred request bodies, and minimal APIs disallow inferred bodies for some verbs.
+- **Fix:** The test registers presence-only stub singletons (throwing factories, never resolved) for every handler dependency — including the four closed-generic `IAgent<TReq,TResp>`, `BethuyaDbContext`, repositories, services, and `IDataProtectionProvider` — so inference classifies them as services, not bodies.
+- **Prevention:** When asserting endpoint metadata by building a real `WebApplication`, register (even as stubs) all services that handlers inject, or inference will fail before you can read metadata.
+
 ## [2026-06-30] Central Azure SDK pins must match highest transitive floor
 - **What happened:** Adding explicit central versions for `Azure.Identity` and `Azure.Security.KeyVault.Secrets` initially broke restore with NU1109 downgrades across AppHost, backend, and tests.
 - **Root cause:** Existing transitive dependencies (for example, Aspire hosting packages and Microsoft.Identity.Web) required newer minimum versions than the manually pinned values.

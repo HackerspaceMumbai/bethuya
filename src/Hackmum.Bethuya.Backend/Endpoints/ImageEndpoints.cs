@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Core.Services;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -7,11 +8,19 @@ public static class ImageEndpoints
 {
     public static void MapImageEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/images")
+        MapImageRoutes(app.MapGroup("/api/organizer/images")
             .WithTags("Images")
-            .RequireRateLimiting(RateLimitPolicies.Ai);
+            .RequireRateLimiting(RateLimitPolicies.Ai)
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer));
+        MapImageRoutes(app.MapGroup("/api/images")
+            .WithTags("Images")
+            .RequireRateLimiting(RateLimitPolicies.Ai)
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer));
+    }
 
-        group.MapPost("/direct-upload/session", async (
+    private static void MapImageRoutes(RouteGroupBuilder group)
+    {
+        group.MapPost("/direct-upload/session", static async (
             CreateDirectUploadSessionRequest request,
             IImageUploadService uploadService,
             CancellationToken ct) =>
@@ -65,7 +74,7 @@ public static class ImageEndpoints
             }
         });
 
-        group.MapPost("/direct-upload/delete", async (
+        group.MapPost("/direct-upload/delete", static async (
             DeletePendingDirectUploadRequest request,
             IImageUploadService uploadService,
             CancellationToken ct) =>

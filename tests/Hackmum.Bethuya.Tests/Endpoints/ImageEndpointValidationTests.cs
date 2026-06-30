@@ -24,8 +24,10 @@ public class ImageEndpointValidationTests : IAsyncDisposable
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Services.AddSingleton(_mockUploadService);
+        builder.AddTestAuthorization();
 
         _app = builder.Build();
+        _app.UseTestAuthorization();
         _app.MapImageEndpoints();
         await _app.StartAsync();
 

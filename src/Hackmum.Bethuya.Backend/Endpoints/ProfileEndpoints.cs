@@ -4,6 +4,7 @@ using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
 using Microsoft.EntityFrameworkCore;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -11,8 +12,16 @@ public static class ProfileEndpoints
 {
     public static void MapProfileEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/profile").WithTags("Profile");
+        MapProfileRoutes(app.MapGroup("/api/attendee/profile")
+            .WithTags("Profile")
+            .RequireAuthorization(BethuyaPolicyNames.RequireAttendee));
+        MapProfileRoutes(app.MapGroup("/api/profile")
+            .WithTags("Profile")
+            .RequireAuthorization(BethuyaPolicyNames.RequireAttendee));
+    }
 
+    private static void MapProfileRoutes(RouteGroupBuilder group)
+    {
         group.MapGet("/", async (
             ClaimsPrincipal user,
             IAttendeeProfileRepository repo,

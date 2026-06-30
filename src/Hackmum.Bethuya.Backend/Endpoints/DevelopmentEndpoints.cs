@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Backend.Services;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -6,9 +7,17 @@ public static class DevelopmentEndpoints
 {
     public static void MapDevelopmentEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/dev").WithTags("Development");
+        MapDevelopmentRoutes(app.MapGroup("/api/admin/dev")
+            .WithTags("Development")
+            .RequireAuthorization(BethuyaPolicyNames.RequireAdmin));
+        MapDevelopmentRoutes(app.MapGroup("/api/dev")
+            .WithTags("Development")
+            .RequireAuthorization(BethuyaPolicyNames.RequireAdmin));
+    }
 
-        group.MapPost("/curation/seed", async (
+    private static void MapDevelopmentRoutes(RouteGroupBuilder group)
+    {
+        group.MapPost("/curation/seed", static async (
             int reviewableCount,
             CurationSampleSeeder seeder,
             CancellationToken ct) =>

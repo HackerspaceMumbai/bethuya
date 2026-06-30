@@ -34,12 +34,14 @@ public sealed class EventEndpointValidationTests : IAsyncDisposable
         builder.WebHost.UseTestServer();
         builder.Services.AddSingleton(_eventRepository);
         builder.Services.AddSingleton(_imageUploadService);
+        builder.AddTestAuthorization();
         builder.Services.AddDbContext<BethuyaDbContext>(options =>
             options
                 .UseInMemoryDatabase($"event-endpoint-tests-{Guid.NewGuid():N}")
                 .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
 
         _app = builder.Build();
+        _app.UseTestAuthorization();
         _app.MapEventEndpoints();
         await _app.StartAsync();
 

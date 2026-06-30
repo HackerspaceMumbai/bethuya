@@ -3,6 +3,7 @@ using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
 using Microsoft.AspNetCore.DataProtection;
+using ServiceDefaults.Auth;
 using System.Security.Claims;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
@@ -26,62 +27,72 @@ public static class RegistrationEndpoints
 
     public static void MapRegistrationEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/registrations").WithTags("Registrations");
+        MapRegistrationRoutes(app.MapGroup("/api/attendee/registrations")
+            .WithTags("Registrations")
+            .RequireAuthorization(BethuyaPolicyNames.RequireAttendee));
+        MapRegistrationRoutes(app.MapGroup("/api/registrations")
+            .WithTags("Registrations")
+            .RequireAuthorization(BethuyaPolicyNames.RequireAttendee));
+    }
 
-        group.MapGet("/event/{eventId:guid}", async (Guid eventId, IRegistrationRepository repo, CancellationToken ct) =>
+    private static void MapRegistrationRoutes(RouteGroupBuilder group)
+    {
+        group.MapGet("/event/{eventId:guid}", static async (Guid eventId, IRegistrationRepository repo, CancellationToken ct) =>
             Results.Ok(await repo.GetByEventIdAsync(eventId, ct)));
 
-        group.MapGet("/{id:guid}", async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
+        group.MapGet("/{id:guid}", static async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
             await repo.GetByIdAsync(id, ct) is { } reg
                 ? Results.Ok(reg)
                 : Results.NotFound());
 
-        group.MapPost("/", async (
-            CreateRegistrationRequest request,
-            IRegistrationRepository repo,
-            IAttendeeProfileRepository profileRepo,
-            InclusionSignalsNormalizer inclusionSignalsNormalizer,
-            ClaimsPrincipal user,
-            CancellationToken ct) =>
-        {
-            if (string.IsNullOrWhiteSpace(request.Intent))
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["intent"] = ["Why do you want to attend this event? is required."]
-                });
-
-            var profileInclusionSource = await ResolveProfileInclusionSourceAsync(user, request.Email, profileRepo, ct);
-            var inclusionSignals = profileInclusionSource is not null
-                ? inclusionSignalsNormalizer.FromSource(profileInclusionSource)
-                : new InclusionSignals();
-
-            var reg = new Registration
-            {
-                EventId = request.EventId,
-                FullName = request.FullName,
-                Email = request.Email,
-                Bio = request.Bio,
-                Interests = request.Interests,
-                Intent = request.Intent.Trim(),
-                Goals = request.Goals,
-                ContributionPreferences = request.ContributionPreferences ?? [],
-                ExperienceLevel = request.ExperienceLevel,
-                DietaryRequirements = request.DietaryRequirements,
-                AccessibilityNeeds = request.AccessibilityNeeds,
-                InclusionSignals = inclusionSignals
-            };
-
-            var created = await repo.CreateAsync(reg, ct);
-            return Results.Created($"/api/registrations/{created.Id}", created);
-        });
+        group.MapPost("/", CreateRegistrationAsync);
 
         group.MapPost("/{id:guid}/government-id", UploadGovernmentIdAsync);
 
-        group.MapDelete("/{id:guid}", async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
+        group.MapDelete("/{id:guid}", static async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
         {
             await repo.DeleteAsync(id, ct);
             return Results.NoContent();
         });
+    }
+
+    private static async Task<IResult> CreateRegistrationAsync(
+        CreateRegistrationRequest request,
+        IRegistrationRepository repo,
+        IAttendeeProfileRepository profileRepo,
+        InclusionSignalsNormalizer inclusionSignalsNormalizer,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Intent))
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["intent"] = ["Why do you want to attend this event? is required."]
+            });
+
+        var profileInclusionSource = await ResolveProfileInclusionSourceAsync(user, request.Email, profileRepo, ct);
+        var inclusionSignals = profileInclusionSource is not null
+            ? inclusionSignalsNormalizer.FromSource(profileInclusionSource)
+            : new InclusionSignals();
+
+        var reg = new Registration
+        {
+            EventId = request.EventId,
+            FullName = request.FullName,
+            Email = request.Email,
+            Bio = request.Bio,
+            Interests = request.Interests,
+            Intent = request.Intent.Trim(),
+            Goals = request.Goals,
+            ContributionPreferences = request.ContributionPreferences ?? [],
+            ExperienceLevel = request.ExperienceLevel,
+            DietaryRequirements = request.DietaryRequirements,
+            AccessibilityNeeds = request.AccessibilityNeeds,
+            InclusionSignals = inclusionSignals
+        };
+
+        var created = await repo.CreateAsync(reg, ct);
+        return Results.Created($"/api/registrations/{created.Id}", created);
     }
 
     private static async Task<AttendeeInclusionSource?> ResolveProfileInclusionSourceAsync(
