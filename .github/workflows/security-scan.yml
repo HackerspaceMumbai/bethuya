@@ -19,17 +19,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run gitleaks on PR commit range
+      - name: Run gitleaks-action (licensed org mode)
+        if: ${{ secrets.GITLEAKS_LICENSE != '' }}
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
           GITLEAKS_CONFIG: .security/gitleaks.toml
           GITLEAKS_ENABLE_COMMENTS: false
-        with:
-          args: >-
-            git
-            --redact
-            --verbose
-            --config=.security/gitleaks.toml
-            --gitleaks-ignore-path=.gitleaksallowlist
-            --log-opts=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+
+      - name: Run gitleaks CLI on PR commit range (license-free fallback)
+        if: ${{ secrets.GITLEAKS_LICENSE == '' }}
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION=8.30.1
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x ./gitleaks
+          ./gitleaks git \
+            --redact \
+            --verbose \
+            --config=.security/gitleaks.toml \
+            --gitleaks-ignore-path=.gitleaksallowlist \
+            --log-opts="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
