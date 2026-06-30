@@ -16,10 +16,10 @@ public static class DevelopmentAuthenticationDefaults
             new("sub", "dev-user-001"),
             new("name", "Dev User"),
             new("email", "dev@bethuya.local"),
-            new("role", "Admin"),
-            new("role", "Organizer"),
-            new("role", "Curator"),
-            new("role", "Attendee"),
+            new("role", BethuyaRoleNames.Admin),
+            new("role", BethuyaRoleNames.Organizer),
+            new("role", BethuyaRoleNames.Curator),
+            new("role", BethuyaRoleNames.Attendee),
         };
 
         var identity = new ClaimsIdentity(claims, authenticationType: SchemeName, nameType: "name", roleType: "role");

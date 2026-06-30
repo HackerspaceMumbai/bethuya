@@ -94,16 +94,32 @@ else
     builder.Services.AddScoped<AuthenticationStateProvider, PersistingRevalidatingAuthenticationStateProvider>();
     builder.Services.AddScoped<ICurrentUserService, ClaimsCurrentUserService>();
     builder.Services.AddHttpContextAccessor();
+
+    // Forward the signed-in user's access token to the Backend API so it can enforce authorization.
+    builder.Services.AddScoped<IBackendAccessTokenProvider, HttpContextBackendAccessTokenProvider>();
+    builder.Services.AddTransient<BackendAccessTokenHandler>();
+}
+
+// Attaches the backend access-token handler to a Refit client, but only when a real auth provider
+// is configured (in dev mode Provider=None there is no token to forward and the handler is unregistered).
+IHttpClientBuilder ConfigureBackendAuth(IHttpClientBuilder clientBuilder)
+{
+    if (authOptions.Provider != AuthProviderType.None)
+    {
+        clientBuilder.AddHttpMessageHandler<BackendAccessTokenHandler>();
+    }
+
+    return clientBuilder;
 }
 
 // Refit typed client for Backend Events API (Aspire service discovery)
-builder.Services
+ConfigureBackendAuth(builder.Services
     .AddRefitClient<IEventApi>(new RefitSettings
     {
         ContentSerializer = new SystemTextJsonContentSerializer(
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
     })
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend")))
     .AddStandardResilienceHandler(options =>
     {
         // File uploads can exceed the default 30s timeout
@@ -114,43 +130,43 @@ builder.Services
     });
 
 // Refit typed client for Backend Planning Cycle API (Aspire service discovery)
-builder.Services
+ConfigureBackendAuth(builder.Services
     .AddRefitClient<IPlanningCycleApi>(new RefitSettings
     {
         ContentSerializer = new SystemTextJsonContentSerializer(
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
     })
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend")))
     .AddStandardResilienceHandler();
 
 // Refit typed client for Backend Profile API (Aspire service discovery)
-builder.Services
+ConfigureBackendAuth(builder.Services
     .AddRefitClient<IProfileApi>(new RefitSettings
     {
         ContentSerializer = new SystemTextJsonContentSerializer(
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
     })
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend")))
     .AddStandardResilienceHandler();
 
 // Refit typed client for Backend Registrations API (Aspire service discovery)
-builder.Services
+ConfigureBackendAuth(builder.Services
     .AddRefitClient<IRegistrationApi>(new RefitSettings
     {
         ContentSerializer = new SystemTextJsonContentSerializer(
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
     })
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend")))
     .AddStandardResilienceHandler();
 
 // Refit typed client for Backend Curation API (Aspire service discovery)
-builder.Services
+ConfigureBackendAuth(builder.Services
     .AddRefitClient<ICurationApi>(new RefitSettings
     {
         ContentSerializer = new SystemTextJsonContentSerializer(
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
     })
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend"))
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://backend")))
     .AddStandardResilienceHandler();
 
 // CORS — origins from appsettings.json "Cors:AllowedOrigins" (empty by default in production)

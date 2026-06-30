@@ -15,6 +15,12 @@ namespace Microsoft.Extensions.Hosting;
 public static class BethuyaAuthenticationExtensions
 {
     /// <summary>
+    /// Configuration key (relative to the <c>Authentication</c> section) that explicitly opts in to the
+    /// insecure development authentication handler outside the Development environment.
+    /// </summary>
+    public const string AllowInsecureDevAuthKey = $"{BethuyaAuthOptions.SectionName}:AllowInsecureDevAuth";
+
+    /// <summary>
     /// Adds Bethuya authentication for the Blazor Web App (cookie + OIDC).
     /// Reads the <c>Authentication</c> configuration section to select the provider.
     /// </summary>
@@ -25,6 +31,8 @@ public static class BethuyaAuthenticationExtensions
 
         if (authOptions.Provider == AuthProviderType.None)
         {
+            EnsureInsecureDevAuthAllowed(builder);
+
             builder.Services.AddAuthentication(DevelopmentAuthenticationDefaults.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(
                     DevelopmentAuthenticationDefaults.SchemeName,
@@ -62,6 +70,8 @@ public static class BethuyaAuthenticationExtensions
 
         if (authOptions.Provider == AuthProviderType.None)
         {
+            EnsureInsecureDevAuthAllowed(builder);
+
             builder.Services.AddAuthentication(DevelopmentAuthenticationDefaults.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(
                     DevelopmentAuthenticationDefaults.SchemeName,
@@ -69,17 +79,49 @@ public static class BethuyaAuthenticationExtensions
             return builder;
         }
 
+        var isDevelopment = builder.Environment.IsDevelopment();
         var services = builder.Services;
         services.AddAuthentication()
             .AddJwtBearer(jwt =>
             {
                 jwt.Authority = GetAuthority(authOptions);
                 jwt.Audience = GetAudience(authOptions);
+                jwt.RequireHttpsMetadata = !isDevelopment;
+                jwt.MapInboundClaims = false;
                 jwt.TokenValidationParameters.NameClaimType = "name";
                 jwt.TokenValidationParameters.RoleClaimType = GetRoleClaim(authOptions);
+                jwt.TokenValidationParameters.ValidateIssuer = true;
+                jwt.TokenValidationParameters.ValidateAudience = true;
+                jwt.TokenValidationParameters.ValidateLifetime = true;
+                jwt.TokenValidationParameters.ValidateIssuerSigningKey = true;
+                jwt.TokenValidationParameters.ClockSkew = TimeSpan.FromSeconds(30);
             });
 
         return builder;
+    }
+
+    /// <summary>
+    /// Fails closed when the insecure development authentication handler (Provider=None) is selected
+    /// outside the Development environment without an explicit opt-in. This prevents a misconfigured
+    /// production deploy from authenticating every anonymous request as a full administrator.
+    /// </summary>
+    private static void EnsureInsecureDevAuthAllowed<TBuilder>(TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            return;
+        }
+
+        if (builder.Configuration.GetValue<bool>(AllowInsecureDevAuthKey))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Insecure development authentication (Authentication:Provider=None) is only permitted in the " +
+            $"Development environment. The current environment is '{builder.Environment.EnvironmentName}'. " +
+            $"Configure a real authentication provider, or explicitly set '{AllowInsecureDevAuthKey}=true' " +
+            $"to opt in to the insecure development handler.");
     }
 
     /// <summary>
