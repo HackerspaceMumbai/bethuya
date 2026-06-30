@@ -24,8 +24,8 @@
             else
             {
                 <BbBadge Variant="@GetStatusBadgeVariant(agendaStatus)">
-                        @GetStatusDisplayText(agendaStatus)
-                    </BbBadge>
+                    @GetStatusDisplayText(agendaStatus)
+                </BbBadge>
             }
         </div>
         <p class="text-sm text-muted-foreground">
@@ -1409,8 +1409,6 @@
         return constraints.Count == 0 ? null : string.Join(Environment.NewLine, constraints);
     }
 
-    
-
     private static bool ContainsEquivalentConstraintToken(string? constraints, string? candidate)
     {
         var normalizedCandidate = NormalizeConstraintToken(candidate);
@@ -1439,7 +1437,6 @@
         string.IsNullOrWhiteSpace(value)
             ? string.Empty
             : value.Trim().TrimEnd(';').Trim();
-
     // ── Human-in-the-Loop actions ──
 
     private async Task ApproveScheduleAsync()

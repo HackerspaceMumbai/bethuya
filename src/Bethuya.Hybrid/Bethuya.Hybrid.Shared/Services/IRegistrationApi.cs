@@ -10,6 +10,10 @@ public interface IRegistrationApi
 
     [Post("/api/registrations")]
     Task<RegistrationDto> CreateAsync([Body] CreateRegistrationDto request, CancellationToken ct = default);
+
+    [Multipart]
+    [Post("/api/registrations/{id}/government-id")]
+    Task UploadGovernmentIdAsync(Guid id, StreamPart file, CancellationToken ct = default);
 }
 
 /// <summary>Registration data returned from the API.</summary>
@@ -31,7 +35,9 @@ public sealed record CreateRegistrationDto(
     string Email,
     string? Bio,
     List<string> Interests,
-    string? Neighborhood,
-    string? LanguageProficiency,
-    string? EducationalBackground,
-    string? SocioeconomicBackground);
+    string? Intent,
+    string? Goals,
+    List<string> ContributionPreferences,
+    string? ExperienceLevel,
+    string? DietaryRequirements,
+    string? AccessibilityNeeds);

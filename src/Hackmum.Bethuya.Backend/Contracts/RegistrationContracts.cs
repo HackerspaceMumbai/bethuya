@@ -6,7 +6,9 @@ public sealed record CreateRegistrationRequest(
     string Email,
     string? Bio,
     List<string> Interests,
-    string? Neighborhood,
-    string? LanguageProficiency,
-    string? EducationalBackground,
-    string? SocioeconomicBackground);
+    string? Intent,
+    string? Goals,
+    List<string> ContributionPreferences,
+    string? ExperienceLevel,
+    string? DietaryRequirements,
+    string? AccessibilityNeeds);
