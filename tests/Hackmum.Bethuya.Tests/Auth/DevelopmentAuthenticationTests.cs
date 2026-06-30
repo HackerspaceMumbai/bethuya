@@ -786,7 +786,12 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
 
     private static WebApplicationBuilder CreateBuilderWithProviderNone()
     {
-        var builder = WebApplication.CreateBuilder();
+        // EnvironmentName=Development so the insecure dev-auth fail-closed guard (PR1/C2) permits
+        // Provider=None — these tests specifically exercise the development authentication handler.
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Development
+        });
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
