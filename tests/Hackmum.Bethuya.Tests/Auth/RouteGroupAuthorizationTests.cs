@@ -160,6 +160,26 @@ public sealed class RouteGroupAuthorizationTests
         await Assert.That(route.Policies).Contains(BethuyaPolicyNames.RequireAttendee);
     }
 
+    [Test]
+    public async Task AttendeeRegistrations_GovernmentIdUpload_RequiresAttendee()
+    {
+        var route = Describe("POST", "/api/attendee/registrations/{id:guid}/government-id");
+
+        await Assert.That(route.Exists).IsTrue();
+        await Assert.That(route.AllowAnonymous).IsFalse();
+        await Assert.That(route.Policies).Contains(BethuyaPolicyNames.RequireAttendee);
+    }
+
+    [Test]
+    public async Task AttendeeRegistrations_ReadByEvent_RequiresAttendee()
+    {
+        var route = Describe("GET", "/api/attendee/registrations/event/{eventId:guid}");
+
+        await Assert.That(route.Exists).IsTrue();
+        await Assert.That(route.AllowAnonymous).IsFalse();
+        await Assert.That(route.Policies).Contains(BethuyaPolicyNames.RequireAttendee);
+    }
+
     // --- New group: curator ---
 
     [Test]
@@ -363,7 +383,8 @@ public sealed class RouteGroupAuthorizationTests
             typeof(IAgent<PlannerRequest, PlannerResponse>),
             typeof(IAgent<CuratorRequest, CuratorResponse>),
             typeof(IAgent<FacilitatorRequest, FacilitatorResponse>),
-            typeof(IAgent<ReporterRequest, ReporterResponse>)
+            typeof(IAgent<ReporterRequest, ReporterResponse>),
+            typeof(IUserContext)
         ];
 
         foreach (var dependency in handlerDependencies)

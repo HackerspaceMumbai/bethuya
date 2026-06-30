@@ -25,6 +25,7 @@ builder.Services.AddDataProtection();
 builder.AddServiceDefaults();
 builder.AddBethuyaApiAuthentication();
 builder.AddBethuyaAuthorization();
+builder.Services.AddBethuyaUserContext();
 builder.AddBethuyaInfrastructure();
 builder.AddBethuyaAI();
 builder.AddBethuyaAgents();
@@ -67,7 +68,9 @@ if (app.Environment.IsDevelopment())
         await dbContext.EnsurePendingImageUploadSchemaAsync();
     });
 
-    app.MapScalarApiReference();
+    // Scalar API docs are dev-only and explicitly anonymous so they remain reachable under
+    // the default-deny fallback policy (PR3). Authentication is still enforced on the APIs themselves.
+    app.MapScalarApiReference().AllowAnonymous();
     app.MapDevelopmentEndpoints();
 }
 

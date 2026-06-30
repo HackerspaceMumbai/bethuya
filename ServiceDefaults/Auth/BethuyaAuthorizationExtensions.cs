@@ -9,10 +9,14 @@ namespace Microsoft.Extensions.Hosting;
 public static class BethuyaAuthorizationExtensions
 {
     /// <summary>
-    /// Configuration key that, when set to <c>true</c>, enables a default-deny fallback policy
-    /// requiring an authenticated user on every endpoint that does not declare its own policy.
-    /// Disabled by default so it can be rolled out independently once public endpoints are
-    /// explicitly marked anonymous.
+    /// Configuration key that controls the default-deny fallback policy requiring an authenticated
+    /// user on every endpoint that does not declare its own policy or <c>AllowAnonymous</c>.
+    /// <para>
+    /// Default-deny is <b>enabled by default</b> (PR3). The key is retained purely as an emergency
+    /// escape hatch: set it to <c>false</c> to disable the fallback during an incident. Public and
+    /// infrastructure endpoints (health, OpenAPI/Scalar, <c>/api/public/*</c>, auth login/logout)
+    /// are explicitly marked anonymous so they remain reachable under default-deny.
+    /// </para>
     /// </summary>
     public const string EnforceAuthenticatedFallbackKey = "Authorization:EnforceAuthenticatedFallback";
 
@@ -40,7 +44,7 @@ public static class BethuyaAuthorizationExtensions
                     BethuyaRoleNames.Curator,
                     BethuyaRoleNames.Attendee));
 
-        if (builder.Configuration.GetValue<bool>(EnforceAuthenticatedFallbackKey))
+        if (builder.Configuration.GetValue(EnforceAuthenticatedFallbackKey, defaultValue: true))
         {
             authorizationBuilder.SetFallbackPolicy(
                 new AuthorizationPolicyBuilder()

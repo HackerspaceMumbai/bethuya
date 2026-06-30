@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-01] PR3 — Endpoint hardening (default-deny)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI (stacked on PR2 base `indcoder-authz-architecture-review`)
+- **Description:** Turn the backend API from authenticated-optional into default-deny. (1) Flip `Authorization:EnforceAuthenticatedFallback` default `false`→`true` (keep key as emergency escape hatch). (2) Mark genuinely-public + infra endpoints anonymous so default-deny doesn't break the app: health `/health`+`/alive`, dev Scalar UI, `/api/public/*` (PR2), Web login/logout (PR1). Preserve the public Blazor Web app by explicitly disabling the fallback in Web appsettings (Web is page-`[Authorize]` governed; not in PR3 backend scope). (3) Confirm/tighten per-endpoint policy on every remaining route (gov-id upload + registration r/w → RequireAttendee; curation → RequireCurator; approvals → RequireAdmin; agents/planning-cycles/images → RequireOrganizer; dev/seed → RequireAdmin). (4) Introduce `IUserContext` (ServiceDefaults.Auth) reading `IHttpContextAccessor`; replace hand-rolled claim reads in ProfileEndpoints; source curation `decidedBy` / planning-cycle `approvedBy`+`publishedBy` from the validated principal (M2). (5) Add a minimal server-side onboarding guard so registration independently enforces mandatory-profile completion (M1), honoring `Onboarding:BypassMandatoryProfile`. No domain-model changes / migrations / IDOR ownership handlers / audit (PR4/PR5).
+- **Acceptance:** Failing-first TUnit covering default-deny on (anon 401 / rolled principal 200), infra+public anonymous reachability, per-policy role matrix, dev/seed Admin, ProfileEndpoints IUserContext, onboarding guard block/allow. `dotnet build` 0 warnings/0 errors; full `dotnet test tests/Hackmum.Bethuya.Tests` green; filtered auth run green. Aspire health + Scalar confirmed anonymous.
+
 ## [2026-07-01] PR2 — Route-group separation (backend Minimal API)
 - **Status:** done
 - **Agent/Owner:** Copilot CLI (stacked on PR #23)

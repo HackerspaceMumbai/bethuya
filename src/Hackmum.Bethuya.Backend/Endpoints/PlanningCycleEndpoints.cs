@@ -90,6 +90,7 @@ public static class PlanningCycleEndpoints
         group.MapPost("/{cycleId:guid}/approve", async (
             Guid cycleId,
             ApprovePlannerDraftRequest request,
+            IUserContext userContext,
             PlanningCycleService service,
             CancellationToken ct) =>
         {
@@ -101,13 +102,18 @@ public static class PlanningCycleEndpoints
                 });
             }
 
-            if (string.IsNullOrWhiteSpace(request.ApprovedBy))
+            // M2 (PR3): authoritative approver identity comes from the validated principal; the
+            // request-body value is tolerated only as a fallback for callers not yet updated.
+            var approvedBy = ResolveDecider(userContext) ?? request.ApprovedBy;
+            if (string.IsNullOrWhiteSpace(approvedBy))
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     [nameof(request.ApprovedBy)] = ["approvedBy is required."]
                 });
             }
+
+            request = request with { ApprovedBy = approvedBy };
 
             try
             {
@@ -126,16 +132,22 @@ public static class PlanningCycleEndpoints
         group.MapPost("/{cycleId:guid}/publish", async (
             Guid cycleId,
             PublishPlanningCycleRequest request,
+            IUserContext userContext,
             PlanningCycleService service,
             CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(request.PublishedBy))
+            // M2 (PR3): authoritative publisher identity comes from the validated principal; the
+            // request-body value is tolerated only as a fallback for callers not yet updated.
+            var publishedBy = ResolveDecider(userContext) ?? request.PublishedBy;
+            if (string.IsNullOrWhiteSpace(publishedBy))
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     [nameof(request.PublishedBy)] = ["publishedBy is required."]
                 });
             }
+
+            request = request with { PublishedBy = publishedBy };
 
             try
             {
@@ -151,5 +163,9 @@ public static class PlanningCycleEndpoints
             }
         });
     }
+
+    /// <summary>Resolves the decider identity from the validated principal, or <c>null</c> when anonymous.</summary>
+    private static string? ResolveDecider(IUserContext userContext) =>
+        userContext.Email ?? userContext.Name ?? userContext.UserId;
 }
 
