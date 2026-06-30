@@ -1,53 +1,14 @@
 using AppHost.Commands;
 using AppHost.Extensions;
-using AppHost.Security;
 using AppHost.Infrastructure;
+using AppHost.Security;
+using Azure.Provisioning.KeyVault;
 using Aspire.Hosting.Azure;
 using Aspire.Hosting.Foundry;
 using Scalar.Aspire;
 
 var builder = DistributedApplication.CreateBuilder(args);
 var acaEnv = builder.AddAzureContainerAppEnvironment("bethuya-env");
-
-
-const string gitHubCallbackPath = "/oauth/github/callback";
-/*const string linkedInCallbackPath = "/oauth/linkedin/callback";
-*/
-const string linkedInCallbackPath = "/signin-linkedin";
-
-var gitHubClientId =
-    builder.AddParameter("oauth-github-clientid");
-
-var gitHubClientSecret =
-    builder.AddParameter("oauth-github-clientsecret", secret: true);
-
-var linkedInClientId =
-    builder.AddParameter("oauth-linkedin-clientid");
-
-var linkedInClientSecret =
-    builder.AddParameter("oauth-linkedin-clientsecret", secret: true);
-
-var linkedInScope0 =
-    builder.AddParameter(
-        "oauth-linkedin-scope-0",
-        "openid");
-
-var linkedInScope1 =
-    builder.AddParameter(
-        "oauth-linkedin-scope-1",
-        "profile");
-
-
-
-var socialAuthSettings = new SocialAuthSettings(
-    gitHubClientId,
-    gitHubClientSecret,
-    gitHubCallbackPath,
-    linkedInClientId,
-    linkedInClientSecret,
-    linkedInCallbackPath,
-    linkedInScope0,
-    linkedInScope1);
 
 
 var enableOnboardingFlowInDevelopment = string.Equals(
@@ -85,54 +46,6 @@ if (builder.IsLocalDevelopment())
     keycloak = builder.AddKeycloak("keycloak", 8081)
         .WithDataVolume();
 }
-
-// Cloudinary - image upload for event cover images
-// secret: true omitted - causes "Unsupported value type System.Boolean" in Azure deployment.
-// For production: route secrets through Key Vault via keyVault.AddSecret(...) in publish mode.
-var cloudinaryCloudName = builder.AddParameter("cloudinary-cloud-name");
-var cloudinaryApiKey = builder.AddParameter("cloudinary-api-key");
-var cloudinaryApiSecret = builder.AddParameter("cloudinary-api-secret");
-
-// AI provider configuration - configure via user-secrets (dev) or Key Vault (Azure).
-// Local providers default in AppHost/appsettings.json; cloud keys must be set via user-secrets.
-// FoundryLocal endpoint can be supplied via environment variable AI_FOUNDRYLOCAL_ENDPOINT or parameter.
-// Example: $env:AI_FOUNDRYLOCAL_ENDPOINT = "http://127.0.0.1:55950"; aspire start
-// Dev: dotnet user-secrets set "Parameters:ai-azure-openai-endpoint" "https://YOUR-RESOURCE.openai.azure.com/"
-// Dev: dotnet user-secrets set "Parameters:ai-azure-openai-key" "<key>"
-// Dev: dotnet user-secrets set "Parameters:ai-openai-key" "<key>"
-
-// FoundryLocal endpoint: accept from environment variable or parameter with fallback to appsettings
-var aiFoundryLocalEndpointValue = Environment.GetEnvironmentVariable("AI_FOUNDRYLOCAL_ENDPOINT")
-    ?? builder.Configuration["Parameters:ai-foundrylocal-endpoint"]
-    ?? "http://localhost:5272"; // Fallback to default
-
-// TODO:
-// Replace Azure OpenAI API key usage with
-// Managed Identity + DefaultAzureCredential.
-// Target architecture:
-//
-// ACA Managed Identity
-//   -> Azure RBAC
-//   -> Azure OpenAI
-
-var aiFoundryLocalEndpoint = builder.AddParameter("ai-foundrylocal-endpoint", aiFoundryLocalEndpointValue);
-var aiOllamaEndpoint = builder.AddParameter("ai-ollama-endpoint", 
-    Environment.GetEnvironmentVariable("AI_OLLAMA_ENDPOINT") ?? "http://localhost:11434");
-var aiAzureOpenAiEndpoint = builder.AddParameter("ai-azure-openai-endpoint");
-var aiAzureOpenAiKey = builder.AddParameter("ai-azure-openai-key");
-var aiAzureOpenAiModel = builder.AddParameter("ai-azure-openai-model");
-var aiOpenAiKey = builder.AddParameter("ai-openai-key");
-var aiOpenAiModel = builder.AddParameter("ai-openai-model");
-
-var aiProviderSettings = new AiProviderSettings(
-    aiFoundryLocalEndpoint,
-    aiOllamaEndpoint,
-    aiAzureOpenAiEndpoint,
-    aiAzureOpenAiKey,
-    aiAzureOpenAiModel,
-    aiOpenAiKey,
-    aiOpenAiModel);
-
 
 IResourceBuilder<ProjectResource>? plannerHosted = null;
 
@@ -189,10 +102,6 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", la
     .WithReference(sql)
     .WaitFor(sql)
     .WaitForCompletion(migrationService)
-    .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
-    .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
-    .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
-    .ConfigureAiProviders(aiProviderSettings)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
     .WithHttpHealthCheck("/health")
 //  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8080")
@@ -223,7 +132,11 @@ if (builder.IsLocalDevelopment())
 
 
 if (keyVault is not null)
-    backend.WithReference(keyVault);
+{
+    backend
+        .WithReference(keyVault)
+        .WithRoleAssignments(keyVault, KeyVaultBuiltInRole.KeyVaultSecretsUser);
+}
 
 var webStaticAssetsManifest = Path.GetFullPath(Path.Combine(
     AppContext.BaseDirectory,
@@ -250,7 +163,6 @@ var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileNa
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
 //  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8082")
     .WithEnvironment("ASPNETCORE_ALLOWEDHOSTS", "*")
-    .ConfigureSocialAuth(socialAuthSettings)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
     .WithComputeEnvironment(acaEnv)
@@ -266,7 +178,13 @@ if (builder.IsLocalDevelopment())
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest);
 }
-    
+
+if (keyVault is not null)
+{
+    web
+        .WithReference(keyVault)
+        .WithRoleAssignments(keyVault, KeyVaultBuiltInRole.KeyVaultSecretsUser);
+}
 
 if (keycloak is not null)
 {

@@ -15,6 +15,8 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddBethuyaKeyVaultConfiguration();
+
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
@@ -86,4 +88,3 @@ app.MapPlanningCycleEndpoints();
 app.MapDefaultEndpoints();
 
 app.Run();
-

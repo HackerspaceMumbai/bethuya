@@ -11,6 +11,8 @@ using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddBethuyaKeyVaultConfiguration();
+
 
 if (!builder.Environment.IsDevelopment())
 {

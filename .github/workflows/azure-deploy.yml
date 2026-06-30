@@ -12,20 +12,12 @@ name: Azure Deploy
 #   AZURE_ENV_NAME           — azd environment name, e.g. "production"
 #   AZURE_LOCATION           — Azure region, e.g. "eastus"
 #
-# Required GitHub repository SECRETS for app parameters (first deploy only — azd then stores in Key Vault):
-#   CLOUDINARY_CLOUD_NAME    — Cloudinary cloud name
-#   CLOUDINARY_API_KEY       — Cloudinary API key
-#   CLOUDINARY_API_SECRET    — Cloudinary API secret
-#   AZURE_OPENAI_ENDPOINT    — Azure OpenAI endpoint URL
-#   AZURE_OPENAI_API_KEY     — Azure OpenAI API key
-#   OPENAI_API_KEY           — OpenAI API key (optional fallback)
-#
 # Setup:
 #   1. Create an app registration in Azure AD
 #   2. Add a federated credential: Entity = Branch, Branch = main, Repo = <org/repo>
 #   3. Assign Contributor + User Access Administrator on subscription (or resource group)
-#   4. Add the secrets/variables above to your GitHub repo settings
-#   5. Run `azd env new production` locally and commit the .azure/ folder (without secrets)
+#   4. Seed Key Vault secrets via controlled operator workflow (outside GitHub Actions YAML)
+#   5. Run `azd env new production` locally and keep `.azure/` local-only (never commit it)
 
 on:
   push:
@@ -67,13 +59,6 @@ jobs:
           AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          # App parameters — azd stores these in Key Vault after first provision
-          AZURE_CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          AZURE_CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-          AZURE_CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          AZURE_AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          AZURE_AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Deploy application
         run: azd deploy --no-prompt
