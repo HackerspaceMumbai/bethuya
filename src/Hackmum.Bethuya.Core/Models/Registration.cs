@@ -7,6 +7,15 @@ public sealed class Registration
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
     public Guid EventId { get; init; }
+
+    /// <summary>
+    /// The authentication subject of the owning attendee. Set server-side from the validated principal
+    /// at creation (never from the request body) so resource-ownership authorization can distinguish the
+    /// owner from other authenticated callers. <see langword="null"/> only for legacy rows created before
+    /// ownership tracking — those are reachable solely by bypass roles (fail-closed).
+    /// </summary>
+    public string? UserId { get; set; }
+
     public required string FullName { get; set; }
     public required string Email { get; set; }
     public string? Bio { get; set; }

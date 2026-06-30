@@ -17,6 +17,11 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
 
         builder.HasKey(r => r.Id);
 
+        builder.Property(r => r.UserId)
+            .HasMaxLength(200);
+
+        builder.HasIndex(r => r.UserId);
+
         builder.Property(r => r.FullName)
             .IsRequired()
             .HasMaxLength(200);

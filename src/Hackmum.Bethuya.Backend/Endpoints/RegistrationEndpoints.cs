@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using ServiceDefaults.Auth;
 
@@ -36,23 +38,82 @@ public static class RegistrationEndpoints
 
     private static void MapRegistrationRoutes(RouteGroupBuilder group)
     {
-        group.MapGet("/event/{eventId:guid}", static async (Guid eventId, IRegistrationRepository repo, CancellationToken ct) =>
-            Results.Ok(await repo.GetByEventIdAsync(eventId, ct)));
+        // Listing every registrant for an event exposes other attendees' PII, so it is restricted to
+        // operational bypass roles (organizer/curator/admin). A null-owner ResourceOwner check succeeds
+        // only for bypass roles; a bare attendee is denied with 403 (role-scope denial, not an
+        // existence-hiding 404 — the route plainly exists).
+        group.MapGet("/event/{eventId:guid}", static async (
+            Guid eventId,
+            ClaimsPrincipal user,
+            IAuthorizationService authorization,
+            IRegistrationRepository repo,
+            CancellationToken ct) =>
+        {
+            var staffOnly = await authorization.AuthorizeAsync(
+                user, new ResourceOwnerContext(null), BethuyaPolicyNames.ResourceOwner);
+            if (!staffOnly.Succeeded)
+            {
+                return Results.Forbid();
+            }
 
-        group.MapGet("/{id:guid}", static async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
-            await repo.GetByIdAsync(id, ct) is { } reg
+            return Results.Ok(await repo.GetByEventIdAsync(eventId, ct));
+        });
+
+        group.MapGet("/{id:guid}", static async (
+            Guid id,
+            ClaimsPrincipal user,
+            IAuthorizationService authorization,
+            IRegistrationRepository repo,
+            CancellationToken ct) =>
+        {
+            if (await repo.GetByIdAsync(id, ct) is not { } reg)
+            {
+                return Results.NotFound();
+            }
+
+            // Ownership failure is reported as 404 (not 403) so callers cannot probe which registration
+            // ids exist for other attendees.
+            return await IsOwnerOrBypassAsync(authorization, user, reg)
                 ? Results.Ok(reg)
-                : Results.NotFound());
+                : Results.NotFound();
+        });
 
         group.MapPost("/", CreateRegistrationAsync);
 
-        group.MapPost("/{id:guid}/government-id", UploadGovernmentIdAsync);
+        // Government-ID upload is a bearer-token multipart API (no browser cookie/form), and the
+        // backend pipeline intentionally registers no antiforgery middleware. IFormFile endpoints
+        // otherwise carry implicit antiforgery metadata that makes them unreachable, so disable it
+        // explicitly. Ownership of the target registration is still enforced inside the handler.
+        group.MapPost("/{id:guid}/government-id", UploadGovernmentIdAsync).DisableAntiforgery();
 
-        group.MapDelete("/{id:guid}", static async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
+        group.MapDelete("/{id:guid}", static async (
+            Guid id,
+            ClaimsPrincipal user,
+            IAuthorizationService authorization,
+            IRegistrationRepository repo,
+            CancellationToken ct) =>
         {
+            if (await repo.GetByIdAsync(id, ct) is not { } reg
+                || !await IsOwnerOrBypassAsync(authorization, user, reg))
+            {
+                return Results.NotFound();
+            }
+
             await repo.DeleteAsync(id, ct);
             return Results.NoContent();
         });
+    }
+
+    private static async Task<bool> IsOwnerOrBypassAsync(
+        IAuthorizationService authorization,
+        ClaimsPrincipal user,
+        Registration registration)
+    {
+        var result = await authorization.AuthorizeAsync(
+            user,
+            new ResourceOwnerContext(registration.UserId),
+            BethuyaPolicyNames.ResourceOwner);
+        return result.Succeeded;
     }
 
     private static async Task<IResult> CreateRegistrationAsync(
@@ -70,21 +131,18 @@ public static class RegistrationEndpoints
                 ["intent"] = ["Why do you want to attend this event? is required."]
             });
 
+        // A registration must have a server-authoritative owner. The route requires an authenticated
+        // attendee, so a missing subject is an authentication failure (401) — never trust a body field.
+        if (userContext.UserId is not { } ownerUserId)
+        {
+            return Results.Unauthorized();
+        }
+
         // M1 (PR3): the backend independently enforces mandatory-profile completion before allowing
         // registration, regardless of the UI onboarding gate. Honors Onboarding:BypassMandatoryProfile.
-        // TODO(PR4): once Registration carries a server-set UserId, key this guard off the persisted
-        // attendee identity rather than the validated principal alone.
         if (!OnboardingEnforcement.IsBypassEnabled(configuration))
         {
-            // A missing authenticated subject is an authentication failure (401), distinct from an
-            // authenticated attendee whose mandatory profile is simply incomplete (403). Conflating
-            // the two would mask token/identity misconfiguration behind a profile-completion message.
-            if (userContext.UserId is not { } guardUserId)
-            {
-                return Results.Unauthorized();
-            }
-
-            if (await profileRepo.GetByUserIdAsync(guardUserId, ct) is not { IsProfileComplete: true })
+            if (await profileRepo.GetByUserIdAsync(ownerUserId, ct) is not { IsProfileComplete: true })
             {
                 return Results.Problem(
                     "Complete your mandatory attendee profile before registering for an event.",
@@ -100,6 +158,7 @@ public static class RegistrationEndpoints
         var reg = new Registration
         {
             EventId = request.EventId,
+            UserId = ownerUserId,
             FullName = request.FullName,
             Email = request.Email,
             Bio = request.Bio,
@@ -153,6 +212,8 @@ public static class RegistrationEndpoints
     private static async Task<IResult> UploadGovernmentIdAsync(
         Guid id,
         IFormFile file,
+        ClaimsPrincipal user,
+        IAuthorizationService authorization,
         IDataProtectionProvider dataProtectionProvider,
         IRegistrationRepository repo,
         CancellationToken ct)
@@ -176,6 +237,11 @@ public static class RegistrationEndpoints
 
         var reg = await repo.GetByIdAsync(id, ct);
         if (reg is null)
+            return Results.NotFound();
+
+        // Uploading a government ID against a registration you do not own is an IDOR; reported as 404 so
+        // ownership of other attendees' registrations cannot be probed.
+        if (!await IsOwnerOrBypassAsync(authorization, user, reg))
             return Results.NotFound();
 
         using var ms = new MemoryStream();

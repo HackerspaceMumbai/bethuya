@@ -501,3 +501,16 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** The stacked layout solved card asymmetry, but discoverability still depended on scroll affordance instead of durable visible copy.
 - **Fix:** Add regression coverage for visible stack text that mentions GitHub and that it continues below, alongside the CTA gating tests.
 - **Prevention:** When one stacked card can legitimately dominate the viewport, require an explicit continuation cue and test it semantically rather than relying on screenshots.
+
+## [2026-07-01] PR4 — IFormFile endpoints need DisableAntiforgery on a middleware-less API host
+
+- **What happened:** Functional ownership tests for the government-ID upload threw `InvalidOperationException: ... contains anti-forgery metadata, but a middleware was not found` at request time. Minimal-API `IFormFile` parameters attach implicit antiforgery metadata, but the backend pipeline (and the lightweight test hosts) register no `UseAntiforgery()` middleware.
+- **Root cause:** The endpoint is a bearer-token multipart API, not a cookie/form post, so antiforgery is inapplicable — yet the implicit metadata makes the route unreachable without the middleware. This was a latent issue independent of PR4; it only surfaced once an ownership test actually invoked the route.
+- **Fix:** `.DisableAntiforgery()` on the `government-id` map call. Ownership is still enforced inside the handler via `IAuthorizationService.AuthorizeAsync`.
+- **Prevention:** Any minimal-API endpoint taking `IFormFile` on a token-authenticated, antiforgery-middleware-less host must `.DisableAntiforgery()` (or the host must add `UseAntiforgery()`); cover such endpoints with a functional (request-invoking) test, not just metadata assertions.
+
+## [2026-07-01] PR4 — Map-all-routes test hosts must register every co-mapped handler's deps
+
+- **What happened:** Registration ownership tests failed at host startup with `Failure to infer one or more parameters` even though they only exercised GET/DELETE. `MapRegistrationEndpoints` also maps `CreateRegistrationAsync`, whose `IAttendeeProfileRepository` + `InclusionSignalsNormalizer` were unregistered, so minimal-API treated them as inferred bodies and the whole host failed to build. Separately, `RouteGroupAuthorizationTests` broke because the new `IAuthorizationService` handler param wasn't a registered service in its stub host (needs `AddAuthorization()`).
+- **Root cause:** Minimal-API parameter inference validates every mapped endpoint at startup, not just the one under test; a single unresolved service type breaks the entire host.
+- **Prevention:** When a test maps a whole endpoint group, register the union of all co-mapped handlers' service dependencies (or map only the route under test). Adding a new service-typed handler parameter means updating both functional hosts and the `RouteGroupAuthorizationTests` stub list.

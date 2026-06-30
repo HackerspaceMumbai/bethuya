@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using ServiceDefaults.Auth;
 
 namespace Microsoft.Extensions.Hosting;
@@ -42,7 +43,14 @@ public static class BethuyaAuthorizationExtensions
                     BethuyaRoleNames.Admin,
                     BethuyaRoleNames.Organizer,
                     BethuyaRoleNames.Curator,
-                    BethuyaRoleNames.Attendee));
+                    BethuyaRoleNames.Attendee))
+            .AddPolicy(BethuyaPolicyNames.ResourceOwner, policy =>
+                policy.AddRequirements(new SameOwnerRequirement()));
+
+        // Resource-based ownership handler backing the ResourceOwner policy. Registered idempotently so
+        // repeated AddBethuyaAuthorization calls (e.g. across test hosts) don't add duplicate handlers.
+        builder.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IAuthorizationHandler, ResourceOwnerHandler>());
 
         if (builder.Configuration.GetValue(EnforceAuthenticatedFallbackKey, defaultValue: true))
         {

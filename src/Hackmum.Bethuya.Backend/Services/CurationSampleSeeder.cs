@@ -271,6 +271,7 @@ public sealed partial class CurationSampleSeeder(
         return new Registration
         {
             EventId = eventId,
+            UserId = identity.UserId,
             FullName = identity.FullName,
             Email = identity.Email,
             Bio = BuildBio(persona, index),
