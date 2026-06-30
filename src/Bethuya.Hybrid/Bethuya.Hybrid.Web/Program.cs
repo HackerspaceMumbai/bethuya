@@ -6,9 +6,57 @@ using Bethuya.Hybrid.Web.Services;
 using BlazorBlueprint.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+        var configuredForwardLimit = builder.Configuration.GetValue<int?>("ForwardedHeaders:ForwardLimit");
+
+        options.ForwardLimit = configuredForwardLimit is > 0
+            ? configuredForwardLimit
+            : 1;
+
+        options.RequireHeaderSymmetry = true;
+
+        var knownProxies =
+            builder.Configuration
+                .GetSection("ForwardedHeaders:KnownProxies")
+                .Get<string[]>()
+            ?? [];
+
+        foreach (var knownProxy in knownProxies)
+        {
+            if (System.Net.IPAddress.TryParse(knownProxy, out var proxyAddress))
+            {
+                options.KnownProxies.Add(proxyAddress);
+            }
+        }
+
+        var knownNetworks =
+            builder.Configuration
+                .GetSection("ForwardedHeaders:KnownNetworks")
+                .Get<string[]>()
+            ?? [];
+
+        foreach (var knownNetwork in knownNetworks)
+        {
+            if (System.Net.IPNetwork.TryParse(knownNetwork, out var network))
+            {
+                options.KnownIPNetworks.Add(network);
+            }
+        }
+    });
+}
+
 
 builder.AddServiceDefaults();
 
@@ -112,29 +160,51 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowCredentials()));
 
+
+/*builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto |
+        ForwardedHeaders.XForwardedHost;
+});*/
+
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseForwardedHeaders();
+}
+
+
+
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
+    app.UseHttpsRedirection(); // ✅ only dev
 }
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    // HSTS optional → since HTTPS termination happens at the edge, not in the app, HSTS headers from the app won't have any effect.
+    // Ensure HSTS is configured at the edge (e.g., Azure Front Door) if desired. 
 }
 
-app.UseHttpsRedirection();
 
 // Security headers (CSP, X-Frame-Options, etc.) + rate limiting — from ServiceDefaults
-app.UseSecurityDefaults();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseSecurityDefaults();
+}
+
+app.UseCors("BethuyaMobileClients");
 
 // Authentication + Authorization middleware (no-op when provider is None)
 app.UseBethuyaAuthentication();
-
-app.UseCors("BethuyaMobileClients");
 
 app.UseAntiforgery();
 

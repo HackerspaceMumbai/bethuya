@@ -18,6 +18,9 @@ internal sealed class PlannerInvocationAuditConfiguration : IEntityTypeConfigura
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(a => a.CycleState)
+            .IsRequired();
+
         builder.Property(a => a.InputHash)
             .IsRequired()
             .HasMaxLength(128);
@@ -29,15 +32,18 @@ internal sealed class PlannerInvocationAuditConfiguration : IEntityTypeConfigura
             .IsRequired();
 
         builder.Property(a => a.ResponseId)
+            .IsRequired()
             .HasMaxLength(200);
 
         builder.Property(a => a.AgentName)
             .HasMaxLength(200);
 
         builder.Property(a => a.AgentVersionTag)
+            .IsRequired()
             .HasMaxLength(200);
 
         builder.Property(a => a.TraceParent)
+            .IsRequired()
             .HasMaxLength(200);
 
         builder.Property(a => a.CorrelationId)

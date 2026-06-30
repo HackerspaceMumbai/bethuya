@@ -16,7 +16,42 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
-<<<<<<< HEAD
+## [2026-06-30] Harden backend startup DB bootstrap
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Run backend development-time migration and pending image-upload schema bootstrap inside a single execution strategy with a fresh scoped `DbContext` per retry attempt.
+- **Acceptance:** `Program.cs` creates a fresh scoped context inside the execution-strategy delegate, both DB bootstrap steps run inside the same retry boundary, and backend file diagnostics remain clean.
+
+## [2026-06-30] Harden planning-cycle persisted identifiers
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Reject oversized `WorkItemId` at the planning-cycle API boundary and bound provider-controlled persisted identifiers in `PlanningCycleService` so planner metadata cannot overflow constrained database columns.
+- **Acceptance:** Draft endpoint returns validation errors for `WorkItemId` values longer than 100 characters, `PlanningCycleService` normalizes `ResponseId`/`AgentName`/`AgentVersionTag` before persistence, and focused endpoint/workflow tests pass.
+
+## [2026-06-30] Bound persisted planning trace metadata
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Centralize and bound persisted `TraceParent`/`CorrelationId` values in `PlanningCycleService` so required audit placeholders and trace context strings never exceed the database column limits.
+- **Acceptance:** `PlanningCycleService` normalizes persisted trace metadata through shared helpers/constants, missing-traceparent fallback stays within 200 chars, and focused workflow coverage proves the persisted audit record remains valid.
+
+## [2026-06-30] Make forwarded-header hop limit configurable
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Replace the hard-coded forwarded-header `ForwardLimit = 1` assumption in `Bethuya.Hybrid.Web` with standard configuration-backed settings so deployments with multiple trusted proxy hops can override safely.
+- **Acceptance:** `Program.cs` reads `ForwardedHeaders:ForwardLimit` with a safe default, `appsettings.json` documents/provides the default value, and touched files remain diagnostics-clean.
+
+## [2026-06-09] Fix Postgres filtered index SQL
+- **Status:** done
+- **Agent/Owner:** Codex
+- **Description:** Fix SQL Server bracket syntax left in EF model configuration that causes Npgsql `EnsureCreatedAsync` to fail while creating filtered indexes.
+- **Acceptance:** ✅ Filtered index metadata uses Postgres-compatible SQL. ✅ SQL Server raw-SQL pattern search found no remaining provider-specific EF configuration. ✅ Backend and migration service builds pass with isolated output folders.
+
+## [2026-06-09] Refactor backend and migration service for Postgres
+- **Status:** done
+- **Agent/Owner:** Codex
+- **Description:** Replace remaining SQL Server EF Core/Aspire wiring in Hackmum.Bethuya.Backend infrastructure and Bethuya.MigrationService with Postgres-compatible packages, DI, and schema bootstrap SQL.
+- **Acceptance:** ✅ Backend and migration service reference Postgres provider packages. ✅ Infrastructure and migration worker use Aspire/Npgsql DbContext registration. ✅ Pending image upload bootstrap SQL is Postgres-specific and provider-guarded. ✅ Integration fixture uses Npgsql + Respawn Postgres adapter. ✅ `dotnet build` passed for backend, migration service, and integration tests using isolated output folders. ⚠️ Direct AppHost build was blocked by an existing `Bethuya.Hybrid.Shared` obj-file lock; integration-test build compiled AppHost successfully through its project reference.
+
 ## [2026-05-28] Fix live curation split-pane scrolling
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
@@ -214,19 +249,6 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Copilot CLI
 - **Description:** Update the user event-registration flow so curation-relevant data is captured during registration, wire that data through shared/backend contracts into inclusion-signal generation, and add a development toggle that allows running the full onboarding registration flow instead of the default bypass path.
 - **Acceptance:** ✅ `/events/{eventId}/registrations` now captures neighborhood, language proficiency, educational background, and socioeconomic background with updated consent copy, then sends them via `CreateRegistrationDto`. ✅ Backend `CreateRegistrationRequest` + registration endpoint now validate curation-source completeness and build inclusion signals from registration data (with authenticated-profile/email fallback when needed). ✅ AppHost now supports `ONBOARDING_ENABLE_FLOW_IN_DEVELOPMENT=true` (or `Onboarding:EnableFlowInDevelopment`) to disable onboarding bypass in development and run the full `/registration/mandatory -> /registration/social -> /registration/aide` flow. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal /p:NuGetAudit=false` passed (172/172).
-=======
-## [2026-06-03] Sync EventDetail ClearAll with cycle/review draft state
-- **Status:** done
-- **Agent/Owner:** Copilot CLI
-- **Description:** Verify and fix stale cycle/review state after `ClearAll` so header/session bar/review editor align with `Draft` status.
-- **Acceptance:** ✅ `ClearAll` now clears `_activeCycle`, `_plannerMarkdown`, review visibility (`_showRawSchema`), and refreshes console thread state via `InitConsoleMessages()` while preserving minimal behavior. ✅ `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` passed.
-
-## [2026-06-03] Deduplicate prompt chip constraints in EventDetail planner request
-- **Status:** done
-- **Agent/Owner:** Copilot CLI
-- **Description:** Verify and fix duplicate constraint emission when prompt chips append text to `_refineConstraints` and the same steering prompt is passed to `BuildPlannerConstraints`.
-- **Acceptance:** ✅ `ApplyPromptChipAsync` only appends new chip text when an equivalent semicolon token is not already present. ✅ `BuildPlannerConstraints` skips appending `steeringPrompt` when an equivalent normalized token already exists in `_refineConstraints`. ✅ `dotnet build .\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Bethuya.Hybrid.Shared.csproj --no-restore -v minimal` passed.
->>>>>>> 4a5e048 (feat(EventDetail): Prevent duplicate prompt chip constraints and enhance ClearAll functionality)
 
 ## [2026-05-26] Add Show Agent Timeline overlay
 - **Status:** done

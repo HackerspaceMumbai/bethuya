@@ -34,7 +34,7 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
 
         builder.HasIndex(e => e.Hashtag)
             .IsUnique()
-            .HasFilter("[Hashtag] IS NOT NULL");
+            .HasFilter("\"Hashtag\" IS NOT NULL");
 
         builder.Property(e => e.CreatedBy)
             .IsRequired()

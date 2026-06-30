@@ -8,6 +8,7 @@ using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Refit;
 using Scalar.AspNetCore;
@@ -51,9 +52,19 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
-    await dbContext.Database.EnsureCreatedAsync();
-    await dbContext.EnsurePendingImageUploadSchemaAsync();
+    var executionStrategy = scope.ServiceProvider
+        .GetRequiredService<BethuyaDbContext>()
+        .Database
+        .CreateExecutionStrategy();
+
+    await executionStrategy.ExecuteAsync(async () =>
+    {
+        await using var retryScope = app.Services.CreateAsyncScope();
+        var dbContext = retryScope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
+
+        await dbContext.Database.MigrateAsync();
+        await dbContext.EnsurePendingImageUploadSchemaAsync();
+    });
 
     app.MapOpenApi();
     app.MapScalarApiReference();
@@ -75,3 +86,4 @@ app.MapPlanningCycleEndpoints();
 app.MapDefaultEndpoints();
 
 app.Run();
+

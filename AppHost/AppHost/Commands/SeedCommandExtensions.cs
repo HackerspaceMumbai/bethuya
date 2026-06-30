@@ -8,7 +8,7 @@ public static class SeedCommandExtensions
 
     public static IResourceBuilder<ProjectResource> ConfigureSeedCommands(
     this IResourceBuilder<ProjectResource> backend,
-    EndpointReference backendHttpsEndpoint)
+    EndpointReference backendHttpEndpoint)
     {
         backend.WithCommand(
             "seed-curation",
@@ -17,13 +17,13 @@ public static class SeedCommandExtensions
             {
                 try
                 {
-                    var endpointUrl = await backendHttpsEndpoint
+                    var endpointUrl = await backendHttpEndpoint
                         .GetValueAsync(context.CancellationToken);
 
                     if (string.IsNullOrWhiteSpace(endpointUrl))
                     {
                         return CommandResults.Failure(
-                            "Backend HTTPS endpoint is unavailable.");
+                            "Backend HTTP endpoint is unavailable.");
                     }
 
                     var requestUrl =

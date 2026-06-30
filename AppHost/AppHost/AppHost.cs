@@ -8,53 +8,36 @@ using Scalar.Aspire;
 
 var builder = DistributedApplication.CreateBuilder(args);
 var acaEnv = builder.AddAzureContainerAppEnvironment("bethuya-env");
-const int webHttpsPort = 7400;
-const int webHttpPort = 5095;
+
+
 const string gitHubCallbackPath = "/oauth/github/callback";
-const string linkedInCallbackPath = "/oauth/linkedin/callback";
+/*const string linkedInCallbackPath = "/oauth/linkedin/callback";
+*/
+const string linkedInCallbackPath = "/signin-linkedin";
 
-var gitHubClientId = builder.ResolveRequired(
-    "SocialConnections:GitHub:ClientId",
-    "Parameters:oauth-github-clientid",
-    "oauth-github-clientid");
-var gitHubClientSecret = builder.ResolveRequired(
-    "SocialConnections:GitHub:ClientSecret",
-    "Parameters:oauth-github-clientsecret",
-    "oauth-github-clientsecret");
-var linkedInClientId = builder.ResolveRequired(
-    "SocialConnections:LinkedIn:ClientId",
-    "Parameters:oauth-linkedin-clientid",
-    "oauth-linkedin-clientid");
-var linkedInClientSecret = builder.ResolveRequired(
-    "SocialConnections:LinkedIn:ClientSecret",
-    "Parameters:oauth-linkedin-clientsecret",
-    "oauth-linkedin-clientsecret");
-var linkedInScope0 = builder.ResolveOptional(
-    "openid",
-    "SocialConnections:LinkedIn:Scopes:0",
-    "Parameters:oauth-linkedin-scope-0",
-    "oauth-linkedin-scope-0");
-var linkedInScope1 = builder.ResolveOptional(
-    "profile",
-    "SocialConnections:LinkedIn:Scopes:1",
-    "Parameters:oauth-linkedin-scope-1",
-    "oauth-linkedin-scope-1");
+var gitHubClientId =
+    builder.AddParameter("oauth-github-clientid");
 
-builder.ValidateRequired(
-    gitHubClientId,
-    "SocialConnections:GitHub:ClientId");
+var gitHubClientSecret =
+    builder.AddParameter("oauth-github-clientsecret", secret: true);
 
-builder.ValidateRequired(
-    gitHubClientSecret,
-    "SocialConnections:GitHub:ClientSecret");
+var linkedInClientId =
+    builder.AddParameter("oauth-linkedin-clientid");
 
-builder.ValidateRequired(
-    linkedInClientId,
-    "SocialConnections:LinkedIn:ClientId");
+var linkedInClientSecret =
+    builder.AddParameter("oauth-linkedin-clientsecret", secret: true);
 
-builder.ValidateRequired(
-    linkedInClientSecret,
-    "SocialConnections:LinkedIn:ClientSecret");
+var linkedInScope0 =
+    builder.AddParameter(
+        "oauth-linkedin-scope-0",
+        "openid");
+
+var linkedInScope1 =
+    builder.AddParameter(
+        "oauth-linkedin-scope-1",
+        "profile");
+
+
 
 var socialAuthSettings = new SocialAuthSettings(
     gitHubClientId,
@@ -85,7 +68,8 @@ var enableOnboardingFlowInDevelopment = string.Equals(
 // Entra ID + Managed Identity.
 // Eliminate SQL passwords in production.
 
-var sql = builder.ConfigureDatabase();
+var sql = builder.ConfigureDatabase(acaEnv);
+                                            
 
 // Key Vault - provisioned in Azure only; no local emulator exists.
 // Only wire it in publish mode (azd up) so local dev starts without Azure credentials.
@@ -98,7 +82,7 @@ var keyVault = builder.ConfigureKeyVault();
 IResourceBuilder<KeycloakResource>? keycloak = null;
 if (builder.IsLocalDevelopment())
 {
-    keycloak = builder.AddKeycloak("keycloak", 8080)
+    keycloak = builder.AddKeycloak("keycloak", 8081)
         .WithDataVolume();
 }
 
@@ -149,41 +133,44 @@ var aiProviderSettings = new AiProviderSettings(
     aiOpenAiKey,
     aiOpenAiModel);
 
-var foundry = builder.AddFoundry("bethuya-foundry");
 
-#pragma warning disable ASPIRECOMPUTE003
-var foundryProject = foundry.AddProject("bethuya-project");
-#pragma warning restore ASPIRECOMPUTE003
+IResourceBuilder<ProjectResource>? plannerHosted = null;
 
-if (builder.IsCloudDeployment())
+if (builder.EnableAgents())
 {
-    var registry = builder.AddAzureContainerRegistry("acr");
+    var foundry = builder.AddFoundry("bethuya-foundry");
 
 #pragma warning disable ASPIRECOMPUTE003
-    foundryProject.WithContainerRegistry(registry);
-#pragma warning restore ASPIRECOMPUTE003
+    var foundryProject = foundry.AddProject("bethuya-project");
+#pragma warning restore
+
+    var plannerChatModel =
+        foundryProject.AddModelDeployment(
+            "planner-chat",
+            FoundryModel.OpenAI.Gpt41);
+
+    plannerHosted = builder
+        .AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>(
+            "planner-hosted")
+        .WithHttpEndpoint()
+        .WithReference(foundryProject)
+        .WithReference(plannerChatModel)
+        .WaitFor(plannerChatModel)
+        .AsHostedAgent(foundryProject);
 }
 
-var plannerChatModel = foundryProject.AddModelDeployment(
-    "planner-chat",
-    FoundryModel.OpenAI.Gpt41);
+// Migration service - runs EF Core migrations then exits.
+// Deployed as a Container App Job (not a long-running Container App) so ACA doesn't restart it.
+// The job is triggered automatically via the azure.yaml postdeploy hook after each deploy.
+// IMPORTANT: run `dotnet ef migrations add <Name> --project src/Hackmum.Bethuya.Infrastructure --startup-project src/Bethuya.MigrationService`
+// for any DbContext schema changes before deploying.
+   var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("migration-service")
+         .WithReference(sql)
+         .WaitFor(sql)
+         .PublishAsAzureContainerAppJob()
+         .WithComputeEnvironment(acaEnv);
 
 
-var plannerHosted = builder
-    .AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>(
-        "planner-hosted")
-    .WithHttpEndpoint(targetPort: 8088)
-    .WithReference(foundryProject)
-    .WithReference(plannerChatModel)
-    .WaitFor(plannerChatModel)
-    .AsHostedAgent(foundryProject);
-
-// Migration service - runs EF Core migrations then exits; backend waits for it to complete.
-// IMPORTANT: run `dotnet ef migrations add InitialCreate --project src/Hackmum.Bethuya.Infrastructure`
-// before the first Azure deployment.
-var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("migration-service")
-    .WithReference(sql)
-    .WaitFor(sql);
 
 var shouldBypassOnboardingInCurrentEnvironment =
     builder.ShouldEnableOnboardingBypass(
@@ -196,11 +183,11 @@ builder.EnforceProductionSecurityPolicies(
     shouldBypassOnboardingInCurrentEnvironment);
 
 
-var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
+var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", launchProfileName: null)
+    .WithHttpEndpoint(port: 8080, targetPort: 8080, isProxied: false).WithReference(sql)
+    .WithEnvironment("ASPNETCORE_PREVENTHOSTINGSTARTUP", "true")
     .WithReference(sql)
-    .WithReference(plannerHosted)
     .WaitFor(sql)
-    .WaitFor(plannerHosted)
     .WaitForCompletion(migrationService)
     .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
     .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
@@ -208,6 +195,7 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
     .ConfigureAiProviders(aiProviderSettings)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
     .WithHttpHealthCheck("/health")
+//  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8080")
     .PublishAsAzureContainerApp((infra, app) =>
     {
         app.Template.Scale.MinReplicas = 1;
@@ -215,13 +203,24 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
     })
     .WithComputeEnvironment(acaEnv);
 
-var backendHttpsEndpoint = backend.GetEndpoint("https");
 
+
+if (plannerHosted is not null)
+{
+    backend
+        .WithReference(plannerHosted)
+        .WaitFor(plannerHosted);
+}
+
+
+var backendHttpEndpoint = backend.GetEndpoint("http");
 
 if (builder.IsLocalDevelopment())
 {
-    backend.ConfigureSeedCommands(backendHttpsEndpoint);
+    backend.WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+    backend.ConfigureSeedCommands(backendHttpEndpoint);
 }
+
 
 if (keyVault is not null)
     backend.WithReference(keyVault);
@@ -244,20 +243,30 @@ var webStaticAssetsManifest = Path.GetFullPath(Path.Combine(
 var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileName: null)
     .WithReference(backend)
     .WaitFor(backend)
-    .WithHttpEndpoint(port: webHttpPort)
-    .WithHttpsEndpoint(port: webHttpsPort)
-    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithHttpEndpoint()
+    //   .WithHttpsEndpoint()
+    .WithEnvironment("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true")
     .WithEnvironment("Onboarding__BypassSocialConnections", onboardingBypassSocialConnections)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
-    .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest)
+//  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8082")
+    .WithEnvironment("ASPNETCORE_ALLOWEDHOSTS", "*")
     .ConfigureSocialAuth(socialAuthSettings)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
+    .WithComputeEnvironment(acaEnv)
     .PublishAsAzureContainerApp((infra, app) =>
     {
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 5;
     });
+
+if (builder.IsLocalDevelopment())
+{
+    web
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+        .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest);
+}
+    
 
 if (keycloak is not null)
 {

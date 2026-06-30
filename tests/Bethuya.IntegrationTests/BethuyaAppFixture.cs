@@ -33,8 +33,8 @@ public sealed class BethuyaAppFixture : IAsyncInitializer, IAsyncDisposable
         _app?.CreateHttpClient("backend")
         ?? throw new InvalidOperationException("Fixture not initialized — InitializeAsync must complete before use.");
 
-    /// <summary>Gets the SQL Server connection string for the BethuyaDb database.</summary>
-    public async Task<string> GetSqlConnectionStringAsync() =>
+    /// <summary>Gets the Postgres connection string for the BethuyaDb database.</summary>
+    public async Task<string> GetPostgresConnectionStringAsync() =>
         _app is null
             ? throw new InvalidOperationException("Fixture not initialized — InitializeAsync must complete before use.")
             : await _app.GetConnectionStringAsync("BethuyaDb")
