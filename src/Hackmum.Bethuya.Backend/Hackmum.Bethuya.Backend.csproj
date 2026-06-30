@@ -4,6 +4,7 @@
     <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
     <ContainerPort>8080</ContainerPort>
     <AspNetCoreUrls>http://+:8080</AspNetCoreUrls>
+    <UserSecretsId>7fb7f0cb-193c-4e97-a97e-433fc39ea58f</UserSecretsId>
   </PropertyGroup>
 
 

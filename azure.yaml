@@ -21,6 +21,9 @@
 # Required GitHub repository variables:
 #   AZURE_ENV_NAME       — e.g. "production"
 #   AZURE_LOCATION       — e.g. "eastus"
+#
+# App runtime secrets are seeded and rotated directly in Azure Key Vault.
+# They are intentionally not passed through AZD manifests or workflow YAML.
 
 name: bethuya
 

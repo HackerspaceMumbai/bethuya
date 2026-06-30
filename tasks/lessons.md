@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-06-30] Central Azure SDK pins must match highest transitive floor
+- **What happened:** Adding explicit central versions for `Azure.Identity` and `Azure.Security.KeyVault.Secrets` initially broke restore with NU1109 downgrades across AppHost, backend, and tests.
+- **Root cause:** Existing transitive dependencies (for example, Aspire hosting packages and Microsoft.Identity.Web) required newer minimum versions than the manually pinned values.
+- **Fix:** Raised central versions to satisfy the highest transitive requirement (`Azure.Identity` 1.21.0 and `Azure.Security.KeyVault.Secrets` 4.11.0) before rebuilding.
+- **Prevention:** When adding centrally pinned Azure SDK packages, inspect restore output for the maximum required transitive floor and pin at or above that floor in one change.
+
 ## [2026-06-28] ACA Postgres missing "Events" table — EnsureCreated is a no-op on existing DBs
 - **What happened:** After deploying to ACA, `GET /events` returned 500. Backend logs showed `42P01: relation "Events" does not exist`. Migration-service had run but used `EnsureCreatedAsync` — which is a no-op if the database already exists (even if tables are missing). The Postgres DB existed from a prior environment but had no tables.
 - **Root cause:** The project never had formal EF Core migrations. Schema was always bootstrapped ad-hoc via `aspire exec`. `EnsureCreated` cannot repair a partially-initialized DB.

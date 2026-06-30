@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-06-30] Implement Key Vault-first secret architecture
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Move hosted secret resolution to Azure Key Vault via Managed Identity, remove deployment-time secret propagation paths from AppHost/AZD/GitHub workflow, add fail-fast non-development startup validation, and document end-to-end secret lifecycle + local development flow.
+- **Acceptance:** ✅ Backend/web now load Azure Key Vault only outside Development through `DefaultAzureCredential`. ✅ Startup now fails fast in hosted mode when required config keys or required Key Vault secret names are missing. ✅ AppHost secret parameter propagation for Cloudinary/AI/social auth was removed and both hosted apps now receive least-privilege Key Vault access (`KeyVaultSecretsUser`). ✅ `azure-deploy.yml` no longer propagates application secrets through workflow env. ✅ `docs/security/secrets-management.md` documents architecture, inventory, rotation, and incident response. ✅ `dotnet build Bethuya.slnx -v minimal` and `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal` passed.
+
 ## [2026-06-30] Harden backend startup DB bootstrap
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
