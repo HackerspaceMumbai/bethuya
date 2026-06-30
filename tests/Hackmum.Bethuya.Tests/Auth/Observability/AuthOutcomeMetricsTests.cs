@@ -62,6 +62,32 @@ public sealed class AuthOutcomeMetricsTests
         await Assert.That(outcome.Tags["route_group"]).IsEqualTo("organizer");
     }
 
+    [Test]
+    public async Task Denial_AuditRecord_CarriesActualRoutePolicy_NotHardCodedAttendee()
+    {
+        var auditor = new RecordingAuditor();
+
+        await using var app = await HeaderRoleAuthHost.StartAsync(
+            a => a.MapGet("/api/organizer/ping", () => Results.Ok())
+                .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer),
+            enforceFallback: false,
+            configureServices: services =>
+            {
+                services.AddSingleton<IAuthorizationAuditor>(auditor);
+                services.AddSingleton<IAuthorizationMiddlewareResultHandler, BethuyaAuthorizationAuditMiddlewareResultHandler>();
+            });
+        using var client = app.GetTestClient();
+
+        var response = await client.GetAsync(new Uri("/api/organizer/ping", UriKind.Relative));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+
+        var record = auditor.Events.Single(e => e.Route == "/api/organizer/ping");
+        await Assert.That(record.PolicyName).IsEqualTo(BethuyaPolicyNames.RequireOrganizer);
+        await Assert.That(record.ResourceType).IsEqualTo("organizer");
+        await Assert.That(record.OutcomeStatusCode).IsEqualTo(401);
+    }
+
     private static Task<WebApplication> StartHostAsync() =>
         HeaderRoleAuthHost.StartAsync(
             a => a.MapGet("/api/organizer/ping", () => Results.Ok())

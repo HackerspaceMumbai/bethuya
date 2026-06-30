@@ -45,7 +45,7 @@ public sealed class BethuyaAuthorizationAuditMiddlewareResultHandler(
 
             auditor.RecordDecision(
                 AuthorizationDecision.Deny,
-                policyName: BethuyaPolicyNames.RequireAttendee,
+                policyName: ResolvePolicyName(routeGroup),
                 resourceType: routeGroup,
                 subject: OwnershipBypass.ResolveSubject(context.User ?? new ClaimsPrincipal(new ClaimsIdentity())),
                 resourceId: null,
@@ -55,6 +55,21 @@ public sealed class BethuyaAuthorizationAuditMiddlewareResultHandler(
 
         await Default.HandleAsync(next, context, policy, authorizeResult);
     }
+
+    /// <summary>
+    /// Maps a coarse route group to the role policy that guards it, so audit records and metrics carry the
+    /// policy that actually denied the request (not a hard-coded one). Falls back to
+    /// <see cref="BethuyaPolicyNames.RequireAttendee"/> — the any-authenticated baseline applied by the
+    /// default-deny fallback — for routes outside the named role groups.
+    /// </summary>
+    private static string ResolvePolicyName(string routeGroup) => routeGroup switch
+    {
+        "admin" => BethuyaPolicyNames.RequireAdmin,
+        "organizer" => BethuyaPolicyNames.RequireOrganizer,
+        "curator" => BethuyaPolicyNames.RequireCurator,
+        "attendee" => BethuyaPolicyNames.RequireAttendee,
+        _ => BethuyaPolicyNames.RequireAttendee
+    };
 
     /// <summary>
     /// Extracts a coarse route-group label from the request path. For <c>/api/{group}/...</c> this is
