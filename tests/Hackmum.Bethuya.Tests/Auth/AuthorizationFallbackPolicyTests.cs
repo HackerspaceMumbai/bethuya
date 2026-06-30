@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -39,6 +40,8 @@ public class AuthorizationFallbackPolicyTests
 
         await Assert.That(options.FallbackPolicy).IsNotNull();
         await Assert.That(options.FallbackPolicy!.Requirements).IsNotEmpty();
+        await Assert.That(options.FallbackPolicy.Requirements
+            .Any(r => r is DenyAnonymousAuthorizationRequirement)).IsTrue();
     }
 
     [Test]

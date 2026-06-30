@@ -24,6 +24,7 @@ public class JwtBearerHardeningTests
         await Assert.That(options.TokenValidationParameters.ValidateIssuerSigningKey).IsTrue();
         await Assert.That(options.TokenValidationParameters.RoleClaimType).IsEqualTo("realm_access");
         await Assert.That(options.TokenValidationParameters.NameClaimType).IsEqualTo("name");
+        await Assert.That(options.TokenValidationParameters.ClockSkew).IsEqualTo(TimeSpan.FromSeconds(30));
     }
 
     [Test]

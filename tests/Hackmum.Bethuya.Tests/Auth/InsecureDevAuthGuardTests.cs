@@ -55,6 +55,16 @@ public class InsecureDevAuthGuardTests
     }
 
     [Test]
+    public async Task WebAuthentication_NoneProvider_Production_WithOptIn_RegistersDevelopmentScheme()
+    {
+        var builder = CreateBuilder(Environments.Production, optIn: true);
+
+        builder.AddBethuyaWebAuthentication();
+
+        await AssertDevelopmentSchemeRegistered(builder);
+    }
+
+    [Test]
     public async Task WebAuthentication_NoneProvider_Development_RegistersDevelopmentScheme()
     {
         var builder = CreateBuilder(Environments.Development, optIn: false);

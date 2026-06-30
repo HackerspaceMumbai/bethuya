@@ -47,6 +47,23 @@ public class BackendAccessTokenHandlerTests
     }
 
     [Test]
+    public async Task SendAsync_WithEmptyAccessToken_DoesNotAddAuthorizationHeader()
+    {
+        var capturing = new CapturingHandler();
+        var handler = new BackendAccessTokenHandler(new FakeTokenProvider(string.Empty))
+        {
+            InnerHandler = capturing
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://backend/api/events");
+
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(capturing.CapturedAuthorization).IsNull();
+    }
+
+    [Test]
     public async Task SendAsync_WithExistingAuthorizationHeader_DoesNotOverwrite()
     {
         var capturing = new CapturingHandler();
