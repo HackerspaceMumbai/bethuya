@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -63,17 +63,23 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
             OnPermissionRequest = PermissionHandler.ApproveAll
         }, ct);
 
-        session.On(evt =>
+
+        // Assistant message stream
+        session.On<AssistantMessageEvent>(msg =>
         {
-            if (evt is AssistantMessageEvent msg && msg.Data.Content is not null)
+            if (msg.Data.Content is not null)
             {
                 responseBuilder.Append(msg.Data.Content);
-            }
-            else if (evt is SessionIdleEvent)
-            {
-                done.TrySetResult();
+                Console.WriteLine(msg.Data.Content);
             }
         });
+
+        // Session completion
+        session.On<SessionIdleEvent>(_ =>
+        {
+            done.TrySetResult();
+        });
+
 
         await session.SendAsync(new MessageOptions { Prompt = userPrompt }, ct);
 
@@ -140,40 +146,49 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
 
     private async Task<CopilotClient> GetOrCreateClientAsync(CancellationToken ct)
     {
-        if (_client is not null) return _client;
+        if (_client != null)
+            return _client;
 
         await _clientLock.WaitAsync(ct);
+
         try
         {
             if (_client is null)
             {
-                var opts = new CopilotClientOptions
-                {
-                    AutoStart = true,
-                    UseStdio = true
-                };
-
-                if (!string.IsNullOrWhiteSpace(_options.Value.GitHubToken))
-                {
-                    opts.GitHubToken = _options.Value.GitHubToken;
-                }
-
-                _client = new CopilotClient(opts);
-                await _client.StartAsync(ct);
-
-                LogClientStarted(_logger);
+                _client = await CreateClientAsync(ct);
             }
 
-            return _client!;
+            return _client;
+        }
+        finally
+        {
+            _clientLock.Release();
+        }
+    }
+
+    private async Task<CopilotClient> CreateClientAsync(CancellationToken ct)
+    {
+        try
+        {
+            var options = new CopilotClientOptions
+            {
+                GitHubToken = string.IsNullOrWhiteSpace(_options.Value.GitHubToken)
+                    ? null
+                    : _options.Value.GitHubToken
+            };
+
+            var client = new CopilotClient(options);
+
+            await client.StartAsync(ct);
+
+            LogClientStarted(_logger);
+
+            return client;
         }
         catch (Exception ex)
         {
             LogClientStartFailed(_logger, ex);
             throw;
-        }
-        finally
-        {
-            _clientLock.Release();
         }
     }
 

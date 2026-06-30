@@ -30,3 +30,14 @@ services:
     project: AppHost/AppHost/AppHost.csproj
     host: containerapp
 
+hooks:
+  # After every deploy, start the migration job to apply any pending EF Core migrations.
+  # The job runs MigrateAsync (idempotent) and exits with code 0 when done.
+  # ACA does not restart Container App Jobs on successful completion.
+  postdeploy:
+    posix:
+      shell: sh
+      run: az containerapp job start --name migration-service --resource-group $AZURE_RESOURCE_GROUP
+    windows:
+      shell: pwsh
+      run: az containerapp job start --name migration-service --resource-group $Env:AZURE_RESOURCE_GROUP

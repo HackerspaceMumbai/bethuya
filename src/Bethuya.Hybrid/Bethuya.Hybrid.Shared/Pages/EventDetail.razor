@@ -64,7 +64,6 @@
 
     @* Schedule Editor - agent-console three-column layout *@
     <div data-test="schedule-editor" class="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-6">
-
         @* ── Left Panel: Agent Console ── *@
         <aside class="xl:col-span-3 space-y-4">
 
@@ -1381,15 +1380,25 @@
     private string? BuildPlannerConstraints(string? steeringPrompt)
     {
         var constraints = new List<string>();
+        var normalizedConstraints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(_refineConstraints))
         {
-            constraints.Add(_refineConstraints.Trim());
+            foreach (var token in _refineConstraints.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                var normalizedToken = NormalizeConstraintToken(token);
+                if (string.IsNullOrEmpty(normalizedToken) || !normalizedConstraints.Add(normalizedToken))
+                {
+                    continue;
+                }
+
+                constraints.Add(normalizedToken);
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(steeringPrompt) &&
-            !ContainsEquivalentConstraintToken(_refineConstraints, steeringPrompt))
+        var normalizedSteeringPrompt = NormalizeConstraintToken(steeringPrompt);
+        if (!string.IsNullOrEmpty(normalizedSteeringPrompt) && normalizedConstraints.Add(normalizedSteeringPrompt))
         {
-            constraints.Add(steeringPrompt.Trim());
+            constraints.Add(normalizedSteeringPrompt);
         }
 
         if (_targetDurationMinutes is { } targetDuration)

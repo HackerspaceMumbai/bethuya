@@ -1,47 +1,58 @@
+using AppHost.Commands;
+using AppHost.Extensions;
+using AppHost.Security;
+using AppHost.Infrastructure;
 using Aspire.Hosting.Azure;
-using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Foundry;
 using Scalar.Aspire;
-using System.Diagnostics;
-using System.Net.Http;
 
 var builder = DistributedApplication.CreateBuilder(args);
-builder.AddAzureContainerAppEnvironment("bethuya-env");
+var acaEnv = builder.AddAzureContainerAppEnvironment("bethuya-env");
 
-const int webHttpsPort = 7400;
-const int webHttpPort = 5095;
+
 const string gitHubCallbackPath = "/oauth/github/callback";
-const string linkedInCallbackPath = "/oauth/linkedin/callback";
+/*const string linkedInCallbackPath = "/oauth/linkedin/callback";
+*/
+const string linkedInCallbackPath = "/signin-linkedin";
 
-var gitHubClientId = GetAppHostSetting(
-    "SocialConnections:GitHub:ClientId",
-    "Parameters:oauth-github-clientid",
-    "oauth-github-clientid");
-var gitHubClientSecret = GetAppHostSetting(
-    "SocialConnections:GitHub:ClientSecret",
-    "Parameters:oauth-github-clientsecret",
-    "oauth-github-clientsecret");
-var linkedInClientId = GetAppHostSetting(
-    "SocialConnections:LinkedIn:ClientId",
-    "Parameters:oauth-linkedin-clientid",
-    "oauth-linkedin-clientid");
-var linkedInClientSecret = GetAppHostSetting(
-    "SocialConnections:LinkedIn:ClientSecret",
-    "Parameters:oauth-linkedin-clientsecret",
-    "oauth-linkedin-clientsecret");
-var linkedInScope0 = GetAppHostSettingOrDefault(
-    "openid",
-    "SocialConnections:LinkedIn:Scopes:0",
-    "Parameters:oauth-linkedin-scope-0",
-    "oauth-linkedin-scope-0");
-var linkedInScope1 = GetAppHostSettingOrDefault(
-    "profile",
-    "SocialConnections:LinkedIn:Scopes:1",
-    "Parameters:oauth-linkedin-scope-1",
-    "oauth-linkedin-scope-1");
+var gitHubClientId =
+    builder.AddParameter("oauth-github-clientid");
+
+var gitHubClientSecret =
+    builder.AddParameter("oauth-github-clientsecret", secret: true);
+
+var linkedInClientId =
+    builder.AddParameter("oauth-linkedin-clientid");
+
+var linkedInClientSecret =
+    builder.AddParameter("oauth-linkedin-clientsecret", secret: true);
+
+var linkedInScope0 =
+    builder.AddParameter(
+        "oauth-linkedin-scope-0",
+        "openid");
+
+var linkedInScope1 =
+    builder.AddParameter(
+        "oauth-linkedin-scope-1",
+        "profile");
+
+
+
+var socialAuthSettings = new SocialAuthSettings(
+    gitHubClientId,
+    gitHubClientSecret,
+    gitHubCallbackPath,
+    linkedInClientId,
+    linkedInClientSecret,
+    linkedInCallbackPath,
+    linkedInScope0,
+    linkedInScope1);
+
+
 var enableOnboardingFlowInDevelopment = string.Equals(
     Environment.GetEnvironmentVariable("ONBOARDING_ENABLE_FLOW_IN_DEVELOPMENT")
-        ?? GetAppHostSettingOrDefault(
+        ?? builder.ResolveOptional(
             "false",
             "Onboarding:EnableFlowInDevelopment",
             "Parameters:onboarding-enable-flow-in-development",
@@ -49,46 +60,29 @@ var enableOnboardingFlowInDevelopment = string.Equals(
     "true",
     StringComparison.OrdinalIgnoreCase);
 
-string GetAppHostSetting(params string[] keys)
-{
-    foreach (var key in keys)
-    {
-        var value = builder.Configuration[key];
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            return value;
-        }
-    }
-
-    return string.Empty;
-}
-
-string GetAppHostSettingOrDefault(string defaultValue, params string[] keys)
-{
-    var value = GetAppHostSetting(keys);
-    return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
-}
 
 
 
-var sql = builder.AddAzureSqlServer("sql")
-    .RunAsContainer()
-    .AddDatabase("BethuyaDb");
+// TODO:
+// Migrate Azure SQL authentication to
+// Entra ID + Managed Identity.
+// Eliminate SQL passwords in production.
+
+var sql = builder.ConfigureDatabase(acaEnv);
+                                            
 
 // Key Vault - provisioned in Azure only; no local emulator exists.
 // Only wire it in publish mode (azd up) so local dev starts without Azure credentials.
-IResourceBuilder<AzureKeyVaultResource>? keyVault = builder.ExecutionContext.IsPublishMode
-    ? builder.AddAzureKeyVault("vault")
-    : null;
+var keyVault = builder.ConfigureKeyVault();
 
 // Keycloak - local dev only; not published to Azure.
 // The preview Keycloak package sets KC_HEALTH_ENABLED=true (boolean literal) in its container
 // env vars. ACA's BaseContainerAppContext.ProcessValue cannot handle booleans, causing
 // "Unsupported value type System.Boolean" during aspire deploy. In production, use Entra ID.
 IResourceBuilder<KeycloakResource>? keycloak = null;
-if (!builder.ExecutionContext.IsPublishMode)
+if (builder.IsLocalDevelopment())
 {
-    keycloak = builder.AddKeycloak("keycloak", 8080)
+    keycloak = builder.AddKeycloak("keycloak", 8081)
         .WithDataVolume();
 }
 
@@ -112,6 +106,15 @@ var aiFoundryLocalEndpointValue = Environment.GetEnvironmentVariable("AI_FOUNDRY
     ?? builder.Configuration["Parameters:ai-foundrylocal-endpoint"]
     ?? "http://localhost:5272"; // Fallback to default
 
+// TODO:
+// Replace Azure OpenAI API key usage with
+// Managed Identity + DefaultAzureCredential.
+// Target architecture:
+//
+// ACA Managed Identity
+//   -> Azure RBAC
+//   -> Azure OpenAI
+
 var aiFoundryLocalEndpoint = builder.AddParameter("ai-foundrylocal-endpoint", aiFoundryLocalEndpointValue);
 var aiOllamaEndpoint = builder.AddParameter("ai-ollama-endpoint", 
     Environment.GetEnvironmentVariable("AI_OLLAMA_ENDPOINT") ?? "http://localhost:11434");
@@ -121,134 +124,103 @@ var aiAzureOpenAiModel = builder.AddParameter("ai-azure-openai-model");
 var aiOpenAiKey = builder.AddParameter("ai-openai-key");
 var aiOpenAiModel = builder.AddParameter("ai-openai-model");
 
-var foundry = builder.AddFoundry("bethuya-foundry");
-var foundryProject = foundry.AddProject("bethuya-project");
-var plannerChatModel = foundryProject.AddModelDeployment("planner-chat", FoundryModel.OpenAI.Gpt41);
+var aiProviderSettings = new AiProviderSettings(
+    aiFoundryLocalEndpoint,
+    aiOllamaEndpoint,
+    aiAzureOpenAiEndpoint,
+    aiAzureOpenAiKey,
+    aiAzureOpenAiModel,
+    aiOpenAiKey,
+    aiOpenAiModel);
 
-var plannerHosted = builder.AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>("planner-hosted")
-    .WithHttpEndpoint(targetPort: 8088)
-    .WithReference(foundryProject)
-    .WithReference(plannerChatModel)
-    .WaitFor(plannerChatModel)
-    .PublishAsHostedAgent(foundryProject);
 
-// Migration service - runs EF Core migrations then exits; backend waits for it to complete.
-// IMPORTANT: run `dotnet ef migrations add InitialCreate --project src/Hackmum.Bethuya.Infrastructure`
-// before the first Azure deployment.
-var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("migration-service")
-    .WithReference(sql)
-    .WaitFor(sql);
+IResourceBuilder<ProjectResource>? plannerHosted = null;
 
-var shouldBypassOnboardingInCurrentEnvironment = !builder.ExecutionContext.IsPublishMode
-    && !enableOnboardingFlowInDevelopment;
+if (builder.EnableAgents())
+{
+    var foundry = builder.AddFoundry("bethuya-foundry");
+
+#pragma warning disable ASPIRECOMPUTE003
+    var foundryProject = foundry.AddProject("bethuya-project");
+#pragma warning restore
+
+    var plannerChatModel =
+        foundryProject.AddModelDeployment(
+            "planner-chat",
+            FoundryModel.OpenAI.Gpt41);
+
+    plannerHosted = builder
+        .AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>(
+            "planner-hosted")
+        .WithHttpEndpoint()
+        .WithReference(foundryProject)
+        .WithReference(plannerChatModel)
+        .WaitFor(plannerChatModel)
+        .AsHostedAgent(foundryProject);
+}
+
+// Migration service - runs EF Core migrations then exits.
+// Deployed as a Container App Job (not a long-running Container App) so ACA doesn't restart it.
+// The job is triggered automatically via the azure.yaml postdeploy hook after each deploy.
+// IMPORTANT: run `dotnet ef migrations add <Name> --project src/Hackmum.Bethuya.Infrastructure --startup-project src/Bethuya.MigrationService`
+// for any DbContext schema changes before deploying.
+   var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("migration-service")
+         .WithReference(sql)
+         .WaitFor(sql)
+         .PublishAsAzureContainerAppJob()
+         .WithComputeEnvironment(acaEnv);
+
+
+
+var shouldBypassOnboardingInCurrentEnvironment =
+    builder.ShouldEnableOnboardingBypass(
+        enableOnboardingFlowInDevelopment);
+
 var onboardingBypassSocialConnections = shouldBypassOnboardingInCurrentEnvironment ? "true" : "false";
 var onboardingBypassMandatoryProfile = shouldBypassOnboardingInCurrentEnvironment ? "true" : "false";
 
-var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend")
+builder.EnforceProductionSecurityPolicies(
+    shouldBypassOnboardingInCurrentEnvironment);
+
+
+var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", launchProfileName: null)
+    .WithHttpEndpoint(port: 8080, targetPort: 8080, isProxied: false).WithReference(sql)
+    .WithEnvironment("ASPNETCORE_PREVENTHOSTINGSTARTUP", "true")
     .WithReference(sql)
-    .WithReference(plannerHosted)
     .WaitFor(sql)
-    .WaitFor(plannerHosted)
     .WaitForCompletion(migrationService)
     .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
     .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
     .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
-    .WithEnvironment("AI__Providers__FoundryLocal__Endpoint", aiFoundryLocalEndpoint)
-    .WithEnvironment("AI__Providers__Ollama__Endpoint", aiOllamaEndpoint)
-    .WithEnvironment("AI__Providers__AzureOpenAI__Endpoint", aiAzureOpenAiEndpoint)
-    .WithEnvironment("AI__Providers__AzureOpenAI__ApiKey", aiAzureOpenAiKey)
-    .WithEnvironment("AI__Providers__AzureOpenAI__ModelId", aiAzureOpenAiModel)
-    .WithEnvironment("AI__Providers__OpenAI__ApiKey", aiOpenAiKey)
-    .WithEnvironment("AI__Providers__OpenAI__ModelId", aiOpenAiModel)
+    .ConfigureAiProviders(aiProviderSettings)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
     .WithHttpHealthCheck("/health")
+//  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8080")
     .PublishAsAzureContainerApp((infra, app) =>
     {
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 5;
-    });
+    })
+    .WithComputeEnvironment(acaEnv);
 
-var backendHttpsEndpoint = backend.GetEndpoint("https");
-var backendExecutablePath = Path.GetFullPath(Path.Combine(
-    AppContext.BaseDirectory,
-    "..",
-    "..",
-    "..",
-    "..",
-    "..",
-    "src",
-    "Hackmum.Bethuya.Backend",
-    "bin",
-    "Debug",
-    "net10.0",
-    "Hackmum.Bethuya.Backend.exe"));
 
-if (!builder.ExecutionContext.IsPublishMode)
+
+if (plannerHosted is not null)
 {
-    backend.WithCommand(
-        "seed-curation",
-        "Seed curation sandbox",
-        async context =>
-        {
-            try
-            {
-                var endpointUrl = await backendHttpsEndpoint.GetValueAsync(context.CancellationToken);
-
-                var requestUrls = new List<string>();
-                if (!string.IsNullOrWhiteSpace(endpointUrl))
-                {
-                    requestUrls.Add($"{endpointUrl.TrimEnd('/')}/api/dev/curation/seed?reviewableCount=50");
-                }
-
-                var localBackendBaseUrl = await TryResolveLocalBackendBaseUrlAsync(backendExecutablePath, context.CancellationToken);
-                if (!string.IsNullOrWhiteSpace(localBackendBaseUrl))
-                {
-                    var localRequestUrl = $"{localBackendBaseUrl.TrimEnd('/')}/api/dev/curation/seed?reviewableCount=50";
-                    if (!requestUrls.Contains(localRequestUrl, StringComparer.OrdinalIgnoreCase))
-                    {
-                        requestUrls.Insert(0, localRequestUrl);
-                    }
-                }
-
-                if (requestUrls.Count == 0)
-                {
-                    return CommandResults.Failure("Backend HTTPS endpoint is unavailable and no local backend port could be resolved.");
-                }
-
-                using var httpClient = new HttpClient();
-                var failures = new List<string>();
-                foreach (var requestUrl in requestUrls)
-                {
-                    Console.WriteLine($"Seed curation sandbox request URL: {requestUrl}");
-
-                    using var response = await httpClient.PostAsync(requestUrl, content: null, context.CancellationToken);
-                    var responseBody = await response.Content.ReadAsStringAsync(context.CancellationToken);
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        Console.WriteLine($"Seed curation sandbox response: {responseBody}");
-                        return CommandResults.Success();
-                    }
-
-                    Console.WriteLine(
-                        $"Seed curation sandbox failed. Request URL: {requestUrl}. Status: {(int)response.StatusCode} ({response.ReasonPhrase}). Response: {responseBody}");
-                    failures.Add(
-                        $"Request URL: {requestUrl}. Status: {(int)response.StatusCode} ({response.ReasonPhrase}). Response: {responseBody}");
-                }
-
-                return CommandResults.Failure($"Seed request failed for all candidate URLs.{Environment.NewLine}{string.Join(Environment.NewLine, failures)}");
-            }
-            catch (Exception ex)
-            {
-                return CommandResults.Failure(ex);
-            }
-        },
-        new CommandOptions
-        {
-            Description = "Create a fresh curation sandbox event with ~50 varied reviewable registrants plus fairness and reliability edge cases.",
-            ConfirmationMessage = "Generate a new curation sandbox event with seeded registrants?"
-        });
+    backend
+        .WithReference(plannerHosted)
+        .WaitFor(plannerHosted);
 }
+
+
+var backendHttpEndpoint = backend.GetEndpoint("http");
+
+if (builder.IsLocalDevelopment())
+{
+    backend.WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+    backend.ConfigureSeedCommands(backendHttpEndpoint);
+}
+
 
 if (keyVault is not null)
     backend.WithReference(keyVault);
@@ -271,27 +243,30 @@ var webStaticAssetsManifest = Path.GetFullPath(Path.Combine(
 var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileName: null)
     .WithReference(backend)
     .WaitFor(backend)
-    .WithHttpEndpoint(port: webHttpPort)
-    .WithHttpsEndpoint(port: webHttpsPort)
-    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithHttpEndpoint()
+    //   .WithHttpsEndpoint()
+    .WithEnvironment("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true")
     .WithEnvironment("Onboarding__BypassSocialConnections", onboardingBypassSocialConnections)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
-    .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest)
-    .WithEnvironment("SocialConnections__GitHub__ClientId", gitHubClientId)
-    .WithEnvironment("SocialConnections__GitHub__ClientSecret", gitHubClientSecret)
-    .WithEnvironment("SocialConnections__GitHub__CallbackPath", gitHubCallbackPath)
-    .WithEnvironment("SocialConnections__LinkedIn__ClientId", linkedInClientId)
-    .WithEnvironment("SocialConnections__LinkedIn__ClientSecret", linkedInClientSecret)
-    .WithEnvironment("SocialConnections__LinkedIn__CallbackPath", linkedInCallbackPath)
-    .WithEnvironment("SocialConnections__LinkedIn__Scopes__0", linkedInScope0)
-    .WithEnvironment("SocialConnections__LinkedIn__Scopes__1", linkedInScope1)
+//  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8082")
+    .WithEnvironment("ASPNETCORE_ALLOWEDHOSTS", "*")
+    .ConfigureSocialAuth(socialAuthSettings)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
+    .WithComputeEnvironment(acaEnv)
     .PublishAsAzureContainerApp((infra, app) =>
     {
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 5;
     });
+
+if (builder.IsLocalDevelopment())
+{
+    web
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+        .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest);
+}
+    
 
 if (keycloak is not null)
 {
@@ -302,58 +277,10 @@ if (keycloak is not null)
 // Scalar API reference - dev only; no Scalar container in Azure.
 // AddScalarApiReference() registers a container with boolean env vars that cause
 // "Unsupported value type System.Boolean" in ACA's BaseContainerAppContext.ProcessValue.
-if (!builder.ExecutionContext.IsPublishMode)
+if (builder.IsLocalDevelopment())
 {
     builder.AddScalarApiReference()
         .WithApiReference(backend);
 }
 
 builder.Build().Run();
-
-static async Task<string?> TryResolveLocalBackendBaseUrlAsync(string backendExecutablePath, CancellationToken cancellationToken)
-{
-    if (!OperatingSystem.IsWindows())
-    {
-        return null;
-    }
-
-    var escapedBackendPath = backendExecutablePath.Replace("'", "''", StringComparison.Ordinal);
-    var script = $$"""
-        $backendProcess = Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq '{{escapedBackendPath}}' } | Select-Object -First 1
-        if ($null -eq $backendProcess) { return }
-
-        $port = Get-NetTCPConnection -State Listen |
-            Where-Object { $_.OwningProcess -eq $backendProcess.ProcessId } |
-            Sort-Object LocalPort |
-            Select-Object -First 1 -ExpandProperty LocalPort
-
-        if ($null -eq $port) { return }
-        Write-Output $port
-        """;
-
-    using var process = new Process
-    {
-        StartInfo = new ProcessStartInfo
-        {
-            FileName = "powershell",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        }
-    };
-
-    process.StartInfo.ArgumentList.Add("-NoProfile");
-    process.StartInfo.ArgumentList.Add("-Command");
-    process.StartInfo.ArgumentList.Add(script);
-
-    process.Start();
-
-    var standardOutput = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-    _ = await process.StandardError.ReadToEndAsync(cancellationToken);
-    await process.WaitForExitAsync(cancellationToken);
-
-    return int.TryParse(standardOutput.Trim(), out var port)
-        ? $"https://localhost:{port}"
-        : null;
-}

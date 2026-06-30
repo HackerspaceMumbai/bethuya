@@ -60,6 +60,17 @@ public sealed class PlanningCycleEndpointValidationTests
         await Assert.That(await response.Content.ReadAsStringAsync()).Contains("Event not found.");
     }
 
+    [Test]
+    public async Task Draft_ReturnsValidationProblem_ForOversizedWorkItemId()
+    {
+        var response = await _client.PostAsJsonAsync(
+            $"/api/planning-cycles/{Guid.CreateVersion7()}/draft",
+            new GeneratePlannerDraftRequest(new string('w', 101)));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(await response.Content.ReadAsStringAsync()).Contains("workItemId must be 100 characters or fewer.");
+    }
+
     private sealed class FakeAgentInvoker : IAgentInvoker
     {
         public Task<PlannerInvocationResult> InvokePlannerAsync(

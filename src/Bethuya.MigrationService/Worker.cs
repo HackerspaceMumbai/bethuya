@@ -4,9 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Bethuya.MigrationService;
 
 /// <summary>
-/// Ensures the database and schema exist, then signals the host to stop.
-/// Uses <see cref="DatabaseFacade.EnsureCreatedAsync"/> (no-migration mode) until the formal
-/// release, when EF Core migrations will be introduced.
+/// Applies all pending EF Core migrations, then signals the host to stop.
+/// Safe on existing databases — already-applied migrations are skipped.
 /// Aspire's WaitForCompletion ensures the backend does not start until this finishes.
 /// </summary>
 public sealed partial class MigrationWorker(
@@ -30,14 +29,13 @@ public sealed partial class MigrationWorker(
 
     private async Task EnsureSchemaAsync(BethuyaDbContext dbContext, CancellationToken cancellationToken)
     {
-        LogEnsureSchema();
-        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
-        await dbContext.EnsurePendingImageUploadSchemaAsync(cancellationToken);
+        LogApplyingMigrations();
+        await dbContext.Database.MigrateAsync(cancellationToken);
         LogSchemaReady();
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Ensuring database schema exists (EnsureCreated — migrations deferred to formal release).")]
-    private partial void LogEnsureSchema();
+    [LoggerMessage(Level = LogLevel.Information, Message = "Applying pending EF Core migrations.")]
+    private partial void LogApplyingMigrations();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Database schema is ready.")]
     private partial void LogSchemaReady();

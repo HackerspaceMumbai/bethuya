@@ -5,6 +5,8 @@ namespace Hackmum.Bethuya.Backend.Endpoints;
 
 public static class PlanningCycleEndpoints
 {
+    private const int MaxWorkItemIdLength = 100;
+
     public static void MapPlanningCycleEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/planning-cycles")
@@ -51,6 +53,14 @@ public static class PlanningCycleEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     [nameof(request.WorkItemId)] = ["workItemId is required for idempotency."]
+                });
+            }
+
+            if (request.WorkItemId.Length > MaxWorkItemIdLength)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(request.WorkItemId)] = [$"workItemId must be {MaxWorkItemIdLength} characters or fewer."]
                 });
             }
 

@@ -11,11 +11,11 @@ namespace Hackmum.Bethuya.Infrastructure.Extensions;
 public static class InfrastructureServiceExtensions
 {
     /// <summary>
-    /// Adds Bethuya Infrastructure services: EF Core DbContext (Azure SQL via Aspire) and repository implementations.
+    /// Adds Bethuya Infrastructure services: EF Core DbContext (Postgres via Aspire) and repository implementations.
     /// </summary>
     public static IHostApplicationBuilder AddBethuyaInfrastructure(this IHostApplicationBuilder builder)
     {
-        builder.AddSqlServerDbContext<BethuyaDbContext>("BethuyaDb");
+        builder.AddNpgsqlDbContext<BethuyaDbContext>("BethuyaDb");
 
         builder.Services.AddScoped<IEventRepository, EventRepository>();
         builder.Services.AddScoped<IRegistrationRepository, RegistrationRepository>();

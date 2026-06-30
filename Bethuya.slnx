@@ -6,6 +6,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Hackmum.Bethuya.Core/Hackmum.Bethuya.Core.csproj" />
+    <Project Path="src/Hackmum.Bethuya.Agents.Planner.Hosted/Hackmum.Bethuya.Agents.Planner.Hosted.csproj" />
     <Project Path="src/Hackmum.Bethuya.Agents/Hackmum.Bethuya.Agents.csproj" />
     <Project Path="src/Hackmum.Bethuya.AI/Hackmum.Bethuya.AI.csproj" />
     <Project Path="src/Hackmum.Bethuya.Backend/Hackmum.Bethuya.Backend.csproj" />

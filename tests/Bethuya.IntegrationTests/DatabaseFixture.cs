@@ -1,12 +1,12 @@
 namespace Bethuya.IntegrationTests;
 
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Respawn;
 using TUnit.Core.Interfaces;
 
 /// <summary>
 /// Wraps <see cref="BethuyaAppFixture"/> to provide fast database reset between tests.
-/// Prevents cross-test state pollution (BP5). Uses Respawn with SqlServer adapter.
+/// Prevents cross-test state pollution (BP5). Uses Respawn with Postgres adapter.
 /// </summary>
 public sealed class DatabaseFixture : IAsyncInitializer, IAsyncDisposable
 {
@@ -22,22 +22,22 @@ public sealed class DatabaseFixture : IAsyncInitializer, IAsyncDisposable
     /// <inheritdoc />
     public async Task InitializeAsync()
     {
-        _connectionString = await _appFixture.GetSqlConnectionStringAsync();
+        _connectionString = await _appFixture.GetPostgresConnectionStringAsync();
 
-        await using var connection = new SqlConnection(_connectionString);
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
 
         _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
-            DbAdapter = DbAdapter.SqlServer,
-            SchemasToInclude = ["dbo"],
+            DbAdapter = DbAdapter.Postgres,
+            SchemasToInclude = ["public"],
         });
     }
 
     /// <summary>Resets the database to a clean state. Call in a <c>[Before(Test)]</c> hook.</summary>
     public async Task ResetAsync()
     {
-        await using var connection = new SqlConnection(_connectionString);
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
         await _respawner!.ResetAsync(connection);
     }

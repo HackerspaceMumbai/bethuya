@@ -16,7 +16,28 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-06-28] ACA Postgres missing "Events" table — EnsureCreated is a no-op on existing DBs
+- **What happened:** After deploying to ACA, `GET /events` returned 500. Backend logs showed `42P01: relation "Events" does not exist`. Migration-service had run but used `EnsureCreatedAsync` — which is a no-op if the database already exists (even if tables are missing). The Postgres DB existed from a prior environment but had no tables.
+- **Root cause:** The project never had formal EF Core migrations. Schema was always bootstrapped ad-hoc via `aspire exec`. `EnsureCreated` cannot repair a partially-initialized DB.
+- **Fix:** (1) Added `IDesignTimeDbContextFactory<BethuyaDbContext>` in Infrastructure. (2) Ran `dotnet ef migrations add InitialCreate` to create the first migration covering all 15 entities. (3) Switched `MigrationWorker` to `MigrateAsync()` — idempotent, works on both new and existing DBs. (4) Switched backend startup to also call `MigrateAsync()` inside `CreateExecutionStrategy` for resilience.
+- **Prevention:** Always use `MigrateAsync()` in production, not `EnsureCreated`. When adding new entities, run `dotnet ef migrations add <name> --project src/Hackmum.Bethuya.Infrastructure --startup-project src/Bethuya.MigrationService`. The `MigrationsAssembly` is pinned to the Infrastructure assembly so migrations live there, separate from the host.
+
+
 <!-- Lessons are appended here as they are discovered -->
+
+## [2026-06-09] EF filtered index SQL is provider-specific
+
+- **What happened:** Postgres schema creation failed with `42601: syntax error at or near "["` during `EnsureCreatedAsync`.
+- **Root cause:** `EventConfiguration` kept a SQL Server filtered-index predicate, `[Hashtag] IS NOT NULL`; EF stores filter SQL as raw provider SQL and Npgsql emitted the bracketed predicate unchanged.
+- **Fix:** Changed the filter to Postgres-compatible quoted identifier SQL: `"Hashtag" IS NOT NULL`.
+- **Prevention:** When switching EF providers, search model configuration for raw SQL APIs such as `HasFilter`, `HasDefaultValueSql`, `HasComputedColumnSql`, and `HasColumnType`; build can pass even when provider-specific DDL fails at runtime.
+
+## [2026-06-09] Isolated output does not avoid obj file locks
+
+- **What happened:** A direct AppHost build with an isolated `BaseOutputPath` still failed because the Blazor shared project could not write its normal `obj/Debug/net10.0` assembly while another process held it.
+- **Root cause:** `BaseOutputPath` moves final build outputs, but intermediate compiler outputs still use the project's `obj` directory unless `BaseIntermediateOutputPath` is also isolated or the running app/IDE lock is cleared.
+- **Fix:** Verified the affected backend, migration service, and integration-test build through isolated outputs; treated the direct AppHost build as blocked by an existing local process lock.
+- **Prevention:** When validating while Aspire or Visual Studio is running, either stop the active app resources first or set both `BaseOutputPath` and `BaseIntermediateOutputPath` to isolated workspace folders.
 
 ## [2026-05-28] Standout is an organizer contribution mark, not attendance inference
 
