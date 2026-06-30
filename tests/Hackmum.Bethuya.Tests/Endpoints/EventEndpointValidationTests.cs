@@ -35,6 +35,7 @@ public sealed class EventEndpointValidationTests : IAsyncDisposable
         builder.Services.AddSingleton(_eventRepository);
         builder.Services.AddSingleton(_imageUploadService);
         builder.AddTestAuthorization();
+        builder.Services.AddBethuyaUserContext();
         builder.Services.AddDbContext<BethuyaDbContext>(options =>
             options
                 .UseInMemoryDatabase($"event-endpoint-tests-{Guid.NewGuid():N}")

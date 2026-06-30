@@ -365,6 +365,11 @@ public sealed class RouteGroupAuthorizationTests
 
     private static void StubServices(WebApplicationBuilder builder)
     {
+        // The registration/government-id endpoints now inject IAuthorizationService for resource-based
+        // ownership checks (PR4). Register the authorization services so metadata inference recognizes
+        // it as a service rather than an inferred request body (which throws on GET/DELETE routes).
+        builder.Services.AddAuthorization();
+
         Type[] handlerDependencies =
         [
             typeof(IEventRepository),

@@ -68,8 +68,15 @@ public static partial class EventEndpoints
             : Results.NotFound();
     }
 
-    private static async Task<IResult> CreateEventAsync(PlanEventRequest request, IEventRepository repo, IImageUploadService imageUploadService, BethuyaDbContext dbContext, CancellationToken ct)
+    private static async Task<IResult> CreateEventAsync(PlanEventRequest request, IEventRepository repo, IImageUploadService imageUploadService, BethuyaDbContext dbContext, IUserContext userContext, CancellationToken ct)
     {
+        // CreatedBy is provenance for an organizer-owned resource and must come from the validated
+        // principal — never the spoofable request body. Fail closed if no identity is resolvable.
+        if (ResolveCreatorIdentity(userContext) is not { } createdBy)
+        {
+            return Results.Unauthorized();
+        }
+
         var errors = new Dictionary<string, string[]>();
 
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -89,11 +96,6 @@ public static partial class EventEndpoints
         if (request.EndDate < request.StartDate)
         {
             errors[nameof(request.EndDate)] = ["End date must be on or after the start date."];
-        }
-
-        if (string.IsNullOrWhiteSpace(request.CreatedBy))
-        {
-            errors[nameof(request.CreatedBy)] = ["CreatedBy is required."];
         }
 
         if (!string.IsNullOrEmpty(request.Hashtag))
@@ -131,7 +133,7 @@ public static partial class EventEndpoints
             EndDate = request.EndDate,
             Location = request.Location,
             Hashtag = string.IsNullOrEmpty(request.Hashtag) ? null : request.Hashtag,
-            CreatedBy = request.CreatedBy,
+            CreatedBy = createdBy,
             Status = request.Status,
             CoverImageUrl = request.CoverImageUrl,
             FairnessTargets = ToModel(request.FairnessTargets)
@@ -355,6 +357,21 @@ public static partial class EventEndpoints
         Level = LogLevel.Warning,
         Message = "Failed to delete previous cover image {PublicId} after DB operation.")]
     private static partial void LogFailedToDeletePreviousCoverImage(ILogger logger, string publicId, Exception exception);
+
+    private static string? ResolveCreatorIdentity(IUserContext userContext)
+    {
+        if (!userContext.IsAuthenticated)
+        {
+            return null;
+        }
+
+        // CreatedBy is server-set provenance that is also surfaced on the anonymous
+        // /api/public/events reads (via MapToResponse), so it must persist only the
+        // non-PII stable subject identifier (JWT `sub`) — never Email/Name, which would
+        // leak organizer PII to unauthenticated callers. Fail closed when no subject
+        // is resolvable so an authenticated-but-subjectless principal cannot create events.
+        return string.IsNullOrWhiteSpace(userContext.UserId) ? null : userContext.UserId;
+    }
 
     private static EventResponse MapToResponse(Event evt) =>
         new(

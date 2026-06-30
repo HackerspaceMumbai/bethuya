@@ -18,4 +18,16 @@ public static class BethuyaPolicyNames
 
     /// <summary>Requires any authenticated platform role.</summary>
     public const string RequireAttendee = nameof(RequireAttendee);
+
+    /// <summary>
+    /// Resource-based ownership policy: the caller must own the target resource, unless they hold a
+    /// role with a legitimate operational bypass (<see cref="BethuyaRoleNames.Admin"/>,
+    /// <see cref="BethuyaRoleNames.Organizer"/>, <see cref="BethuyaRoleNames.Curator"/>).
+    /// <para>
+    /// Evaluated with <c>IAuthorizationService.AuthorizeAsync(user, resource, ResourceOwner)</c>
+    /// passing a <see cref="ResourceOwnerContext"/>. Backend-only enforcement — not mirrored by the
+    /// UI-facing policy constants (the parity test pins only the role policies).
+    /// </para>
+    /// </summary>
+    public const string ResourceOwner = nameof(ResourceOwner);
 }
