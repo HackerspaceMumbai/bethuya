@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Models;
@@ -23,11 +22,11 @@ public static class ProfileEndpoints
     private static void MapProfileRoutes(RouteGroupBuilder group)
     {
         group.MapGet("/", async (
-            ClaimsPrincipal user,
+            IUserContext userContext,
             IAttendeeProfileRepository repo,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            var userId = userContext.UserId;
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
@@ -35,11 +34,11 @@ public static class ProfileEndpoints
         });
 
         group.MapGet("/completion-status", async (
-            ClaimsPrincipal user,
+            IUserContext userContext,
             IAttendeeProfileRepository repo,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            var userId = userContext.UserId;
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
@@ -63,11 +62,11 @@ public static class ProfileEndpoints
         });
 
         group.MapGet("/social", async (
-            ClaimsPrincipal user,
+            IUserContext userContext,
             IAttendeeProfileRepository repo,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            var userId = userContext.UserId;
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
@@ -87,11 +86,11 @@ public static class ProfileEndpoints
         });
 
         group.MapGet("/aide", async (
-            ClaimsPrincipal user,
+            IUserContext userContext,
             IAttendeeProfileRepository repo,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            var userId = userContext.UserId;
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
@@ -100,7 +99,7 @@ public static class ProfileEndpoints
 
         group.MapPost("/", async (
             SaveMandatoryProfileRequest request,
-            ClaimsPrincipal user,
+            IUserContext userContext,
             IAttendeeProfileRepository repo,
             CancellationToken ct) =>
         {
@@ -110,7 +109,7 @@ public static class ProfileEndpoints
                 return Results.ValidationProblem(validationErrors);
             }
 
-            var userId = GetUserId(user);
+            var userId = userContext.UserId;
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
@@ -164,11 +163,11 @@ public static class ProfileEndpoints
 
         group.MapPost("/social", async (
             SaveSocialProfileRequest request,
-            ClaimsPrincipal user,
+            IUserContext userContext,
             IAttendeeProfileRepository repo,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            var userId = userContext.UserId;
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
@@ -218,11 +217,11 @@ public static class ProfileEndpoints
 
         group.MapPost("/aide", async (
             SaveAideProfileRequest request,
-            ClaimsPrincipal user,
+            IUserContext userContext,
             IAttendeeProfileRepository repo,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            var userId = userContext.UserId;
             if (userId is null) return Results.Unauthorized();
 
             var profile = await repo.GetByUserIdAsync(userId, ct);
@@ -286,14 +285,6 @@ public static class ProfileEndpoints
                 profile.ProfileCompletedAt,
                 profile.AideProfileCompletedAt));
         });
-    }
-
-    /// <summary>Extracts the user identifier from the <c>sub</c> JWT claim, or falls back to <c>nameidentifier</c>.</summary>
-    private static string? GetUserId(ClaimsPrincipal user)
-    {
-        if (user.Identity?.IsAuthenticated is not true) return null;
-        return user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
     }
 
     private static void ApplyMandatoryFields(AttendeeProfile profile, SaveMandatoryProfileRequest request)

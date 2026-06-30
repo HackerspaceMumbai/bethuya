@@ -4,7 +4,6 @@ using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
 using Microsoft.AspNetCore.DataProtection;
 using ServiceDefaults.Auth;
-using System.Security.Claims;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -61,7 +60,8 @@ public static class RegistrationEndpoints
         IRegistrationRepository repo,
         IAttendeeProfileRepository profileRepo,
         InclusionSignalsNormalizer inclusionSignalsNormalizer,
-        ClaimsPrincipal user,
+        IUserContext userContext,
+        IConfiguration configuration,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Intent))
@@ -70,7 +70,29 @@ public static class RegistrationEndpoints
                 ["intent"] = ["Why do you want to attend this event? is required."]
             });
 
-        var profileInclusionSource = await ResolveProfileInclusionSourceAsync(user, request.Email, profileRepo, ct);
+        // M1 (PR3): the backend independently enforces mandatory-profile completion before allowing
+        // registration, regardless of the UI onboarding gate. Honors Onboarding:BypassMandatoryProfile.
+        // TODO(PR4): once Registration carries a server-set UserId, key this guard off the persisted
+        // attendee identity rather than the validated principal alone.
+        if (!OnboardingEnforcement.IsBypassEnabled(configuration))
+        {
+            // A missing authenticated subject is an authentication failure (401), distinct from an
+            // authenticated attendee whose mandatory profile is simply incomplete (403). Conflating
+            // the two would mask token/identity misconfiguration behind a profile-completion message.
+            if (userContext.UserId is not { } guardUserId)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (await profileRepo.GetByUserIdAsync(guardUserId, ct) is not { IsProfileComplete: true })
+            {
+                return Results.Problem(
+                    "Complete your mandatory attendee profile before registering for an event.",
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+        }
+
+        var profileInclusionSource = await ResolveProfileInclusionSourceAsync(userContext, request.Email, profileRepo, ct);
         var inclusionSignals = profileInclusionSource is not null
             ? inclusionSignalsNormalizer.FromSource(profileInclusionSource)
             : new InclusionSignals();
@@ -96,13 +118,12 @@ public static class RegistrationEndpoints
     }
 
     private static async Task<AttendeeInclusionSource?> ResolveProfileInclusionSourceAsync(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         string email,
         IAttendeeProfileRepository profileRepo,
         CancellationToken ct)
     {
-        var userId = user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = userContext.UserId;
 
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -119,8 +140,7 @@ public static class RegistrationEndpoints
                 profile.SocioeconomicBackground);
         }
 
-        var claimedEmail = user.FindFirst(ClaimTypes.Email)?.Value
-            ?? user.FindFirst("email")?.Value;
+        var claimedEmail = userContext.Email;
         if (string.IsNullOrWhiteSpace(claimedEmail)
             || !string.Equals(claimedEmail, email, StringComparison.OrdinalIgnoreCase))
         {

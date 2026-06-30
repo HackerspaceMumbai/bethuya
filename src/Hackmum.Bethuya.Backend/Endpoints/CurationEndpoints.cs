@@ -6,7 +6,6 @@ using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Repositories;
 using ServiceDefaults.Auth;
-using System.Security.Claims;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -108,7 +107,7 @@ public static class CurationEndpoints
             Guid eventId,
             Guid registrationId,
             ApplyCurationDecisionRequest request,
-            ClaimsPrincipal user,
+            IUserContext userContext,
             IEventRepository eventRepo,
             IRegistrationRepository registrationRepo,
             IAttendeeProfileRepository attendeeProfileRepo,
@@ -139,10 +138,16 @@ public static class CurationEndpoints
             registration.Status = status;
             await registrationRepo.UpdateAsync(registration, ct);
 
-            var decidedBy = user.FindFirst("email")?.Value
-                            ?? user.Identity?.Name
-                            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                            ?? "curation-ui";
+            // M2 (PR3): the decider identity is the validated principal, never request-body input.
+            // A principal with no usable identity claim is an authentication failure rather than a
+            // silently-substituted placeholder, which would otherwise hide missing identity claims.
+            var decidedBy = userContext.Email
+                            ?? userContext.Name
+                            ?? userContext.UserId;
+            if (string.IsNullOrWhiteSpace(decidedBy))
+            {
+                return Results.Unauthorized();
+            }
 
             var decision = new Decision
             {

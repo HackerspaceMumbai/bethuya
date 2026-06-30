@@ -119,14 +119,15 @@ public static class Extensions
         // requires /health (readiness) and /alive (liveness) probes to route traffic correctly.
         // These paths are internal to the Container Apps environment and not publicly reachable.
 
-        // All health checks must pass for app to be considered ready to accept traffic after starting
-        app.MapHealthChecks(HealthEndpointPath);
+        // All health checks must pass for app to be considered ready to accept traffic after starting.
+        // Marked AllowAnonymous so probes keep working under the default-deny fallback policy (PR3).
+        app.MapHealthChecks(HealthEndpointPath).AllowAnonymous();
 
         // Only health checks tagged with the "live" tag must pass for app to be considered alive
         app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
         {
             Predicate = r => r.Tags.Contains("live")
-        });
+        }).AllowAnonymous();
 
         return app;
     }

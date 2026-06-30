@@ -797,6 +797,7 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
         {
             ["Authentication:Provider"] = "None"
         });
+        builder.Services.AddBethuyaUserContext();
 
         return builder;
     }
