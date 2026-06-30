@@ -42,6 +42,53 @@ public sealed class OnboardingRegistrationGuardTests
     }
 
     [Test]
+    public async Task Register_AuthenticatedWithoutSubject_IsUnauthorized()
+    {
+        // An authenticated principal that carries no usable subject claim must be treated as an
+        // authentication failure (401), not conflated with an incomplete-profile rejection (403).
+        var profileRepo = Substitute.For<IAttendeeProfileRepository>();
+        var registrationRepo = Substitute.For<IRegistrationRepository>();
+        registrationRepo.CreateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<Registration>());
+
+        await using var app = await HeaderRoleAuthHost.StartAsync(
+            a => a.MapRegistrationEndpoints(),
+            configureServices: services =>
+            {
+                services.AddSingleton(profileRepo);
+                services.AddSingleton(registrationRepo);
+                services.AddSingleton<InclusionSignalsNormalizer>();
+                services.AddBethuyaUserContext();
+                // Last registration wins: simulate a validated-but-subjectless principal.
+                services.AddScoped<IUserContext, NullSubjectUserContext>();
+            },
+            configuration: new Dictionary<string, string?> { ["Onboarding:BypassMandatoryProfile"] = "false" });
+        using var client = app.GetTestClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/api/attendee/registrations", UriKind.Relative))
+        {
+            Content = JsonContent.Create(new CreateRegistrationRequest(
+                EventId: Guid.CreateVersion7(),
+                FullName: "Test Attendee",
+                Email: "user1@bethuya.test",
+                Bio: null,
+                Interests: [],
+                Intent: "I want to learn and contribute.",
+                Goals: null,
+                ContributionPreferences: [],
+                ExperienceLevel: null,
+                DietaryRequirements: null,
+                AccessibilityNeeds: null))
+        };
+        request.Headers.Add(HeaderRoleAuthHandler.RolesHeader, BethuyaRoleNames.Attendee);
+        request.Headers.Add(HeaderRoleAuthHandler.SubHeader, "user-1");
+
+        var response = await client.SendAsync(request);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await profileRepo.DidNotReceive().GetByUserIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Register_WithBypassEnabled_IsAllowedDespiteMissingProfile()
     {
         var status = await RegisterAsync(profile: null, bypass: true);
@@ -110,4 +157,13 @@ public sealed class OnboardingRegistrationGuardTests
         IsProfileComplete = complete,
         ProfileCompletedAt = complete ? DateTimeOffset.UtcNow : null
     };
+
+    /// <summary>An authenticated principal whose token carries no usable subject/identity claim.</summary>
+    private sealed class NullSubjectUserContext : IUserContext
+    {
+        public bool IsAuthenticated => true;
+        public string? UserId => null;
+        public string? Email => null;
+        public string? Name => null;
+    }
 }

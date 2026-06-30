@@ -139,10 +139,15 @@ public static class CurationEndpoints
             await registrationRepo.UpdateAsync(registration, ct);
 
             // M2 (PR3): the decider identity is the validated principal, never request-body input.
+            // A principal with no usable identity claim is an authentication failure rather than a
+            // silently-substituted placeholder, which would otherwise hide missing identity claims.
             var decidedBy = userContext.Email
                             ?? userContext.Name
-                            ?? userContext.UserId
-                            ?? "curation-ui";
+                            ?? userContext.UserId;
+            if (string.IsNullOrWhiteSpace(decidedBy))
+            {
+                return Results.Unauthorized();
+            }
 
             var decision = new Decision
             {

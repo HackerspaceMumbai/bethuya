@@ -76,8 +76,15 @@ public static class RegistrationEndpoints
         // attendee identity rather than the validated principal alone.
         if (!OnboardingEnforcement.IsBypassEnabled(configuration))
         {
-            if (userContext.UserId is not { } guardUserId
-                || await profileRepo.GetByUserIdAsync(guardUserId, ct) is not { IsProfileComplete: true })
+            // A missing authenticated subject is an authentication failure (401), distinct from an
+            // authenticated attendee whose mandatory profile is simply incomplete (403). Conflating
+            // the two would mask token/identity misconfiguration behind a profile-completion message.
+            if (userContext.UserId is not { } guardUserId)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (await profileRepo.GetByUserIdAsync(guardUserId, ct) is not { IsProfileComplete: true })
             {
                 return Results.Problem(
                     "Complete your mandatory attendee profile before registering for an event.",

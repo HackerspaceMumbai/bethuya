@@ -102,15 +102,12 @@ public static class PlanningCycleEndpoints
                 });
             }
 
-            // M2 (PR3): authoritative approver identity comes from the validated principal; the
-            // request-body value is tolerated only as a fallback for callers not yet updated.
-            var approvedBy = ResolveDecider(userContext) ?? request.ApprovedBy;
+            // M2 (PR3): the approver identity is the validated principal, never request-body input.
+            // The body value is overwritten below and is not trusted for audit attribution.
+            var approvedBy = ResolveDecider(userContext);
             if (string.IsNullOrWhiteSpace(approvedBy))
             {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    [nameof(request.ApprovedBy)] = ["approvedBy is required."]
-                });
+                return Results.Unauthorized();
             }
 
             request = request with { ApprovedBy = approvedBy };
@@ -136,15 +133,12 @@ public static class PlanningCycleEndpoints
             PlanningCycleService service,
             CancellationToken ct) =>
         {
-            // M2 (PR3): authoritative publisher identity comes from the validated principal; the
-            // request-body value is tolerated only as a fallback for callers not yet updated.
-            var publishedBy = ResolveDecider(userContext) ?? request.PublishedBy;
+            // M2 (PR3): the publisher identity is the validated principal, never request-body input.
+            // The body value is overwritten below and is not trusted for audit attribution.
+            var publishedBy = ResolveDecider(userContext);
             if (string.IsNullOrWhiteSpace(publishedBy))
             {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    [nameof(request.PublishedBy)] = ["publishedBy is required."]
-                });
+                return Results.Unauthorized();
             }
 
             request = request with { PublishedBy = publishedBy };
