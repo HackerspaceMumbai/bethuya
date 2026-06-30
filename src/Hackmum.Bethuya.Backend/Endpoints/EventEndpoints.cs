@@ -365,11 +365,12 @@ public static partial class EventEndpoints
             return null;
         }
 
-        var candidate = userContext.Email
-            ?? userContext.Name
-            ?? userContext.UserId;
-
-        return string.IsNullOrWhiteSpace(candidate) ? null : candidate;
+        // CreatedBy is server-set provenance that is also surfaced on the anonymous
+        // /api/public/events reads (via MapToResponse), so it must persist only the
+        // non-PII stable subject identifier (JWT `sub`) — never Email/Name, which would
+        // leak organizer PII to unauthenticated callers. Fail closed when no subject
+        // is resolvable so an authenticated-but-subjectless principal cannot create events.
+        return string.IsNullOrWhiteSpace(userContext.UserId) ? null : userContext.UserId;
     }
 
     private static EventResponse MapToResponse(Event evt) =>

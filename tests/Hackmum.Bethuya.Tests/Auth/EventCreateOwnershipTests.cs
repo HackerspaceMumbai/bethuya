@@ -113,6 +113,60 @@ public sealed class EventCreateOwnershipTests
         await eventRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
+    [Test]
+    public async Task Create_PersistsNonPiiSubject_NotEmailOrName()
+    {
+        Event? captured = null;
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.CreateAsync(Arg.Any<Event>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                captured = callInfo.Arg<Event>();
+                return captured;
+            });
+
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Configuration.Sources.Clear();
+        builder.Services.AddSingleton(eventRepository);
+        builder.Services.AddSingleton(Substitute.For<IImageUploadService>());
+        builder.Services.AddAuthentication(HeaderRoleAuthHandler.SchemeName)
+            .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, HeaderRoleAuthHandler>(
+                HeaderRoleAuthHandler.SchemeName, _ => { });
+        builder.AddBethuyaAuthorization();
+        builder.Services.AddBethuyaUserContext();
+        builder.Services.AddDbContext<BethuyaDbContext>(options =>
+            options
+                .UseInMemoryDatabase($"event-ownership-pii-{Guid.NewGuid():N}")
+                .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
+
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapEventEndpoints();
+        await app.StartAsync();
+        using var client = app.GetTestClient();
+
+        const string subject = "organizer-7";
+        const string email = "alice.organizer@example.com";
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/api/events", UriKind.Relative))
+        {
+            Content = JsonContent.Create(BuildRequest(spoofedCreatedBy: "spoofed"))
+        };
+        request.Headers.Add(HeaderRoleAuthHandler.RolesHeader, BethuyaRoleNames.Organizer);
+        request.Headers.Add(HeaderRoleAuthHandler.SubHeader, subject);
+        request.Headers.Add(HeaderRoleAuthHandler.EmailHeader, email);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(captured).IsNotNull();
+        // CreatedBy is surfaced on the anonymous /api/public/events reads, so it must persist the
+        // non-PII subject identifier — never the organizer's email or display name.
+        await Assert.That(captured!.CreatedBy).IsEqualTo(subject);
+        await Assert.That(captured.CreatedBy).IsNotEqualTo(email);
+    }
+
     private static PlanEventRequest BuildRequest(string spoofedCreatedBy) => new(
         Title: "Ownership provenance event",
         Description: "Validates server-set CreatedBy.",
