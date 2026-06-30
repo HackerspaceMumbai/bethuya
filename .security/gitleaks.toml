@@ -14,7 +14,6 @@ regexes = [
 description = "Exclude generated media and reports that do not contain executable/runtime secrets"
 paths = [
   '''^assets/''',
-  '''^docs/''',
   '''^TestResults/''',
 ]
 
@@ -67,7 +66,7 @@ keywords = [
 id = "bethuya-json-parameter-literal"
 description = "Literal JSON parameter values are forbidden in deployment artifacts"
 path = '''(?i)(^infra/|^\.azure/|manifest[^/]*\.json$|.*\.json$)'''
-regex = '''(?is)"parameters"\s*:\s*\{.*?"[^"]+"\s*:\s*\{\s*"value"\s*:\s*"[^"]{1,}"'''
+regex = '''(?is)"parameters"\s*:\s*\{.*"[^"]+"\s*:\s*\{\s*"value"\s*:\s*"[^"]{1,}"'''
 keywords = [
   "\"parameters\"",
   "\"value\"",

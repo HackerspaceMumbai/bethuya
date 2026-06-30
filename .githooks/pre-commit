@@ -62,8 +62,8 @@ for staged_file in "${STAGED_FILES[@]}"; do
 
     if [[ "${staged_file}" == *.bicep || "${staged_file}" == *.bicepparam ]]; then
         staged_bicep="$(git show ":${staged_file}" 2>/dev/null || true)"
-        if [[ -n "${staged_bicep}" ]] && printf '%s\n' "${staged_bicep}" | grep -Eq '^[[:space:]]*(@secure\(\)[[:space:]]*)?param[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+string[[:space:]]*=[[:space:]]*'\''[^'\'']+'\''' ; then
-            line_number="$(printf '%s\n' "${staged_bicep}" | grep -En '^[[:space:]]*(@secure\(\)[[:space:]]*)?param[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+string[[:space:]]*=[[:space:]]*'\''[^'\'']+'\''' | head -n1 | cut -d: -f1)"
+        if [[ -n "${staged_bicep}" ]] && printf '%s\n' "${staged_bicep}" | grep -Eq "^[[:space:]]*(@secure\\(\\)[[:space:]]*)?param[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+string[[:space:]]*=[[:space:]]*'[^']+'" ; then
+            line_number="$(printf '%s\n' "${staged_bicep}" | grep -En "^[[:space:]]*(@secure\\(\\)[[:space:]]*)?param[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+string[[:space:]]*=[[:space:]]*'[^']+'" | head -n1 | cut -d: -f1)"
             errors+=("${staged_file}|${line_number:-1}|Detected Bicep parameter default assignment for a string literal.|Declare the param without a literal default and source value from Key Vault or deployment inputs.")
         fi
     fi
