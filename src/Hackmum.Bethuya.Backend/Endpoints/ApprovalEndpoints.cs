@@ -2,6 +2,7 @@ using Hackmum.Bethuya.Agents.Workflows;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Repositories;
 using ServiceDefaults.Auth;
+using ServiceDefaults.Auth.Observability;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -31,6 +32,9 @@ public static class ApprovalEndpoints
             ApproveRequest request,
             IDecisionRepository repo,
             ApprovalWorkflow workflow,
+            IUserContext userContext,
+            IAuthorizationAuditor auditor,
+            HttpContext http,
             CancellationToken ct) =>
         {
             var decision = await repo.GetByIdAsync(id, ct);
@@ -38,6 +42,18 @@ public static class ApprovalEndpoints
 
             workflow.Approve(decision, request.Reason);
             await repo.UpdateAsync(decision, ct);
+
+            // Admin acted on a pending decision. Recorded with the admin's non-PII subject hash only —
+            // the route already enforces RequireAdmin, so this is observability, not a new gate.
+            auditor.RecordDecision(
+                AuthorizationDecision.Allow,
+                BethuyaPolicyNames.RequireAdmin,
+                BethuyaAuditResourceTypes.Approval,
+                subject: userContext.UserId,
+                resourceId: id.ToString(),
+                route: http.Request.Path.Value,
+                outcomeStatusCode: StatusCodes.Status200OK);
+
             return Results.Ok(decision);
         });
 
@@ -46,6 +62,9 @@ public static class ApprovalEndpoints
             RejectRequest request,
             IDecisionRepository repo,
             ApprovalWorkflow workflow,
+            IUserContext userContext,
+            IAuthorizationAuditor auditor,
+            HttpContext http,
             CancellationToken ct) =>
         {
             var decision = await repo.GetByIdAsync(id, ct);
@@ -53,6 +72,18 @@ public static class ApprovalEndpoints
 
             workflow.Reject(decision, request.Reason);
             await repo.UpdateAsync(decision, ct);
+
+            // Admin acted on a pending decision. Recorded with the admin's non-PII subject hash only —
+            // the route already enforces RequireAdmin, so this is observability, not a new gate.
+            auditor.RecordDecision(
+                AuthorizationDecision.Allow,
+                BethuyaPolicyNames.RequireAdmin,
+                BethuyaAuditResourceTypes.Approval,
+                subject: userContext.UserId,
+                resourceId: id.ToString(),
+                route: http.Request.Path.Value,
+                outcomeStatusCode: StatusCodes.Status200OK);
+
             return Results.Ok(decision);
         });
     }

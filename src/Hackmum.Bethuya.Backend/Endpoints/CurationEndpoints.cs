@@ -6,6 +6,7 @@ using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Repositories;
 using ServiceDefaults.Auth;
+using ServiceDefaults.Auth.Observability;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -108,11 +109,13 @@ public static class CurationEndpoints
             Guid registrationId,
             ApplyCurationDecisionRequest request,
             IUserContext userContext,
+            IAuthorizationAuditor auditor,
             IEventRepository eventRepo,
             IRegistrationRepository registrationRepo,
             IAttendeeProfileRepository attendeeProfileRepo,
             IDecisionRepository decisionRepo,
             CurationFairnessService fairnessService,
+            HttpContext http,
             CancellationToken ct) =>
         {
             var evt = await eventRepo.GetByIdAsync(eventId, ct);
@@ -146,6 +149,16 @@ public static class CurationEndpoints
                             ?? userContext.UserId;
             if (string.IsNullOrWhiteSpace(decidedBy))
             {
+                // Decider-identity resolution failed closed. Record the denial with only the (absent)
+                // non-PII subject — never the decidedBy string, which may be an email/name.
+                auditor.RecordDecision(
+                    AuthorizationDecision.Deny,
+                    BethuyaPolicyNames.RequireCurator,
+                    BethuyaAuditResourceTypes.CurationDecision,
+                    subject: userContext.UserId,
+                    resourceId: registration.Id.ToString(),
+                    route: http.Request.Path.Value,
+                    outcomeStatusCode: StatusCodes.Status401Unauthorized);
                 return Results.Unauthorized();
             }
 
@@ -160,6 +173,17 @@ public static class CurationEndpoints
             };
 
             await decisionRepo.CreateAsync(decision, ct);
+
+            // Decider-identity resolved: record the curation decision against the curator's non-PII
+            // subject hash (NOT decidedBy / Email / Name). The action is part of the route, not the audit.
+            auditor.RecordDecision(
+                AuthorizationDecision.Allow,
+                BethuyaPolicyNames.RequireCurator,
+                BethuyaAuditResourceTypes.CurationDecision,
+                subject: userContext.UserId,
+                resourceId: registration.Id.ToString(),
+                route: http.Request.Path.Value,
+                outcomeStatusCode: StatusCodes.Status200OK);
 
             var registrations = await registrationRepo.GetByEventIdAsync(eventId, ct);
             var dashboard = await fairnessService.BuildDashboardAsync(
