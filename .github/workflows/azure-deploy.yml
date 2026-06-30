@@ -17,7 +17,7 @@ name: Azure Deploy
 #   2. Add a federated credential: Entity = Branch, Branch = main, Repo = <org/repo>
 #   3. Assign Contributor + User Access Administrator on subscription (or resource group)
 #   4. Seed Key Vault secrets via controlled operator workflow (outside GitHub Actions YAML)
-#   5. Run `azd env new production` locally and commit the .azure/ folder (without secrets)
+#   5. Run `azd env new production` locally and keep `.azure/` local-only (never commit it)
 
 on:
   push:

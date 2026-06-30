@@ -30,13 +30,15 @@ public static class KeyVaultConfigurationExtensions
         builder.Configuration.GetSection(KeyVaultRuntimeOptions.SectionName).Bind(options);
 
         var keyVaultUriValue = builder.Configuration["KEY_VAULT_URI"]
+            ?? builder.Configuration["VAULT_URI"]
             ?? builder.Configuration["KeyVaultUri"]
             ?? options.Uri;
 
         if (string.IsNullOrWhiteSpace(keyVaultUriValue))
         {
             throw new InvalidOperationException(
-                "Hosted secret mode requires a Key Vault URI. Configure KEY_VAULT_URI or KeyVault:Uri.");
+                "Hosted secret mode requires a Key Vault URI. " +
+                "Configure KEY_VAULT_URI, VAULT_URI, KeyVaultUri, or KeyVault:Uri.");
         }
 
         if (!Uri.TryCreate(keyVaultUriValue, UriKind.Absolute, out var keyVaultUri))
@@ -49,12 +51,11 @@ public static class KeyVaultConfigurationExtensions
         {
             ExcludeInteractiveBrowserCredential = true
         });
-
+        builder.Services.AddSingleton<TokenCredential>(_ => credential);
         builder.Configuration.AddAzureKeyVault(keyVaultUri, credential, new KeyVaultSecretManager());
 
         builder.Services.AddSingleton(new KeyVaultStartupValidationContext(
             keyVaultUri,
-            credential,
             options.RequiredConfigurationKeys,
             options.RequiredSecretNames));
 
@@ -92,13 +93,13 @@ public sealed class KeyVaultRuntimeOptions
 /// </summary>
 public sealed record KeyVaultStartupValidationContext(
     Uri VaultUri,
-    TokenCredential Credential,
     string[] RequiredConfigurationKeys,
     string[] RequiredSecretNames);
 
 internal sealed partial class KeyVaultStartupValidationHostedService(
     IConfiguration configuration,
     KeyVaultStartupValidationContext context,
+    TokenCredential credential,
     ILogger<KeyVaultStartupValidationHostedService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -120,7 +121,7 @@ internal sealed partial class KeyVaultStartupValidationHostedService(
             return;
         }
 
-        var secretClient = new SecretClient(context.VaultUri, context.Credential);
+        var secretClient = new SecretClient(context.VaultUri, credential);
         var missingSecrets = new List<string>();
 
         foreach (var secretName in context.RequiredSecretNames)
