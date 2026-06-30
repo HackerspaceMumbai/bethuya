@@ -3,3 +3,7 @@
 .squad/agents/*/history.md merge=union
 .squad/log/** merge=union
 .squad/orchestration-log/** merge=union
+
+# Keep hook and shell scripts LF for POSIX runtimes.
+.githooks/* text eol=lf
+*.sh text eol=lf

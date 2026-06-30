@@ -1,0 +1,84 @@
+title = "Bethuya secret leak prevention rules"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow known mock tokens and intentionally non-secret examples"
+regexTarget = "match"
+regexes = [
+  '''(?i)\b(?:ExampleApiKey|DummySecret|DummyToken|MockConnectionString|FakeClientSecret)\b''',
+]
+
+[[allowlists]]
+description = "Exclude generated media and reports that do not contain executable/runtime secrets"
+paths = [
+  '''^assets/''',
+  '''^docs/''',
+  '''^TestResults/''',
+]
+
+[[rules]]
+id = "bethuya-keyword-assignment"
+description = "High-risk secret keyword assignment in infra/config files"
+path = '''(?i)(^infra/|^\.azure/|manifest[^/]*\.json$|.*\.(?:bicep|bicepparam|json|ya?ml|env)$)'''
+regex = '''(?i)(?:^|[\s,{])(?:["']?[A-Za-z0-9_.-]*(?:password|secret|api[_-]?key|token|jwt|connectionstring|clientsecret)[A-Za-z0-9_.-]*["']?)\s*(?:=|:)\s*["']?([A-Za-z0-9+/_=:.@-]{8,})["']?'''
+keywords = [
+  "password",
+  "secret",
+  "apikey",
+  "api_key",
+  "token",
+  "jwt",
+  "connectionstring",
+  "clientsecret",
+]
+secretGroup = 1
+
+[[rules]]
+id = "bethuya-high-entropy-assignment"
+description = "High-entropy secret-like assignment value in infra/config files"
+path = '''(?i)(^infra/|^\.azure/|manifest[^/]*\.json$|.*\.(?:bicep|bicepparam|json|ya?ml|env)$)'''
+regex = '''(?i)(?:key|secret|token|password|connectionstring)[A-Za-z0-9_.-]{0,32}\s*(?:=|:)\s*["']?([A-Fa-f0-9]{32,}|[A-Za-z0-9+/]{40,}={0,2})["']?'''
+entropy = 3.5
+secretGroup = 1
+
+[[rules]]
+id = "bethuya-azure-connection-string"
+description = "Azure connection string components detected"
+regex = '''(?i)(DefaultEndpointsProtocol=https;AccountName=[^;]+;AccountKey=[A-Za-z0-9+/=]{20,}|SharedAccessKey=[A-Za-z0-9+/=]{20,}|EndpointSuffix=core\.windows\.net)'''
+keywords = [
+  "DefaultEndpointsProtocol",
+  "AccountKey",
+  "SharedAccessKey",
+]
+
+[[rules]]
+id = "bethuya-keyvault-export-schema"
+description = "Azure Key Vault export payload fields are forbidden in source control"
+path = '''(?i).*\.json$'''
+regex = '''(?is)"SecretUri"\s*:\s*"[^"]+"\s*,\s*"SecretValue"\s*:\s*"[^"]+"'''
+keywords = [
+  "SecretUri",
+  "SecretValue",
+]
+
+[[rules]]
+id = "bethuya-json-parameter-literal"
+description = "Literal JSON parameter values are forbidden in deployment artifacts"
+path = '''(?i)(^infra/|^\.azure/|manifest[^/]*\.json$|.*\.json$)'''
+regex = '''(?is)"parameters"\s*:\s*\{.*?"[^"]+"\s*:\s*\{\s*"value"\s*:\s*"[^"]{1,}"'''
+keywords = [
+  "\"parameters\"",
+  "\"value\"",
+]
+
+[[rules]]
+id = "bethuya-bicep-string-default"
+description = "Bicep string parameters must not have inline literal defaults"
+path = '''(?i).*\.(?:bicep|bicepparam)$'''
+regex = "(?im)^\\s*(?:@secure\\(\\)\\s*)?param\\s+[A-Za-z_][A-Za-z0-9_]*\\s+string\\s*=\\s*'[^']+'"
+keywords = [
+  "param",
+  "@secure()",
+]

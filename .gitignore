@@ -76,9 +76,12 @@ manifest.json
 
 # Aspire generated infra
 infra/
-.azure/
+.azure/*
+!.azure/config.json
+!.azure/config.yaml
+!.azure/config.yml
+!.azure/README.md
 
 AppHost/AppHost/manifest.json
 AppHost/AppHost/*.bicep
-
 

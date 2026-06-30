@@ -1,0 +1,35 @@
+name: Secret Leak Scan
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gitleaks:
+    name: Gitleaks PR Diff Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks on PR commit range
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .security/gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: false
+        with:
+          args: >-
+            git
+            --redact
+            --verbose
+            --config=.security/gitleaks.toml
+            --gitleaks-ignore-path=.gitleaksallowlist
+            --log-opts=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
