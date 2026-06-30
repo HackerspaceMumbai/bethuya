@@ -9,6 +9,12 @@ param web_containerimage string
 
 param web_containerport string
 
+@secure()
+param oauth_github_clientsecret string
+
+@secure()
+param oauth_linkedin_clientsecret string
+
 param bethuya_env_outputs_azure_container_registry_endpoint string
 
 param bethuya_env_outputs_azure_container_registry_managed_identity_id string
@@ -28,6 +34,16 @@ resource web 'Microsoft.App/containerApps@2025-10-02-preview' = {
         {
           server: bethuya_env_outputs_azure_container_registry_endpoint
           identity: bethuya_env_outputs_azure_container_registry_managed_identity_id
+        }
+      ]
+      secrets: [
+        {
+          name: 'github-client-secret'
+          value: oauth_github_clientsecret
+        }
+        {
+          name: 'linkedin-client-secret'
+          value: oauth_linkedin_clientsecret
         }
       ]
       runtime: {
@@ -77,7 +93,7 @@ resource web 'Microsoft.App/containerApps@2025-10-02-preview' = {
             }
             {
               name: 'ASPNETCORE_ENVIRONMENT'
-              value: 'Development'
+              value: 'Production'
             }
             {
               name: 'Onboarding__BypassSocialConnections'
@@ -88,16 +104,12 @@ resource web 'Microsoft.App/containerApps@2025-10-02-preview' = {
               value: 'false'
             }
             {
-              name: 'ASPNETCORE_STATICWEBASSETS'
-              value: 'D:\\Projects\\bethuya.worktrees\\postgres\\src\\Bethuya.Hybrid\\Bethuya.Hybrid.Web\\obj\\Debug\\net10.0\\staticwebassets.development.json'
-            }
-            {
               name: 'SocialConnections__GitHub__ClientId'
               value: 'Ov23liOoR9dMeN5uOQrs'
             }
             {
               name: 'SocialConnections__GitHub__ClientSecret'
-              value: 'REDACTED_GITHUB_SECRET'
+              secretRef: 'github-client-secret'
             }
             {
               name: 'SocialConnections__GitHub__CallbackPath'
@@ -109,7 +121,7 @@ resource web 'Microsoft.App/containerApps@2025-10-02-preview' = {
             }
             {
               name: 'SocialConnections__LinkedIn__ClientSecret'
-              value: 'REDACTED_LINKEDIN_SECRET'
+              secretRef: 'linkedin-client-secret'
             }
             {
               name: 'SocialConnections__LinkedIn__CallbackPath'

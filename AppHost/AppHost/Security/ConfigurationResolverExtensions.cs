@@ -67,14 +67,18 @@ public static class ConfigurationResolverExtensions
     {
         foreach (var key in keys)
         {
-            var value =
-                builder.Configuration[key]
-                ?? Environment.GetEnvironmentVariable(key);
-
-            if (!string.IsNullOrWhiteSpace(value))
+            var configurationValue = builder.Configuration[key];
+            if (!string.IsNullOrWhiteSpace(configurationValue))
             {
-                return value;
+                return configurationValue;
             }
+
+            var environmentValue = Environment.GetEnvironmentVariable(key);
+            if (!string.IsNullOrWhiteSpace(environmentValue))
+            {
+                return environmentValue;
+            }
+            
         }
 
         return defaultValue;

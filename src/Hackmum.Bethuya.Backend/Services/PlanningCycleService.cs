@@ -17,6 +17,11 @@ namespace Hackmum.Bethuya.Backend.Services;
 /// </summary>
 public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plannerInvoker)
 {
+    private const int MaxWorkItemIdLength = 100;
+    private const int MaxPersistedTraceMetadataLength = 200;
+    private const int MaxPersistedProviderMetadataLength = 200;
+    private const string MissingTraceParentPrefix = "missing-traceparent:";
+
     public async Task<PlanningCycleResponse?> GetActiveCycleAsync(Guid eventId, CancellationToken ct = default)
     {
         var cycle = await db.PlanningCycles
@@ -79,6 +84,8 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
 
     public async Task<PlanningCycleResponse> GenerateDraftAsync(Guid cycleId, GeneratePlannerDraftRequest request, CancellationToken ct = default)
     {
+        ValidateWorkItemId(request.WorkItemId);
+
         var cycle = await db.PlanningCycles.FirstOrDefaultAsync(c => c.Id == cycleId, ct)
             ?? throw new KeyNotFoundException("Planning cycle not found.");
 
@@ -112,8 +119,8 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
             HumanEditedMarkdown: request.HumanEditedMarkdown);
 
         var inputHash = ComputeInputHash(invocationInput);
-        var traceParent = Activity.Current?.Id;
-        var correlationId = Activity.Current?.TraceId.ToString() ?? Guid.CreateVersion7().ToString("N");
+        var traceParent = NormalizeOptionalTraceMetadata(Activity.Current?.Id);
+        var correlationId = NormalizeRequiredTraceMetadata(Activity.Current?.TraceId.ToString() ?? Guid.CreateVersion7().ToString("N"));
         var invocation = await plannerInvoker.InvokePlannerAsync(
             invocationInput,
             cycle.ConversationId,
@@ -129,9 +136,9 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
             InputHash = inputHash,
             MarkdownAgenda = invocation.MarkdownAgenda,
             AgendaJson = JsonSerializer.Serialize(invocation.AgendaJson),
-            ResponseId = invocation.ResponseId,
-            AgentName = invocation.AgentName,
-            AgentVersionTag = invocation.AgentVersionTag,
+            ResponseId = NormalizeOptionalPersistedProviderMetadata(invocation.ResponseId),
+            AgentName = NormalizeOptionalPersistedProviderMetadata(invocation.AgentName),
+            AgentVersionTag = NormalizeOptionalPersistedProviderMetadata(invocation.AgentVersionTag),
             TraceParent = traceParent,
             CorrelationId = correlationId
         };
@@ -142,13 +149,14 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
             EventId = cycle.EventId,
             WorkItemId = request.WorkItemId,
             ConversationId = cycle.ConversationId,
+            CycleState = cycle.Status,
             InputHash = inputHash,
-            ResponseId = invocation.ResponseId,
-            AgentName = invocation.AgentName,
-            AgentVersionTag = invocation.AgentVersionTag,
+            ResponseId = NormalizeRequiredPersistedProviderMetadata(invocation.ResponseId, "unavailable"),
+            AgentName = NormalizeOptionalPersistedProviderMetadata(invocation.AgentName),
+            AgentVersionTag = NormalizeRequiredPersistedProviderMetadata(invocation.AgentVersionTag, "unknown"),
             MarkdownAgenda = invocation.MarkdownAgenda,
             AgendaJson = JsonSerializer.Serialize(invocation.AgendaJson),
-            TraceParent = traceParent,
+            TraceParent = BuildAuditTraceParent(traceParent, correlationId),
             CorrelationId = correlationId
         };
 
@@ -262,6 +270,71 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
         var payload = JsonSerializer.Serialize(input);
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
         return Convert.ToHexString(hash);
+    }
+
+    private static string BuildAuditTraceParent(string? traceParent, string correlationId)
+    {
+        if (!string.IsNullOrWhiteSpace(traceParent))
+        {
+            return NormalizeRequiredTraceMetadata(traceParent);
+        }
+
+        var availableCorrelationLength = Math.Max(0, MaxPersistedTraceMetadataLength - MissingTraceParentPrefix.Length);
+        var boundedCorrelationId = correlationId.Length <= availableCorrelationLength
+            ? correlationId
+            : correlationId[..availableCorrelationLength];
+
+        return MissingTraceParentPrefix + boundedCorrelationId;
+    }
+
+    private static string NormalizeRequiredTraceMetadata(string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        return value.Length <= MaxPersistedTraceMetadataLength
+            ? value
+            : value[..MaxPersistedTraceMetadataLength];
+    }
+
+    private static string? NormalizeOptionalPersistedProviderMetadata(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Length <= MaxPersistedProviderMetadataLength
+            ? value
+            : value[..MaxPersistedProviderMetadataLength];
+    }
+
+    private static string NormalizeRequiredPersistedProviderMetadata(string? value, string fallback)
+    {
+        return NormalizeOptionalPersistedProviderMetadata(value)
+            ?? NormalizeOptionalPersistedProviderMetadata(fallback)
+            ?? throw new InvalidOperationException("Required persisted provider metadata could not be normalized.");
+    }
+
+    private static string? NormalizeOptionalTraceMetadata(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return NormalizeRequiredTraceMetadata(value);
+    }
+
+    private static void ValidateWorkItemId(string workItemId)
+    {
+        if (string.IsNullOrWhiteSpace(workItemId))
+        {
+            throw new InvalidOperationException("workItemId is required for idempotency.");
+        }
+
+        if (workItemId.Length > MaxWorkItemIdLength)
+        {
+            throw new InvalidOperationException($"workItemId must be {MaxWorkItemIdLength} characters or fewer.");
+        }
     }
 
     private static PlanningCycleResponse ToCycleResponse(PlanningCycle cycle, PlannerDraft? draft) =>

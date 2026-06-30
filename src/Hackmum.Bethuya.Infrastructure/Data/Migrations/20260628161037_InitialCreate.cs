@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -417,13 +417,14 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     EventId = table.Column<Guid>(type: "uuid", nullable: false),
                     WorkItemId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     ConversationId = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    CycleState = table.Column<int>(type: "integer", nullable: false),
                     InputHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    ResponseId = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    ResponseId = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     AgentName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    AgentVersionTag = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    AgentVersionTag = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     MarkdownAgenda = table.Column<string>(type: "text", nullable: false),
                     AgendaJson = table.Column<string>(type: "text", nullable: false),
-                    TraceParent = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    TraceParent = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     CorrelationId = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
@@ -503,9 +504,7 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_PlannerInvocationAudits_PlanningCycleId_WorkItemId",
                 table: "PlannerInvocationAudits",
-                columns: new[] { "PlanningCycleId", "WorkItemId" },
-                unique: true);
-
+                columns: new[] { "PlanningCycleId", "WorkItemId" });
             migrationBuilder.CreateIndex(
                 name: "IX_PlanningCycles_EventId_ConversationId",
                 table: "PlanningCycles",

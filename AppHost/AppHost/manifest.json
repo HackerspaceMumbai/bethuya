@@ -72,7 +72,8 @@
       "value": "{cloudinary-api-secret.inputs.value}",
       "inputs": {
         "value": {
-          "type": "string"
+          "type": "string",
+          "secret": true
         }
       }
     },
@@ -108,7 +109,8 @@
       "value": "{ai-azure-openai-key.inputs.value}",
       "inputs": {
         "value": {
-          "type": "string"
+          "type": "string",
+          "secret": true
         }
       }
     },
@@ -126,7 +128,8 @@
       "value": "{ai-openai-key.inputs.value}",
       "inputs": {
         "value": {
-          "type": "string"
+          "type": "string",
+          "secret": true
         }
       }
     },
@@ -136,6 +139,26 @@
       "inputs": {
         "value": {
           "type": "string"
+        }
+      }
+    },
+    "oauth-github-clientsecret": {
+      "type": "parameter.v0",
+      "value": "{oauth-github-clientsecret.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "oauth-linkedin-clientsecret": {
+      "type": "parameter.v0",
+      "value": "{oauth-linkedin-clientsecret.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
         }
       }
     },
@@ -320,7 +343,9 @@
           "bethuya_env_outputs_azure_container_registry_endpoint": "{bethuya-env.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT}",
           "bethuya_env_outputs_azure_container_registry_managed_identity_id": "{bethuya-env.outputs.AZURE_CONTAINER_REGISTRY_MANAGED_IDENTITY_ID}",
           "web_containerimage": "{web.containerImage}",
-          "web_containerport": "{web.containerPort}"
+          "web_containerport": "{web.containerPort}",
+          "oauth_github_clientsecret": "{oauth-github-clientsecret.value}",
+          "oauth_linkedin_clientsecret": "{oauth-linkedin-clientsecret.value}"
         }
       },
       "env": {
@@ -332,15 +357,14 @@
         "services__backend__http__0": "{backend.bindings.http.url}",
         "BACKEND_HTTPS": "{backend.bindings.https.url}",
         "services__backend__https__0": "{backend.bindings.https.url}",
-        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Production",
         "Onboarding__BypassSocialConnections": "false",
         "Onboarding__BypassMandatoryProfile": "false",
-        "ASPNETCORE_STATICWEBASSETS": "D:\\Projects\\bethuya.worktrees\\postgres\\src\\Bethuya.Hybrid\\Bethuya.Hybrid.Web\\obj\\Debug\\net10.0\\staticwebassets.development.json",
         "SocialConnections__GitHub__ClientId": "Ov23liOoR9dMeN5uOQrs",
-        "SocialConnections__GitHub__ClientSecret": "REDACTED_GITHUB_SECRET",
+        "SocialConnections__GitHub__ClientSecret": "{oauth-github-clientsecret.value}",
         "SocialConnections__GitHub__CallbackPath": "/oauth/github/callback",
         "SocialConnections__LinkedIn__ClientId": "86rr1crp0npnmc",
-        "SocialConnections__LinkedIn__ClientSecret": "REDACTED_LINKEDIN_SECRET",
+        "SocialConnections__LinkedIn__ClientSecret": "{oauth-linkedin-clientsecret.value}",
         "SocialConnections__LinkedIn__CallbackPath": "/oauth/linkedin/callback",
         "SocialConnections__LinkedIn__Scopes__0": "openid",
         "SocialConnections__LinkedIn__Scopes__1": "profile"

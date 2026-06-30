@@ -47,13 +47,13 @@ playwright-cli run-code "async page => {
     try {
       body = route.request().postDataJSON();
     } catch {
-      route.fulfill({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }) });
+      await route.fulfill({ status: 400, json: { error: 'Invalid JSON body' } });
       return;
     }
     if (body.username === 'admin') {
-      route.fulfill({ body: JSON.stringify({ token: 'mock-token' }) });
+      await route.fulfill({ json: { token: 'mock-token' } });
     } else {
-      route.fulfill({ status: 401, body: JSON.stringify({ error: 'Invalid' }) });
+      await route.fulfill({ status: 401, json: { error: 'Invalid' } });
     }
   });
 }"
@@ -87,7 +87,7 @@ playwright-cli run-code "async page => {
 playwright-cli run-code "async page => {
   await page.route('**/api/slow', async route => {
     await new Promise(r => setTimeout(r, 3000));
-    route.fulfill({ body: JSON.stringify({ data: 'loaded' }) });
+    await route.fulfill({ json: { data: 'loaded' } });
   });
 }"
 ```

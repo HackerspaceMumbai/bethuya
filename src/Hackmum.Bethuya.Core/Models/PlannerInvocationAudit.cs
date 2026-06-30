@@ -1,3 +1,5 @@
+using Hackmum.Bethuya.Core.Enums;
+
 namespace Hackmum.Bethuya.Core.Models;
 
 /// <summary>
@@ -10,13 +12,14 @@ public sealed class PlannerInvocationAudit
     public Guid EventId { get; init; }
     public required string WorkItemId { get; init; }
     public required string ConversationId { get; init; }
+    public PlanningCycleStatus CycleState { get; init; }
     public required string InputHash { get; init; }
-    public string? ResponseId { get; init; }
+    public required string ResponseId { get; init; }
     public string? AgentName { get; init; }
-    public string? AgentVersionTag { get; init; }
+    public required string AgentVersionTag { get; init; }
     public required string MarkdownAgenda { get; init; }
     public required string AgendaJson { get; init; }
-    public string? TraceParent { get; init; }
+    public required string TraceParent { get; init; }
     public string? CorrelationId { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 

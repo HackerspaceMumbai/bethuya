@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 using Hackmum.Bethuya.Backend.Agents;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
@@ -101,6 +102,89 @@ public sealed class PlanningCycleWorkflowTests
         await Assert.That(newCycle.ConversationId).IsNotEqualTo(cycle.ConversationId);
     }
 
+    [Test]
+    public async Task GenerateDraftAsync_MissingTraceParent_PersistsBoundedAuditPlaceholder()
+    {
+        await using var db = CreateDbContext();
+        var evt = await SeedEventAsync(db);
+        var service = new PlanningCycleService(db, new FakeAgentInvoker());
+
+        var cycle = await service.StartCycleAsync(evt.Id, new StartPlanningCycleRequest());
+
+        var previousActivity = Activity.Current;
+        Activity.Current = null;
+
+        try
+        {
+            _ = await service.GenerateDraftAsync(cycle.CycleId, new GeneratePlannerDraftRequest(WorkItemId: "work-missing-trace"));
+        }
+        finally
+        {
+            Activity.Current = previousActivity;
+        }
+
+        var audit = await db.PlannerInvocationAudits.SingleAsync(a => a.WorkItemId == "work-missing-trace");
+        await Assert.That(audit.TraceParent).StartsWith("missing-traceparent:");
+        await Assert.That(audit.TraceParent.Length).IsLessThanOrEqualTo(200);
+        await Assert.That(audit.CorrelationId).IsNotNull();
+        await Assert.That(audit.CorrelationId!.Length).IsLessThanOrEqualTo(200);
+    }
+
+    [Test]
+    public async Task GenerateDraftAsync_LongTraceParent_TruncatesPersistedTraceMetadata()
+    {
+        await using var db = CreateDbContext();
+        var evt = await SeedEventAsync(db);
+        var service = new PlanningCycleService(db, new FakeAgentInvoker());
+
+        var cycle = await service.StartCycleAsync(evt.Id, new StartPlanningCycleRequest());
+
+        using var activity = new Activity("planning-cycle-test");
+        activity.SetIdFormat(ActivityIdFormat.Hierarchical);
+        activity.SetParentId(new string('p', 240));
+        activity.Start();
+
+        _ = await service.GenerateDraftAsync(cycle.CycleId, new GeneratePlannerDraftRequest(WorkItemId: "work-long-trace"));
+
+        var draft = await db.PlannerDrafts.SingleAsync(d => d.WorkItemId == "work-long-trace");
+        var audit = await db.PlannerInvocationAudits.SingleAsync(a => a.WorkItemId == "work-long-trace");
+
+        await Assert.That(draft.TraceParent).IsNotNull();
+        await Assert.That(draft.TraceParent!.Length).IsLessThanOrEqualTo(200);
+        await Assert.That(audit.TraceParent.Length).IsLessThanOrEqualTo(200);
+    }
+
+    [Test]
+    public async Task GenerateDraftAsync_LongInvokerMetadata_TruncatesPersistedProviderFields()
+    {
+        await using var db = CreateDbContext();
+        var evt = await SeedEventAsync(db);
+        var service = new PlanningCycleService(
+            db,
+            new FakeAgentInvoker(
+                responseId: new string('r', 260),
+                agentName: new string('n', 260),
+                agentVersionTag: new string('v', 260)));
+
+        var cycle = await service.StartCycleAsync(evt.Id, new StartPlanningCycleRequest());
+
+        _ = await service.GenerateDraftAsync(cycle.CycleId, new GeneratePlannerDraftRequest(WorkItemId: "work-long-provider-metadata"));
+
+        var draft = await db.PlannerDrafts.SingleAsync(d => d.WorkItemId == "work-long-provider-metadata");
+        var audit = await db.PlannerInvocationAudits.SingleAsync(a => a.WorkItemId == "work-long-provider-metadata");
+
+        await Assert.That(draft.ResponseId).IsNotNull();
+        await Assert.That(draft.ResponseId!.Length).IsLessThanOrEqualTo(200);
+        await Assert.That(draft.AgentName).IsNotNull();
+        await Assert.That(draft.AgentName!.Length).IsLessThanOrEqualTo(200);
+        await Assert.That(draft.AgentVersionTag).IsNotNull();
+        await Assert.That(draft.AgentVersionTag!.Length).IsLessThanOrEqualTo(200);
+        await Assert.That(audit.ResponseId.Length).IsLessThanOrEqualTo(200);
+        await Assert.That(audit.AgentName).IsNotNull();
+        await Assert.That(audit.AgentName!.Length).IsLessThanOrEqualTo(200);
+        await Assert.That(audit.AgentVersionTag.Length).IsLessThanOrEqualTo(200);
+    }
+
     private static BethuyaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<BethuyaDbContext>()
@@ -129,7 +213,10 @@ public sealed class PlanningCycleWorkflowTests
         return evt;
     }
 
-    private sealed class FakeAgentInvoker : IAgentInvoker
+    private sealed class FakeAgentInvoker(
+        string? responseId = null,
+        string? agentName = null,
+        string? agentVersionTag = null) : IAgentInvoker
     {
         public Task<PlannerInvocationResult> InvokePlannerAsync(
             PlannerInvocationInput input,
@@ -221,9 +308,9 @@ public sealed class PlanningCycleWorkflowTests
             return Task.FromResult(new PlannerInvocationResult(
                 MarkdownAgenda: markdown,
                 AgendaJson: agenda,
-                ResponseId: $"resp-{workItemId}",
-                AgentName: "planner-hosted",
-                AgentVersionTag: "test-v1"));
+                ResponseId: responseId ?? $"resp-{workItemId}",
+                AgentName: agentName ?? "planner-hosted",
+                AgentVersionTag: agentVersionTag ?? "test-v1"));
         }
     }
 }

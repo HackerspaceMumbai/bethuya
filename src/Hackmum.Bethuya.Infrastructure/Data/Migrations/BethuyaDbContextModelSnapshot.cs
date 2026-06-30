@@ -660,14 +660,13 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("AgentVersionTag")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<string>("ConversationId")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<int>("CycleState")
+                        .HasColumnType("integer");
 
                     b.Property<string>("CorrelationId")
                         .HasMaxLength(200)
@@ -692,10 +691,17 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("ResponseId")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
                     b.Property<string>("TraceParent")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("AgentVersionTag")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 

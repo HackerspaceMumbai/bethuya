@@ -16,6 +16,30 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-06-30] Harden backend startup DB bootstrap
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Run backend development-time migration and pending image-upload schema bootstrap inside a single execution strategy with a fresh scoped `DbContext` per retry attempt.
+- **Acceptance:** `Program.cs` creates a fresh scoped context inside the execution-strategy delegate, both DB bootstrap steps run inside the same retry boundary, and backend file diagnostics remain clean.
+
+## [2026-06-30] Harden planning-cycle persisted identifiers
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Reject oversized `WorkItemId` at the planning-cycle API boundary and bound provider-controlled persisted identifiers in `PlanningCycleService` so planner metadata cannot overflow constrained database columns.
+- **Acceptance:** Draft endpoint returns validation errors for `WorkItemId` values longer than 100 characters, `PlanningCycleService` normalizes `ResponseId`/`AgentName`/`AgentVersionTag` before persistence, and focused endpoint/workflow tests pass.
+
+## [2026-06-30] Bound persisted planning trace metadata
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Centralize and bound persisted `TraceParent`/`CorrelationId` values in `PlanningCycleService` so required audit placeholders and trace context strings never exceed the database column limits.
+- **Acceptance:** `PlanningCycleService` normalizes persisted trace metadata through shared helpers/constants, missing-traceparent fallback stays within 200 chars, and focused workflow coverage proves the persisted audit record remains valid.
+
+## [2026-06-30] Make forwarded-header hop limit configurable
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Replace the hard-coded forwarded-header `ForwardLimit = 1` assumption in `Bethuya.Hybrid.Web` with standard configuration-backed settings so deployments with multiple trusted proxy hops can override safely.
+- **Acceptance:** `Program.cs` reads `ForwardedHeaders:ForwardLimit` with a safe default, `appsettings.json` documents/provides the default value, and touched files remain diagnostics-clean.
+
 ## [2026-06-09] Fix Postgres filtered index SQL
 - **Status:** done
 - **Agent/Owner:** Codex

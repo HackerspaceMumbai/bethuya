@@ -19,13 +19,43 @@ if (!builder.Environment.IsDevelopment())
         options.ForwardedHeaders =
             ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 
-        options.KnownIPNetworks.Clear();
-        options.KnownProxies.Clear();
+        var configuredForwardLimit = builder.Configuration.GetValue<int?>("ForwardedHeaders:ForwardLimit");
+
+        options.ForwardLimit = configuredForwardLimit is > 0
+            ? configuredForwardLimit
+            : 1;
+
+        options.RequireHeaderSymmetry = true;
+
+        var knownProxies =
+            builder.Configuration
+                .GetSection("ForwardedHeaders:KnownProxies")
+                .Get<string[]>()
+            ?? [];
+
+        foreach (var knownProxy in knownProxies)
+        {
+            if (System.Net.IPAddress.TryParse(knownProxy, out var proxyAddress))
+            {
+                options.KnownProxies.Add(proxyAddress);
+            }
+        }
+
+        var knownNetworks =
+            builder.Configuration
+                .GetSection("ForwardedHeaders:KnownNetworks")
+                .Get<string[]>()
+            ?? [];
+
+        foreach (var knownNetwork in knownNetworks)
+        {
+            if (System.Net.IPNetwork.TryParse(knownNetwork, out var network))
+            {
+                options.KnownIPNetworks.Add(network);
+            }
+        }
     });
 }
-
-
-builder.WebHost.UseSetting(key: "hostFilteringEnabled", "false");
 
 
 builder.AddServiceDefaults();
@@ -138,9 +168,6 @@ builder.Services.AddCors(options =>
         ForwardedHeaders.XForwardedProto |
         ForwardedHeaders.XForwardedHost;
 });*/
-
-
-builder.Configuration["AllowedHosts"] = "*";
 
 
 var app = builder.Build();

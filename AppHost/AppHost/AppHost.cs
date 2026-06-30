@@ -19,13 +19,13 @@ var gitHubClientId =
     builder.AddParameter("oauth-github-clientid");
 
 var gitHubClientSecret =
-    builder.AddParameter("oauth-github-clientsecret");
+    builder.AddParameter("oauth-github-clientsecret", secret: true);
 
 var linkedInClientId =
     builder.AddParameter("oauth-linkedin-clientid");
 
 var linkedInClientSecret =
-    builder.AddParameter("oauth-linkedin-clientsecret");
+    builder.AddParameter("oauth-linkedin-clientsecret", secret: true);
 
 var linkedInScope0 =
     builder.AddParameter(
@@ -245,10 +245,8 @@ var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileNa
     .WithHttpEndpoint()
     //   .WithHttpsEndpoint()
     .WithEnvironment("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true")
-    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithEnvironment("Onboarding__BypassSocialConnections", onboardingBypassSocialConnections)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
-    .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest)
 //  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8082")
     .WithEnvironment("ASPNETCORE_ALLOWEDHOSTS", "*")
     .ConfigureSocialAuth(socialAuthSettings)
@@ -260,6 +258,14 @@ var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileNa
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 5;
     });
+
+if (builder.IsLocalDevelopment())
+{
+    web
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+        .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest);
+}
+    
 
 if (keycloak is not null)
 {
