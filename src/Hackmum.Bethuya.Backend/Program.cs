@@ -19,7 +19,6 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 builder.Services.AddDataProtection();
-builder.Services.AddOpenApi();
 
 builder.AddServiceDefaults();
 builder.AddBethuyaApiAuthentication();
@@ -66,7 +65,6 @@ if (app.Environment.IsDevelopment())
         await dbContext.EnsurePendingImageUploadSchemaAsync();
     });
 
-    app.MapOpenApi();
     app.MapScalarApiReference();
     app.MapDevelopmentEndpoints();
 }
@@ -86,4 +84,3 @@ app.MapPlanningCycleEndpoints();
 app.MapDefaultEndpoints();
 
 app.Run();
-
