@@ -25,6 +25,7 @@ builder.Services.AddDataProtection();
 builder.AddServiceDefaults();
 builder.AddBethuyaApiAuthentication();
 builder.AddBethuyaAuthorization();
+builder.AddBethuyaAuthorizationObservability();
 builder.Services.AddBethuyaUserContext();
 builder.AddBethuyaInfrastructure();
 builder.AddBethuyaAI();

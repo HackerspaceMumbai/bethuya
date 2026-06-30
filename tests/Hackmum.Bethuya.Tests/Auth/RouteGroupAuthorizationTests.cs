@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using ServiceDefaults.Auth;
+using ServiceDefaults.Auth.Observability;
 
 namespace Hackmum.Bethuya.Tests.Auth;
 
@@ -389,7 +390,8 @@ public sealed class RouteGroupAuthorizationTests
             typeof(IAgent<CuratorRequest, CuratorResponse>),
             typeof(IAgent<FacilitatorRequest, FacilitatorResponse>),
             typeof(IAgent<ReporterRequest, ReporterResponse>),
-            typeof(IUserContext)
+            typeof(IUserContext),
+            typeof(IAuthorizationAuditor)
         ];
 
         foreach (var dependency in handlerDependencies)

@@ -10,6 +10,7 @@ using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using ServiceDefaults.Auth.Observability;
 using System.Threading.RateLimiting;
 
 namespace Microsoft.Extensions.Hosting;
@@ -63,11 +64,15 @@ public static class Extensions
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    // Bethuya authorization audit metrics (allow/deny/bypass + 401/403 by route group).
+                    .AddMeter(AuthorizationMetrics.MeterName);
             })
             .WithTracing(tracing =>
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
+                    // Authorization-decision spans carry non-PII attributes (policy/decision/resource).
+                    .AddSource(AuthorizationActivity.SourceName)
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
                         tracing.Filter = context =>

@@ -6,6 +6,7 @@ using Hackmum.Bethuya.Core.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using ServiceDefaults.Auth;
+using ServiceDefaults.Auth.Observability;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -46,11 +47,27 @@ public static class RegistrationEndpoints
             Guid eventId,
             ClaimsPrincipal user,
             IAuthorizationService authorization,
+            IAuthorizationAuditor auditor,
             IRegistrationRepository repo,
+            HttpContext http,
             CancellationToken ct) =>
         {
             var staffOnly = await authorization.AuthorizeAsync(
                 user, new ResourceOwnerContext(null), BethuyaPolicyNames.ResourceOwner);
+
+            // No owner subject for an event-scoped list: success here is always a role bypass; failure a
+            // 403 role-scope denial. Recorded so org/curator access to attendee lists is auditable.
+            auditor.RecordResourceOwnership(
+                user,
+                staffOnly,
+                ownerUserId: null,
+                BethuyaAuditResourceTypes.Registration,
+                resourceId: eventId.ToString(),
+                route: http.Request.Path.Value,
+                outcomeStatusCode: staffOnly.Succeeded
+                    ? StatusCodes.Status200OK
+                    : StatusCodes.Status403Forbidden);
+
             if (!staffOnly.Succeeded)
             {
                 return Results.Forbid();
@@ -63,7 +80,9 @@ public static class RegistrationEndpoints
             Guid id,
             ClaimsPrincipal user,
             IAuthorizationService authorization,
+            IAuthorizationAuditor auditor,
             IRegistrationRepository repo,
+            HttpContext http,
             CancellationToken ct) =>
         {
             if (await repo.GetByIdAsync(id, ct) is not { } reg)
@@ -73,7 +92,7 @@ public static class RegistrationEndpoints
 
             // Ownership failure is reported as 404 (not 403) so callers cannot probe which registration
             // ids exist for other attendees.
-            return await IsOwnerOrBypassAsync(authorization, user, reg)
+            return await IsOwnerOrBypassAsync(authorization, auditor, user, reg, http, StatusCodes.Status200OK)
                 ? Results.Ok(reg)
                 : Results.NotFound();
         });
@@ -90,11 +109,13 @@ public static class RegistrationEndpoints
             Guid id,
             ClaimsPrincipal user,
             IAuthorizationService authorization,
+            IAuthorizationAuditor auditor,
             IRegistrationRepository repo,
+            HttpContext http,
             CancellationToken ct) =>
         {
             if (await repo.GetByIdAsync(id, ct) is not { } reg
-                || !await IsOwnerOrBypassAsync(authorization, user, reg))
+                || !await IsOwnerOrBypassAsync(authorization, auditor, user, reg, http, StatusCodes.Status204NoContent))
             {
                 return Results.NotFound();
             }
@@ -106,13 +127,28 @@ public static class RegistrationEndpoints
 
     private static async Task<bool> IsOwnerOrBypassAsync(
         IAuthorizationService authorization,
+        IAuthorizationAuditor auditor,
         ClaimsPrincipal user,
-        Registration registration)
+        Registration registration,
+        HttpContext http,
+        int successStatusCode)
     {
         var result = await authorization.AuthorizeAsync(
             user,
             new ResourceOwnerContext(registration.UserId),
             BethuyaPolicyNames.ResourceOwner);
+
+        // Record the IDOR/ownership decision. On failure the endpoint returns an existence-hiding 404,
+        // so the audited outcome is 404 even though the policy itself "forbade".
+        auditor.RecordResourceOwnership(
+            user,
+            result,
+            registration.UserId,
+            BethuyaAuditResourceTypes.Registration,
+            registration.Id.ToString(),
+            http.Request.Path.Value,
+            result.Succeeded ? successStatusCode : StatusCodes.Status404NotFound);
+
         return result.Succeeded;
     }
 
@@ -122,7 +158,9 @@ public static class RegistrationEndpoints
         IAttendeeProfileRepository profileRepo,
         InclusionSignalsNormalizer inclusionSignalsNormalizer,
         IUserContext userContext,
+        IAuthorizationAuditor auditor,
         IConfiguration configuration,
+        HttpContext http,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Intent))
@@ -135,6 +173,14 @@ public static class RegistrationEndpoints
         // attendee, so a missing subject is an authentication failure (401) — never trust a body field.
         if (userContext.UserId is not { } ownerUserId)
         {
+            auditor.RecordDecision(
+                AuthorizationDecision.Deny,
+                BethuyaPolicyNames.RequireAttendee,
+                BethuyaAuditResourceTypes.Registration,
+                subject: null,
+                resourceId: null,
+                route: http.Request.Path.Value,
+                outcomeStatusCode: StatusCodes.Status401Unauthorized);
             return Results.Unauthorized();
         }
 
@@ -144,6 +190,16 @@ public static class RegistrationEndpoints
         {
             if (await profileRepo.GetByUserIdAsync(ownerUserId, ct) is not { IsProfileComplete: true })
             {
+                // Onboarding-guard block: an authenticated attendee without a complete profile is denied
+                // registration. Audited as a policy denial against the attendee subject (non-PII hash).
+                auditor.RecordDecision(
+                    AuthorizationDecision.Deny,
+                    BethuyaPolicyNames.RequireAttendee,
+                    BethuyaAuditResourceTypes.Registration,
+                    subject: ownerUserId,
+                    resourceId: null,
+                    route: http.Request.Path.Value,
+                    outcomeStatusCode: StatusCodes.Status403Forbidden);
                 return Results.Problem(
                     "Complete your mandatory attendee profile before registering for an event.",
                     statusCode: StatusCodes.Status403Forbidden);
@@ -173,6 +229,18 @@ public static class RegistrationEndpoints
         };
 
         var created = await repo.CreateAsync(reg, ct);
+
+        // Create-time ownership stamping: Registration.UserId was set from the validated subject (not the
+        // body). Recorded as an Allow so the audit trail shows who a registration was bound to.
+        auditor.RecordDecision(
+            AuthorizationDecision.Allow,
+            BethuyaPolicyNames.ResourceOwner,
+            BethuyaAuditResourceTypes.Registration,
+            subject: ownerUserId,
+            resourceId: created.Id.ToString(),
+            route: http.Request.Path.Value,
+            outcomeStatusCode: StatusCodes.Status201Created);
+
         return Results.Created($"/api/registrations/{created.Id}", created);
     }
 
@@ -214,8 +282,10 @@ public static class RegistrationEndpoints
         IFormFile file,
         ClaimsPrincipal user,
         IAuthorizationService authorization,
+        IAuthorizationAuditor auditor,
         IDataProtectionProvider dataProtectionProvider,
         IRegistrationRepository repo,
+        HttpContext http,
         CancellationToken ct)
     {
         if (file is null || file.Length == 0)
@@ -241,7 +311,7 @@ public static class RegistrationEndpoints
 
         // Uploading a government ID against a registration you do not own is an IDOR; reported as 404 so
         // ownership of other attendees' registrations cannot be probed.
-        if (!await IsOwnerOrBypassAsync(authorization, user, reg))
+        if (!await IsOwnerOrBypassAsync(authorization, auditor, user, reg, http, StatusCodes.Status204NoContent))
             return Results.NotFound();
 
         using var ms = new MemoryStream();

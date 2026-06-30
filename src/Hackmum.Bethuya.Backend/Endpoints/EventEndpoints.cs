@@ -5,6 +5,7 @@ using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using ServiceDefaults.Auth;
+using ServiceDefaults.Auth.Observability;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 
@@ -68,12 +69,20 @@ public static partial class EventEndpoints
             : Results.NotFound();
     }
 
-    private static async Task<IResult> CreateEventAsync(PlanEventRequest request, IEventRepository repo, IImageUploadService imageUploadService, BethuyaDbContext dbContext, IUserContext userContext, CancellationToken ct)
+    private static async Task<IResult> CreateEventAsync(PlanEventRequest request, IEventRepository repo, IImageUploadService imageUploadService, BethuyaDbContext dbContext, IUserContext userContext, IAuthorizationAuditor auditor, HttpContext http, CancellationToken ct)
     {
         // CreatedBy is provenance for an organizer-owned resource and must come from the validated
         // principal — never the spoofable request body. Fail closed if no identity is resolvable.
         if (ResolveCreatorIdentity(userContext) is not { } createdBy)
         {
+            auditor.RecordDecision(
+                AuthorizationDecision.Deny,
+                BethuyaPolicyNames.RequireOrganizer,
+                BethuyaAuditResourceTypes.Event,
+                subject: null,
+                resourceId: null,
+                route: http.Request.Path.Value,
+                outcomeStatusCode: StatusCodes.Status401Unauthorized);
             return Results.Unauthorized();
         }
 
@@ -158,6 +167,18 @@ public static partial class EventEndpoints
         }
 
         var response = MapToResponse(created);
+
+        // Create-time ownership stamping: Event.CreatedBy was set to the validated non-PII subject. The
+        // recorded subject hash matches CreatedBy's subject so organizer provenance is auditable.
+        auditor.RecordDecision(
+            AuthorizationDecision.Allow,
+            BethuyaPolicyNames.ResourceOwner,
+            BethuyaAuditResourceTypes.Event,
+            subject: createdBy,
+            resourceId: created.Id.ToString(),
+            route: http.Request.Path.Value,
+            outcomeStatusCode: StatusCodes.Status201Created);
+
         return Results.Created($"/api/events/{created.Id}", response);
     }
 

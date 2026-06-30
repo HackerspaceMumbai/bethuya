@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using ServiceDefaults.Auth.Observability;
 
 namespace ServiceDefaults.Auth;
 
@@ -16,13 +16,6 @@ namespace ServiceDefaults.Auth;
 /// </summary>
 public sealed class ResourceOwnerHandler : AuthorizationHandler<SameOwnerRequirement, ResourceOwnerContext>
 {
-    private static readonly string[] BypassRoles =
-    [
-        BethuyaRoleNames.Admin,
-        BethuyaRoleNames.Organizer,
-        BethuyaRoleNames.Curator
-    ];
-
     /// <inheritdoc />
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
@@ -36,14 +29,13 @@ public sealed class ResourceOwnerHandler : AuthorizationHandler<SameOwnerRequire
             return Task.CompletedTask;
         }
 
-        if (Array.Exists(BypassRoles, user.IsInRole))
+        if (OwnershipBypass.IsBypassRole(user))
         {
             context.Succeed(requirement);
             return Task.CompletedTask;
         }
 
-        var subject = user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var subject = OwnershipBypass.ResolveSubject(user);
 
         if (!string.IsNullOrEmpty(resource.OwnerUserId)
             && string.Equals(subject, resource.OwnerUserId, StringComparison.Ordinal))
