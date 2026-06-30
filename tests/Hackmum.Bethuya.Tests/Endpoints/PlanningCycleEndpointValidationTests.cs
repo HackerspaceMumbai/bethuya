@@ -31,7 +31,7 @@ public sealed class PlanningCycleEndpointValidationTests
                 .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
         builder.Services.AddScoped<PlanningCycleService>();
         builder.Services.AddSingleton<IAgentInvoker, FakeAgentInvoker>();
-        builder.Services.AddTestAuthorization();
+        builder.AddTestAuthorization();
 
         _app = builder.Build();
         _app.UseTestAuthorization();

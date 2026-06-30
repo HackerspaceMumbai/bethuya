@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServiceDefaults.Auth;
@@ -20,26 +21,20 @@ internal static class TestAuthHost
 {
     public const string SchemeName = "TestAuth";
 
-    /// <summary>Registers Bethuya policies and a permissive Admin-authenticated test scheme.</summary>
-    public static IServiceCollection AddTestAuthorization(this IServiceCollection services)
+    /// <summary>
+    /// Registers the canonical Bethuya policies (via <c>AddBethuyaAuthorization</c>) and layers a
+    /// permissive Admin-authenticated test scheme on top. Reusing the production policy definitions
+    /// avoids drift if roles/policies change in ServiceDefaults.
+    /// </summary>
+    public static TBuilder AddTestAuthorization<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
-        services.AddAuthentication(SchemeName)
+        builder.Services.AddAuthentication(SchemeName)
             .AddScheme<AuthenticationSchemeOptions, AdminTestAuthenticationHandler>(SchemeName, _ => { });
 
-        services.AddAuthorizationBuilder()
-            .AddPolicy(BethuyaPolicyNames.RequireAdmin, policy => policy.RequireRole(BethuyaRoleNames.Admin))
-            .AddPolicy(BethuyaPolicyNames.RequireOrganizer, policy =>
-                policy.RequireRole(BethuyaRoleNames.Admin, BethuyaRoleNames.Organizer))
-            .AddPolicy(BethuyaPolicyNames.RequireCurator, policy =>
-                policy.RequireRole(BethuyaRoleNames.Admin, BethuyaRoleNames.Curator))
-            .AddPolicy(BethuyaPolicyNames.RequireAttendee, policy =>
-                policy.RequireRole(
-                    BethuyaRoleNames.Admin,
-                    BethuyaRoleNames.Organizer,
-                    BethuyaRoleNames.Curator,
-                    BethuyaRoleNames.Attendee));
+        builder.AddBethuyaAuthorization();
 
-        return services;
+        return builder;
     }
 
     /// <summary>Adds authentication and authorization middleware to the test pipeline.</summary>
