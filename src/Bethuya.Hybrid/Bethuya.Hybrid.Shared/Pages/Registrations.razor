@@ -289,12 +289,9 @@
             }
 
             // Step 2 — Upload Government ID
-            if (_governmentIdFile is not null)
-            {
-                await using var stream = _governmentIdFile.OpenReadStream(maxAllowedSize: 10L * 1024 * 1024);
-                var part = new Refit.StreamPart(stream, _governmentIdFile.Name, _governmentIdFile.ContentType);
-                await RegistrationApi.UploadGovernmentIdAsync(_pendingRegistrationId!.Value, part);
-            }
+            await using var stream = _governmentIdFile!.OpenReadStream(maxAllowedSize: 10L * 1024 * 1024);
+            var part = new Refit.StreamPart(stream, _governmentIdFile.Name, _governmentIdFile.ContentType);
+            await RegistrationApi.UploadGovernmentIdAsync(_pendingRegistrationId!.Value, part);
 
             // Both steps succeeded — reset form
             ResetForm();

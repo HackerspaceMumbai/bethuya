@@ -33,7 +33,7 @@ public class RegistrationFlowTests : BethuyaE2ETest
         Assert.IsTrue(await fileInput.CountAsync() > 0,
             "Government ID file input ([data-test='gov-id-upload'] input[type='file']) not found on the page");
 
-        var pdfPath = Path.Combine(Path.GetTempPath(), "e2e-test-government-id.pdf");
+        var pdfPath = Path.Join(Path.GetTempPath(), "e2e-test-government-id.pdf");
         await File.WriteAllBytesAsync(pdfPath, CreateMinimalPdf());
         try
         {
