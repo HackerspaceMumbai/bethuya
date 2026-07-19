@@ -40,10 +40,6 @@ public sealed partial class CloudinaryImageUploadService(
     private static readonly string AllowedFormatsCsv = "jpg,jpeg,png,gif,webp";
 
     private readonly CloudinaryOptions _options = options.Value;
-    private readonly Cloudinary _cloudinary = new(new Account(
-        options.Value.CloudName,
-        options.Value.ApiKey,
-        options.Value.ApiSecret));
 
     public async Task<DirectImageUploadSession> CreateDirectUploadSessionAsync(
         string fileName,
@@ -52,6 +48,7 @@ public sealed partial class CloudinaryImageUploadService(
         CancellationToken ct = default)
     {
         ValidateFileMetadata(fileName, contentType, fileSize);
+        EnsureCloudinaryConfigured();
 
         var publicId = $"{_options.PendingUploadFolder.TrimEnd('/')}/{Guid.CreateVersion7():N}";
         var timestamp = timeProvider.GetUtcNow().ToUnixTimeSeconds();
@@ -124,7 +121,7 @@ public sealed partial class CloudinaryImageUploadService(
 
     public async Task<bool> UploadedAssetExistsAsync(string publicId, CancellationToken ct = default)
     {
-        var result = await _cloudinary.GetResourceAsync(publicId, ct);
+        var result = await CreateCloudinaryClient().GetResourceAsync(publicId, ct);
         if (result.Error is null)
         {
             return true;
@@ -140,7 +137,7 @@ public sealed partial class CloudinaryImageUploadService(
 
     public async Task DeleteStoredImageAsync(string publicId, CancellationToken ct = default)
     {
-        var result = await _cloudinary.DestroyAsync(new DeletionParams(publicId));
+        var result = await CreateCloudinaryClient().DestroyAsync(new DeletionParams(publicId));
 
         if (result.Error is not null)
         {
@@ -159,6 +156,7 @@ public sealed partial class CloudinaryImageUploadService(
         publicId = string.Empty;
 
         if (string.IsNullOrWhiteSpace(imageUrl)
+            || string.IsNullOrWhiteSpace(_options.CloudName)
             || !Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)
             || !string.Equals(uri.Host, "res.cloudinary.com", StringComparison.OrdinalIgnoreCase))
         {
@@ -207,6 +205,11 @@ public sealed partial class CloudinaryImageUploadService(
 
     public async Task<int> CleanupExpiredPendingUploadsAsync(CancellationToken ct = default)
     {
+        if (!IsCloudinaryConfigured())
+        {
+            return 0;
+        }
+
         var cutoff = timeProvider.GetUtcNow().AddHours(-Math.Max(_options.PendingUploadLifetimeHours, 1));
         var expiredUploads = await db.PendingImageUploads
             .Where(upload => upload.AttachedAt == null
@@ -240,6 +243,25 @@ public sealed partial class CloudinaryImageUploadService(
         }
 
         return cleanedCount;
+    }
+
+    private bool IsCloudinaryConfigured() =>
+        !string.IsNullOrWhiteSpace(_options.CloudName)
+        && !string.IsNullOrWhiteSpace(_options.ApiKey)
+        && !string.IsNullOrWhiteSpace(_options.ApiSecret);
+
+    private void EnsureCloudinaryConfigured()
+    {
+        if (!IsCloudinaryConfigured())
+        {
+            throw new InvalidOperationException("Cloudinary image uploads are not configured.");
+        }
+    }
+
+    private Cloudinary CreateCloudinaryClient()
+    {
+        EnsureCloudinaryConfigured();
+        return new Cloudinary(new Account(_options.CloudName, _options.ApiKey, _options.ApiSecret));
     }
 
     private static void ValidateFileMetadata(string fileName, string contentType, long fileSize)

@@ -6,6 +6,7 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.JSInterop
 @inject IEventApi EventApi
+@inject IImageUploadApi ImageUploadApi
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject ILogger<PlanEvent> Logger
@@ -674,6 +675,58 @@
         return null;
     }
 
+    private static string FormatUploadApiError(Refit.ApiException apiEx)
+    {
+        var problemMessage = ParseUploadProblemBody(apiEx.Content);
+        if (!string.IsNullOrWhiteSpace(problemMessage))
+        {
+            return problemMessage;
+        }
+
+        return apiEx.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable
+            ? "Cover image uploads are unavailable. Ask an organizer to configure Cloudinary before uploading images."
+            : "The image could not be uploaded. Please try a different file or try again.";
+    }
+
+    private static string FormatUnexpectedUploadError(Exception ex)
+    {
+        return ex is Refit.ApiRequestException apiRequestException
+            && apiRequestException.Message.Contains("503", StringComparison.Ordinal)
+            ? "Cover image uploads are unavailable. Ask an organizer to configure Cloudinary before uploading images."
+            : "Something went wrong during upload. Please try again.";
+    }
+
+    private static string? ParseUploadProblemBody(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return null;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("detail", out var detail)
+                && !string.IsNullOrWhiteSpace(detail.GetString()))
+            {
+                var detailText = detail.GetString();
+                return string.Equals(detailText, "Cloudinary image uploads are not configured.", StringComparison.Ordinal)
+                    ? "Cover image uploads are unavailable. Ask an organizer to configure Cloudinary before uploading images."
+                    : detailText;
+            }
+
+            if (doc.RootElement.TryGetProperty("title", out var title)
+                && !string.IsNullOrWhiteSpace(title.GetString()))
+            {
+                return title.GetString();
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not JSON — ignore
+        }
+
+        return null;
+    }
+
     private async Task HandleSuggestDates()
     {
         _isSuggestingDates = true;
@@ -753,7 +806,7 @@
 
         try
         {
-            uploadSession = await EventApi.CreateDirectImageUploadSessionAsync(
+            uploadSession = await ImageUploadApi.CreateDirectImageUploadSessionAsync(
                 new CreateDirectImageUploadSessionRequest(
                     item.Name,
                     item.ContentType,
@@ -783,7 +836,7 @@
         {
             Logger.LogError(apiEx, "API error uploading cover image. Status: {StatusCode}, Body: {Body}",
                 (int)apiEx.StatusCode, apiEx.Content ?? "(no body)");
-            _uploadError = "The image could not be uploaded. Please try a different file or try again.";
+            _uploadError = FormatUploadApiError(apiEx);
             RestoreCoverState(previousCoverUrl, previousCoverPublicId, previousDeleteToken);
         }
         catch (TimeoutException tex)
@@ -818,7 +871,7 @@
         catch (Exception ex) when (!IsFatalException(ex))
         {
             Logger.LogError(ex, "Unexpected error uploading cover image");
-            _uploadError = "Something went wrong during upload. Please try again.";
+            _uploadError = FormatUnexpectedUploadError(ex);
             RestoreCoverState(previousCoverUrl, previousCoverPublicId, previousDeleteToken);
         }
         finally
@@ -871,7 +924,7 @@
     {
         try
         {
-            await EventApi.DeletePendingImageUploadAsync(new DeletePendingImageUploadRequest(publicId, deleteToken));
+            await ImageUploadApi.DeletePendingImageUploadAsync(new DeletePendingImageUploadRequest(publicId, deleteToken));
         }
         catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
         {

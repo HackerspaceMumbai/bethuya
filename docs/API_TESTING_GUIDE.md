@@ -33,7 +33,7 @@ $API_BASE = "http://localhost:$API_PORT"
 
 ## 📋 Actual API Endpoints
 
-### **Events** - Full CRUD with Validation
+### **Events** - CRUD, lifecycle, Sessionize, and publishing
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
@@ -43,8 +43,24 @@ $API_BASE = "http://localhost:$API_PORT"
 | `POST` | `/api/events` | Create new event (with validation) |
 | `PUT` | `/api/events/{id:guid}` | Update event (with validation) |
 | `DELETE` | `/api/events/{id:guid}` | Delete event |
+| `GET` | `/api/events/{id:guid}/sessionize/preview` | Preview normalized Sessionize sessions |
+| `POST` | `/api/events/{id:guid}/sessionize/import` | Import normalized Sessionize sessions idempotently |
+| `POST` | `/api/events/{id:guid}/lifecycle` | Transition to a requested lifecycle state |
+| `POST` | `/api/events/{id:guid}/publish` | Publish event artifacts and record registration/GitHub links |
+| `POST` | `/api/events/{id:guid}/schedule-alterations` | Record a schedule alteration with reason |
+| `POST` | `/api/events/{id:guid}/complete` | Mark event completed and start asset-governance checks |
+| `POST` | `/api/events/{id:guid}/archive` | Archive when assets are complete or override is explicit |
 
-**Available:** All Events endpoints are fully implemented and validated.
+**Available:** All Events endpoints are fully implemented and validated. Date/time values are normalized to UTC before PostgreSQL persistence.
+
+### **Images** - Browser-direct cover uploads
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/images/direct-upload/session` | Create a signed Cloudinary direct-upload session |
+| `POST` | `/api/images/direct-upload/delete` | Delete an unattached pending image upload |
+
+**Cloudinary optionality:** Event save/update works without Cloudinary when no cover is uploaded. Upload-session requests return `503 Image uploads are unavailable` when Cloudinary is not configured.
 
 ### **Registrations** - Create & List
 
@@ -57,28 +73,24 @@ $API_BASE = "http://localhost:$API_PORT"
 
 **Available:** All Registrations endpoints are implemented. POST accepts any valid CreateRegistrationRequest payload without backend validation.
 
-### **Agents** - ⚠️ Not Yet Implemented
+### **Agents**
 
-The following endpoints are **planned but not yet in the backend:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/agents/planner/{eventId}` | Planner agent draft agenda |
+| `POST` | `/api/agents/curator/{eventId}` | Curator agent attendee proposal |
+| `POST` | `/api/agents/facilitator/{eventId}` | Facilitator live assistance |
+| `POST` | `/api/agents/reporter/{eventId}` | Reporter post-event summary |
+| `POST` | `/api/agents/recommend-dates` | Date/time recommendations for the event form |
 
-- ❌ `POST /api/agents/planner/{eventId}` - Planner agent (draft agenda)
-- ❌ `POST /api/agents/curator/{eventId}` - Curator agent (attendee selection)
-- ❌ `POST /api/agents/facilitator/{eventId}` - Facilitator agent (live assistance)
-- ❌ `POST /api/agents/reporter/{eventId}` - Reporter agent (post-event summary)
-- ❌ `POST /api/agents/recommend-dates` - Date recommendations
+### **Approvals**
 
-**Status:** Agent endpoints are designed but not wired in backend yet.
-
-### **Approvals** - ⚠️ Not Yet Implemented
-
-The following endpoints are **planned but not yet in the backend:**
-
-- ❌ `GET /api/approvals/pending` - List pending decisions
-- ❌ `GET /api/approvals/{entityType}/{entityId}` - Get decisions for entity
-- ❌ `POST /api/approvals/{id}/approve` - Approve a decision
-- ❌ `POST /api/approvals/{id}/reject` - Reject a decision
-
-**Status:** Approval workflow infrastructure is designed but not implemented.
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/approvals/pending` | List pending decisions |
+| `GET` | `/api/approvals/{entityType}/{entityId}` | Get decisions for entity |
+| `POST` | `/api/approvals/{id}/approve` | Approve a decision |
+| `POST` | `/api/approvals/{id}/reject` | Reject a decision |
 
 ---
 
@@ -101,7 +113,13 @@ public record PlanEventRequest(
     string CreatedBy,
     string? Hashtag,
     string? CoverImageUrl,
-    EventStatus Status = EventStatus.Draft
+    string? SessionizeEventId = null,
+    string? GitHubFolderUrl = null,
+    string? TeamsAnnouncementMessageId = null,
+    string? RegistrationUrl = null,
+    EventStatus Status = EventStatus.Draft,
+    MeetupLifecycleState LifecycleState = MeetupLifecycleState.Drafted,
+    EventFairnessTargetsContract? FairnessTargets = null
 );
 ```
 
@@ -115,6 +133,8 @@ public record PlanEventRequest(
 | `CreatedBy` | Required | "CreatedBy is required." |
 | `Hashtag` | Optional, ≤ 100 chars, unique, matches `^[A-Za-z][A-Za-z0-9_]*$` | "Hashtag must be 100 characters or fewer." / "Hashtag must start with a letter and contain only letters, digits, and underscores." / "Hashtag '{hashtag}' is already taken." |
 | `CoverImageUrl` | Optional, ≤ 2,048 chars, valid absolute HTTP/HTTPS URL | "Cover image URL must be 2,048 characters or fewer." / "Cover image URL must be a valid absolute HTTP or HTTPS URL." |
+| `LifecycleState` | Optional, defaults to `Drafted` | Invalid transitions are rejected by lifecycle endpoints |
+| `FairnessTargets` | Optional, defaults to organizer-safe target values | Values are stored per event and used later by curation |
 
 **Success Response:** `201 Created`
 ```json
@@ -131,7 +151,14 @@ public record PlanEventRequest(
   "createdBy": "organizer@hackerspace.com",
   "createdAt": "2026-05-07T12:23:00+05:30",
   "hashtag": "ai_meetup_may",
-  "coverImageUrl": "https://example.com/image.jpg"
+  "coverImageUrl": "https://example.com/image.jpg",
+  "lifecycleState": "Drafted",
+  "sessionizeEventId": null,
+  "githubFolderUrl": null,
+  "registrationUrl": null,
+  "publishedAt": null,
+  "completedAt": null,
+  "archivedAt": null
 }
 ```
 
@@ -162,7 +189,12 @@ public record UpdateEventRequest(
     DateTimeOffset EndDate,
     string? Location,
     EventStatus Status,
-    string? CoverImageUrl
+    string? CoverImageUrl,
+    string? SessionizeEventId = null,
+    string? GitHubFolderUrl = null,
+    string? TeamsAnnouncementMessageId = null,
+    string? RegistrationUrl = null,
+    EventFairnessTargetsContract? FairnessTargets = null
 );
 ```
 
@@ -276,6 +308,78 @@ curl -X GET "$API_BASE/api/events/slug/ai_meetup_may2026" `
 # Step 4: List all events
 curl -X GET "$API_BASE/api/events" `
   -H "Accept: application/json"
+```
+
+### Workflow 1b: Lifecycle, Sessionize, and Publish Operations
+
+```powershell
+$API_PORT = 7400
+$API_BASE = "http://localhost:$API_PORT"
+$eventId = "550e8400-e29b-41d4-a716-446655440000"
+
+# Transition through the operational lifecycle.
+$transitionPayload = @{
+    targetState = "VenueLocked"
+    actor = "organizer@hackerspace.com"
+} | ConvertTo-Json
+
+curl -X POST "$API_BASE/api/events/$eventId/lifecycle" `
+  -H "Content-Type: application/json" `
+  -d $transitionPayload
+
+# Preview Sessionize sessions before importing.
+curl -X GET "$API_BASE/api/events/$eventId/sessionize/preview" `
+  -H "Accept: application/json"
+
+# Import Sessionize sessions idempotently.
+curl -X POST "$API_BASE/api/events/$eventId/sessionize/import" `
+  -H "Accept: application/json"
+
+# Publish event artifacts.
+$publishPayload = @{
+    actor = "organizer@hackerspace.com"
+    registrationUrl = "https://events.example.com/copilot-dev-days-mumbai"
+} | ConvertTo-Json
+
+curl -X POST "$API_BASE/api/events/$eventId/publish" `
+  -H "Content-Type: application/json" `
+  -d $publishPayload
+```
+
+Lifecycle responses return:
+
+```json
+{
+  "eventId": "550e8400-e29b-41d4-a716-446655440000",
+  "lifecycleState": "Published",
+  "githubFolderUrl": "https://github.com/HackerspaceMumbai/bethuya/tree/main/events/...",
+  "registrationUrl": "https://events.example.com/copilot-dev-days-mumbai",
+  "message": "Event published."
+}
+```
+
+### Workflow 1c: Cover Upload Session
+
+```powershell
+$uploadPayload = @{
+    fileName = "cover.png"
+    contentType = "image/png"
+    fileSize = 4096
+} | ConvertTo-Json
+
+curl -X POST "$API_BASE/api/images/direct-upload/session" `
+  -H "Content-Type: application/json" `
+  -d $uploadPayload
+```
+
+If Cloudinary is not configured, expect:
+
+```json
+{
+  "title": "Image uploads are unavailable.",
+  "status": 503,
+  "detail": "Cloudinary image uploads are not configured."
+}
 ```
 
 ### Workflow 2: Create Event & Add Registrations
@@ -530,18 +634,12 @@ $events | ConvertTo-Json -Depth 10 | Out-File -FilePath "events-formatted.json"
 
 ---
 
-## ❌ What's NOT Implemented Yet
+## ✅ Recently Expanded Coverage
 
-These endpoints are **designed but not wired in the backend:**
-
-- ❌ `/api/agents/*` - All agent endpoints (Planner, Curator, Facilitator, Reporter, date recommendations)
-- ❌ `/api/approvals/*` - All approval/decision endpoints
-
-**Planned additions:**
-- Agent service wiring in DI container
-- Agent orchestration middleware
-- Approval workflow state machine
-- Historical decision audit trail
+- Event lifecycle endpoints now cover explicit transitions, publishing, schedule alteration, completion, and archival.
+- Sessionize preview/import endpoints normalize external sessions and speakers before persistence.
+- Image upload endpoints issue Cloudinary direct-upload sessions and return a clear `503` when Cloudinary is not configured.
+- Agent and approval endpoints are wired in the backend; use Scalar for the latest request/response schemas.
 
 ---
 
@@ -554,6 +652,7 @@ These endpoints are **designed but not wired in the backend:**
 | `404 Not Found` | Event/Registration doesn't exist | Verify ID is correct; check if it was deleted |
 | `201 Created` but EventId foreign key fails | EventId doesn't exist in registrations POST | Create event first before adding registrations |
 | Port keeps changing between restarts | Aspire port randomization | Use `aspire start --isolated` for stable ports, or check dashboard each time |
+| `503 Image uploads are unavailable` | Cloudinary is not configured | Set `Cloudinary:CloudName`, `Cloudinary:ApiKey`, and `Cloudinary:ApiSecret`, or save the event without a cover image |
 
 ---
 

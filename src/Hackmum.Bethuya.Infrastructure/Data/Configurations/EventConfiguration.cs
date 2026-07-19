@@ -27,14 +27,34 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.CoverImageUrl)
             .HasMaxLength(2048);
 
+        builder.Property(e => e.SessionizeEventId)
+            .HasMaxLength(200);
+
+        builder.Property(e => e.GitHubFolderUrl)
+            .HasMaxLength(2048);
+
+        builder.Property(e => e.TeamsAnnouncementMessageId)
+            .HasMaxLength(200);
+
+        builder.Property(e => e.RegistrationUrl)
+            .HasMaxLength(2048);
+
         builder.Property(e => e.FairnessTargets)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
                 v => JsonSerializer.Deserialize<EventFairnessTargets>(v, JsonSerializerOptions.Default) ?? new EventFairnessTargets());
 
+        builder.Ignore(e => e.DomainEvents);
+
         builder.HasIndex(e => e.Hashtag)
             .IsUnique()
             .HasFilter("\"Hashtag\" IS NOT NULL");
+
+        builder.HasIndex(e => e.LifecycleState);
+
+        builder.HasIndex(e => e.SessionizeEventId)
+            .IsUnique()
+            .HasFilter("\"SessionizeEventId\" IS NOT NULL");
 
         builder.Property(e => e.CreatedBy)
             .IsRequired()

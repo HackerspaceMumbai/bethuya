@@ -63,6 +63,13 @@ public static class ImageEndpoints
                 errors[ex.ParamName ?? "file"] = [ex.Message];
                 return Results.ValidationProblem(errors);
             }
+            catch (InvalidOperationException ex) when (string.Equals(ex.Message, "Cloudinary image uploads are not configured.", StringComparison.Ordinal))
+            {
+                return Results.Problem(
+                    title: "Image uploads are unavailable.",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
         });
 
         group.MapPost("/direct-upload/delete", async (

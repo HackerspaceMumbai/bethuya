@@ -11,7 +11,9 @@
 
 ## ✨ What Bethuya Does
 
-* **Plan** — *Planner Agent* drafts agendas, timings, and speaker suggestions.
+* **Plan** — create draft events with organizer-configurable fairness targets, optional cover images, and *Planner Agent* agenda drafts.
+* **Manage lifecycle** — move events from draft through CFP, review, agenda approval, publishing, schedule changes, completion, and archival.
+* **Ingest & publish sessions** — preview/import Sessionize sessions, normalize speaker metadata, and publish deterministic GitHub event artifacts.
 * **Curate (Attendees)** — *Curator Agent* helps select attendees fairly when registrations exceed capacity (often **3×**), balancing **theme suitability** and **DEI**; outputs are explainable **recommendations**, never auto‑rejections.
 * **Run** — *Facilitator Agent* suggests prompts, Q\&A, and captures notes (organizer‑controlled).
 * **Report** — *Reporter Agent* drafts summaries, highlights, and action items.
@@ -236,6 +238,62 @@ Summary, highlights, action items → human edits → publish (attribution).
 
 ***
 
+## 📅 Event Management Lifecycle
+
+Bethuya's event model now acts as the operational source of truth, not just a creation form. Organizers can save lightweight drafts, publish-ready events, and lifecycle transitions through the Backend API and Blazor UI.
+
+### Lifecycle states
+
+```mermaid
+stateDiagram-v2
+    [*] --> Drafted
+    Drafted --> VenueLocked
+    VenueLocked --> CfpOpen
+    CfpOpen --> CfpExtended
+    CfpOpen --> ReviewAndPlanning
+    CfpExtended --> ReviewAndPlanning
+    ReviewAndPlanning --> AgendaApproved
+    AgendaApproved --> Published
+    Published --> ScheduleAltered
+    ScheduleAltered --> Published
+    Published --> Delayed
+    Delayed --> Published
+    Published --> Completed
+    Completed --> Archived
+```
+
+### Organizer workflow
+
+1. **Save Draft** on `/events/plan` requires only a title and keeps the event in `Drafted`.
+2. **Publish Event** validates title, dates, capacity, location-ready metadata, cover URL status, and fairness targets before creating the event.
+3. **Sessionize preview/import** reads `SessionizeEventId`, fetches Sessionize sessions and speakers, normalizes them into agenda sessions, and imports idempotently.
+4. **GitHub publish** writes deterministic event artifacts for the configured repository and records `GitHubFolderUrl`.
+5. **Schedule alterations** require a reason, republish artifacts, and preserve the event lifecycle history.
+6. **Completion/archive** marks session assets as pending after completion and blocks archival while required assets are missing unless an organizer explicitly overrides.
+
+### Cover image uploads
+
+Cover images use browser-direct Cloudinary uploads with a short-lived backend-signed session:
+
+```mermaid
+sequenceDiagram
+    participant UI as Blazor UI
+    participant API as Backend /api/images
+    participant C as Cloudinary
+    UI->>API: POST /direct-upload/session
+    API-->>UI: signed upload parameters
+    UI->>C: direct file upload
+    C-->>UI: secure URL + public ID
+    UI->>API: save event with secure cover URL
+```
+
+- Cloudinary settings are optional for local no-cover event saves.
+- If Cloudinary is missing and an organizer tries to upload a cover image, the backend returns `503 Image uploads are unavailable` and the UI shows: "Cover image uploads are unavailable. Ask an organizer to configure Cloudinary before uploading images."
+- Upload-session and pending-delete calls use a dedicated non-retrying typed client so unsafe POST failures are surfaced promptly instead of repeated.
+- Saved cover URLs must be absolute HTTP/HTTPS URLs and must either match an existing persisted URL or a pending direct upload verified by the backend.
+
+***
+
 ## Domain Modeling Principles
 
 ### Strong Domain Primitives (No Primitives in Core Domain)
@@ -441,8 +499,8 @@ dotnet restore
 ### Configure AI Providers (privacy‑aware)
 
 ```bash
-# Configure once at Aspire AppHost; secrets propagate to services
-cd aspire/Hackmum.Bethuya.AppHost
+# Configure once at Aspire AppHost for local orchestration defaults
+cd AppHost/AppHost
 dotnet user-secrets init
 
 # Sensitive flows local-first:
@@ -457,8 +515,36 @@ dotnet user-secrets set "OpenAI:ApiKey" "<key>"
 
 *(Foundry Local offers an OpenAI‑compatible API and SDKs for integration.)* [\[github.com\]](https://github.com/microsoft/Foundry-Local)
 
+### Configure event integrations
+
+Event creation works without these integrations, but the related buttons/endpoints become useful when configured.
+
 ```bash
-dotnet run --project aspire/Hackmum.Bethuya.AppHost
+# Backend project secrets
+cd src/Hackmum.Bethuya.Backend
+
+# Cloudinary cover uploads (optional locally; required for cover images)
+dotnet user-secrets set "Cloudinary:CloudName" "<cloud-name>"
+dotnet user-secrets set "Cloudinary:ApiKey" "<api-key>"
+dotnet user-secrets set "Cloudinary:ApiSecret" "<api-secret>"
+# Optional:
+dotnet user-secrets set "Cloudinary:UploadPreset" "<signed-upload-preset>"
+
+# Sessionize import
+dotnet user-secrets set "Sessionize:BaseUrl" "https://sessionize.com"
+dotnet user-secrets set "Sessionize:ApiToken" "<token-if-required>"
+
+# GitHub event artifact publishing
+dotnet user-secrets set "GitHubEvents:Owner" "HackerspaceMumbai"
+dotnet user-secrets set "GitHubEvents:Repository" "bethuya"
+dotnet user-secrets set "GitHubEvents:Branch" "main"
+dotnet user-secrets set "GitHubEvents:Token" "<fine-grained-token>"
+```
+
+Do not store these values in `appsettings.json`. Hosted environments load runtime secrets from Azure Key Vault through managed identity; see `docs/security/secrets-management.md`.
+
+```bash
+aspire start --isolated
 # The Aspire Dashboard opens with links to services & health.
 ```
 
@@ -529,12 +615,14 @@ dotnet run --project src/Hackmum.Bethuya.App -f net10.0-maccatalyst
 
 ## 🧭 Demo Flow (Dev Days–ready)
 
-1. **Create Event** — “GitHub Copilot Dev Days: Mumbai”.
-2. **Planner** — review agenda proposals → approve subset.
-3. **Curator (Attendees)** — set capacity → review **FairnessBudget** + **AttendanceProposal** → accept → **WaitlistProposal** generated.
-4. **Live** — facilitator prompts (opt‑in) and note capture.
-5. **Report** — reporter draft → minimal edits → publish with attribution.
-6. **Dev AI** — run `/run-e2e` skill (Playwright), inspect traces; use **Copilot CLI** to `/plan` a refactor and open a PR. [\[playwright.dev\]](https://playwright.dev/dotnet/docs/intro), [\[github.blog\]](https://github.blog/changelog/2026-02-25-github-copilot-cli-is-now-generally-available/)
+1. **Create Event** — save a draft or publish-ready “GitHub Copilot Dev Days: Mumbai” event with fairness targets and an optional cover image.
+2. **Import Sessions** — preview Sessionize content, normalize speakers/sessions, and import without duplicating existing source sessions.
+3. **Planner** — review agenda proposals → approve subset → publish the planning cycle.
+4. **Publish Event** — move the lifecycle to `Published`, generate GitHub event artifacts, and store the public registration/GitHub references.
+5. **Curator (Attendees)** — set capacity → review **FairnessBudget** + **AttendanceProposal** → accept → **WaitlistProposal** generated.
+6. **Operate** — alter schedules with an explicit reason, complete the event, collect missing session assets, then archive.
+7. **Report** — reporter draft → minimal edits → publish with attribution.
+8. **Dev AI** — run `/run-e2e` skill (Playwright), inspect traces; use **Copilot CLI** to `/plan` a refactor and open a PR. [\[playwright.dev\]](https://playwright.dev/dotnet/docs/intro), [\[github.blog\]](https://github.blog/changelog/2026-02-25-github-copilot-cli-is-now-generally-available/)
 
 ***
 
@@ -599,7 +687,8 @@ This section documents the current Curation Intelligence interaction model so fu
 
 ### Hackathon Scope
 
-* [ ] Event model & storage
+* [x] Event model & storage
+* [x] Event lifecycle, Sessionize ingestion, GitHub artifact publishing, and cover-image upload handling
 * [ ] Planner + **Curator (attendees)** agents
 * [ ] Diff + approval workflow (HIL)
 * [ ] Reporter draft

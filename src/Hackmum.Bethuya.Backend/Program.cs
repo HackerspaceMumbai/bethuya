@@ -5,6 +5,7 @@ using Hackmum.Bethuya.Backend.Agents;
 using Hackmum.Bethuya.Backend;
 using Hackmum.Bethuya.Backend.Endpoints;
 using Hackmum.Bethuya.Backend.Services;
+using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,8 @@ builder.Services.AddScoped<InclusionSignalsNormalizer>();
 builder.Services.AddScoped<CurationFairnessService>();
 builder.Services.AddScoped<CurationSampleSeeder>();
 builder.Services.AddScoped<PlanningCycleService>();
+builder.Services.AddScoped<ISessionIngestionService, SessionIngestionService>();
+builder.Services.AddScoped<IEventLifecycleOrchestrator, EventLifecycleOrchestrator>();
 
 var app = builder.Build();
 
