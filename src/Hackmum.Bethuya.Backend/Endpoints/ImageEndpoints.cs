@@ -63,6 +63,13 @@ public static class ImageEndpoints
                 errors[ex.ParamName ?? "file"] = [ex.Message];
                 return Results.ValidationProblem(errors);
             }
+            catch (ImageUploadProviderUnavailableException ex)
+            {
+                return Results.Problem(
+                    title: "Image uploads are unavailable.",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
         });
 
         group.MapPost("/direct-upload/delete", async (

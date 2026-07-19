@@ -29,8 +29,7 @@ public class PlanEventRenderTests
         // BlazorBlueprint components call JS module imports — use Loose mode to auto-satisfy them.
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
-        var eventApi = Substitute.For<IEventApi>();
-        ctx.Services.AddSingleton(eventApi);
+        RegisterPlanEventServices(ctx);
 
         // BlazorBlueprint components (BbDatePicker, BbTimePicker) require IBbLocalizer.
         ctx.Services.AddBlazorBlueprintComponents();
@@ -59,7 +58,7 @@ public class PlanEventRenderTests
     {
         using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddSingleton(Substitute.For<IEventApi>());
+        RegisterPlanEventServices(ctx);
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.AddTestAuthorization();
 
@@ -74,7 +73,7 @@ public class PlanEventRenderTests
     {
         using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddSingleton(Substitute.For<IEventApi>());
+        RegisterPlanEventServices(ctx);
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.AddTestAuthorization();
 
@@ -88,7 +87,7 @@ public class PlanEventRenderTests
     {
         using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddSingleton(Substitute.For<IEventApi>());
+        RegisterPlanEventServices(ctx);
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.AddTestAuthorization();
 
@@ -103,7 +102,7 @@ public class PlanEventRenderTests
     {
         using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddSingleton(Substitute.For<IEventApi>());
+        RegisterPlanEventServices(ctx);
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.AddTestAuthorization();
 
@@ -113,5 +112,11 @@ public class PlanEventRenderTests
         await Assert.That(cut.Markup).Contains("publish-event-btn");
         await Assert.That(cut.Markup).Contains("Save Draft");
         await Assert.That(cut.Markup).Contains("Publish Event");
+    }
+
+    private static void RegisterPlanEventServices(BunitCtx ctx)
+    {
+        ctx.Services.AddSingleton(Substitute.For<IEventApi>());
+        ctx.Services.AddSingleton(Substitute.For<IImageUploadApi>());
     }
 }

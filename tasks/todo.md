@@ -16,6 +16,36 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-19] Address PR 29 review comments
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Evaluate Copilot and CodeRabbit feedback from PR #29 on top of GitHub `main`, resolve valid lifecycle validation, URL normalization, retry-safe import count, and image upload error mapping comments.
+- **Acceptance:** Valid PR review comments are either fixed or documented as non-actionable, targeted TUnit coverage proves the behavior, and the affected backend tests pass.
+
+## [2026-07-19] Document event lifecycle and cover uploads
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Update README and relevant docs for the event lifecycle management expansion, Sessionize/GitHub integration behavior, and Cloudinary cover upload configuration/failure handling.
+- **Acceptance:** README and relevant docs describe the current feature set, local configuration expectations, secure upload behavior, and validation/runbook guidance.
+
+## [2026-07-19] Improve cover upload unavailable handling
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Make cover-image upload failures actionable when Cloudinary is not configured, avoiding generic UI errors and noisy retry behavior where possible.
+- **Acceptance:** Upload attempts without Cloudinary credentials show a clear unavailable/configuration message, do not mask the backend ProblemDetails payload, and targeted tests pass.
+
+## [2026-07-19] Fix event save without Cloudinary config
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Prevent event draft/publish saves from failing when Cloudinary credentials are not configured and no cover image upload is being used.
+- **Acceptance:** Event create/update can save without a cover image in local development, direct image upload attempts still fail clearly when Cloudinary is unavailable, and targeted tests pass.
+
+## [2026-07-19] Evolve event management lifecycle
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Extend the current basic event creation flow into a lifecycle-driven event management domain with session provenance, asset governance, Sessionize ingestion, GitHub publishing, lifecycle orchestration ports, schedule-change resilience, and UI/API contract updates. Teams and Luma concrete adapters are deferred behind ports.
+- **Acceptance:** Lifecycle transitions are validated and tested; event/session persistence supports lifecycle, provenance, integration references, and asset state; Sessionize ingestion and GitHub publishing have concrete, idempotent implementations; Teams/Luma remain safe no-op ports; APIs/Refit contracts expose the new workflows; relevant TUnit and targeted UI checks pass.
+
 ## [2026-06-30] Implement Key Vault-first secret architecture
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

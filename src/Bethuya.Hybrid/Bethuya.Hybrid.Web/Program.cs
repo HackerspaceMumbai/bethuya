@@ -7,6 +7,7 @@ using BlazorBlueprint.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Http.Resilience;
 using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -134,7 +135,20 @@ ConfigureBackendAuth(builder.Services
         options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(3);
         // Circuit breaker sampling must be ≥ 2× attempt timeout
         options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(5);
+        options.Retry.DisableForUnsafeHttpMethods();
     });
+
+ConfigureBackendAuth(builder.Services
+    .AddRefitClient<IImageUploadApi>(new RefitSettings
+    {
+        ContentSerializer = new SystemTextJsonContentSerializer(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+    })
+    .ConfigureHttpClient(c =>
+    {
+        c.BaseAddress = backendBaseAddress;
+        c.Timeout = TimeSpan.FromSeconds(15);
+    }));
 
 // Refit typed client for Backend Planning Cycle API (Aspire service discovery)
 ConfigureBackendAuth(builder.Services

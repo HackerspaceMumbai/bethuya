@@ -52,19 +52,39 @@
   - End Date/Time: `May 20, 2026 at 16:00 IST`
   - Location: `"HackerSpace Mumbai, Bandra"`
   - Hashtag: `#ai-meetup-may-2026`
+  - Fairness budget targets: keep defaults or adjust geo/language/education/socioeconomic thresholds
+  - Cover Image: optional; upload a JPEG/PNG/WebP/GIF only when Cloudinary is configured
 - **Screenshot:** Verify all fields match (capture for audit trail)
-- Click **"✅ Create Event"**
+- Click **"Save Draft"** to create a minimal draft, or **"Publish Event"** to validate publish-ready fields
 - Expected: Redirect to **Event Detail** page; display event card with status badge
+  - Draft save starts lifecycle at `Drafted`
+  - Published create validates event metadata and keeps cover-image upload state consistent
 
 #### Step 1.3: Verify Event Created
 
 - Page shows:
   - Event title, date, time, capacity
   - Status badge (should be `Draft`)
+  - Lifecycle state (`Drafted`, then later `Published`, `Completed`, or `Archived`)
   - Tabs: **Overview**, **Registrations**, **Agent Workflows**, **Approvals**
   - **"🤖 Draft Schedule with AI"** button (Planner entry point)
   - **"📊 Curation"** button (Curator entry point, if authorized)
 - **Data-test selector:** `event-detail-title`
+
+#### Step 1.4: Cover Image Failure Handling
+
+- Leave Cloudinary unset in local development.
+- Open `/events/plan`, choose a valid small PNG/JPEG in **Cover Image**.
+- Expected: The form exits `Uploading...` and shows: **"Cover image uploads are unavailable. Ask an organizer to configure Cloudinary before uploading images."**
+- Then clear/ignore the cover image, enter a title, and click **Save Draft**.
+- Expected: Draft save succeeds without Cloudinary because no cover image is attached.
+
+#### Step 1.5: Sessionize and Lifecycle Operations
+
+- If `SessionizeEventId` is configured for the event, use the event detail/API flow to preview imported sessions before persistence.
+- Import should be idempotent: repeating import should update/skip existing source sessions rather than duplicate them.
+- Publish lifecycle operations should record `RegistrationUrl` and `GitHubFolderUrl` when configured.
+- Schedule alterations must ask for a reason and preserve the previous published state for audit.
 
 ---
 
@@ -404,6 +424,23 @@ First-time Attendees: 40%
 - Backend not running → Check `https://localhost:7400/health`
 - Aspire resources failed to start → Run `aspire stop`, then `aspire start --isolated`
 - Database not seeded → You may need to create an event first via API
+
+### Cover Image Uploads Are Unavailable
+
+**Issue:** The cover field shows "Cover image uploads are unavailable. Ask an organizer to configure Cloudinary before uploading images."
+
+**Cause:** Cloudinary secrets are not configured for the backend. This is expected in local development unless you are testing cover uploads.
+
+**Fix:**
+
+```powershell
+cd src/Hackmum.Bethuya.Backend
+dotnet user-secrets set "Cloudinary:CloudName" "<cloud-name>"
+dotnet user-secrets set "Cloudinary:ApiKey" "<api-key>"
+dotnet user-secrets set "Cloudinary:ApiSecret" "<api-secret>"
+```
+
+Restart the backend/web resources after setting secrets. No-cover Save Draft/Publish Event should work even without Cloudinary.
 
 ### Curator Shows Error: "Not Authorized"
 

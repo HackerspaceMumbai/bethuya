@@ -34,6 +34,21 @@
                 <option value="Cancelled">Cancelled</option>
             </select>
 
+            <select data-test="lifecycle-filter" class="form-select" @bind="lifecycleFilter">
+                <option value="All">All Lifecycle States</option>
+                <option value="Drafted">Drafted</option>
+                <option value="VenueLocked">Venue Locked</option>
+                <option value="CfpOpen">CFP Open</option>
+                <option value="CfpExtended">CFP Extended</option>
+                <option value="ReviewAndPlanning">Review & Planning</option>
+                <option value="AgendaApproved">Agenda Approved</option>
+                <option value="Published">Published</option>
+                <option value="ScheduleAltered">Schedule Altered</option>
+                <option value="Delayed">Delayed</option>
+                <option value="Completed">Completed</option>
+                <option value="Archived">Archived</option>
+            </select>
+
             <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="ToggleSort">
                 @(sortAscending ? "Date ↑" : "Date ↓")
             </BbButton>
@@ -83,6 +98,7 @@
 
                             <div class="flex flex-wrap gap-2 mb-3">
                                 <BbBadge Variant="@GetStatusVariant(evt.Status)">@evt.Status</BbBadge>
+                                <BbBadge Variant="@GetLifecycleVariant(evt.LifecycleState)">@evt.LifecycleState</BbBadge>
                                 @if (evt.AgendaStatus is not null)
                                 {
                                     <BbBadge Variant="@GetAgendaVariant(evt.AgendaStatus)">@evt.AgendaStatus</BbBadge>
@@ -149,6 +165,7 @@
 
     private List<EventViewModel> allEvents = [];
     private string statusFilter = "All";
+    private string lifecycleFilter = "All";
     private bool sortAscending = true;
     private bool isLoading = true;
     private string? errorMessage;
@@ -160,9 +177,17 @@
     {
         get
         {
-            var query = statusFilter == "All"
-                ? allEvents.AsEnumerable()
-                : allEvents.Where(e => e.Status == statusFilter);
+            var query = allEvents.AsEnumerable();
+
+            if (statusFilter != "All")
+            {
+                query = query.Where(e => e.Status == statusFilter);
+            }
+
+            if (lifecycleFilter != "All")
+            {
+                query = query.Where(e => e.LifecycleState == lifecycleFilter);
+            }
 
             return sortAscending
                 ? query.OrderBy(e => e.StartDate).ToList()
@@ -194,6 +219,7 @@
         Description = dto.Description,
         Type = dto.Type,
         Status = dto.Status,
+        LifecycleState = dto.LifecycleState,
         Capacity = dto.Capacity,
         Location = dto.Location,
         CoverImageUrl = dto.CoverImageUrl,
@@ -227,6 +253,15 @@
         "ProposedByAgent" => BadgeVariant.Secondary,
         "ApprovedByHuman" or "Published" => BadgeVariant.Default,
         "Archived" => BadgeVariant.Destructive,
+        _ => BadgeVariant.Outline
+    };
+
+    private static BadgeVariant GetLifecycleVariant(string status) => status switch
+    {
+        "Published" or "Completed" => BadgeVariant.Default,
+        "AgendaApproved" or "ReviewAndPlanning" or "CfpOpen" or "CfpExtended" => BadgeVariant.Secondary,
+        "ScheduleAltered" or "Delayed" => BadgeVariant.Destructive,
+        "Archived" => BadgeVariant.Outline,
         _ => BadgeVariant.Outline
     };
 

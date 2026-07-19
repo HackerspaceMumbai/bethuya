@@ -10,13 +10,13 @@ public sealed class CloudinaryOptions
     public const string DefaultEventCoverRootFolder = "bethuya/events";
 
     /// <summary>Cloudinary cloud name.</summary>
-    public required string CloudName { get; set; }
+    public string CloudName { get; set; } = string.Empty;
 
     /// <summary>Cloudinary API key.</summary>
-    public required string ApiKey { get; set; }
+    public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>Cloudinary API secret.</summary>
-    public required string ApiSecret { get; set; }
+    public string ApiSecret { get; set; } = string.Empty;
 
     /// <summary>Optional Cloudinary upload preset used for direct browser uploads.</summary>
     public string? UploadPreset { get; set; }

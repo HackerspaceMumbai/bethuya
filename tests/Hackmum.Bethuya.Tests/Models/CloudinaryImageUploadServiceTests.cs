@@ -67,6 +67,34 @@ public class CloudinaryImageUploadServiceTests
         await Assert.That(publicId).IsEqualTo("bethuya/events/pending/test-cover");
     }
 
+    [Test]
+    public async Task Constructor_AllowsMissingCloudinaryConfiguration()
+    {
+        await using var db = CreateDbContext();
+        var service = CreateService(db, new CloudinaryOptions());
+
+        var parsed = service.TryGetPublicId(
+            "https://res.cloudinary.com/demo/image/upload/v1715000000/bethuya/events/pending/test-cover.png",
+            out var publicId);
+
+        await Assert.That(service).IsNotNull();
+        await Assert.That(parsed).IsFalse();
+        await Assert.That(publicId).IsEmpty();
+    }
+
+    [Test]
+    public async Task CreateDirectUploadSession_WithoutConfiguration_ThrowsClearError()
+    {
+        await using var db = CreateDbContext();
+        var service = CreateService(db, new CloudinaryOptions());
+
+        Func<Task> action = () => service.CreateDirectUploadSessionAsync("cover.png", "image/png", 2048);
+
+        var exception = await Assert.That(action).Throws<InvalidOperationException>();
+        await Assert.That(exception).IsNotNull();
+        await Assert.That(exception.Message).IsEqualTo("Cloudinary image uploads are not configured.");
+    }
+
     private static BethuyaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<BethuyaDbContext>()

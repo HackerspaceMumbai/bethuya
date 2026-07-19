@@ -37,6 +37,8 @@ flowchart TD
 | `Cloudinary--CloudName` | `Cloudinary:CloudName` | Backend image upload |
 | `Cloudinary--ApiKey` | `Cloudinary:ApiKey` | Backend image upload |
 | `Cloudinary--ApiSecret` | `Cloudinary:ApiSecret` | Backend image upload |
+| `Sessionize--ApiToken` | `Sessionize:ApiToken` | Backend Sessionize import, when private Sessionize access is required |
+| `GitHubEvents--Token` | `GitHubEvents:Token` | Backend GitHub event artifact publishing |
 | `AI--Providers--Foundry--ApiKey` | `AI:Providers:Foundry:ApiKey` | Backend AI routing |
 | `SocialConnections--GitHub--ClientId` | `SocialConnections:GitHub:ClientId` | Web social OAuth |
 | `SocialConnections--GitHub--ClientSecret` | `SocialConnections:GitHub:ClientSecret` | Web social OAuth |
@@ -48,6 +50,9 @@ flowchart TD
 - Region names, resource names, hostnames, callback paths
 - Feature flags and toggle values
 - Service endpoint URLs that are not credentials
+- `Sessionize:BaseUrl`, `Sessionize:SessionPathTemplate`, `Sessionize:SpeakerPathTemplate`
+- `GitHubEvents:Owner`, `GitHubEvents:Repository`, `GitHubEvents:Branch`
+- `Cloudinary:EventCoverRootFolder`, `Cloudinary:PendingUploadFolder`, upload cleanup intervals
 - Scale settings, health endpoint paths, and replica counts
 
 ## Managed Identity and RBAC
@@ -64,6 +69,12 @@ flowchart TD
    - `src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Bethuya.Hybrid.Web.csproj`
 2. Optionally override with environment variables.
 3. Run app normally; no Azure auth required.
+
+### Event integration notes
+
+- Cloudinary secrets are optional for no-cover event saves. If an organizer attempts a cover upload without them, `/api/images/direct-upload/session` returns `503 Image uploads are unavailable` and the UI shows an actionable configuration message.
+- Sessionize can read public event endpoints without `Sessionize:ApiToken`; set the token only when the Sessionize event requires private/API-token access.
+- `GitHubEvents:Token` should be a fine-grained token scoped only to the event artifact repository and branch.
 
 ## Adding new secrets
 
@@ -97,6 +108,9 @@ flowchart TD
   - Confirm secret exists in vault and name matches required list.
 - **Local startup should not use Key Vault**
   - Verify `ASPNETCORE_ENVIRONMENT=Development`.
+- **Cover image upload returns 503**
+  - Configure `Cloudinary:CloudName`, `Cloudinary:ApiKey`, and `Cloudinary:ApiSecret`, then restart backend/web.
+  - If you are not uploading a cover image, this does not block event Save Draft or Publish Event.
 
 ## CI/CD hardening notes
 

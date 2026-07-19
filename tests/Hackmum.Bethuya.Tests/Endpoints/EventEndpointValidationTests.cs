@@ -111,6 +111,72 @@ public sealed class EventEndpointValidationTests : IAsyncDisposable
         await _imageUploadService.Received(1).MarkUploadAttachedAsync(publicId, Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task CreateEvent_NormalizesLocalOffsetDatesToUtc()
+    {
+        Event? captured = null;
+        _eventRepository.CreateAsync(Arg.Any<Event>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                captured = callInfo.Arg<Event>();
+                return captured;
+            });
+
+        var request = CreateRequest(null) with
+        {
+            StartDate = new DateTimeOffset(2026, 6, 1, 18, 0, 0, TimeSpan.FromHours(5.5)),
+            EndDate = new DateTimeOffset(2026, 6, 1, 21, 0, 0, TimeSpan.FromHours(5.5))
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/events", request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.StartDate.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(captured.EndDate.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(captured.StartDate).IsEqualTo(request.StartDate.ToUniversalTime());
+        await Assert.That(captured.EndDate).IsEqualTo(request.EndDate.ToUniversalTime());
+    }
+
+    [Test]
+    public async Task CreateEvent_RejectsNonDraftedLifecycleState()
+    {
+        var request = CreateRequest(null) with
+        {
+            LifecycleState = MeetupLifecycleState.Published
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/events", request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await _eventRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Test]
+    public async Task CreateEvent_ValidatesOptionalUrlsAfterTrimming()
+    {
+        Event? captured = null;
+        _eventRepository.CreateAsync(Arg.Any<Event>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                captured = callInfo.Arg<Event>();
+                return captured;
+            });
+
+        var request = CreateRequest(null) with
+        {
+            GitHubFolderUrl = " https://github.com/HackerspaceMumbai/bethuya/tree/main/events/demo ",
+            RegistrationUrl = " https://hackerspacemumbai.com/events/demo "
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/events", request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.GitHubFolderUrl).IsEqualTo("https://github.com/HackerspaceMumbai/bethuya/tree/main/events/demo");
+        await Assert.That(captured.RegistrationUrl).IsEqualTo("https://hackerspacemumbai.com/events/demo");
+    }
+
     private static PlanEventRequest CreateRequest(string? coverImageUrl) =>
         new(
             Title: "Direct cover upload event",

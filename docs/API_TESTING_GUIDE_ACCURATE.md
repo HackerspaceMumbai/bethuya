@@ -43,6 +43,20 @@ $API_BASE = "http://localhost:$API_PORT"
 | `POST` | `/api/events` | Create new event |
 | `PUT` | `/api/events/{id}` | Update event |
 | `DELETE` | `/api/events/{id}` | Delete event |
+| `GET` | `/api/events/{id}/sessionize/preview` | Preview normalized Sessionize sessions |
+| `POST` | `/api/events/{id}/sessionize/import` | Import normalized Sessionize sessions idempotently |
+| `POST` | `/api/events/{id}/lifecycle` | Transition lifecycle state |
+| `POST` | `/api/events/{id}/publish` | Publish event artifacts |
+| `POST` | `/api/events/{id}/schedule-alterations` | Record a schedule alteration |
+| `POST` | `/api/events/{id}/complete` | Complete event and mark required assets pending |
+| `POST` | `/api/events/{id}/archive` | Archive event when asset rules allow it |
+
+### **Images**
+
+| Method | Endpoint | Purpose |
+| -------- | ---------- | --------- |
+| `POST` | `/api/images/direct-upload/session` | Create signed Cloudinary direct-upload parameters |
+| `POST` | `/api/images/direct-upload/delete` | Remove an unattached pending upload |
 
 ### **Registrations**
 
@@ -94,7 +108,16 @@ $eventPayload = @{
     hashtag = "ai_meetup_may2026"
     coverImageUrl = "https://example.com/image.jpg"
     status = "Draft"
-} | ConvertTo-Json
+    lifecycleState = "Drafted"
+    fairnessTargets = @{
+        geoOutsideDominantMinPercent = 0.35
+        localLanguageMinPercent = 0.25
+        underrepresentedEducationMinPercent = 0.25
+        enableSocioeconomicDimension = $false
+        kAnonymityThreshold = 5
+        genderDiversityMinPercent = 0.40
+    }
+} | ConvertTo-Json -Depth 5
 
 curl -X POST "http://localhost:$API_PORT/api/events" `
   -H "Content-Type: application/json" `
@@ -102,6 +125,90 @@ curl -X POST "http://localhost:$API_PORT/api/events" `
 
 # Response: 201 Created with event details
 ```
+
+The response now includes lifecycle and integration fields:
+
+```json
+{
+  "lifecycleState": "Drafted",
+  "sessionizeEventId": null,
+  "githubFolderUrl": null,
+  "teamsAnnouncementMessageId": null,
+  "registrationUrl": null,
+  "publishedAt": null,
+  "completedAt": null,
+  "archivedAt": null,
+  "fairnessTargets": {
+    "geoOutsideDominantMinPercent": 0.35,
+    "localLanguageMinPercent": 0.25,
+    "underrepresentedEducationMinPercent": 0.25,
+    "enableSocioeconomicDimension": false,
+    "underrepresentedSocioeconomicMinPercent": null,
+    "kAnonymityThreshold": 5,
+    "genderDiversityMinPercent": 0.40
+  }
+}
+```
+
+### Step 1b: Cover Image Upload Session
+
+The UI uploads cover images directly to Cloudinary after the backend issues signed parameters. No-cover event saves do not require Cloudinary.
+
+```powershell
+$uploadPayload = @{
+    fileName = "cover.png"
+    contentType = "image/png"
+    fileSize = 4096
+} | ConvertTo-Json
+
+curl -X POST "http://localhost:$API_PORT/api/images/direct-upload/session" `
+  -H "Content-Type: application/json" `
+  -d $uploadPayload
+```
+
+When Cloudinary is not configured locally, this endpoint intentionally returns:
+
+```json
+{
+  "title": "Image uploads are unavailable.",
+  "status": 503,
+  "detail": "Cloudinary image uploads are not configured."
+}
+```
+
+### Step 1c: Event Lifecycle, Sessionize, and Publishing
+
+```powershell
+# Preview Sessionize sessions configured on the event's sessionizeEventId
+curl -X GET "http://localhost:$API_PORT/api/events/$responseEventId/sessionize/preview" `
+  -H "Accept: application/json"
+
+# Import Sessionize sessions idempotently
+curl -X POST "http://localhost:$API_PORT/api/events/$responseEventId/sessionize/import" `
+  -H "Accept: application/json"
+
+# Move lifecycle explicitly
+$transitionPayload = @{
+    targetState = "AgendaApproved"
+    actor = "organizer@hackerspace.com"
+} | ConvertTo-Json
+
+curl -X POST "http://localhost:$API_PORT/api/events/$responseEventId/lifecycle" `
+  -H "Content-Type: application/json" `
+  -d $transitionPayload
+
+# Publish event artifacts and registration reference
+$publishPayload = @{
+    actor = "organizer@hackerspace.com"
+    registrationUrl = "https://events.example.com/copilot-dev-days-mumbai"
+} | ConvertTo-Json
+
+curl -X POST "http://localhost:$API_PORT/api/events/$responseEventId/publish" `
+  -H "Content-Type: application/json" `
+  -d $publishPayload
+```
+
+Lifecycle operation responses include `eventId`, `lifecycleState`, `githubFolderUrl`, `registrationUrl`, and a human-readable `message`.
 
 ### Step 2: Create Sample Registrations
 

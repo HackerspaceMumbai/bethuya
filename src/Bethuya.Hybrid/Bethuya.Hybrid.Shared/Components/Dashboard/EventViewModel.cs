@@ -7,6 +7,7 @@ public sealed class EventViewModel
     public string? Description { get; set; }
     public string Type { get; set; } = "Meetup";
     public string Status { get; set; } = "Draft";
+    public string LifecycleState { get; set; } = "Drafted";
     public string? AgendaStatus { get; set; }
     public int Capacity { get; set; } = 100;
     public string? Location { get; set; }
