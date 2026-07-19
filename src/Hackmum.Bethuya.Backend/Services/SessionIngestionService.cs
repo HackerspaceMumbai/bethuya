@@ -36,6 +36,7 @@ public sealed partial class SessionIngestionService(
 
         await strategy.ExecuteAsync(async () =>
         {
+            var attemptImportedCount = 0;
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
             var evt = await dbContext.Events
                 .Include(e => e.Agenda)
@@ -66,12 +67,13 @@ public sealed partial class SessionIngestionService(
                     existingSourceIds.Add(session.SourceSessionId);
                 }
 
-                importedCount++;
+                attemptImportedCount++;
             }
 
             evt.UpdatedAt = DateTimeOffset.UtcNow;
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
+            importedCount = attemptImportedCount;
         });
 
         LogSessionizeImport(logger, eventId, importedCount);

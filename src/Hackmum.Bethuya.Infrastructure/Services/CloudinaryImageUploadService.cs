@@ -254,7 +254,7 @@ public sealed partial class CloudinaryImageUploadService(
     {
         if (!IsCloudinaryConfigured())
         {
-            throw new InvalidOperationException("Cloudinary image uploads are not configured.");
+            throw new ImageUploadProviderUnavailableException("Cloudinary image uploads are not configured.");
         }
     }
 

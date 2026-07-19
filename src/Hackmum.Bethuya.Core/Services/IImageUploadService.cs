@@ -32,6 +32,25 @@ public interface IImageUploadService
     Task<int> CleanupExpiredPendingUploadsAsync(CancellationToken ct = default);
 }
 
+/// <summary>Raised when image uploads cannot be used because the configured provider is unavailable.</summary>
+public sealed class ImageUploadProviderUnavailableException : InvalidOperationException
+{
+    /// <summary>Initializes a new instance of the <see cref="ImageUploadProviderUnavailableException"/> class.</summary>
+    public ImageUploadProviderUnavailableException()
+    {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="ImageUploadProviderUnavailableException"/> class.</summary>
+    public ImageUploadProviderUnavailableException(string message) : base(message)
+    {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="ImageUploadProviderUnavailableException"/> class.</summary>
+    public ImageUploadProviderUnavailableException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+}
+
 /// <summary>Signed parameters the browser needs to upload directly to Cloudinary.</summary>
 public sealed record DirectImageUploadSession(
     string UploadUrl,
