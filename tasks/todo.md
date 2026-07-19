@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-19] Address PR 29 review comments
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Evaluate Copilot and CodeRabbit feedback from PR #29 on top of GitHub `main`, resolve valid lifecycle validation, URL normalization, retry-safe import count, and image upload error mapping comments.
+- **Acceptance:** Valid PR review comments are either fixed or documented as non-actionable, targeted TUnit coverage proves the behavior, and the affected backend tests pass.
+
 ## [2026-07-19] Document event lifecycle and cover uploads
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

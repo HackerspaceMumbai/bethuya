@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Backend.Contracts;
+using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
 using Hackmum.Bethuya.Core.Services;
@@ -90,6 +91,10 @@ public static partial class EventEndpoints
             var newCoverPublicId = await ValidateCoverImageUrlAsync(request.CoverImageUrl, imageUploadService, errors, ct);
             ValidateOptionalHttpsUrl(request.GitHubFolderUrl, nameof(request.GitHubFolderUrl), errors);
             ValidateOptionalHttpsUrl(request.RegistrationUrl, nameof(request.RegistrationUrl), errors);
+            if (request.LifecycleState != MeetupLifecycleState.Drafted)
+            {
+                errors[nameof(request.LifecycleState)] = ["New events must start in the Drafted lifecycle state. Use lifecycle endpoints for transitions."];
+            }
 
             if (errors.Count > 0)
             {
@@ -460,13 +465,15 @@ public static partial class EventEndpoints
             return;
         }
 
-        if (value.Length > 2048)
+        var normalizedValue = value.Trim();
+
+        if (normalizedValue.Length > 2048)
         {
             errors[fieldName] = [$"{fieldName} must be 2,048 characters or fewer."];
             return;
         }
 
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+        if (!Uri.TryCreate(normalizedValue, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
         {
             errors[fieldName] = [$"{fieldName} must be a valid absolute HTTPS URL."];
         }

@@ -63,7 +63,7 @@ public static class ImageEndpoints
                 errors[ex.ParamName ?? "file"] = [ex.Message];
                 return Results.ValidationProblem(errors);
             }
-            catch (InvalidOperationException ex) when (string.Equals(ex.Message, "Cloudinary image uploads are not configured.", StringComparison.Ordinal))
+            catch (ImageUploadProviderUnavailableException ex)
             {
                 return Results.Problem(
                     title: "Image uploads are unavailable.",

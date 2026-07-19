@@ -116,7 +116,7 @@ public class ImageEndpointValidationTests : IAsyncDisposable
         _mockUploadService
             .CreateDirectUploadSessionAsync("cover.png", "image/png", 2048, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<DirectImageUploadSession>(
-                new InvalidOperationException("Cloudinary image uploads are not configured.")));
+                new ImageUploadProviderUnavailableException("Cloudinary image uploads are not configured.")));
 
         var response = await _client.PostAsJsonAsync(
             "/api/images/direct-upload/session",
