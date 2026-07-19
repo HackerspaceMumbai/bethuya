@@ -111,6 +111,21 @@ public class ImageEndpointValidationTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task CreateSession_MapsMissingProviderConfigurationToUnavailable()
+    {
+        _mockUploadService
+            .CreateDirectUploadSessionAsync("cover.png", "image/png", 2048, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<DirectImageUploadSession>(
+                new InvalidOperationException("Cloudinary image uploads are not configured.")));
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/images/direct-upload/session",
+            new ImageEndpoints.CreateDirectUploadSessionRequest("cover.png", "image/png", 2048));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Test]
     public async Task DeletePendingUpload_ReturnsNoContent_WhenDeleteTokenMatches()
     {
         _mockUploadService

@@ -11,12 +11,14 @@ public sealed class EventRepository(BethuyaDbContext db) : IEventRepository
         => await db.Events
             .Include(e => e.Registrations)
             .Include(e => e.Agenda)
+            .ThenInclude(a => a!.Sessions)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
     public async Task<Event?> GetByHashtagAsync(string hashtag, CancellationToken ct = default)
         => await db.Events
             .Include(e => e.Registrations)
             .Include(e => e.Agenda)
+            .ThenInclude(a => a!.Sessions)
             .FirstOrDefaultAsync(e => e.Hashtag != null && e.Hashtag == hashtag, ct);
 
     public async Task<IReadOnlyList<Event>> GetAllAsync(CancellationToken ct = default)

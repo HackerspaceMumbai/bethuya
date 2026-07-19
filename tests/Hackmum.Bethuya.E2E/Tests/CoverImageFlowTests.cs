@@ -49,6 +49,41 @@ public class CoverImageFlowTests : BethuyaE2ETest
     }
 
     [TestMethod]
+    public async Task PlanEvent_WithCoverImage_WhenCloudinaryUnavailable_ShouldShowActionableMessage()
+    {
+        var cloudinaryUrl = Environment.GetEnvironmentVariable("Cloudinary__CloudUrl")
+            ?? Environment.GetEnvironmentVariable("CLOUDINARY_URL");
+        if (!string.IsNullOrEmpty(cloudinaryUrl))
+        {
+            Assert.Inconclusive("Skipping: Cloudinary credentials are configured, so upload-unavailable behavior does not apply.");
+            return;
+        }
+
+        await GotoWithBudgetAsync("/events/plan");
+
+        var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
+        await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
+
+        var fileInput = Page.Locator("[data-test='cover-image-dropzone'] input[type='file']");
+        Assert.IsTrue(await fileInput.CountAsync() > 0,
+            "Cover image file input ([data-test='cover-image-dropzone'] input[type='file']) not found on the page");
+
+        var pngPath = Path.Combine(Path.GetTempPath(), "e2e-unavailable-cover.png");
+        await File.WriteAllBytesAsync(pngPath, CreateMinimalPng());
+
+        try
+        {
+            await fileInput.SetInputFilesAsync(pngPath);
+            await Assertions.Expect(Page.GetByText("Cover image uploads are unavailable. Ask an organizer to configure Cloudinary before uploading images."))
+                .ToBeVisibleAsync(new() { Timeout = PerformanceBudgets.FileUploadMs });
+        }
+        finally
+        {
+            File.Delete(pngPath);
+        }
+    }
+
+    [TestMethod]
     public async Task PlanEvent_WithCoverImage_ShouldShowPreviewAndSucceed()
     {
         // This test requires Cloudinary credentials — skip when not configured

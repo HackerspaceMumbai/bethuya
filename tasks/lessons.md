@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-07-19] Refit unsafe POSTs need explicit resilience policy review
+- **What happened:** Cover image upload stayed in `Uploading...` because the shared Refit event API client retried `POST /api/images/direct-upload/session` multiple times on a known `503` Cloudinary-unavailable response before surfacing the error to the UI.
+- **Root cause:** Image upload endpoints shared the broad `IEventApi` Refit client and its standard resilience handler. The upload-session request is an unsafe, user-visible POST where retrying configuration errors adds latency and noisy logs instead of improving reliability.
+- **Fix:** Split image upload endpoints into a dedicated `IImageUploadApi` client without the standard retry pipeline, preserving prompt ProblemDetails handling for upload failures.
+- **Prevention:** Audit every Refit typed client and endpoint method by HTTP method/idempotency. Keep safe idempotent reads on retrying clients, and move unsafe or user-interactive POSTs to non-retrying clients or method-aware resilience policies.
+
 ## [2026-06-30] Central Azure SDK pins must match highest transitive floor
 - **What happened:** Adding explicit central versions for `Azure.Identity` and `Azure.Security.KeyVault.Secrets` initially broke restore with NU1109 downgrades across AppHost, backend, and tests.
 - **Root cause:** Existing transitive dependencies (for example, Aspire hosting packages and Microsoft.Identity.Web) required newer minimum versions than the manually pinned values.
