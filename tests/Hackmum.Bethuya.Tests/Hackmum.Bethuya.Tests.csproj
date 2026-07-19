@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AngleSharp" />
     <PackageReference Include="TUnit" />
     <PackageReference Include="bunit.web" />
     <PackageReference Include="NSubstitute" />

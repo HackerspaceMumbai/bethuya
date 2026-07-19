@@ -49,11 +49,10 @@ if (builder.IsLocalDevelopment())
 
 IResourceBuilder<ProjectResource>? plannerHosted = null;
 
-if (builder.EnableAgents())
-{
-    var foundry = builder.AddFoundry("bethuya-foundry");
+var foundry = builder.AddFoundry("bethuya-foundry");
 
 #pragma warning disable ASPIRECOMPUTE003
+
     var foundryProject = foundry.AddProject("bethuya-project");
 #pragma warning restore
 
@@ -70,7 +69,7 @@ if (builder.EnableAgents())
         .WithReference(plannerChatModel)
         .WaitFor(plannerChatModel)
         .AsHostedAgent(foundryProject);
-}
+
 
 // Migration service - runs EF Core migrations then exits.
 // Deployed as a Container App Job (not a long-running Container App) so ACA doesn't restart it.
