@@ -53,18 +53,17 @@ var foundry = builder.AddFoundry("bethuya-foundry");
 
 #pragma warning disable ASPIRECOMPUTE003
 
-    var foundryProject = foundry.AddProject("bethuya-project");
+    var foundryProject = foundry.AddProject("bethuyaProject");
 #pragma warning restore
 
     var plannerChatModel =
         foundryProject.AddModelDeployment(
-            "planner-chat",
+            "plannerChat",
             FoundryModel.OpenAI.Gpt41);
 
     plannerHosted = builder
         .AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>(
-            "planner-hosted")
-        .WithHttpEndpoint()
+            "planner-hosted", launchProfileName: null)
         .WithReference(foundryProject)
         .WithReference(plannerChatModel)
         .WaitFor(plannerChatModel)

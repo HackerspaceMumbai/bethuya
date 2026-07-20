@@ -5,6 +5,9 @@ using Hackmum.Bethuya.Core.Planning;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var hostedAgentPort = Environment.GetEnvironmentVariable("DEFAULT_AD_PORT") ?? "8088";
+builder.WebHost.UseUrls($"http://+:{hostedAgentPort}");
+
 builder.AddServiceDefaults();
 
 var app = builder.Build();
