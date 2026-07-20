@@ -75,7 +75,7 @@ flowchart TD
 ### Event integration notes
 
 - Cloudinary secrets are optional for no-cover event saves. If an organizer attempts a cover upload without them, `/api/images/direct-upload/session` returns `503 Image uploads are unavailable` and the UI shows an actionable configuration message.
-- Cloudinary local/runtime config now flows from AppHost parameters into `backend`, and publish mode also seeds `Cloudinary--CloudName`, `Cloudinary--ApiKey`, and `Cloudinary--ApiSecret` into the provisioned Key Vault resource.
+- In local development, Cloudinary config flows from AppHost parameters into `backend` environment variables. In publish mode, AppHost seeds `Cloudinary--CloudName`, `Cloudinary--ApiKey`, and `Cloudinary--ApiSecret` into the provisioned Key Vault resource and the hosted backend reads them through Key Vault.
 - Sessionize can read public event endpoints without `Sessionize:ApiToken`; set the token only when the Sessionize event requires private/API-token access.
 - `GitHubEvents:Token` should be a fine-grained token scoped only to the event artifact repository and branch.
 

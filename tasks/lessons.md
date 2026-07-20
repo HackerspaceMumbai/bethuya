@@ -18,9 +18,9 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## [2026-07-20] Aspire parameter secret metadata can conflict with this ACA publish path
 - **What happened:** The pre-commit review flagged the restored Cloudinary AppHost secret parameters as a likely Azure Container Apps publish risk and noted that explicit empty defaults were missing for optional local startup.
-- **Root cause:** In this repo, the Aspire/ACA path already documents boolean metadata serialization problems around resource configuration, and bare AppHost parameters without defaults make optional local integrations look more required than the backend contract intends.
-- **Fix:** Removed `secret: true` from the Cloudinary AppHost parameters, kept Key Vault seeding as the hosted secret mechanism, and added explicit empty local defaults in `AppHost/AppHost/appsettings.json`.
-- **Prevention:** For optional hosted secrets in this AppHost, prefer plain parameters plus Key Vault seeding over AppHost secret metadata, and provide explicit empty local defaults when the consuming app can legitimately run without the integration enabled.
+- **Root cause:** We overgeneralized the repo's ACA boolean-environment-value issue to AppHost parameter metadata. The actual risk was different: hosted `Cloudinary__*` environment variables would bypass Key Vault by placing credentials directly in the container app definition.
+- **Fix:** Restored `secret: true` on the Cloudinary credential parameters, kept explicit empty local defaults in `AppHost/AppHost/appsettings.json`, and scoped the `Cloudinary__*` environment variables to local development only so hosted deployments rely on Key Vault.
+- **Prevention:** Keep `secret: true` on credential parameters, distinguish parameter metadata from literal environment values when reasoning about ACA serialization bugs, and avoid publishing plaintext secret env vars when the hosted app already reads the same values from Key Vault.
 
 ## [2026-07-20] AppHost source drift can hide missing parameter wiring
 - **What happened:** Cover upload failed with `Cloudinary image uploads are not configured.` even though the repo still contained a committed Aspire manifest and prior task history showing Cloudinary parameters.

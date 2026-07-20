@@ -19,8 +19,8 @@ All work items must be added here **before** writing code (plan-first protocol).
 ## [2026-07-20] Harden Cloudinary AppHost parameter defaults
 - **Status:** in-progress
 - **Agent/Owner:** Copilot CLI
-- **Description:** Make the restored Cloudinary AppHost parameters safe for both local optional-use flows and Azure publish by adding explicit empty local defaults and removing AppHost secret metadata that risks ACA serialization failures in this repo.
-- **Acceptance:** `AppHost/AppHost/appsettings.json` provides empty defaults for all three Cloudinary parameters, `AppHost/AppHost/AppHost.cs` no longer uses `secret: true` on the Cloudinary parameters, and targeted AppHost validation passes.
+- **Description:** Make the restored Cloudinary AppHost parameters safe for both local optional-use flows and Azure publish by adding explicit empty local defaults, retaining `secret: true` on the credential parameters, and keeping hosted Cloudinary resolution on Key Vault instead of plaintext container environment variables.
+- **Acceptance:** `AppHost/AppHost/appsettings.json` provides empty defaults for all three Cloudinary parameters, `AppHost/AppHost/AppHost.cs` uses `secret: true` on the Cloudinary credentials, Cloudinary env vars are scoped to local backend startup only, and targeted AppHost validation passes.
 
 ## [2026-07-20] Remove redundant web Cloudinary env wiring
 - **Status:** done

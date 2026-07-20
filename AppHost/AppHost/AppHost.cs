@@ -37,8 +37,8 @@ var sql = builder.ConfigureDatabase(acaEnv);
 var keyVault = builder.ConfigureKeyVault();
 
 var cloudinaryCloudName = builder.AddParameter("cloudinary-cloud-name");
-var cloudinaryApiKey = builder.AddParameter("cloudinary-api-key");
-var cloudinaryApiSecret = builder.AddParameter("cloudinary-api-secret");
+var cloudinaryApiKey = builder.AddParameter("cloudinary-api-key", secret: true);
+var cloudinaryApiSecret = builder.AddParameter("cloudinary-api-secret", secret: true);
 
 if (keyVault is not null)
 {
@@ -111,9 +111,6 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", la
     .WithEnvironment("ASPNETCORE_PREVENTHOSTINGSTARTUP", "true")
     .WaitFor(sql)
     .WaitForCompletion(migrationService)
-    .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
-    .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
-    .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
     .WithHttpHealthCheck("/health")
 //  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8080")
@@ -138,7 +135,11 @@ var backendHttpEndpoint = backend.GetEndpoint("http");
 
 if (builder.IsLocalDevelopment())
 {
-    backend.WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+    backend
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+        .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
+        .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
+        .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret);
     backend.ConfigureSeedCommands(backendHttpEndpoint);
 }
 
