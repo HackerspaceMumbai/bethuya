@@ -16,6 +16,18 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-07-20] Aspire parameter secret metadata can conflict with this ACA publish path
+- **What happened:** The pre-commit review flagged the restored Cloudinary AppHost secret parameters as a likely Azure Container Apps publish risk and noted that explicit empty defaults were missing for optional local startup.
+- **Root cause:** We overgeneralized the repo's ACA boolean-environment-value issue to AppHost parameter metadata. The actual risk was different: hosted `Cloudinary__*` environment variables would bypass Key Vault by placing credentials directly in the container app definition.
+- **Fix:** Restored `secret: true` on the Cloudinary credential parameters, kept explicit empty local defaults in `AppHost/AppHost/appsettings.json`, and scoped the `Cloudinary__*` environment variables to local development only so hosted deployments rely on Key Vault.
+- **Prevention:** Keep `secret: true` on credential parameters, distinguish parameter metadata from literal environment values when reasoning about ACA serialization bugs, and avoid publishing plaintext secret env vars when the hosted app already reads the same values from Key Vault.
+
+## [2026-07-20] AppHost source drift can hide missing parameter wiring
+- **What happened:** Cover upload failed with `Cloudinary image uploads are not configured.` even though the repo still contained a committed Aspire manifest and prior task history showing Cloudinary parameters.
+- **Root cause:** The live `AppHost/AppHost/AppHost.cs` source had lost the Cloudinary `AddParameter(...)` and `.WithEnvironment(...)` wiring, while generated artifacts and notes still reflected the older configuration.
+- **Fix:** Restored the AppHost parameter declarations, reattached the values to the consuming resources, and aligned publish-mode Key Vault seeding with the existing Cloudinary secret contract.
+- **Prevention:** When debugging AppHost regressions, trust the current AppHost source over committed generated artifacts, and compare source, manifest, and runtime secret contract together before assuming configuration still exists.
+
 ## [2026-07-19] Refit unsafe POSTs need explicit resilience policy review
 - **What happened:** Cover image upload stayed in `Uploading...` because the shared Refit event API client retried `POST /api/images/direct-upload/session` multiple times on a known `503` Cloudinary-unavailable response before surfacing the error to the UI.
 - **Root cause:** Image upload endpoints shared the broad `IEventApi` Refit client and its standard resilience handler. The upload-session request is an unsafe, user-visible POST where retrying configuration errors adds latency and noisy logs instead of improving reliability.
