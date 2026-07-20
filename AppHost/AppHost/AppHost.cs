@@ -109,7 +109,6 @@ builder.EnforceProductionSecurityPolicies(
 var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", launchProfileName: null)
     .WithHttpEndpoint(port: 8080, targetPort: 8080, isProxied: false).WithReference(sql)
     .WithEnvironment("ASPNETCORE_PREVENTHOSTINGSTARTUP", "true")
-    .WithReference(sql)
     .WaitFor(sql)
     .WaitForCompletion(migrationService)
     .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
