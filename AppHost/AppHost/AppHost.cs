@@ -36,6 +36,17 @@ var sql = builder.ConfigureDatabase(acaEnv);
 // Only wire it in publish mode (azd up) so local dev starts without Azure credentials.
 var keyVault = builder.ConfigureKeyVault();
 
+var cloudinaryCloudName = builder.AddParameter("cloudinary-cloud-name");
+var cloudinaryApiKey = builder.AddParameter("cloudinary-api-key");
+var cloudinaryApiSecret = builder.AddParameter("cloudinary-api-secret");
+
+if (keyVault is not null)
+{
+    keyVault.AddSecret("Cloudinary--CloudName", cloudinaryCloudName);
+    keyVault.AddSecret("Cloudinary--ApiKey", cloudinaryApiKey);
+    keyVault.AddSecret("Cloudinary--ApiSecret", cloudinaryApiSecret);
+}
+
 // Keycloak - local dev only; not published to Azure.
 // The preview Keycloak package sets KC_HEALTH_ENABLED=true (boolean literal) in its container
 // env vars. ACA's BaseContainerAppContext.ProcessValue cannot handle booleans, causing
@@ -101,6 +112,9 @@ var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", la
     .WithReference(sql)
     .WaitFor(sql)
     .WaitForCompletion(migrationService)
+    .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
+    .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
+    .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
     .WithHttpHealthCheck("/health")
 //  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8080")

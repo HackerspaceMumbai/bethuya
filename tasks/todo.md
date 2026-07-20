@@ -16,6 +16,24 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-20] Harden Cloudinary AppHost parameter defaults
+- **Status:** in-progress
+- **Agent/Owner:** Copilot CLI
+- **Description:** Make the restored Cloudinary AppHost parameters safe for both local optional-use flows and Azure publish by adding explicit empty local defaults and removing AppHost secret metadata that risks ACA serialization failures in this repo.
+- **Acceptance:** `AppHost/AppHost/appsettings.json` provides empty defaults for all three Cloudinary parameters, `AppHost/AppHost/AppHost.cs` no longer uses `secret: true` on the Cloudinary parameters, and targeted AppHost validation passes.
+
+## [2026-07-20] Remove redundant web Cloudinary env wiring
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Remove the Cloudinary environment variable injection from the AppHost `web` resource because the current web host only calls the backend image-upload API and does not bind or use Cloudinary configuration directly.
+- **Acceptance:** ✅ `AppHost/AppHost/AppHost.cs` no longer sets `Cloudinary__CloudName`, `Cloudinary__ApiKey`, or `Cloudinary__ApiSecret` on the `web` resource. ✅ `dotnet build AppHost\\AppHost\\AppHost.csproj -v minimal` passed.
+
+## [2026-07-20] Restore AppHost Cloudinary wiring
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Restore Cloudinary parameter ownership in AppHost, provide the values to the backend as environment variables, and seed the same three values into the AppHost-managed Key Vault resource for hosted deployments.
+- **Acceptance:** ✅ `AppHost/AppHost/AppHost.cs` declares the Cloudinary parameters again. ✅ `backend` now references `Cloudinary__CloudName` / `Cloudinary__ApiKey` / `Cloudinary__ApiSecret` through AppHost. ✅ Publish-mode Key Vault receives `Cloudinary--CloudName` / `Cloudinary--ApiKey` / `Cloudinary--ApiSecret`. ✅ `dotnet build AppHost\\AppHost\\AppHost.csproj -v minimal` and `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal` passed.
+
 ## [2026-07-19] Address PR 29 review comments
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
