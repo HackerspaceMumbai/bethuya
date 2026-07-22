@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-22] Bridge Aspire parameters to hosted Key Vault secrets
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Implement a repeatable AppHost pattern that preserves existing local Aspire parameter names while provisioning canonical `--` Key Vault secret names for hosted environments without `ParameterResource`/`AzureKeyVaultSecretResource` naming collisions.
+- **Acceptance:** ✅ AppHost now uses `AddSecret(name, secretName, parameter)` through `AddBridgedSecret(...)`, giving each hosted secret a collision-safe internal resource name while keeping canonical `Cloudinary--*` and `SocialConnections--*` Key Vault names. ✅ Cloudinary env var injection is local-only so hosted environments rely on Key Vault + managed identity. ✅ Hosted config mapping now translates `--` to `:` via `DoubleHyphenSecretManager`. ✅ `dotnet build AppHost\\AppHost\\AppHost.csproj -v minimal` and `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj -v minimal` passed. ✅ `aspire deploy --publisher manifest` advanced through resource graph generation without the previous `ParameterResource`/`AzureKeyVaultSecretResource` collision and stopped only at expected non-interactive unresolved-parameter prompting.
+
 ## [2026-07-20] Harden Cloudinary AppHost parameter defaults
 - **Status:** in-progress
 - **Agent/Owner:** Copilot CLI

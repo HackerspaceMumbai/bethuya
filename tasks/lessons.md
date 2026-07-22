@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-07-22] Aspire model resource names cannot contain consecutive hyphens (Key Vault secret names can)
+- **What happened:** The first bridge helper derived internal Aspire resource names directly from canonical Key Vault secret names (for example, `kv-cloudinary--cloudname`) and `aspire deploy --publisher manifest` failed before deployment.
+- **Root cause:** Aspire model resource names reject consecutive hyphens; Key Vault secret names do allow them. These are distinct naming systems with different constraints.
+- **Fix:** Switched to `AddSecret(name, secretName, parameter)` with sanitized internal resource names (`kv-cloudinary-cloudname` style) while keeping canonical external secret names (`Cloudinary--CloudName`) for Key Vault and startup validation.
+- **Prevention:** For canonical `--` Key Vault secret names, always separate **resource identity** from **secretName** and normalize internal resource names to Aspire model constraints.
+
 ## [2026-07-20] Aspire parameter secret metadata can conflict with this ACA publish path
 - **What happened:** The pre-commit review flagged the restored Cloudinary AppHost secret parameters as a likely Azure Container Apps publish risk and noted that explicit empty defaults were missing for optional local startup.
 - **Root cause:** We overgeneralized the repo's ACA boolean-environment-value issue to AppHost parameter metadata. The actual risk was different: hosted `Cloudinary__*` environment variables would bypass Key Vault by placing credentials directly in the container app definition.

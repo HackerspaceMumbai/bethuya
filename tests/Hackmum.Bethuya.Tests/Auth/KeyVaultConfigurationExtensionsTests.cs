@@ -1,3 +1,4 @@
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -54,5 +55,17 @@ public class KeyVaultConfigurationExtensionsTests
         var exception = Assert.Throws<InvalidOperationException>(() => builder.AddBethuyaKeyVaultConfiguration());
         await Assert.That(exception).IsNotNull();
         await Assert.That(exception!.Message).Contains("not-a-valid-uri");
+    }
+
+    [Test]
+    public async Task DoubleHyphenSecretManager_MapsOnlyHierarchyDelimiter()
+    {
+        var manager = new DoubleHyphenSecretManager();
+
+        var hierarchicalSecret = SecretModelFactory.KeyVaultSecret(new SecretProperties("Cloudinary--ApiKey"), "value");
+        var flatSecret = SecretModelFactory.KeyVaultSecret(new SecretProperties("cloudinary-api-key"), "value");
+
+        await Assert.That(manager.GetKey(hierarchicalSecret)).IsEqualTo("Cloudinary:ApiKey");
+        await Assert.That(manager.GetKey(flatSecret)).IsEqualTo("cloudinary-api-key");
     }
 }
