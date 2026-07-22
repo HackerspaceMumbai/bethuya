@@ -16,9 +16,9 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
-## [2026-07-22] Key Vault secret resource names cannot contain consecutive hyphens
-- **What happened:** The first bridge helper derived internal Key Vault secret resource names directly from canonical secret names (for example, `kv-cloudinary--cloudname`) and `aspire deploy --publisher manifest` failed before deployment.
-- **Root cause:** Aspire model resource names reject consecutive hyphens even though Key Vault secret names allow them.
+## [2026-07-22] Aspire model resource names cannot contain consecutive hyphens (Key Vault secret names can)
+- **What happened:** The first bridge helper derived internal Aspire resource names directly from canonical Key Vault secret names (for example, `kv-cloudinary--cloudname`) and `aspire deploy --publisher manifest` failed before deployment.
+- **Root cause:** Aspire model resource names reject consecutive hyphens; Key Vault secret names do allow them. These are distinct naming systems with different constraints.
 - **Fix:** Switched to `AddSecret(name, secretName, parameter)` with sanitized internal resource names (`kv-cloudinary-cloudname` style) while keeping canonical external secret names (`Cloudinary--CloudName`) for Key Vault and startup validation.
 - **Prevention:** For canonical `--` Key Vault secret names, always separate **resource identity** from **secretName** and normalize internal resource names to Aspire model constraints.
 
