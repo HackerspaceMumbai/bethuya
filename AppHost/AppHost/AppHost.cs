@@ -203,7 +203,11 @@ if (builder.IsLocalDevelopment())
 {
     web
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-        .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest);
+        .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest)
+        .WithEnvironment("SocialConnections__GitHub__ClientId", socialGithubClientId)
+        .WithEnvironment("SocialConnections__GitHub__ClientSecret", socialGithubClientSecret)
+        .WithEnvironment("SocialConnections__LinkedIn__ClientId", socialLinkedInClientId)
+        .WithEnvironment("SocialConnections__LinkedIn__ClientSecret", socialLinkedInClientSecret);
 }
 
 if (keyVault is not null)

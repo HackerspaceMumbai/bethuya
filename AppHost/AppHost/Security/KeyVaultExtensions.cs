@@ -34,7 +34,8 @@ public static class KeyVaultExtensions
 
     private static string CreateSecretResourceName(string secretName)
     {
-        var chars = new List<char>(secretName.Length + 3) { 'k', 'v', '-' };
+        var chars = new List<char>(secretName.Length + 3);
+        chars.AddRange(['k', 'v', '-']);
         var previousWasDash = true;
 
         foreach (var character in secretName.ToLowerInvariant())
