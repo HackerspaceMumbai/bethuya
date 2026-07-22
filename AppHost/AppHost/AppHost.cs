@@ -30,22 +30,29 @@ var enableOnboardingFlowInDevelopment = string.Equals(
 // Eliminate SQL passwords in production.
 
 var sql = builder.ConfigureDatabase(acaEnv);
-                                            
 
-// Key Vault - provisioned in Azure only; no local emulator exists.
-// Only wire it in publish mode (azd up) so local dev starts without Azure credentials.
-var keyVault = builder.ConfigureKeyVault();
 
 var cloudinaryCloudName = builder.AddParameter("cloudinary-cloud-name");
 var cloudinaryApiKey = builder.AddParameter("cloudinary-api-key", secret: true);
 var cloudinaryApiSecret = builder.AddParameter("cloudinary-api-secret", secret: true);
 
+
+// Key Vault - provisioned in Azure only; no local emulator exists.
+// Only wire it in publish mode (azd up) so local dev starts without Azure credentials.
+var keyVault = builder.ConfigureKeyVault();
+
 if (keyVault is not null)
 {
-    keyVault.AddSecret("Cloudinary--CloudName", cloudinaryCloudName);
-    keyVault.AddSecret("Cloudinary--ApiKey", cloudinaryApiKey);
-    keyVault.AddSecret("Cloudinary--ApiSecret", cloudinaryApiSecret);
+    // PRODUCTION: Seed parameters into Key Vault during 'aspire deploy'.
+    // IMPORTANT: Using "--" in the secret name automatically translates
+    // to a ":" in .NET IConfiguration (e.g., Cloudinary:CloudName).
+    keyVault.AddSecret("cloudinary-cloudName", cloudinaryCloudName);
+    keyVault.AddSecret("cloudinary-apiKey", cloudinaryApiKey);
+    keyVault.AddSecret("cloudinary-apiSecret", cloudinaryApiSecret);
 }
+
+
+
 
 // Keycloak - local dev only; not published to Azure.
 // The preview Keycloak package sets KC_HEALTH_ENABLED=true (boolean literal) in its container
@@ -107,6 +114,9 @@ builder.EnforceProductionSecurityPolicies(
 
 var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", launchProfileName: null)
     .WithHttpEndpoint(port: 8080, targetPort: 8080, isProxied: false).WithReference(sql)
+    .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
+    .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
+    .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
     .WithEnvironment("ASPNETCORE_PREVENTHOSTINGSTARTUP", "true")
     .WaitFor(sql)
     .WaitForCompletion(migrationService)
@@ -135,10 +145,7 @@ var backendHttpEndpoint = backend.GetEndpoint("http");
 if (builder.IsLocalDevelopment())
 {
     backend
-        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-        .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
-        .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
-        .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret);
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
     backend.ConfigureSeedCommands(backendHttpEndpoint);
 }
 

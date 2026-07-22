@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using static Microsoft.Extensions.Hosting.KeyVaultStartupValidationHostedService;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -52,7 +53,7 @@ public static class KeyVaultConfigurationExtensions
             ExcludeInteractiveBrowserCredential = true
         });
         builder.Services.AddSingleton<TokenCredential>(_ => credential);
-        builder.Configuration.AddAzureKeyVault(keyVaultUri, credential, new KeyVaultSecretManager());
+        builder.Configuration.AddAzureKeyVault(keyVaultUri, credential, new SingleHyphenSecretManager());
 
         builder.Services.AddSingleton(new KeyVaultStartupValidationContext(
             keyVaultUri,
@@ -147,6 +148,19 @@ internal sealed partial class KeyVaultStartupValidationHostedService(
         {
             throw new InvalidOperationException(
                 $"Key Vault is missing required secrets: {string.Join(", ", missingSecrets)}.");
+        }
+    }
+
+    /// <summary>
+    /// Intercepts secrets pulled from Key Vault and formats the key for .NET IConfiguration.
+    /// </summary>
+    public sealed class SingleHyphenSecretManager : KeyVaultSecretManager
+    {
+        public override string GetKey(KeyVaultSecret secret)
+        {
+            // Translates single hyphens to colons for hierarchical configuration mapping.
+            // Example: "cloudinary-cloudname" -> "cloudinary:cloudname"
+            return secret.Name.Replace("-", ":");
         }
     }
 
