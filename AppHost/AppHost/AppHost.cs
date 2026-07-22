@@ -35,6 +35,10 @@ var sql = builder.ConfigureDatabase(acaEnv);
 var cloudinaryCloudName = builder.AddParameter("cloudinary-cloud-name");
 var cloudinaryApiKey = builder.AddParameter("cloudinary-api-key", secret: true);
 var cloudinaryApiSecret = builder.AddParameter("cloudinary-api-secret", secret: true);
+var socialGithubClientId = builder.AddParameter("oauth-github-clientid", secret: true);
+var socialGithubClientSecret = builder.AddParameter("oauth-github-clientsecret", secret: true);
+var socialLinkedInClientId = builder.AddParameter("oauth-linkedin-clientid", secret: true);
+var socialLinkedInClientSecret = builder.AddParameter("oauth-linkedin-clientsecret", secret: true);
 
 
 // Key Vault - provisioned in Azure only; no local emulator exists.
@@ -43,12 +47,16 @@ var keyVault = builder.ConfigureKeyVault();
 
 if (keyVault is not null)
 {
-    // PRODUCTION: Seed parameters into Key Vault during 'aspire deploy'.
-    // IMPORTANT: Using "--" in the secret name automatically translates
-    // to a ":" in .NET IConfiguration (e.g., Cloudinary:CloudName).
-    keyVault.AddSecret("cloudinary-cloudName", cloudinaryCloudName);
-    keyVault.AddSecret("cloudinary-apiKey", cloudinaryApiKey);
-    keyVault.AddSecret("cloudinary-apiSecret", cloudinaryApiSecret);
+    // PRODUCTION: Seed AppHost parameters into canonical Key Vault secret names.
+    // Use AddBridgedSecret to avoid resource-name collisions between ParameterResource
+    // and AzureKeyVaultSecretResource while preserving canonical `--` secret names.
+    keyVault.AddBridgedSecret("Cloudinary--CloudName", cloudinaryCloudName);
+    keyVault.AddBridgedSecret("Cloudinary--ApiKey", cloudinaryApiKey);
+    keyVault.AddBridgedSecret("Cloudinary--ApiSecret", cloudinaryApiSecret);
+    keyVault.AddBridgedSecret("SocialConnections--GitHub--ClientId", socialGithubClientId);
+    keyVault.AddBridgedSecret("SocialConnections--GitHub--ClientSecret", socialGithubClientSecret);
+    keyVault.AddBridgedSecret("SocialConnections--LinkedIn--ClientId", socialLinkedInClientId);
+    keyVault.AddBridgedSecret("SocialConnections--LinkedIn--ClientSecret", socialLinkedInClientSecret);
 }
 
 
@@ -114,9 +122,6 @@ builder.EnforceProductionSecurityPolicies(
 
 var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", launchProfileName: null)
     .WithHttpEndpoint(port: 8080, targetPort: 8080, isProxied: false).WithReference(sql)
-    .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
-    .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
-    .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
     .WithEnvironment("ASPNETCORE_PREVENTHOSTINGSTARTUP", "true")
     .WaitFor(sql)
     .WaitForCompletion(migrationService)
@@ -145,7 +150,10 @@ var backendHttpEndpoint = backend.GetEndpoint("http");
 if (builder.IsLocalDevelopment())
 {
     backend
-        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+        .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
+        .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
+        .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret);
     backend.ConfigureSeedCommands(backendHttpEndpoint);
 }
 

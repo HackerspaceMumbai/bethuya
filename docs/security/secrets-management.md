@@ -68,6 +68,10 @@ flowchart TD
    - `Parameters:cloudinary-cloud-name`
    - `Parameters:cloudinary-api-key`
    - `Parameters:cloudinary-api-secret`
+   - `Parameters:oauth-github-clientid`
+   - `Parameters:oauth-github-clientsecret`
+   - `Parameters:oauth-linkedin-clientid`
+   - `Parameters:oauth-linkedin-clientsecret`
 2. Set app-project secrets directly only for values that are not routed through AppHost parameters.
 3. Optionally override with environment variables.
 4. Run app normally; no Azure auth required.
@@ -76,6 +80,7 @@ flowchart TD
 
 - Cloudinary secrets are optional for no-cover event saves. If an organizer attempts a cover upload without them, `/api/images/direct-upload/session` returns `503 Image uploads are unavailable` and the UI shows an actionable configuration message.
 - In local development, Cloudinary config flows from AppHost parameters into `backend` environment variables. In publish mode, AppHost seeds `Cloudinary--CloudName`, `Cloudinary--ApiKey`, and `Cloudinary--ApiSecret` into the provisioned Key Vault resource and the hosted backend reads them through Key Vault.
+- In publish mode, AppHost also seeds `SocialConnections--GitHub--ClientId`, `SocialConnections--GitHub--ClientSecret`, `SocialConnections--LinkedIn--ClientId`, and `SocialConnections--LinkedIn--ClientSecret` into Key Vault for hosted web startup validation.
 - Sessionize can read public event endpoints without `Sessionize:ApiToken`; set the token only when the Sessionize event requires private/API-token access.
 - `GitHubEvents:Token` should be a fine-grained token scoped only to the event artifact repository and branch.
 

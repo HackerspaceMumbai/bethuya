@@ -7,7 +7,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using static Microsoft.Extensions.Hosting.KeyVaultStartupValidationHostedService;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -53,7 +52,7 @@ public static class KeyVaultConfigurationExtensions
             ExcludeInteractiveBrowserCredential = true
         });
         builder.Services.AddSingleton<TokenCredential>(_ => credential);
-        builder.Configuration.AddAzureKeyVault(keyVaultUri, credential, new SingleHyphenSecretManager());
+        builder.Configuration.AddAzureKeyVault(keyVaultUri, credential, new DoubleHyphenSecretManager());
 
         builder.Services.AddSingleton(new KeyVaultStartupValidationContext(
             keyVaultUri,
@@ -151,19 +150,6 @@ internal sealed partial class KeyVaultStartupValidationHostedService(
         }
     }
 
-    /// <summary>
-    /// Intercepts secrets pulled from Key Vault and formats the key for .NET IConfiguration.
-    /// </summary>
-    public sealed class SingleHyphenSecretManager : KeyVaultSecretManager
-    {
-        public override string GetKey(KeyVaultSecret secret)
-        {
-            // Translates single hyphens to colons for hierarchical configuration mapping.
-            // Example: "cloudinary-cloudname" -> "cloudinary:cloudname"
-            return secret.Name.Replace("-", ":");
-        }
-    }
-
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     [LoggerMessage(
@@ -172,4 +158,15 @@ internal sealed partial class KeyVaultStartupValidationHostedService(
     private static partial void LogValidatingHostedSecretConfiguration(
         ILogger logger,
         string keyVaultHost);
+}
+
+/// <summary>
+/// Intercepts secrets pulled from Key Vault and formats hierarchical keys for .NET configuration.
+/// </summary>
+public sealed class DoubleHyphenSecretManager : KeyVaultSecretManager
+{
+    public override string GetKey(KeyVaultSecret secret)
+    {
+        return secret.Name.Replace("--", ConfigurationPath.KeyDelimiter, StringComparison.Ordinal);
+    }
 }
