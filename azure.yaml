@@ -8,7 +8,8 @@
 #   1. azd auth login
 #   2. azd env new production
 #   3. azd env set AZURE_LOCATION eastus (or preferred region)
-#   4. azd up          # provisions infrastructure + deploys apps
+#   4. azd env set Parameters__postgres_password <stable-strong-password>
+#   5. azd up          # provisions infrastructure + deploys apps
 #
 # Subsequent deploys:
 #   azd deploy         # deploy only (infrastructure already provisioned)
@@ -17,6 +18,8 @@
 #   AZURE_CLIENT_ID      — app registration with federated GitHub OIDC credential
 #   AZURE_TENANT_ID      — Azure AD tenant
 #   AZURE_SUBSCRIPTION_ID
+#   POSTGRES_PASSWORD    — stable value mapped to Aspire parameter `postgres-password`
+#                          via env key `Parameters__postgres_password`
 #
 # Required GitHub repository variables:
 #   AZURE_ENV_NAME       — e.g. "production"
@@ -24,6 +27,9 @@
 #
 # App runtime secrets are seeded and rotated directly in Azure Key Vault.
 # They are intentionally not passed through AZD manifests or workflow YAML.
+# The Postgres container password is the exception: the official image only applies
+# POSTGRES_PASSWORD when initializing an empty data directory, so the same
+# Parameters__postgres_password value must be used on every provision/deploy run.
 
 name: bethuya
 

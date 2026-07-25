@@ -22,6 +22,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Fix:** Added structured server telemetry (log fields + trace tags/events) in social auth start/remote-failure/complete paths and added exception logging in the social onboarding page while keeping end-user messages generic.
 - **Prevention:** Any redirect-based auth/error path must log a sanitized failure envelope before redirecting, and UI exception catches in critical onboarding flows must log context instead of swallowing faults.
 
+## [2026-07-23] Aspire-generated Postgres password must be pinned across azd provision and deploy
+- **What happened:** Azure deployment hit `password authentication failed for user "postgres"` even though the AppHost passed the same generated `postgres-password` parameter to the Postgres container, backend, and migration job.
+- **Root cause:** The GitHub Actions workflow ran `azd provision --no-prompt` and `azd deploy --no-prompt` without explicitly supplying `Parameters__postgres_password`, so Aspire/azd could resolve different generated secret values between the two steps and across later runs. Once the Postgres image initializes its data directory, changing `POSTGRES_PASSWORD` in later deployments does not update the stored database role password.
+- **Fix:** Thread a stable `Parameters__postgres_password` value through every provision/deploy invocation and document the one-time requirement to either reset the existing database volume or manually align the database user's password with the configured secret.
+- **Prevention:** Any Aspire parameter that backs stateful container initialization must be pinned explicitly in azd environments and CI env vars; never rely on generated defaults across separate hosted deployment steps.
+
 ## [2026-07-22] Aspire model resource names cannot contain consecutive hyphens (Key Vault secret names can)
 - **What happened:** The first bridge helper derived internal Aspire resource names directly from canonical Key Vault secret names (for example, `kv-cloudinary--cloudname`) and `aspire deploy --publisher manifest` failed before deployment.
 - **Root cause:** Aspire model resource names reject consecutive hyphens; Key Vault secret names do allow them. These are distinct naming systems with different constraints.

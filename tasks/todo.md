@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-23] Stabilize Azure Postgres deployment password
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Prevent Aspire/azd Azure deployments from rotating the containerized Postgres password between provision and deploy steps by threading a stable `Parameters__postgres_password` value through the workflow and deployment guidance, and document the one-time existing-environment password reset/sync requirement.
+- **Acceptance:** Azure deployment guidance and workflow both require the same stable Postgres password parameter for provision/deploy, and the repo documents that existing initialized databases must either be reset or updated to the configured password before the new workflow can succeed.
+
 ## [2026-07-22] Bridge Aspire parameters to hosted Key Vault secrets
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
