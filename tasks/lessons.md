@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-07-25] Redirect-only OAuth error handling hides operational root cause
+- **What happened:** Social OAuth failures on `/registration/social` showed a user-visible error state, but Aspire logs/traces often lacked actionable server-side context for why the callback failed.
+- **Root cause:** The auth flow mapped failures to query-string error codes and redirected immediately without emitting structured telemetry at each failure seam; the UI also had broad catches with no logging.
+- **Fix:** Added structured server telemetry (log fields + trace tags/events) in social auth start/remote-failure/complete paths and added exception logging in the social onboarding page while keeping end-user messages generic.
+- **Prevention:** Any redirect-based auth/error path must log a sanitized failure envelope before redirecting, and UI exception catches in critical onboarding flows must log context instead of swallowing faults.
+
 ## [2026-07-22] Aspire model resource names cannot contain consecutive hyphens (Key Vault secret names can)
 - **What happened:** The first bridge helper derived internal Aspire resource names directly from canonical Key Vault secret names (for example, `kv-cloudinary--cloudname`) and `aspire deploy --publisher manifest` failed before deployment.
 - **Root cause:** Aspire model resource names reject consecutive hyphens; Key Vault secret names do allow them. These are distinct naming systems with different constraints.
