@@ -769,6 +769,30 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
         await Assert.That(callbackResponse.Headers.Location!.ToString()).Contains("socialProvider=linkedin");
     }
 
+    [Test]
+    public async Task SocialConnections_UnsupportedProviderStart_RedirectsWithProviderNotSupported()
+    {
+        var builder = CreateBuilderWithLinkedInSocialConnections();
+        builder.AddSocialProfileConnectionAuthentication();
+
+        var app = await StartAppAsync(builder, app =>
+        {
+            app.UseAuthentication();
+            app.MapSocialProfileConnectionEndpoints();
+        });
+
+        var client = app.GetTestClient();
+        _clients.Add(client);
+
+        using var response = await client.GetAsync("/authentication/social/unknown/start?returnUrl=%2Fregistration%2Fsocial");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(response.Headers.Location).IsNotNull();
+        await Assert.That(response.Headers.Location!.ToString()).Contains("/registration/social");
+        await Assert.That(response.Headers.Location!.ToString()).Contains("socialError=social-provider-not-supported");
+        await Assert.That(response.Headers.Location!.ToString()).Contains("socialProvider=unknown");
+    }
+
     public async ValueTask DisposeAsync()
     {
         foreach (var client in _clients)

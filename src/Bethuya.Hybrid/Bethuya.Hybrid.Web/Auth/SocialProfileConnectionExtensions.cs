@@ -175,7 +175,20 @@ public static class SocialProfileConnectionExtensions
                 _ => null
             };
 
-            if (scheme is null || !IsConfigured(normalizedProvider, options))
+            if (scheme is null)
+            {
+                RecordSocialFailureTelemetry(
+                    logger,
+                    normalizedProvider,
+                    "social-provider-not-supported",
+                    "start",
+                    returnUrl,
+                    null);
+                context.Response.Redirect(BuildReturnUrl(returnUrl, "social-provider-not-supported", normalizedProvider));
+                return;
+            }
+
+            if (!IsConfigured(normalizedProvider, options))
             {
                 RecordSocialFailureTelemetry(
                     logger,
@@ -387,7 +400,7 @@ public static class SocialProfileConnectionExtensions
     {
         var errorCode = ResolveRemoteFailureErrorCode(provider, context);
         var returnUrl = ExtractReturnUrl(context.Properties?.RedirectUri);
-        var providerError = context.Request.Query["error"].ToString();
+        var providerError = NormalizeProviderError(context.Request.Query["error"].ToString());
 
         RecordSocialFailureTelemetry(
             GetLogger(context.HttpContext),
@@ -445,6 +458,17 @@ public static class SocialProfileConnectionExtensions
         => context.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("Bethuya.Hybrid.Web.Auth.SocialProfileConnection");
 
+    private static string NormalizeProviderError(string? providerError)
+    {
+        if (string.IsNullOrWhiteSpace(providerError))
+        {
+            return "none";
+        }
+
+        var trimmed = providerError.Trim();
+        return trimmed.Length > 64 ? trimmed[..64] : trimmed;
+    }
+
     private static void RecordSocialFailureTelemetry(
         ILogger logger,
         string provider,
@@ -456,6 +480,7 @@ public static class SocialProfileConnectionExtensions
     {
         var normalizedProvider = string.IsNullOrWhiteSpace(provider) ? "unknown" : provider;
         var normalizedReturnPath = NormalizeReturnUrl(returnUrl);
+        var normalizedProviderError = NormalizeProviderError(providerError);
         var traceId = Activity.Current?.TraceId.ToString();
 
         _socialFailureLog(
@@ -463,7 +488,7 @@ public static class SocialProfileConnectionExtensions
             stage,
             normalizedProvider,
             errorCode,
-            providerError ?? "none",
+            normalizedProviderError,
             normalizedReturnPath,
             traceId ?? "none",
             exception);
@@ -473,7 +498,7 @@ public static class SocialProfileConnectionExtensions
         Activity.Current?.SetTag("bethuya.social.error_code", errorCode);
         Activity.Current?.SetTag("bethuya.social.stage", stage);
         Activity.Current?.SetTag("bethuya.social.return_path", normalizedReturnPath);
-        Activity.Current?.SetTag("bethuya.social.provider_error", providerError ?? "none");
+        Activity.Current?.SetTag("bethuya.social.provider_error", normalizedProviderError);
         Activity.Current?.AddEvent(new ActivityEvent(
             "bethuya.social.connection.failure",
             tags: new ActivityTagsCollection
