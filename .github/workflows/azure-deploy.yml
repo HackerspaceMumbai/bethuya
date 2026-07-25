@@ -7,7 +7,8 @@ name: Azure Deploy
 #   AZURE_CLIENT_ID          — app registration with GitHub OIDC federated credential
 #   AZURE_TENANT_ID          — Azure AD tenant ID
 #   AZURE_SUBSCRIPTION_ID    — target Azure subscription
-#   POSTGRES_PASSWORD        — stable Aspire `postgres-password` parameter value shared by provision + deploy
+#   POSTGRES_PASSWORD        — stable value mapped to Aspire parameter `postgres-password`
+#                              via env key `Parameters__postgres_password` during azd runs
 #
 # Required GitHub repository VARIABLES:
 #   AZURE_ENV_NAME           — azd environment name, e.g. "production"
