@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @layout OnboardingLayout
 @attribute [Authorize]
+@using System.Diagnostics
 @using Microsoft.AspNetCore.Components
 @using Bethuya.Hybrid.Shared.Services
 @using BlazorBlueprint.Components
@@ -456,10 +457,17 @@
         }
 
         _lastLoggedSocialErrorSignature = signature;
+        var traceId = Activity.Current?.TraceId.ToString() ?? "none";
+
         Logger.LogWarning(
-            "Social onboarding page loaded with social error query. Provider: {Provider}. ErrorCode: {ErrorCode}.",
+            "Social onboarding page loaded with social error query. Provider: {Provider}. ErrorCode: {ErrorCode}. TraceId: {TraceId}.",
             normalizedProvider ?? "none",
-            normalizedSocialErrorCode);
+            normalizedSocialErrorCode,
+            traceId);
+
+        Activity.Current?.SetStatus(ActivityStatusCode.Error, normalizedSocialErrorCode);
+        Activity.Current?.SetTag("bethuya.social.page_error_code", normalizedSocialErrorCode);
+        Activity.Current?.SetTag("bethuya.social.page_provider", normalizedProvider ?? "none");
     }
 
     private static string NormalizeSocialErrorCodeForTelemetry(string? socialErrorCode)
