@@ -400,7 +400,7 @@ public static class SocialProfileConnectionExtensions
     {
         var errorCode = ResolveRemoteFailureErrorCode(provider, context);
         var returnUrl = ExtractReturnUrl(context.Properties?.RedirectUri);
-        var providerError = NormalizeProviderError(context.Request.Query["error"].ToString());
+        var providerError = NormalizeProviderError(context.Request.Query["error"].ToString(), context.Failure);
 
         RecordSocialFailureTelemetry(
             GetLogger(context.HttpContext),
@@ -458,15 +458,33 @@ public static class SocialProfileConnectionExtensions
         => context.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("Bethuya.Hybrid.Web.Auth.SocialProfileConnection");
 
-    private static string NormalizeProviderError(string? providerError)
+    private static string NormalizeProviderError(string? providerError, Exception? failureException = null)
     {
-        if (string.IsNullOrWhiteSpace(providerError))
+        if (!string.IsNullOrWhiteSpace(providerError))
+        {
+            var trimmed = providerError.Trim();
+            return trimmed.Length > 64 ? trimmed[..64] : trimmed;
+        }
+
+        // ASP.NET OAuth formats token-exchange failures as an exception rather than an `error`
+        // query param redirect. Parse "OAuth token endpoint failure: {error_code};Description=...;Uri=..."
+        // to surface the actual OAuth error code (e.g. incorrect_client_credentials) instead of "none".
+        var msg = failureException?.Message;
+        if (string.IsNullOrWhiteSpace(msg))
         {
             return "none";
         }
 
-        var trimmed = providerError.Trim();
-        return trimmed.Length > 64 ? trimmed[..64] : trimmed;
+        var colonIdx = msg.IndexOf(':', StringComparison.Ordinal);
+        if (colonIdx < 0 || colonIdx >= msg.Length - 1)
+        {
+            return "none";
+        }
+
+        var afterColon = msg[(colonIdx + 1)..].Trim();
+        var semiIdx = afterColon.IndexOf(';', StringComparison.Ordinal);
+        var errorToken = semiIdx > 0 ? afterColon[..semiIdx].Trim() : afterColon;
+        return errorToken.Length > 64 ? errorToken[..64] : errorToken;
     }
 
     private static void RecordSocialFailureTelemetry(
