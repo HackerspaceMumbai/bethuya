@@ -606,6 +606,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 <!-- Add new tasks here -->
 
+## [2026-07-25] Surface social OAuth failures in Aspire telemetry
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Ensure social connection failures in `/authentication/social/*` and `/registration/social` do not fail silently by emitting structured logs + trace tags/events that appear in Aspire dashboard, while keeping user-facing error copy generic.
+- **Acceptance:** ✅ Added structured social failure telemetry in `SocialProfileConnectionExtensions` for start-time misconfiguration, callback auth failure, remote provider failure, unsupported provider, and incomplete claim payload paths. ✅ Each failure now records sanitized log fields (provider, stage, error code, provider error, return path, trace id) and tags/events on the active request span (`bethuya.social.*`) so failures are visible in Aspire logs and traces. ✅ Updated `SocialProfileConnections.razor` to log social error-query context and previously silent load/save exceptions while preserving existing user-friendly error copy. ✅ `dotnet build src\\Bethuya.Hybrid\\Bethuya.Hybrid.Web\\Bethuya.Hybrid.Web.csproj --no-restore -v minimal` passed. ✅ `dotnet test tests\\Hackmum.Bethuya.Tests\\Hackmum.Bethuya.Tests.csproj --no-restore -v minimal` passed (229/229).
+
 ## [2026-07-24] Aspire Secrets Audit + aspire-secrets Skill
 - **Status:** done
 - **Agent/Owner:** Tank (DevOps & Infrastructure)

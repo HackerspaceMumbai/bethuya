@@ -5,8 +5,10 @@
 @using Microsoft.AspNetCore.Components
 @using Bethuya.Hybrid.Shared.Services
 @using BlazorBlueprint.Components
+@using Microsoft.Extensions.Logging
 @inject IProfileApi ProfileApi
 @inject NavigationManager Navigation
+@inject ILogger<SocialProfileConnections> Logger
 
 <PageTitle>Verify Social Profiles — Bethuya</PageTitle>
 
@@ -210,6 +212,7 @@
     private string? _loadErrorMessage;
     private string? _actionErrorMessage;
     private string? _socialErrorMessage;
+    private string? _lastLoggedSocialErrorSignature;
 
     private bool IsLinkedInConnected => !string.IsNullOrWhiteSpace(_model.LinkedInMemberId);
     private bool IsGitHubConnected => !string.IsNullOrWhiteSpace(_model.GitHubLogin) && !string.IsNullOrWhiteSpace(_model.GitHubProfileUrl);
@@ -225,6 +228,7 @@
     {
         ApplyQueryValues();
         _socialErrorMessage = ResolveSocialErrorMessage();
+        LogSocialErrorContextIfNeeded();
     }
 
     protected override async Task OnInitializedAsync()
@@ -249,8 +253,14 @@
 
             ApplyQueryValues();
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            var normalizedSocialErrorCode = NormalizeSocialErrorCodeForTelemetry(SocialErrorQuery);
+            Logger.LogError(
+                exception,
+                "Failed to load social onboarding status/profile. ProviderQuery: {ProviderQuery}. SocialErrorQuery: {SocialErrorQuery}.",
+                GetNormalizedSocialProvider() ?? "none",
+                normalizedSocialErrorCode);
             _loadErrorMessage = "We couldn't load this onboarding step. Refresh the page before continuing.";
         }
         finally
@@ -282,8 +292,16 @@
 
             Navigation.NavigateTo("/registration/aide");
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            var normalizedSocialErrorCode = NormalizeSocialErrorCodeForTelemetry(SocialErrorQuery);
+            Logger.LogError(
+                exception,
+                "Failed to save social onboarding profile. LinkedInConnected: {LinkedInConnected}. GitHubConnected: {GitHubConnected}. ProviderQuery: {ProviderQuery}. SocialErrorQuery: {SocialErrorQuery}.",
+                IsLinkedInConnected,
+                IsGitHubConnected,
+                GetNormalizedSocialProvider() ?? "none",
+                normalizedSocialErrorCode);
             _actionErrorMessage = "Failed to save your verified social profiles. Please try again.";
         }
         finally
@@ -419,6 +437,43 @@
             "github" => "github",
             "linkedin" => "linkedin",
             _ => null
+        };
+
+    private void LogSocialErrorContextIfNeeded()
+    {
+        var normalizedProvider = GetNormalizedSocialProvider();
+        var normalizedSocialErrorCode = NormalizeSocialErrorCodeForTelemetry(SocialErrorQuery);
+        if (string.Equals(normalizedSocialErrorCode, "none", StringComparison.Ordinal))
+        {
+            _lastLoggedSocialErrorSignature = null;
+            return;
+        }
+
+        var signature = $"{normalizedProvider ?? "none"}|{normalizedSocialErrorCode}";
+        if (string.Equals(signature, _lastLoggedSocialErrorSignature, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _lastLoggedSocialErrorSignature = signature;
+        Logger.LogWarning(
+            "Social onboarding page loaded with social error query. Provider: {Provider}. ErrorCode: {ErrorCode}.",
+            normalizedProvider ?? "none",
+            normalizedSocialErrorCode);
+    }
+
+    private static string NormalizeSocialErrorCodeForTelemetry(string? socialErrorCode)
+        => socialErrorCode?.Trim().ToLowerInvariant() switch
+        {
+            null or "" => "none",
+            "social-provider-not-configured" => "social-provider-not-configured",
+            "social-provider-not-supported" => "social-provider-not-supported",
+            "social-connect-failed" => "social-connect-failed",
+            "social-connect-cancelled" => "social-connect-cancelled",
+            "social-provider-scope-not-authorized" => "social-provider-scope-not-authorized",
+            "github-connect-incomplete" => "github-connect-incomplete",
+            "linkedin-connect-incomplete" => "linkedin-connect-incomplete",
+            _ => "unknown"
         };
 
     private string? GetNormalizedLinkedInProfileUrl()
