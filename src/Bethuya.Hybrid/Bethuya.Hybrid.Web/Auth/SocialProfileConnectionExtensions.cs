@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
@@ -12,6 +13,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+[assembly: InternalsVisibleTo("Hackmum.Bethuya.Tests")]
 
 namespace Bethuya.Hybrid.Web.Auth;
 
@@ -458,7 +461,7 @@ public static class SocialProfileConnectionExtensions
         => context.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("Bethuya.Hybrid.Web.Auth.SocialProfileConnection");
 
-    private static string NormalizeProviderError(string? providerError, Exception? failureException = null)
+    internal static string NormalizeProviderError(string? providerError, Exception? failureException = null)
     {
         if (!string.IsNullOrWhiteSpace(providerError))
         {
@@ -467,23 +470,19 @@ public static class SocialProfileConnectionExtensions
         }
 
         // ASP.NET OAuth formats token-exchange failures as an exception rather than an `error`
-        // query param redirect. Parse "OAuth token endpoint failure: {error_code};Description=...;Uri=..."
-        // to surface the actual OAuth error code (e.g. incorrect_client_credentials) instead of "none".
+        // query param redirect. Guard on the known prefix before parsing to avoid mis-extracting
+        // tokens from unrelated exception formats that also contain colons.
+        // Format: "OAuth token endpoint failure: {error_code};Description=...;Uri=..."
+        const string oauthFailurePrefix = "OAuth token endpoint failure: ";
         var msg = failureException?.Message;
-        if (string.IsNullOrWhiteSpace(msg))
+        if (string.IsNullOrWhiteSpace(msg) || !msg.StartsWith(oauthFailurePrefix, StringComparison.OrdinalIgnoreCase))
         {
             return "none";
         }
 
-        var colonIdx = msg.IndexOf(':', StringComparison.Ordinal);
-        if (colonIdx < 0 || colonIdx >= msg.Length - 1)
-        {
-            return "none";
-        }
-
-        var afterColon = msg[(colonIdx + 1)..].Trim();
-        var semiIdx = afterColon.IndexOf(';', StringComparison.Ordinal);
-        var errorToken = semiIdx > 0 ? afterColon[..semiIdx].Trim() : afterColon;
+        var afterPrefix = msg[oauthFailurePrefix.Length..];
+        var semiIdx = afterPrefix.IndexOf(';', StringComparison.Ordinal);
+        var errorToken = semiIdx > 0 ? afterPrefix[..semiIdx].Trim() : afterPrefix.Trim();
         return errorToken.Length > 64 ? errorToken[..64] : errorToken;
     }
 
