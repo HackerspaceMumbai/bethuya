@@ -3,6 +3,7 @@ using System;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(BethuyaDbContext))]
-    partial class BethuyaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260731160539_MentorshipOptIn")]
+    partial class MentorshipOptIn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -851,10 +854,10 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
 
                     b.HasIndex("EventId");
 
-                    b.HasIndex("CommunityMemberId", "OccurredAt");
-
-                    b.HasIndex("CommunityMemberId", "Connector", "ProvenanceKey")
+                    b.HasIndex("ProvenanceKey")
                         .IsUnique();
+
+                    b.HasIndex("CommunityMemberId", "OccurredAt");
 
                     b.ToTable("ParticipationLedgerEntries");
                 });

@@ -7,7 +7,6 @@ using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hackmum.Bethuya.Tests.Services;
 
@@ -25,7 +24,7 @@ public sealed class CommunityRecommendationServiceTests
         activity.Start();
 
         var draft = await recommendationService.DraftMemberGrowthOpportunityAsync(
-            new DraftMemberGrowthRecommendationRequest(LookbackDays: 90),
+            new DraftMemberGrowthRecommendationRequest(LookbackDays: 90, RequestedBy: "organizer@test"),
             requestedBy: "organizer@test");
 
         var persistedDecision = await db.Decisions.SingleAsync(decision => decision.Id == draft.DraftId);
@@ -47,13 +46,12 @@ public sealed class CommunityRecommendationServiceTests
         var recommendationService = CreateService(db);
 
         var draft = await recommendationService.DraftWeeklyBriefingAsync(
-            new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90),
+            new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90, RequestedBy: "organizer@test"),
             requestedBy: "organizer@test");
 
         var approved = await recommendationService.ApproveDraftAsync(
             draft.DraftId,
-            approver: "lead@hackmum.com",
-            new ApproveRecommendationDraftRequest(ApprovalNotes: "Publish this briefing"));
+            new ApproveRecommendationDraftRequest(ApprovedBy: "lead@hackmum.com", ApprovalNotes: "Publish this briefing"));
 
         var persistedDecision = await db.Decisions.SingleAsync(decision => decision.Id == draft.DraftId);
 
@@ -66,8 +64,7 @@ public sealed class CommunityRecommendationServiceTests
     private static CommunityRecommendationService CreateService(BethuyaDbContext db)
     {
         var passportService = new CommunityPassportService(db);
-        var journeyReadModelService = new CommunityJourneyReadModelService(
-            db, passportService, NullLogger<CommunityJourneyReadModelService>.Instance);
+        var journeyReadModelService = new CommunityJourneyReadModelService(db, passportService);
         var decisionRepository = new DecisionRepository(db);
         return new CommunityRecommendationService(journeyReadModelService, decisionRepository);
     }

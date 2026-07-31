@@ -233,8 +233,7 @@ public static class CommunityPassportEndpoints
             {
                 var approved = await service.ApproveDraftAsync(
                     draftId,
-                    approver,
-                    request,
+                    new ApproveRecommendationDraftRequest(approver, request.ApprovalNotes),
                     ct);
                 return Results.Ok(approved);
             }

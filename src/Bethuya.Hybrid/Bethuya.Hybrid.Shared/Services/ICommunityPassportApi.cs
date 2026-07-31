@@ -330,20 +330,21 @@ public sealed record LeadershipFunnelReadModelDto(
 /// Request payload for drafting member-growth opportunity recommendations.
 /// </summary>
 public sealed record DraftMemberGrowthRecommendationDto(
-    int LookbackDays = 90);
+    int LookbackDays = 90,
+    string? RequestedBy = null);
 
 /// <summary>
 /// Request payload for drafting weekly community briefings.
 /// </summary>
 public sealed record DraftWeeklyCommunityBriefingDto(
-    int LookbackDays = 90);
+    int LookbackDays = 90,
+    string? RequestedBy = null);
 
 /// <summary>
 /// Request payload for approving a recommendation draft.
-/// ApprovedBy is always derived from the authenticated principal server-side;
-/// only optional notes are accepted from the caller.
 /// </summary>
 public sealed record ApproveRecommendationDraftDto(
+    string ApprovedBy,
     string? ApprovalNotes = null);
 
 /// <summary>

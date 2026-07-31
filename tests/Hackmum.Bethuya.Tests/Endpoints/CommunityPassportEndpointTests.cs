@@ -18,10 +18,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Tests.Endpoints;
 
@@ -45,7 +43,11 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
         builder.Services
             .AddAuthentication("Test")
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
-        builder.AddBethuyaAuthorization();
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy("RequireOrganizer", policy => policy.RequireRole("Organizer", "Admin"));
+            options.AddPolicy("RequireConnectorIngestion", policy => policy.RequireRole("Organizer", "Admin"));
+        });
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddDbContext<BethuyaDbContext>(options =>
@@ -208,7 +210,7 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
     {
         var response = await _client.PostAsJsonAsync(
             "/api/community/passport/recommendations/member-growth",
-            new DraftMemberGrowthRecommendationRequest(LookbackDays: 90));
+            new DraftMemberGrowthRecommendationRequest(LookbackDays: 90, RequestedBy: "organizer@test"));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var draft = await response.Content.ReadFromJsonAsync<RecommendationDraftResponse>(JsonOptions);
@@ -224,7 +226,7 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
     {
         var draftResponse = await _client.PostAsJsonAsync(
             "/api/community/passport/recommendations/weekly-briefing",
-            new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90));
+            new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90, RequestedBy: "organizer@test"));
         await Assert.That(draftResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var draft = await draftResponse.Content.ReadFromJsonAsync<RecommendationDraftResponse>(JsonOptions);
@@ -232,7 +234,7 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
 
         var approveResponse = await _client.PostAsJsonAsync(
             $"/api/community/passport/recommendations/{draft!.DraftId}/approve",
-            new ApproveRecommendationDraftRequest(ApprovalNotes: "Looks good"));
+            new ApproveRecommendationDraftRequest(ApprovedBy: "organizer@test", ApprovalNotes: "Looks good"));
         await Assert.That(approveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var approved = await approveResponse.Content.ReadFromJsonAsync<RecommendationDraftResponse>(JsonOptions);

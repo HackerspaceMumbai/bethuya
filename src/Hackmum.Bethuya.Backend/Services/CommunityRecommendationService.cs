@@ -51,10 +51,14 @@ public sealed class CommunityRecommendationService(
 
     public async Task<RecommendationDraftResponse> ApproveDraftAsync(
         Guid draftId,
-        string approver,
         ApproveRecommendationDraftRequest request,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(request.ApprovedBy))
+        {
+            throw new InvalidOperationException("ApprovedBy is required.");
+        }
+
         var decision = await decisionRepository.GetByIdAsync(draftId, ct)
             ?? throw new KeyNotFoundException("Recommendation draft not found.");
 
@@ -71,21 +75,16 @@ public sealed class CommunityRecommendationService(
             return ToDraftResponse(decision.Id, decision.EntityType, payload);
         }
 
-        if (decision.Status != DecisionStatus.Pending)
-        {
-            throw new InvalidOperationException($"Recommendation draft is in status '{decision.Status}' and cannot be approved.");
-        }
-
         decision.Status = DecisionStatus.Applied;
         decision.Type = DecisionType.Approve;
         decision.Reason = string.IsNullOrWhiteSpace(request.ApprovalNotes)
-            ? $"Approved by {approver}"
-            : $"Approved by {approver}: {request.ApprovalNotes}";
+            ? $"Approved by {request.ApprovedBy}"
+            : $"Approved by {request.ApprovedBy}: {request.ApprovalNotes}";
 
         var approvedPayload = payload with
         {
             ApprovedAt = DateTimeOffset.UtcNow,
-            ApprovedBy = approver,
+            ApprovedBy = request.ApprovedBy,
             ApprovalNotes = request.ApprovalNotes
         };
         decision.Diff = JsonSerializer.Serialize(approvedPayload);
