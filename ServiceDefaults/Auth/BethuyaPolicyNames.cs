@@ -16,6 +16,12 @@ public static class BethuyaPolicyNames
     /// <summary>Requires <see cref="BethuyaRoleNames.Curator"/> (or <see cref="BethuyaRoleNames.Admin"/>).</summary>
     public const string RequireCurator = nameof(RequireCurator);
 
+    /// <summary>Requires <see cref="BethuyaRoleNames.Organizer"/> or <see cref="BethuyaRoleNames.Curator"/> (or <see cref="BethuyaRoleNames.Admin"/>).</summary>
+    public const string RequireOrganizerOrCurator = nameof(RequireOrganizerOrCurator);
+
+    /// <summary>Requires connector-ingestion authority via role or explicit ingestion claim.</summary>
+    public const string RequireConnectorIngestion = nameof(RequireConnectorIngestion);
+
     /// <summary>Requires any authenticated platform role.</summary>
     public const string RequireAttendee = nameof(RequireAttendee);
 }

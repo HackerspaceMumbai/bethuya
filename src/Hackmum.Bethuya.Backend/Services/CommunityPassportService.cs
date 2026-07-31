@@ -39,6 +39,12 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
         return await BuildPassportAsync(member, ct);
     }
 
+    /// <summary>
+    /// Ensures a community member profile exists for the subject and returns the normalized member aggregate.
+    /// </summary>
+    public Task<CommunityMember> EnsureMemberProvisionedAsync(CommunitySubjectContext subject, CancellationToken ct = default)
+        => GetOrProvisionMemberAsync(subject, ct);
+
     public async Task<PassportPrivacyResponse> UpdatePrivacyAsync(
         CommunitySubjectContext subject,
         UpdateCommunityPassportPrivacyRequest request,

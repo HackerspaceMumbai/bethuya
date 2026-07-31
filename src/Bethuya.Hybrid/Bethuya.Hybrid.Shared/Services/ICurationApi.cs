@@ -29,7 +29,8 @@ public sealed record CurationDashboardDto(
     FairnessDimensionProgressDto GenderProgress,
     IReadOnlyList<FairnessDimensionProgressDto> Dimensions,
     IReadOnlyList<CurationRegistrantDto> Registrants,
-    IReadOnlyList<string> CurationInsights);
+    IReadOnlyList<string> CurationInsights,
+    OpportunityEngineDto OpportunityEngine);
 
 public sealed record FairnessDimensionProgressDto(
     string Dimension,
@@ -93,6 +94,50 @@ public sealed record CurationRecommendationDto(
     string Summary,
     IReadOnlyList<string> Highlights,
     string? AssessmentText = null);
+
+public sealed record OpportunityEngineDto(
+    IReadOnlyList<VolunteerRoleDefinitionDto> VolunteerRoles,
+    IReadOnlyList<VolunteerShiftDefinitionDto> VolunteerShifts,
+    IReadOnlyList<ShiftAssignmentRuleDto> ShiftAssignmentRules,
+    IReadOnlyList<OpportunityCandidateDto> Candidates,
+    IReadOnlyList<OpportunityConflictDto> Conflicts,
+    IReadOnlyList<string> OrganizerWorkflow);
+
+public sealed record VolunteerRoleDefinitionDto(
+    string RoleKey,
+    string Label,
+    string Summary,
+    int RequiredVolunteersPerShift,
+    IReadOnlyList<string> SupportedShiftKeys,
+    IReadOnlyList<string> PreferredDimensionKeys);
+
+public sealed record VolunteerShiftDefinitionDto(
+    string ShiftKey,
+    string Label,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    int RequiredVolunteers);
+
+public sealed record ShiftAssignmentRuleDto(
+    string RuleKey,
+    string Description,
+    string Severity);
+
+public sealed record OpportunityCandidateDto(
+    Guid RegistrationId,
+    string FullName,
+    string SuggestedRoleKey,
+    string SuggestedShiftKey,
+    double Score,
+    IReadOnlyList<string> Rationale);
+
+public sealed record OpportunityConflictDto(
+    string ConflictKey,
+    Guid? RegistrationId,
+    string? RoleKey,
+    string? ShiftKey,
+    string Severity,
+    string Message);
 
 public sealed record ApplyCurationDecisionDto(
     string Action,

@@ -18,11 +18,13 @@ public sealed class BethuyaDbContext(DbContextOptions<BethuyaDbContext> options)
     public DbSet<AttendeeProfile> AttendeeProfiles => Set<AttendeeProfile>();
     public DbSet<CommunityMember> CommunityMembers => Set<CommunityMember>();
     public DbSet<ExternalIdentity> ExternalIdentities => Set<ExternalIdentity>();
+    public DbSet<ParticipationLedgerEntry> ParticipationLedgerEntries => Set<ParticipationLedgerEntry>();
     public DbSet<PlanningCycle> PlanningCycles => Set<PlanningCycle>();
     public DbSet<PlannerDraft> PlannerDrafts => Set<PlannerDraft>();
     public DbSet<PlannerInvocationAudit> PlannerInvocationAudits => Set<PlannerInvocationAudit>();
     public DbSet<PublishedScheduleSnapshot> PublishedScheduleSnapshots => Set<PublishedScheduleSnapshot>();
     public DbSet<PendingImageUpload> PendingImageUploads => Set<PendingImageUpload>();
+    public DbSet<MentorProfile> MentorProfiles => Set<MentorProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

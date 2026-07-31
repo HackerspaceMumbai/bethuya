@@ -13,5 +13,6 @@ public sealed record ReporterRequest(
 public sealed record ReporterResponse(
     EventReport DraftReport,
     bool RequiresHumanApproval = true,
-    string? AgentReasoning = null)
+    string? AgentReasoning = null,
+    RecommendationEnvelope? Recommendation = null)
     : AgentResponse(RequiresHumanApproval, AgentReasoning);

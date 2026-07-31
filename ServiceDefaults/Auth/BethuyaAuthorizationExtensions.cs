@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,15 @@ public static class BethuyaAuthorizationExtensions
                 policy.RequireRole(BethuyaRoleNames.Admin, BethuyaRoleNames.Organizer))
             .AddPolicy(BethuyaPolicyNames.RequireCurator, policy =>
                 policy.RequireRole(BethuyaRoleNames.Admin, BethuyaRoleNames.Curator))
+            .AddPolicy(BethuyaPolicyNames.RequireOrganizerOrCurator, policy =>
+                policy.RequireRole(BethuyaRoleNames.Admin, BethuyaRoleNames.Organizer, BethuyaRoleNames.Curator))
+            .AddPolicy(BethuyaPolicyNames.RequireConnectorIngestion, policy =>
+                policy.RequireAssertion(context =>
+                    context.User.IsInRole(BethuyaRoleNames.Admin)
+                    || context.User.IsInRole(BethuyaRoleNames.Organizer)
+                    || context.User.HasClaim("connector.ingest", "true")
+                    || HasTokenizedClaimValue(context.User, "permissions", "connector.ingest")
+                    || HasTokenizedClaimValue(context.User, "scope", "connector.ingest")))
             .AddPolicy(BethuyaPolicyNames.RequireAttendee, policy =>
                 policy.RequireRole(
                     BethuyaRoleNames.Admin,
@@ -49,5 +59,33 @@ public static class BethuyaAuthorizationExtensions
         }
 
         return builder;
+    }
+
+    private static bool HasTokenizedClaimValue(ClaimsPrincipal principal, string claimType, string expectedToken)
+    {
+        foreach (var claim in principal.FindAll(claimType))
+        {
+            var span = claim.Value.AsSpan();
+            while (!span.IsEmpty)
+            {
+                var separatorIndex = span.IndexOf(' ');
+                var token = separatorIndex < 0 ? span : span[..separatorIndex];
+                token = token.Trim();
+
+                if (!token.IsEmpty && token.Equals(expectedToken, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (separatorIndex < 0)
+                {
+                    break;
+                }
+
+                span = span[(separatorIndex + 1)..];
+            }
+        }
+
+        return false;
     }
 }
