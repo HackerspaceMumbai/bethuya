@@ -77,4 +77,9 @@ public sealed class CommunityMember
     /// Linked external identities associated with this member.
     /// </summary>
     public List<ExternalIdentity> ExternalIdentities { get; init; } = [];
+
+    /// <summary>
+    /// Unified participation ledger entries linked to this member.
+    /// </summary>
+    public List<ParticipationLedgerEntry> ParticipationLedgerEntries { get; init; } = [];
 }

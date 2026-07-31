@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-31] Build connector and participation ledger foundation (PR3)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Add external connector abstractions (Luma/Eventbrite/Meetup/GitHub/Forms/Discord) with reusable sync/webhook contracts, introduce a normalized participation ledger + member timeline projection seam, and expose backend APIs/services for ingesting normalized participation entries and reading timeline data while reusing current orchestration/retry/provenance conventions.
+- **Acceptance:** Connector and normalization contracts exist in Core, participation ledger persistence is added via EF model/config/migration, backend endpoints/services can ingest normalized entries and return member timeline projection, shared Refit contracts are wired for the new endpoints, and focused TUnit coverage validates normalization + timeline behavior.
+
 ## [2026-07-31] Build Bethuya vNext community foundation
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
