@@ -3,15 +3,17 @@ using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Hackmum.Bethuya.Backend.Services;
 
 /// <summary>
 /// Builds read-heavy lifecycle journey and community health projections from existing event, registration, passport, and ledger foundations.
 /// </summary>
-public sealed class CommunityJourneyReadModelService(
+public sealed partial class CommunityJourneyReadModelService(
     BethuyaDbContext db,
-    CommunityPassportService communityPassportService)
+    CommunityPassportService communityPassportService,
+    ILogger<CommunityJourneyReadModelService> logger)
 {
     private static readonly JourneyStageDefinition[] JourneyStages =
     [
@@ -25,6 +27,12 @@ public sealed class CommunityJourneyReadModelService(
     private const int MaxTimelineLimit = 100;
     private const int MinLookbackDays = 30;
     private const int MaxLookbackDays = 365;
+
+    /// <summary>
+    /// Normalizes email for consistent comparison across all code paths.
+    /// Uses invariant culture to avoid issues with region-specific char mappings (e.g., Turkish 'i' → 'İ').
+    /// </summary>
+    private static string NormalizeEmail(string email) => email.Trim().ToUpperInvariant();
 
     public async Task<CommunityJourneyProjectionResponse> GetJourneyProjectionAsync(
         CommunitySubjectContext subject,
@@ -151,15 +159,25 @@ public sealed class CommunityJourneyReadModelService(
                 : Math.Round(((double)(currentVolunteerSignals - previousVolunteerSignals) / previousVolunteerSignals) * 100d, 2));
 
         var membersByEmail = communityMembers
-            .GroupBy(member => member.Email.Trim().ToUpperInvariant())
-            .Select(group => group.First())
+            .GroupBy(member => NormalizeEmail(member.Email))
+            .ToList();
+
+        // Log warning if duplicate emails detected, then take the newest (highest ID, which reflects insertion order)
+        var duplicateEmails = membersByEmail.Where(g => g.Count() > 1).ToList();
+        if (duplicateEmails.Count > 0)
+        {
+            var emailList = string.Join(", ", duplicateEmails.Select(g => g.Key));
+            LogDuplicateEmails(duplicateEmails.Count, emailList);
+        }
+
+        var membersByEmailDict = membersByEmail
             .ToDictionary(
-                member => member.Email.Trim().ToUpperInvariant(),
-                member => new CommunityMemberLookup(member.Id, member.IsDiscoverableToCommunity),
+                group => group.Key,
+                group => new CommunityMemberLookup(group.OrderByDescending(m => m.Id).First().Id, group.OrderByDescending(m => m.Id).First().IsDiscoverableToCommunity),
                 StringComparer.Ordinal);
-        var interestedMemberIds = ResolveVolunteerInterestedMemberIds(registrations, ledgerEntries, membersByEmail);
-        var activeVolunteerIds = ResolveActiveVolunteerIds(currentWindowStart, now, registrations, ledgerEntries, membersByEmail);
-        var leadershipCandidateIds = ResolveLeadershipCandidateIds(registrations, ledgerEntries, membersByEmail);
+        var interestedMemberIds = ResolveVolunteerInterestedMemberIds(registrations, ledgerEntries, membersByEmailDict);
+        var activeVolunteerIds = ResolveActiveVolunteerIds(currentWindowStart, now, registrations, ledgerEntries, membersByEmailDict);
+        var leadershipCandidateIds = ResolveLeadershipCandidateIds(registrations, ledgerEntries, membersByEmailDict);
 
         var funnel = new LeadershipFunnelReadModelResponse(
             DiscoverableMembers: communityMembers.Count(member => member.IsDiscoverableToCommunity),
@@ -178,6 +196,7 @@ public sealed class CommunityJourneyReadModelService(
 
     private IQueryable<Registration> QueryRegistrationsByEmail(string email)
     {
+        var normalizedEmail = NormalizeEmail(email);
         var query = db.Registrations.AsNoTracking();
         if (db.Database.IsNpgsql())
         {
@@ -187,9 +206,8 @@ public sealed class CommunityJourneyReadModelService(
 
         // CA1862: We use ToUpperInvariant() comparison instead of string.Equals(..., StringComparison.OrdinalIgnoreCase)
         // because the latter is not translatable by EF Core on non-Npgsql relational providers (e.g., SQLite, SQL Server).
-        // ToUpperInvariant() is consistently translatable across all EF Core providers.
+        // ToUpperInvariant() is consistently translatable across all EF Core providers to SQL UPPER() function.
 #pragma warning disable CA1862
-        var normalizedEmail = email.Trim().ToUpperInvariant();
         return query.Where(registration => registration.Email.ToUpperInvariant() == normalizedEmail);
 #pragma warning restore CA1862
     }
@@ -406,7 +424,7 @@ public sealed class CommunityJourneyReadModelService(
 
         foreach (var registration in registrations.Where(HasVolunteerSignal))
         {
-            var email = registration.Email.Trim().ToUpperInvariant();
+            var email = NormalizeEmail(registration.Email);
             if (membersByEmail.TryGetValue(email, out var member))
             {
                 interested.Add(member.Id);
@@ -445,7 +463,7 @@ public sealed class CommunityJourneyReadModelService(
                      && registration.UpdatedAt < windowEnd
                      && HasVolunteerSignal(registration)))
         {
-            var email = registration.Email.Trim().ToUpperInvariant();
+            var email = NormalizeEmail(registration.Email);
             if (membersByEmail.TryGetValue(email, out var member))
             {
                 active.Add(member.Id);
@@ -463,7 +481,7 @@ public sealed class CommunityJourneyReadModelService(
         var attendedCountsByMemberId = new Dictionary<Hackmum.Bethuya.Core.ValueObjects.CommunityMemberId, int>();
         foreach (var registration in registrations.Where(registration => registration.Status == RegistrationStatus.CheckedIn))
         {
-            var email = registration.Email.Trim().ToUpperInvariant();
+            var email = NormalizeEmail(registration.Email);
             if (!membersByEmail.TryGetValue(email, out var member))
             {
                 continue;
@@ -524,4 +542,10 @@ public sealed class CommunityJourneyReadModelService(
         bool IsDiscoverableToCommunity);
 
     private readonly record struct JourneyStageDefinition(string Name, int MinScore, int MaxScore);
+
+    [LoggerMessage(
+        EventId = 4001,
+        Level = LogLevel.Warning,
+        Message = "Found {DuplicateCount} duplicate emails in community members: {Emails} (taking newest by ID for each)")]
+    private partial void LogDuplicateEmails(int duplicateCount, string emails);
 }

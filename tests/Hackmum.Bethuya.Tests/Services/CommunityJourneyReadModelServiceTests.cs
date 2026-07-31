@@ -6,6 +6,8 @@ using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hackmum.Bethuya.Tests.Services;
 
@@ -112,7 +114,8 @@ public sealed class CommunityJourneyReadModelServiceTests
             });
 
         await db.SaveChangesAsync();
-        var service = new CommunityJourneyReadModelService(db, passportService);
+        var logger = NullLogger<CommunityJourneyReadModelService>.Instance;
+        var service = new CommunityJourneyReadModelService(db, passportService, logger);
 
         var projection = await service.GetJourneyProjectionAsync(subject, timelineLimit: 50);
 
@@ -243,7 +246,8 @@ public sealed class CommunityJourneyReadModelServiceTests
             });
 
         await db.SaveChangesAsync();
-        var service = new CommunityJourneyReadModelService(db, passportService);
+        var logger = NullLogger<CommunityJourneyReadModelService>.Instance;
+        var service = new CommunityJourneyReadModelService(db, passportService, logger);
 
         CommunityHealthDashboardReadModelResponse readModel = await service.GetDashboardReadModelAsync(lookbackDays: 90);
 
