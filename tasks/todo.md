@@ -16,6 +16,30 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-31] Build recommendation audit foundation (PR6)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Add a shared recommendation-and-evidence schema across planner/curator/reporter outputs, introduce initial member-growth opportunity recommendations plus weekly community briefing drafts under explicit human approval boundaries, and reuse planning-cycle style invocation-audit metadata patterns for these broader AI recommendation flows.
+- **Acceptance:** Shared recommendation/evidence contracts are available to planner/curator/reporter responses, organizer-only backend endpoints can draft and approve member-growth/weekly-briefing recommendations with persisted audit payloads and explicit pending/applied human-review status, and focused TUnit coverage validates schema shape, audit metadata persistence, and role-gated flows.
+
+## [2026-07-31] Build opportunity engine foundation (PR4)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Evolve curation fairness/capacity/candidate scoring into a generalized opportunity engine foundation by adding volunteer role definitions, shift-assignment rules, and conflict detection seams while reusing existing fairness budget heuristics and organizer curation workflow surfaces.
+- **Acceptance:** Curation dashboard contracts include opportunity engine outputs (roles, shifts/rules, conflicts, candidate suggestions), backend fairness service produces these outputs from existing curation signals and fairness dimensions, organizer-curator authorization is enforced on curation surfaces, and focused TUnit coverage validates opportunity engine behavior plus role-gated endpoint access.
+
+## [2026-07-31] Apply PR3 rubber-duck hardening in stacked PR4
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Implement the deferred PR3 rubber-duck feedback in participation ledger flows by resolving write attribution via `ExternalMemberKey` identity links, tightening dedupe scope to avoid cross-member collisions, and adding an ingestion authorization seam suitable for connector/webhook principals.
+- **Acceptance:** Participation writes resolve each entry to the correct member via linked external identities (with deterministic fallback), dedupe uniqueness is scoped by member+connector+provenance, ingestion endpoints enforce a dedicated connector-ingestion policy, and focused tests cover the new behavior.
+
+## [2026-07-31] Build connector and participation ledger foundation (PR3)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Add external connector abstractions (Luma/Eventbrite/Meetup/GitHub/Forms/Discord) with reusable sync/webhook contracts, introduce a normalized participation ledger + member timeline projection seam, and expose backend APIs/services for ingesting normalized participation entries and reading timeline data while reusing current orchestration/retry/provenance conventions.
+- **Acceptance:** Connector and normalization contracts exist in Core, participation ledger persistence is added via EF model/config/migration, backend endpoints/services can ingest normalized entries and return member timeline projection, shared Refit contracts are wired for the new endpoints, and focused TUnit coverage validates normalization + timeline behavior.
+
 ## [2026-07-31] Build Bethuya vNext community foundation
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
@@ -611,6 +635,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Acceptance:** ✅ EventCoverImageTests: 4 tests (default null, set via init, update, clear). ✅ ImageEndpointValidationTests: 8 tests (oversized reject, invalid content-type reject, 4 valid types parameterised, URL response, exact-limit accept, 1-byte-over reject, fileName forwarded). ✅ All 80 tests pass. ✅ Build: 0 errors, 0 warnings.
 
 <!-- Add new tasks here -->
+
+## [2026-07-31] PR5 lifecycle journeys + analytics read models
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Build PR5 foundation on top of PR4 by adding lifecycle journey progression and timeline projections for Community Passport members, plus projection/read-heavy dashboard metrics for retention, attendance, volunteer growth, and leadership funnel. Reuse existing event/registration/passport/ledger/opportunity foundations, keep writes unchanged, and add focused tests for projection correctness and API auth behavior.
+- **Acceptance:** ✅ Added `CommunityJourneyReadModelService` with lifecycle journey progression and timeline milestone projections for authenticated members. ✅ Added organizer-only dashboard read-model endpoint exposing retention/attendance/volunteer growth/leadership funnel metrics. ✅ Updated shared Refit contracts in `ICommunityPassportApi`. ✅ Added focused TUnit coverage in `CommunityJourneyReadModelServiceTests` and `CommunityPassportEndpointTests`. ✅ `dotnet test tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj -v minimal` passed (256/256).
 
 ## [2026-07-25] Surface social OAuth failures in Aspire telemetry
 - **Status:** done

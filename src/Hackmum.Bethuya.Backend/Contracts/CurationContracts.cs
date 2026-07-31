@@ -1,3 +1,5 @@
+using Hackmum.Bethuya.Core.ValueObjects;
+
 namespace Hackmum.Bethuya.Backend.Contracts;
 
 public sealed record CurationDashboardResponse(
@@ -9,7 +11,8 @@ public sealed record CurationDashboardResponse(
     FairnessDimensionProgressResponse GenderProgress,
     IReadOnlyList<FairnessDimensionProgressResponse> Dimensions,
     IReadOnlyList<CurationRegistrantResponse> Registrants,
-    IReadOnlyList<string> CurationInsights);
+    IReadOnlyList<string> CurationInsights,
+    OpportunityEngineResponse OpportunityEngine);
 
 public sealed record FairnessDimensionProgressResponse(
     string Dimension,
@@ -26,7 +29,7 @@ public sealed record ImpactPreviewResponse(
     bool IsSuppressed);
 
 public sealed record CurationRegistrantResponse(
-    Guid RegistrationId,
+    RegistrationId RegistrationId,
     string FullName,
     string Email,
     string Status,
@@ -76,6 +79,50 @@ public sealed record CurationRecommendationResponse(
     string Summary,
     IReadOnlyList<string> Highlights,
     string? AssessmentText = null);
+
+public sealed record OpportunityEngineResponse(
+    IReadOnlyList<VolunteerRoleDefinitionResponse> VolunteerRoles,
+    IReadOnlyList<VolunteerShiftDefinitionResponse> VolunteerShifts,
+    IReadOnlyList<ShiftAssignmentRuleResponse> ShiftAssignmentRules,
+    IReadOnlyList<OpportunityCandidateResponse> Candidates,
+    IReadOnlyList<OpportunityConflictResponse> Conflicts,
+    IReadOnlyList<string> OrganizerWorkflow);
+
+public sealed record VolunteerRoleDefinitionResponse(
+    string RoleKey,
+    string Label,
+    string Summary,
+    int RequiredVolunteersPerShift,
+    IReadOnlyList<string> SupportedShiftKeys,
+    IReadOnlyList<string> PreferredDimensionKeys);
+
+public sealed record VolunteerShiftDefinitionResponse(
+    string ShiftKey,
+    string Label,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    int RequiredVolunteers);
+
+public sealed record ShiftAssignmentRuleResponse(
+    string RuleKey,
+    string Description,
+    string Severity);
+
+public sealed record OpportunityCandidateResponse(
+    RegistrationId RegistrationId,
+    string FullName,
+    string SuggestedRoleKey,
+    string SuggestedShiftKey,
+    double Score,
+    IReadOnlyList<string> Rationale);
+
+public sealed record OpportunityConflictResponse(
+    string ConflictKey,
+    RegistrationId? RegistrationId,
+    string? RoleKey,
+    string? ShiftKey,
+    string Severity,
+    string Message);
 
 public sealed record ApplyCurationDecisionRequest(
     string Action,

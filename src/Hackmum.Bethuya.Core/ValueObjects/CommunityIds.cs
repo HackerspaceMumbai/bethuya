@@ -37,3 +37,39 @@ public readonly partial struct EventId
             ? Validation.Ok
             : Validation.Invalid("Event id cannot be empty.");
 }
+
+/// <summary>
+/// Stable identifier for a normalized participation ledger entry.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct ParticipationLedgerEntryId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Participation ledger entry id cannot be empty.");
+}
+
+/// <summary>
+/// Stable identifier for a community member mentor profile.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct MentorProfileId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Mentor profile id cannot be empty.");
+}
+
+/// <summary>
+/// Stable identifier for an event registration record.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct RegistrationId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Registration id cannot be empty.");
+}

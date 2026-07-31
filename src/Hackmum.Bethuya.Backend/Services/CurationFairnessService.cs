@@ -3,6 +3,7 @@ using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
+using Hackmum.Bethuya.Core.ValueObjects;
 
 namespace Hackmum.Bethuya.Backend.Services;
 
@@ -24,6 +25,7 @@ public sealed class CurationFairnessService
 
         var dimensions = new List<FairnessDimensionProgressResponse>
         {
+            genderProgress,
             BuildGeoProgress(selected, targets),
             BuildLanguageProgress(selected, targets),
             BuildEducationProgress(selected, targets)
@@ -65,6 +67,9 @@ public sealed class CurationFairnessService
             })
             .ToList();
 
+        var fairnessBudget = BuildFairnessBudget(evt, targets);
+        var opportunityEngine = BuildOpportunityEngine(evt, registrants, dimensions, fairnessBudget);
+
         return new CurationDashboardResponse(
             EventId: evt.Id,
             EventTitle: evt.Title,
@@ -74,7 +79,8 @@ public sealed class CurationFairnessService
             GenderProgress: genderProgress,
             Dimensions: dimensions,
             Registrants: registrants,
-            CurationInsights: curationInsights ?? []);
+            CurationInsights: curationInsights ?? [],
+            OpportunityEngine: opportunityEngine);
     }
 
     private static CurationRegistrantResponse BuildRegistrant(
@@ -92,7 +98,7 @@ public sealed class CurationFairnessService
         var recommendation = BuildRecommendation(registration, impact, profile, reliability, intent, dimensions);
 
         return new CurationRegistrantResponse(
-            RegistrationId: registration.Id,
+            RegistrationId: RegistrationId.From(registration.Id),
             FullName: registration.FullName,
             Email: registration.Email,
             Status: registration.Status.ToString(),
@@ -674,6 +680,389 @@ public sealed class CurationFairnessService
             > 1 => 1,
             _ => value
         };
+
+    private static FairnessBudget BuildFairnessBudget(Event evt, EventFairnessTargets targets)
+    {
+        var diversityTargets = new Dictionary<string, double>(StringComparer.Ordinal)
+        {
+            ["geo_outside_dominant"] = ClampPercent(targets.GeoOutsideDominantMinPercent),
+            ["local_language_marathi_konkani"] = ClampPercent(targets.LocalLanguageMinPercent),
+            ["education_underrepresented"] = ClampPercent(targets.UnderrepresentedEducationMinPercent),
+            ["gender_diversity"] = ClampPercent(targets.GenderDiversityMinPercent)
+        };
+
+        if (targets.EnableSocioeconomicDimension && targets.UnderrepresentedSocioeconomicMinPercent is not null)
+        {
+            diversityTargets["socioeconomic_underrepresented"] = ClampPercent(targets.UnderrepresentedSocioeconomicMinPercent.Value);
+        }
+
+        return new FairnessBudget
+        {
+            EventId = evt.Id,
+            DiversityTargets = diversityTargets,
+            EquityPrompts =
+            [
+                "Curator must never auto-accept or auto-reject attendees.",
+                "Use only consented derived inclusion signals and privacy-safe aggregates.",
+                "Do not use disability, neurodiversity, or additional support fields for ranking."
+            ]
+        };
+    }
+
+    private static OpportunityEngineResponse BuildOpportunityEngine(
+        Event evt,
+        List<CurationRegistrantResponse> registrants,
+        IReadOnlyList<FairnessDimensionProgressResponse> dimensions,
+        FairnessBudget budget)
+    {
+        var shifts = BuildVolunteerShifts(evt);
+        var roles = BuildVolunteerRoles(shifts, budget);
+        var rules = BuildShiftAssignmentRules();
+        var fairnessPriorityDimension = ResolveFairnessPriorityDimension(dimensions);
+
+        var candidateSuggestions = new List<OpportunityCandidateSuggestion>(registrants.Count);
+        foreach (var registrant in registrants)
+        {
+            var suggestion = BuildCandidateSuggestion(registrant, fairnessPriorityDimension);
+            if (suggestion is not null)
+            {
+                candidateSuggestions.Add(suggestion);
+            }
+        }
+
+        candidateSuggestions.Sort((left, right) => right.Candidate.Score.CompareTo(left.Candidate.Score));
+
+        var conflicts = BuildOpportunityConflicts(candidateSuggestions, roles);
+
+        IReadOnlyList<string> organizerWorkflow =
+        [
+            "Generate curation proposal to establish a baseline fairness cohort.",
+            "Review suggested volunteer assignments with fairness deltas and reliability context.",
+            "Apply organizer/curator decisions manually before publishing final assignments."
+        ];
+
+        return new OpportunityEngineResponse(
+            VolunteerRoles: roles,
+            VolunteerShifts: shifts,
+            ShiftAssignmentRules: rules,
+            Candidates: candidateSuggestions.Select(candidate => candidate.Candidate).ToList(),
+            Conflicts: conflicts,
+            OrganizerWorkflow: organizerWorkflow);
+    }
+
+    private static IReadOnlyList<VolunteerShiftDefinitionResponse> BuildVolunteerShifts(Event evt)
+    {
+        var arrivalEnd = DateTimeOffset.Compare(evt.StartDate.AddMinutes(30), evt.EndDate) < 0
+            ? evt.StartDate.AddMinutes(30)
+            : evt.EndDate;
+        var liveStart = arrivalEnd;
+        var liveEnd = DateTimeOffset.Compare(evt.EndDate.AddMinutes(-30), liveStart) > 0
+            ? evt.EndDate.AddMinutes(-30)
+            : evt.EndDate;
+        var closeoutStart = liveEnd;
+
+        return
+        [
+            new VolunteerShiftDefinitionResponse(
+                ShiftKey: "arrival",
+                Label: "Arrival & onboarding",
+                StartsAt: evt.StartDate.AddMinutes(-45),
+                EndsAt: arrivalEnd,
+                RequiredVolunteers: 2),
+            new VolunteerShiftDefinitionResponse(
+                ShiftKey: "live-core",
+                Label: "Live session support",
+                StartsAt: liveStart,
+                EndsAt: liveEnd,
+                RequiredVolunteers: 2),
+            new VolunteerShiftDefinitionResponse(
+                ShiftKey: "closeout",
+                Label: "Closeout & follow-up",
+                StartsAt: closeoutStart,
+                EndsAt: evt.EndDate.AddMinutes(45),
+                RequiredVolunteers: 1)
+        ];
+    }
+
+    private static IReadOnlyList<VolunteerRoleDefinitionResponse> BuildVolunteerRoles(
+        IReadOnlyList<VolunteerShiftDefinitionResponse> shifts,
+        FairnessBudget budget)
+    {
+        var shiftKeys = shifts.Select(shift => shift.ShiftKey).ToList();
+        var fairnessKeys = budget.DiversityTargets.Keys
+            .Select(ToFairnessDimensionKey)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return
+        [
+            new VolunteerRoleDefinitionResponse(
+                RoleKey: "welcome-desk",
+                Label: "Welcome desk volunteer",
+                Summary: "Greets attendees, handles check-in support, and helps first-timers settle in.",
+                RequiredVolunteersPerShift: 2,
+                SupportedShiftKeys: ["arrival", "live-core"],
+                PreferredDimensionKeys: BuildPreferredDimensions(["geo", "language", "gender"], fairnessKeys)),
+            new VolunteerRoleDefinitionResponse(
+                RoleKey: "community-facilitator",
+                Label: "Community facilitator",
+                Summary: "Guides Q&A and session transitions with reliable event-time presence.",
+                RequiredVolunteersPerShift: 1,
+                SupportedShiftKeys: ["live-core", "closeout"],
+                PreferredDimensionKeys: BuildPreferredDimensions(["gender", "geo"], fairnessKeys)),
+            new VolunteerRoleDefinitionResponse(
+                RoleKey: "build-mentor",
+                Label: "Build mentor",
+                Summary: "Supports project demos and mentoring during hands-on blocks.",
+                RequiredVolunteersPerShift: 1,
+                SupportedShiftKeys: shiftKeys,
+                PreferredDimensionKeys: BuildPreferredDimensions(["education", "socioeconomic"], fairnessKeys))
+        ];
+    }
+
+    private static IReadOnlyList<ShiftAssignmentRuleResponse> BuildShiftAssignmentRules()
+    {
+        return
+        [
+            new ShiftAssignmentRuleResponse(
+                RuleKey: "single-role-per-shift",
+                Description: "A volunteer can hold at most one role in the same shift window.",
+                Severity: "blocking"),
+            new ShiftAssignmentRuleResponse(
+                RuleKey: "max-two-shifts-per-volunteer",
+                Description: "Assignments should cap each volunteer to two shifts to avoid burnout.",
+                Severity: "warning"),
+            new ShiftAssignmentRuleResponse(
+                RuleKey: "facilitator-needs-reliability",
+                Description: "Community facilitator assignments require a reliability score of at least 45 when history exists.",
+                Severity: "blocking"),
+            new ShiftAssignmentRuleResponse(
+                RuleKey: "fairness-priority-bias",
+                Description: "When capacity is constrained, prioritize assignments that improve the top unmet fairness dimension.",
+                Severity: "advisory")
+        ];
+    }
+
+    private static OpportunityCandidateSuggestion? BuildCandidateSuggestion(
+        CurationRegistrantResponse registrant,
+        string fairnessPriorityDimension)
+    {
+        if (registrant.Status.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+            || registrant.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var suggestedRole = ResolveSuggestedRole(registrant);
+        var suggestedShift = ResolveSuggestedShift(suggestedRole, registrant);
+        var score = ComputeOpportunityScore(registrant, fairnessPriorityDimension);
+        var rationale = BuildCandidateRationale(registrant, fairnessPriorityDimension, suggestedRole);
+
+        return new OpportunityCandidateSuggestion(
+            new OpportunityCandidateResponse(
+                RegistrationId: registrant.RegistrationId,
+                FullName: registrant.FullName,
+                SuggestedRoleKey: suggestedRole,
+                SuggestedShiftKey: suggestedShift,
+                Score: score,
+                Rationale: rationale),
+            registrant.Reliability.Score,
+            registrant.Reliability.HasHistory);
+    }
+
+    private static List<OpportunityConflictResponse> BuildOpportunityConflicts(
+        IReadOnlyList<OpportunityCandidateSuggestion> candidateSuggestions,
+        IReadOnlyList<VolunteerRoleDefinitionResponse> roles)
+    {
+        var conflicts = new List<OpportunityConflictResponse>();
+        var capacityByRole = roles.ToDictionary(
+            role => role.RoleKey,
+            role => role.RequiredVolunteersPerShift,
+            StringComparer.OrdinalIgnoreCase);
+
+        var groupedSuggestions = candidateSuggestions
+            .GroupBy(candidate => (candidate.Candidate.SuggestedRoleKey, candidate.Candidate.SuggestedShiftKey));
+
+        foreach (var group in groupedSuggestions)
+        {
+            var entries = group.OrderByDescending(candidate => candidate.Candidate.Score).ToList();
+            var roleKey = entries[0].Candidate.SuggestedRoleKey;
+            var shiftKey = entries[0].Candidate.SuggestedShiftKey;
+            var capacity = capacityByRole.TryGetValue(roleKey, out var value) ? value : 1;
+
+            foreach (var overflow in entries.Skip(capacity))
+            {
+                conflicts.Add(new OpportunityConflictResponse(
+                    ConflictKey: "capacity-overflow",
+                    RegistrationId: overflow.Candidate.RegistrationId,
+                    RoleKey: roleKey,
+                    ShiftKey: shiftKey,
+                    Severity: "warning",
+                    Message: $"{overflow.Candidate.FullName} exceeds {roleKey} capacity for {shiftKey}; manual reassignment required."));
+            }
+        }
+
+        foreach (var candidate in candidateSuggestions.Where(candidate =>
+                     candidate.Candidate.SuggestedRoleKey.Equals("community-facilitator", StringComparison.OrdinalIgnoreCase)
+                     && candidate.HasReliabilityHistory
+                     && candidate.ReliabilityScore < 45))
+        {
+            conflicts.Add(new OpportunityConflictResponse(
+                ConflictKey: "facilitator-low-reliability",
+                RegistrationId: candidate.Candidate.RegistrationId,
+                RoleKey: candidate.Candidate.SuggestedRoleKey,
+                ShiftKey: candidate.Candidate.SuggestedShiftKey,
+                Severity: "blocking",
+                Message: $"{candidate.Candidate.FullName} has reliability {candidate.ReliabilityScore}/100, below facilitator threshold."));
+        }
+
+        return conflicts;
+    }
+
+    private static string ResolveSuggestedRole(CurationRegistrantResponse registrant)
+    {
+        if (registrant.Intent.Signals.Contains("Builder intent", StringComparer.OrdinalIgnoreCase))
+        {
+            return "build-mentor";
+        }
+
+        if (registrant.Reliability.HasHistory
+            && registrant.Reliability.Score >= 70
+            && registrant.Intent.Evidence is "High" or "Medium")
+        {
+            return "community-facilitator";
+        }
+
+        return "welcome-desk";
+    }
+
+    private static string ResolveSuggestedShift(string roleKey, CurationRegistrantResponse registrant)
+    {
+        return roleKey switch
+        {
+            "community-facilitator" => registrant.Reliability.HasHistory && registrant.Reliability.Score >= 85
+                ? "live-core"
+                : "closeout",
+            "build-mentor" => "live-core",
+            _ => "arrival"
+        };
+    }
+
+    private static double ComputeOpportunityScore(CurationRegistrantResponse registrant, string fairnessPriorityDimension)
+    {
+        var reliabilityWeight = registrant.Reliability.HasHistory
+            ? registrant.Reliability.Score * 0.25
+            : 12;
+        var intentWeight = registrant.Intent.Evidence switch
+        {
+            "High" => 20,
+            "Medium" => 12,
+            _ => 6
+        };
+        var fairnessLift = registrant.Impact.DeltaPercentByDimension.Values
+            .Where(delta => delta > 0)
+            .DefaultIfEmpty(0)
+            .Max() * 100;
+        var priorityLift = registrant.Impact.DeltaPercentByDimension.TryGetValue(fairnessPriorityDimension, out var delta)
+            ? Math.Max(0, delta) * 100
+            : 0;
+        var standoutBonus = registrant.Profile.HasOrganizerStandoutContribution ? 10 : 0;
+        var cautionPenalty = registrant.Reliability.HasHistory && registrant.Reliability.Score < 45 ? 18 : 0;
+
+        var rawScore = 25 + reliabilityWeight + intentWeight + fairnessLift + (priorityLift * 0.5) + standoutBonus - cautionPenalty;
+        return Math.Clamp(Math.Round(rawScore, 2, MidpointRounding.AwayFromZero), 0, 100);
+    }
+
+    private static List<string> BuildCandidateRationale(
+        CurationRegistrantResponse registrant,
+        string fairnessPriorityDimension,
+        string roleKey)
+    {
+        var rationale = new List<string>();
+
+        if (registrant.Intent.Signals.Count > 0)
+        {
+            rationale.Add(registrant.Intent.Signals[0]);
+        }
+
+        if (registrant.Reliability.HasHistory)
+        {
+            rationale.Add($"Reliability {registrant.Reliability.Score}/100");
+        }
+        else
+        {
+            rationale.Add("No prior reliability history");
+        }
+
+        if (registrant.Impact.DeltaPercentByDimension.TryGetValue(fairnessPriorityDimension, out var priorityDelta)
+            && priorityDelta > 0)
+        {
+            rationale.Add($"{ToDimensionLabel(fairnessPriorityDimension)} lift {ToSignedPercent(priorityDelta)}");
+        }
+
+        if (registrant.Profile.IsFirstTimer)
+        {
+            rationale.Add("First-timer inclusion");
+        }
+
+        rationale.Add($"Suggested for {roleKey}");
+        return rationale.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static string ResolveFairnessPriorityDimension(IReadOnlyList<FairnessDimensionProgressResponse> dimensions)
+    {
+        var highestDeficit = dimensions
+            .Where(dimension => !dimension.IsSuppressed)
+            .OrderByDescending(dimension => dimension.DeficitPercent)
+            .FirstOrDefault();
+
+        if (highestDeficit is null || highestDeficit.DeficitPercent <= 0)
+        {
+            return "geo";
+        }
+
+        return highestDeficit.Dimension switch
+        {
+            var value when value.StartsWith("Geo", StringComparison.OrdinalIgnoreCase) => "geo",
+            var value when value.StartsWith("Language", StringComparison.OrdinalIgnoreCase) => "language",
+            var value when value.StartsWith("Education", StringComparison.OrdinalIgnoreCase) => "education",
+            var value when value.StartsWith("Socioeconomic", StringComparison.OrdinalIgnoreCase) => "socioeconomic",
+            var value when value.StartsWith("Gender", StringComparison.OrdinalIgnoreCase) => "gender",
+            _ => "geo"
+        };
+    }
+
+    private static IReadOnlyList<string> BuildPreferredDimensions(
+        IReadOnlyList<string> defaults,
+        List<string> available)
+    {
+        var preferred = defaults
+            .Where(item => available.Contains(item, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+        if (preferred.Count > 0)
+        {
+            return preferred;
+        }
+
+        return available.Count > 0 ? available : defaults;
+    }
+
+    private static string ToFairnessDimensionKey(string key)
+        => key switch
+        {
+            "geo_outside_dominant" => "geo",
+            "local_language_marathi_konkani" => "language",
+            "education_underrepresented" => "education",
+            "gender_diversity" => "gender",
+            "socioeconomic_underrepresented" => "socioeconomic",
+            _ => key
+        };
+
+    private sealed record OpportunityCandidateSuggestion(
+        OpportunityCandidateResponse Candidate,
+        int ReliabilityScore,
+        bool HasReliabilityHistory);
 
     private static EventFairnessTargetsContract ToContract(EventFairnessTargets source)
         => new(

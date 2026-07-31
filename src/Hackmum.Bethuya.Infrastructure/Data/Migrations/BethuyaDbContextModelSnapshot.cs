@@ -747,6 +747,118 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.ToTable("FairnessBudgets");
                 });
 
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.MentorProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AvailabilityHoursPerMonth")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ExpertiseAreasJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("ExpertiseAreas");
+
+                    b.Property<string>("IntroductionBio")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDiscoverable")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OptedInAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "IsDiscoverable");
+
+                    b.ToTable("MentorProfiles");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ParticipationLedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Activity")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("CommunityMemberId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Connector")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
+                    b.Property<string>("ExternalEventId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ExternalMemberKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ExternalRecordId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("IngestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProvenanceKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("SourceCorrelationId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("CommunityMemberId", "OccurredAt");
+
+                    b.HasIndex("CommunityMemberId", "Connector", "ProvenanceKey")
+                        .IsUnique();
+
+                    b.ToTable("ParticipationLedgerEntries");
+                });
+
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.PendingImageUpload", b =>
                 {
                     b.Property<string>("PublicId")
@@ -1206,6 +1318,33 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.Navigation("Event");
                 });
 
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.MentorProfile", b =>
+                {
+                    b.HasOne("Hackmum.Bethuya.Core.Models.CommunityMember", "Member")
+                        .WithOne()
+                        .HasForeignKey("Hackmum.Bethuya.Core.Models.MentorProfile", "MemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Member");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ParticipationLedgerEntry", b =>
+                {
+                    b.HasOne("Hackmum.Bethuya.Core.Models.CommunityMember", "CommunityMember")
+                        .WithMany("ParticipationLedgerEntries")
+                        .HasForeignKey("CommunityMemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Hackmum.Bethuya.Core.Models.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CommunityMember");
+                });
+
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.PlannerDraft", b =>
                 {
                     b.HasOne("Hackmum.Bethuya.Core.Models.PlanningCycle", "PlanningCycle")
@@ -1276,6 +1415,8 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.CommunityMember", b =>
                 {
                     b.Navigation("ExternalIdentities");
+
+                    b.Navigation("ParticipationLedgerEntries");
                 });
 
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.Event", b =>

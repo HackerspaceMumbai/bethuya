@@ -14,5 +14,6 @@ public sealed record PlannerRequest(
 public sealed record PlannerResponse(
     Agenda DraftAgenda,
     bool RequiresHumanApproval = true,
-    string? AgentReasoning = null)
+    string? AgentReasoning = null,
+    RecommendationEnvelope? Recommendation = null)
     : AgentResponse(RequiresHumanApproval, AgentReasoning);
