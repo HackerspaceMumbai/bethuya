@@ -24,7 +24,7 @@ public sealed class CommunityRecommendationServiceTests
         activity.Start();
 
         var draft = await recommendationService.DraftMemberGrowthOpportunityAsync(
-            new DraftMemberGrowthRecommendationRequest(LookbackDays: 90, RequestedBy: "organizer@test"),
+            new DraftMemberGrowthRecommendationRequest(LookbackDays: 90),
             requestedBy: "organizer@test");
 
         var persistedDecision = await db.Decisions.SingleAsync(decision => decision.Id == draft.DraftId);
@@ -46,12 +46,13 @@ public sealed class CommunityRecommendationServiceTests
         var recommendationService = CreateService(db);
 
         var draft = await recommendationService.DraftWeeklyBriefingAsync(
-            new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90, RequestedBy: "organizer@test"),
+            new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90),
             requestedBy: "organizer@test");
 
         var approved = await recommendationService.ApproveDraftAsync(
             draft.DraftId,
-            new ApproveRecommendationDraftRequest(ApprovedBy: "lead@hackmum.com", ApprovalNotes: "Publish this briefing"));
+            approver: "lead@hackmum.com",
+            new ApproveRecommendationDraftRequest(ApprovalNotes: "Publish this briefing"));
 
         var persistedDecision = await db.Decisions.SingleAsync(decision => decision.Id == draft.DraftId);
 

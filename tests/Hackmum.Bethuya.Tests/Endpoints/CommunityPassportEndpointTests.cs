@@ -209,7 +209,7 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
     {
         var response = await _client.PostAsJsonAsync(
             "/api/community/passport/recommendations/member-growth",
-            new DraftMemberGrowthRecommendationRequest(LookbackDays: 90, RequestedBy: "organizer@test"));
+            new DraftMemberGrowthRecommendationRequest(LookbackDays: 90));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var draft = await response.Content.ReadFromJsonAsync<RecommendationDraftResponse>(JsonOptions);
@@ -225,7 +225,7 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
     {
         var draftResponse = await _client.PostAsJsonAsync(
             "/api/community/passport/recommendations/weekly-briefing",
-            new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90, RequestedBy: "organizer@test"));
+            new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90));
         await Assert.That(draftResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var draft = await draftResponse.Content.ReadFromJsonAsync<RecommendationDraftResponse>(JsonOptions);
@@ -233,7 +233,7 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
 
         var approveResponse = await _client.PostAsJsonAsync(
             $"/api/community/passport/recommendations/{draft!.DraftId}/approve",
-            new ApproveRecommendationDraftRequest(ApprovedBy: "organizer@test", ApprovalNotes: "Looks good"));
+            new ApproveRecommendationDraftRequest(ApprovalNotes: "Looks good"));
         await Assert.That(approveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var approved = await approveResponse.Content.ReadFromJsonAsync<RecommendationDraftResponse>(JsonOptions);

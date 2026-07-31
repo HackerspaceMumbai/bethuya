@@ -3,15 +3,16 @@ using Hackmum.Bethuya.Core.Models;
 namespace Hackmum.Bethuya.Backend.Contracts;
 
 public sealed record DraftMemberGrowthRecommendationRequest(
-    int LookbackDays = 90,
-    string? RequestedBy = null);
+    int LookbackDays = 90);
 
 public sealed record DraftWeeklyCommunityBriefingRequest(
-    int LookbackDays = 90,
-    string? RequestedBy = null);
+    int LookbackDays = 90);
 
+/// <summary>
+/// Approval request DTO. ApprovedBy is always derived from the authenticated principal;
+/// only optional notes are accepted from the caller.
+/// </summary>
 public sealed record ApproveRecommendationDraftRequest(
-    string ApprovedBy,
     string? ApprovalNotes = null);
 
 public sealed record RecommendationAuditMetadataResponse(
