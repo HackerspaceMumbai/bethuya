@@ -51,3 +51,10 @@ The Scribe will merge it into the shared decisions file.
 - **EF transaction safety:** when retry execution strategy is active, wrap `BeginTransactionAsync` units in `dbContext.Database.CreateExecutionStrategy().ExecuteAsync(...)`.
 - **Triage order:** on generic UI errors, read Aspire `backend` and `web` console logs first, then patch where the fault originates.
 - **E2E verification:** always set `BETHUYA_BASE_URL` to the active environment URL and run Playwright checks for the exact changed seam.
+
+<!-- mermaid-ai-skills:start -->
+## Mermaid Diagrams
+
+When the user asks to create, edit, or visualize a diagram, follow the
+instructions in `.github/instructions/mermaid.instructions.md`.
+<!-- mermaid-ai-skills:end -->
