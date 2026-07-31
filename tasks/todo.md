@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-31] Build recommendation audit foundation (PR6)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Add a shared recommendation-and-evidence schema across planner/curator/reporter outputs, introduce initial member-growth opportunity recommendations plus weekly community briefing drafts under explicit human approval boundaries, and reuse planning-cycle style invocation-audit metadata patterns for these broader AI recommendation flows.
+- **Acceptance:** Shared recommendation/evidence contracts are available to planner/curator/reporter responses, organizer-only backend endpoints can draft and approve member-growth/weekly-briefing recommendations with persisted audit payloads and explicit pending/applied human-review status, and focused TUnit coverage validates schema shape, audit metadata persistence, and role-gated flows.
+
 ## [2026-07-31] Build opportunity engine foundation (PR4)
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

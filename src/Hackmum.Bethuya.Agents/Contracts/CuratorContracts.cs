@@ -20,5 +20,6 @@ public sealed record CuratorResponse(
     WaitlistProposal Waitlist,
     CurationInsights Insights,
     bool RequiresHumanApproval = true,
-    string? AgentReasoning = null)
+    string? AgentReasoning = null,
+    RecommendationEnvelope? Recommendation = null)
     : AgentResponse(RequiresHumanApproval, AgentReasoning);
