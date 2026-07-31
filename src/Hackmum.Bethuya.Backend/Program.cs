@@ -50,6 +50,7 @@ builder.Services.AddScoped<CurationSampleSeeder>();
 builder.Services.AddScoped<PlanningCycleService>();
 builder.Services.AddScoped<CommunityPassportService>();
 builder.Services.AddScoped<ParticipationLedgerService>();
+builder.Services.AddScoped<CommunityJourneyReadModelService>();
 builder.Services.AddScoped<ISessionIngestionService, SessionIngestionService>();
 builder.Services.AddScoped<IEventLifecycleOrchestrator, EventLifecycleOrchestrator>();
 
