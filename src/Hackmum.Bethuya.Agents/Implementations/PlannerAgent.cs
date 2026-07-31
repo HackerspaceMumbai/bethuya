@@ -81,6 +81,27 @@ public sealed class PlannerAgent(IAIRouter router, ILogger<PlannerAgent> logger)
         return new PlannerResponse(
             DraftAgenda: agenda,
             RequiresHumanApproval: true,
-            AgentReasoning: content);
+            AgentReasoning: content,
+            Recommendation: new RecommendationEnvelope(
+                SchemaVersion: "1.0",
+                RecommendationKind: "planner-agenda",
+                Audience: "organizer",
+                Headline: "Review the drafted agenda before publish.",
+                Summary: "Planner provided an initial agenda draft with a starter opening block.",
+                Actions:
+                [
+                    new RecommendationAction(
+                        ActionKey: "validate-session-flow",
+                        Title: "Validate session flow and duration sequencing.",
+                        Rationale: "Ensures transitions, cadence, and break placement are realistic.",
+                        Priority: "high")
+                ],
+                Evidence:
+                [
+                    new RecommendationEvidence(
+                        EvidenceKey: "agenda-seed-block-count",
+                        Observation: "Initial planner parse produced a single seed session block.",
+                        Source: "planner-agent")
+                ]));
     }
 }
