@@ -48,6 +48,7 @@ builder.Services.AddScoped<InclusionSignalsNormalizer>();
 builder.Services.AddScoped<CurationFairnessService>();
 builder.Services.AddScoped<CurationSampleSeeder>();
 builder.Services.AddScoped<PlanningCycleService>();
+builder.Services.AddScoped<CommunityPassportService>();
 builder.Services.AddScoped<ISessionIngestionService, SessionIngestionService>();
 builder.Services.AddScoped<IEventLifecycleOrchestrator, EventLifecycleOrchestrator>();
 
@@ -84,6 +85,7 @@ app.MapAgentEndpoints();
 app.MapCurationEndpoints();
 app.MapApprovalEndpoints();
 app.MapProfileEndpoints();
+app.MapCommunityPassportEndpoints();
 app.MapPlanningCycleEndpoints();
 
 app.MapDefaultEndpoints();

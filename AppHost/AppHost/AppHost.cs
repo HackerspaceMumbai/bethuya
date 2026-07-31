@@ -183,15 +183,10 @@ var webStaticAssetsManifest = Path.GetFullPath(Path.Combine(
 var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileName: null)
     .WithReference(backend)
     .WaitFor(backend)
-    .WithHttpEndpoint()
-    //   .WithHttpsEndpoint()
     .WithEnvironment("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true")
     .WithEnvironment("Onboarding__BypassSocialConnections", onboardingBypassSocialConnections)
     .WithEnvironment("Onboarding__BypassMandatoryProfile", onboardingBypassMandatoryProfile)
-//  .WithEnvironment("ASPNETCORE_URLS", "http://0.0.0.0:8082")
     .WithEnvironment("ASPNETCORE_ALLOWEDHOSTS", "*")
-    .WithHttpHealthCheck("/health")
-    .WithExternalHttpEndpoints()
     .WithComputeEnvironment(acaEnv)
     .PublishAsAzureContainerApp((infra, app) =>
     {
@@ -202,12 +197,23 @@ var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileNa
 if (builder.IsLocalDevelopment())
 {
     web
+        // Keep local callback URLs stable for OAuth providers across Aspire restarts.
+        .WithHttpEndpoint(name: "http", port: 5095)
+        .WithHttpsEndpoint(name: "https", port: 7112)
+        .WithHttpHealthCheck("/health")
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("ASPNETCORE_STATICWEBASSETS", webStaticAssetsManifest)
         .WithEnvironment("SocialConnections__GitHub__ClientId", socialGithubClientId)
         .WithEnvironment("SocialConnections__GitHub__ClientSecret", socialGithubClientSecret)
         .WithEnvironment("SocialConnections__LinkedIn__ClientId", socialLinkedInClientId)
         .WithEnvironment("SocialConnections__LinkedIn__ClientSecret", socialLinkedInClientSecret);
+}
+else
+{
+    web
+        .WithHttpEndpoint()
+        .WithExternalHttpEndpoints()
+        .WithHttpHealthCheck("/health");
 }
 
 if (keyVault is not null)

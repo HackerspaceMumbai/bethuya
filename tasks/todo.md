@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-07-31] Build Bethuya vNext community foundation
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Introduce the first Bethuya vNext foundation slice by adding community-member identity primitives, external identity linking, jurisdiction-aware passport privacy/residency metadata, and an initial Community Passport experience that reuses existing attendee profile and registration data instead of rewriting current event flows.
+- **Acceptance:** CommunityMember and ExternalIdentity are persisted with safe defaults, the backend exposes authenticated Community Passport read/update endpoints backed by existing profile/registration data, the web app surfaces a Community Passport page, and targeted tests cover projection/privacy behavior.
+
 ## [2026-07-23] Stabilize Azure Postgres deployment password
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

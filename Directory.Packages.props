@@ -37,6 +37,7 @@
     <!-- Refit - typed REST client generation -->
     <PackageVersion Include="Refit" Version="11.0.1" />
     <PackageVersion Include="Refit.HttpClientFactory" Version="11.0.1" />
+    <PackageVersion Include="Vogen" Version="8.0.7" />
     <PackageVersion Include="BlazorBlueprint.Components" Version="3.10.2" />
     <PackageVersion Include="BlazorBlueprint.Icons.Lucide" Version="2.0.0" />
     <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.50" />
