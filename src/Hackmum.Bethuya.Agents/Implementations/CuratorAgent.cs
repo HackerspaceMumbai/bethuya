@@ -118,6 +118,27 @@ public sealed class CuratorAgent(IAIRouter router, ILogger<CuratorAgent> logger)
             Waitlist: waitlist,
             Insights: insights,
             RequiresHumanApproval: true,
-            AgentReasoning: content);
+            AgentReasoning: content,
+            Recommendation: new RecommendationEnvelope(
+                SchemaVersion: "1.0",
+                RecommendationKind: "curation-proposal",
+                Audience: "curator",
+                Headline: "Review curation recommendation before applying attendee decisions.",
+                Summary: "Curator ranked proposals and waitlist candidates from consented signals and fairness prompts.",
+                Actions:
+                [
+                    new RecommendationAction(
+                        ActionKey: "review-fairness-alerts",
+                        Title: "Review DEI nudges and over-representation alerts.",
+                        Rationale: "Final acceptance/rejection decisions must stay human-controlled.",
+                        Priority: "high")
+                ],
+                Evidence:
+                [
+                    new RecommendationEvidence(
+                        EvidenceKey: "registrant-count",
+                        Observation: $"Curator evaluated {registrations.Count} registrants for capacity {capacity}.",
+                        Source: "curator-agent")
+                ]));
     }
 }

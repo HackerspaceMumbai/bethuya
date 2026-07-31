@@ -63,6 +63,27 @@ public sealed class ReporterAgent(IAIRouter router, ILogger<ReporterAgent> logge
         return new ReporterResponse(
             DraftReport: report,
             RequiresHumanApproval: true,
-            AgentReasoning: "Draft report generated from event details and session notes");
+            AgentReasoning: "Draft report generated from event details and session notes",
+            Recommendation: new RecommendationEnvelope(
+                SchemaVersion: "1.0",
+                RecommendationKind: "reporter-brief",
+                Audience: "organizer",
+                Headline: "Review and edit the post-event draft before publication.",
+                Summary: "Reporter generated a first-pass summary with highlights and follow-up actions.",
+                Actions:
+                [
+                    new RecommendationAction(
+                        ActionKey: "verify-attribution",
+                        Title: "Verify attribution and community-safe wording.",
+                        Rationale: "Human editorial review is required before publishing community communications.",
+                        Priority: "high")
+                ],
+                Evidence:
+                [
+                    new RecommendationEvidence(
+                        EvidenceKey: "report-source-notes",
+                        Observation: "Draft created from event metadata and supplied session notes.",
+                        Source: "reporter-agent")
+                ]));
     }
 }

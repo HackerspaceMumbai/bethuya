@@ -161,6 +161,93 @@ public static class CommunityPassportEndpoints
             return Results.Ok(dashboard);
         })
         .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapPost("/recommendations/member-growth", async (
+            DraftMemberGrowthRecommendationRequest request,
+            ClaimsPrincipal user,
+            [FromServices] CommunityRecommendationService service,
+            CancellationToken ct) =>
+        {
+            if (request.LookbackDays is < 30 or > 365)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["lookbackDays"] = ["Lookback days must be between 30 and 365."]
+                });
+            }
+
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var requestedBy = subject.Email ?? subject.DisplayName ?? subject.UserId;
+            var draft = await service.DraftMemberGrowthOpportunityAsync(request, requestedBy, ct);
+            return Results.Ok(draft);
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapPost("/recommendations/weekly-briefing", async (
+            DraftWeeklyCommunityBriefingRequest request,
+            ClaimsPrincipal user,
+            [FromServices] CommunityRecommendationService service,
+            CancellationToken ct) =>
+        {
+            if (request.LookbackDays is < 30 or > 365)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["lookbackDays"] = ["Lookback days must be between 30 and 365."]
+                });
+            }
+
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var requestedBy = subject.Email ?? subject.DisplayName ?? subject.UserId;
+            var draft = await service.DraftWeeklyBriefingAsync(request, requestedBy, ct);
+            return Results.Ok(draft);
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapPost("/recommendations/{draftId:guid}/approve", async (
+            Guid draftId,
+            ApproveRecommendationDraftRequest request,
+            ClaimsPrincipal user,
+            [FromServices] CommunityRecommendationService service,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var approver = subject.Email ?? subject.DisplayName ?? subject.UserId;
+
+            try
+            {
+                var approved = await service.ApproveDraftAsync(
+                    draftId,
+                    approver,
+                    request,
+                    ct);
+                return Results.Ok(approved);
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound("Recommendation draft not found.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(ex.Message);
+            }
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
     }
 
     private static CommunitySubjectContext? GetSubject(ClaimsPrincipal user)
