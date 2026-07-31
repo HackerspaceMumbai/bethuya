@@ -170,6 +170,15 @@ ConfigureBackendAuth(builder.Services
     .ConfigureHttpClient(c => c.BaseAddress = backendBaseAddress))
     .AddStandardResilienceHandler();
 
+ConfigureBackendAuth(builder.Services
+    .AddRefitClient<ICommunityPassportApi>(new RefitSettings
+    {
+        ContentSerializer = new SystemTextJsonContentSerializer(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+    })
+    .ConfigureHttpClient(c => c.BaseAddress = backendBaseAddress))
+    .AddStandardResilienceHandler();
+
 // Refit typed client for Backend Registrations API (Aspire service discovery)
 ConfigureBackendAuth(builder.Services
     .AddRefitClient<IRegistrationApi>(new RefitSettings

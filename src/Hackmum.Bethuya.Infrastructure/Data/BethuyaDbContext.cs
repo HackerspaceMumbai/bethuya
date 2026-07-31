@@ -16,6 +16,8 @@ public sealed class BethuyaDbContext(DbContextOptions<BethuyaDbContext> options)
     public DbSet<Decision> Decisions => Set<Decision>();
     public DbSet<EventReport> EventReports => Set<EventReport>();
     public DbSet<AttendeeProfile> AttendeeProfiles => Set<AttendeeProfile>();
+    public DbSet<CommunityMember> CommunityMembers => Set<CommunityMember>();
+    public DbSet<ExternalIdentity> ExternalIdentities => Set<ExternalIdentity>();
     public DbSet<PlanningCycle> PlanningCycles => Set<PlanningCycle>();
     public DbSet<PlannerDraft> PlannerDrafts => Set<PlannerDraft>();
     public DbSet<PlannerInvocationAudit> PlannerInvocationAudits => Set<PlannerInvocationAudit>();
