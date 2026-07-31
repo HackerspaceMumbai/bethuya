@@ -624,6 +624,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 <!-- Add new tasks here -->
 
+## [2026-07-31] PR5 lifecycle journeys + analytics read models
+- **Status:** in_progress
+- **Agent/Owner:** Copilot CLI
+- **Description:** Build PR5 foundation on top of PR4 by adding lifecycle journey progression and timeline projections for Community Passport members, plus projection/read-heavy dashboard metrics for retention, attendance, volunteer growth, and leadership funnel. Reuse existing event/registration/passport/ledger/opportunity foundations, keep writes unchanged, and add focused tests for projection correctness and API auth behavior.
+- **Acceptance:** Journey projection endpoint returns lifecycle progression + timeline projections for authenticated members; dashboard read-model endpoint returns retention/attendance/volunteer-growth/leadership-funnel metrics with organizer authorization; shared Refit contracts updated; focused TUnit service + endpoint tests added and passing.
+
 ## [2026-07-25] Surface social OAuth failures in Aspire telemetry
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

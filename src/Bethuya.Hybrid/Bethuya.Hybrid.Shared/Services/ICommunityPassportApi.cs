@@ -35,6 +35,18 @@ public interface ICommunityPassportApi
     /// </summary>
     [Get("/api/community/passport/participation/timeline")]
     Task<MemberParticipationTimelineDto> GetParticipationTimelineAsync([AliasAs("limit")] int? limit = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reads lifecycle journey progression and projected member milestones.
+    /// </summary>
+    [Get("/api/community/passport/journey")]
+    Task<CommunityJourneyProjectionDto> GetJourneyProjectionAsync([AliasAs("timelineLimit")] int? timelineLimit = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reads organizer-facing dashboard projection models.
+    /// </summary>
+    [Get("/api/community/passport/dashboard/read-model")]
+    Task<CommunityHealthDashboardReadModelDto> GetDashboardReadModelAsync([AliasAs("lookbackDays")] int? lookbackDays = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -191,3 +203,107 @@ public sealed record MemberParticipationTimelineEntryDto(
     string ProvenanceKey,
     Guid? EventId,
     string? EventTitle);
+
+/// <summary>
+/// Lifecycle-aware journey projection for the current member.
+/// </summary>
+public sealed record CommunityJourneyProjectionDto(
+    string CurrentStage,
+    int JourneyScore,
+    double StageCompletionPercent,
+    JourneyStageProgressDto StageProgress,
+    IReadOnlyList<JourneyTimelineEntryDto> Timeline,
+    IReadOnlyList<JourneyTimelineProjectionDto> Projections,
+    IReadOnlyList<EventLifecycleJourneyProgressDto> LifecycleProgression);
+
+/// <summary>
+/// Current and next stage journey details.
+/// </summary>
+public sealed record JourneyStageProgressDto(
+    string CurrentStage,
+    string? NextStage,
+    int CurrentStageMinScore,
+    int CurrentStageMaxScore,
+    int NextStageScoreThreshold,
+    int PointsToNextStage);
+
+/// <summary>
+/// One timeline event contributing to journey progression.
+/// </summary>
+public sealed record JourneyTimelineEntryDto(
+    DateTimeOffset OccurredAt,
+    string Source,
+    string Activity,
+    int Points,
+    string Evidence,
+    Guid? EventId,
+    string? EventTitle);
+
+/// <summary>
+/// One projected future journey milestone.
+/// </summary>
+public sealed record JourneyTimelineProjectionDto(
+    string Milestone,
+    DateTimeOffset ProjectedAt,
+    int PointsRemaining,
+    double MonthlyVelocityPoints,
+    string Confidence,
+    string Rationale);
+
+/// <summary>
+/// Event lifecycle progression and next-state projection.
+/// </summary>
+public sealed record EventLifecycleJourneyProgressDto(
+    Guid EventId,
+    string EventTitle,
+    string CurrentState,
+    string? NextState,
+    DateTimeOffset? ProjectedNextTransitionAt);
+
+/// <summary>
+/// Organizer-facing dashboard read models.
+/// </summary>
+public sealed record CommunityHealthDashboardReadModelDto(
+    DateTimeOffset AsOfUtc,
+    int LookbackDays,
+    RetentionReadModelDto Retention,
+    AttendanceReadModelDto Attendance,
+    VolunteerGrowthReadModelDto VolunteerGrowth,
+    LeadershipFunnelReadModelDto LeadershipFunnel);
+
+/// <summary>
+/// Member retention trend metrics.
+/// </summary>
+public sealed record RetentionReadModelDto(
+    int PreviouslyActiveMembers,
+    int CurrentlyActiveMembers,
+    int RetainedMembers,
+    double RetentionRatePercent);
+
+/// <summary>
+/// Attendance distribution and conversion metrics.
+/// </summary>
+public sealed record AttendanceReadModelDto(
+    int RegisteredCount,
+    int AcceptedCount,
+    int AttendedCount,
+    int WaitlistedCount,
+    double AttendanceRatePercent);
+
+/// <summary>
+/// Volunteer signal growth metrics.
+/// </summary>
+public sealed record VolunteerGrowthReadModelDto(
+    int PreviousWindowSignals,
+    int CurrentWindowSignals,
+    int DeltaSignals,
+    double GrowthRatePercent);
+
+/// <summary>
+/// Leadership funnel metrics from discoverability and contribution signals.
+/// </summary>
+public sealed record LeadershipFunnelReadModelDto(
+    int DiscoverableMembers,
+    int VolunteerInterestedMembers,
+    int ActiveVolunteers,
+    int LeadershipCandidates);
