@@ -1,3 +1,5 @@
+using Hackmum.Bethuya.Core.ValueObjects;
+
 namespace Hackmum.Bethuya.Backend.Contracts;
 
 public sealed record CurationDashboardResponse(
@@ -27,7 +29,7 @@ public sealed record ImpactPreviewResponse(
     bool IsSuppressed);
 
 public sealed record CurationRegistrantResponse(
-    Guid RegistrationId,
+    RegistrationId RegistrationId,
     string FullName,
     string Email,
     string Status,
@@ -107,7 +109,7 @@ public sealed record ShiftAssignmentRuleResponse(
     string Severity);
 
 public sealed record OpportunityCandidateResponse(
-    Guid RegistrationId,
+    RegistrationId RegistrationId,
     string FullName,
     string SuggestedRoleKey,
     string SuggestedShiftKey,
@@ -116,7 +118,7 @@ public sealed record OpportunityCandidateResponse(
 
 public sealed record OpportunityConflictResponse(
     string ConflictKey,
-    Guid? RegistrationId,
+    RegistrationId? RegistrationId,
     string? RoleKey,
     string? ShiftKey,
     string Severity,

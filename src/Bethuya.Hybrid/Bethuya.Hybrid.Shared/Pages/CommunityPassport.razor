@@ -122,14 +122,16 @@
                                 <BbCardDescription>Decide who can see your passport and how organizers can use your participation signals.</BbCardDescription>
                             </BbCardHeader>
                             <BbCardContent Class="space-y-4">
-                                <BbFormFieldSelect TValue="string"
-                                                   @bind-Value="_visibility"
-                                                   Label="Profile visibility"
-                                                   data-test="passport-visibility-select">
-                                    <BbSelectItem Value="@("Public")" Text="Public" />
-                                    <BbSelectItem Value="@("CommunityOnly")" Text="Community only" />
-                                    <BbSelectItem Value="@("OrganizerOnly")" Text="Organizer only" />
-                                </BbFormFieldSelect>
+                                @* BB form-field wrappers don't expose AdditionalAttributes; place data-test on the wrapper div *@
+                                <div data-test="passport-visibility-select">
+                                    <BbFormFieldSelect TValue="string"
+                                                       @bind-Value="_visibility"
+                                                       Label="Profile visibility">
+                                        <BbSelectItem Value="@("Public")" Text="Public" />
+                                        <BbSelectItem Value="@("CommunityOnly")" Text="Community only" />
+                                        <BbSelectItem Value="@("OrganizerOnly")" Text="Organizer only" />
+                                    </BbFormFieldSelect>
+                                </div>
 
                                 <label class="flex items-center gap-3 rounded-md border p-3">
                                     <input type="checkbox" @bind="_shareParticipationWithOrganizers" data-test="passport-share-participation-toggle" />
@@ -141,12 +143,14 @@
                                     <span>Allow community discovery in mentorship and opportunity flows</span>
                                 </label>
 
-                                <BbButton Variant="ButtonVariant.Default"
-                                          OnClick="SavePrivacyAsync"
-                                          Disabled="@_isSavingPrivacy"
-                                          data-test="passport-save-privacy-btn">
-                                    @(_isSavingPrivacy ? "Saving..." : "Save Privacy Settings")
-                                </BbButton>
+                                @* BbButton may not forward arbitrary attributes; wrap for data-test stability *@
+                                <div data-test="passport-save-privacy-btn">
+                                    <BbButton Variant="ButtonVariant.Default"
+                                              OnClick="SavePrivacyAsync"
+                                              Disabled="@_isSavingPrivacy">
+                                        @(_isSavingPrivacy ? "Saving..." : "Save Privacy Settings")
+                                    </BbButton>
+                                </div>
                             </BbCardContent>
                         </BbCard>
                     </div>

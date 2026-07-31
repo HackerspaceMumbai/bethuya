@@ -323,7 +323,12 @@ Run: `dotnet test tests/Hackmum.Bethuya.E2E`
   - `BbFileUpload` - drag-and-drop file upload with `Accept`/`MaxFileSize`/`MaxFileCount`/`OnValidationError`
   - `BbDatePicker`, `BbTimePicker` - date/time pickers
 - **Manual `<div class="form-group">` wrappers** are for fields that lack a `BbFormField*` wrapper (textarea, numeric, file upload, date/time pickers, inline adornment inputs like hashtag `#` prefix).
-- Use `data-test` attributes on all interactive elements - never CSS classes for E2E selectors.
+- Use `data-test` attributes on all interactive elements - never CSS classes for E2E selectors. **CRITICAL: BB Blazor components do NOT accept `data-test` directly.** Place `data-test` on the wrapping native HTML element instead:
+  - ✅ `<div data-test="my-select"><BbFormFieldSelect ...> ... </BbFormFieldSelect></div>`
+  - ✅ `<div data-test="my-btn"><BbButton ...>...</BbButton></div>`
+  - ❌ `<BbFormFieldSelect data-test="my-select" ...>` — **crashes at runtime** with `InvalidOperationException`
+  - Rule: native HTML elements (`<div>`, `<input>`, `<button>`, `<label>`) accept `data-test` directly. BB components (`BbFormFieldSelect`, `BbFormFieldInput`, `BbFormSection`, `BbButton`, etc.) do **not** — always wrap them.
+  - **Test gate:** Every Blazor page containing BB components must have a bUnit render test. `ctx.RenderComponent<MyPage>()` will throw at test time if any BB component receives an unknown parameter — catching this before runtime.
 
 ### AI & Privacy
 

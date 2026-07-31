@@ -5,9 +5,11 @@ using Hackmum.Bethuya.Backend.Agents;
 using Hackmum.Bethuya.Backend;
 using Hackmum.Bethuya.Backend.Endpoints;
 using Hackmum.Bethuya.Backend.Services;
+using Hackmum.Bethuya.Core.Repositories;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Extensions;
+using Hackmum.Bethuya.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -51,8 +53,11 @@ builder.Services.AddScoped<PlanningCycleService>();
 builder.Services.AddScoped<CommunityPassportService>();
 builder.Services.AddScoped<ParticipationLedgerService>();
 builder.Services.AddScoped<CommunityJourneyReadModelService>();
+builder.Services.AddScoped<CommunityRecommendationService>();
 builder.Services.AddScoped<ISessionIngestionService, SessionIngestionService>();
 builder.Services.AddScoped<IEventLifecycleOrchestrator, EventLifecycleOrchestrator>();
+builder.Services.AddScoped<IMentorProfileRepository, MentorProfileRepository>();
+builder.Services.AddScoped<MentorshipService>();
 
 var app = builder.Build();
 
@@ -89,6 +94,7 @@ app.MapApprovalEndpoints();
 app.MapProfileEndpoints();
 app.MapCommunityPassportEndpoints();
 app.MapPlanningCycleEndpoints();
+app.MapMentorshipEndpoints();
 
 app.MapDefaultEndpoints();
 

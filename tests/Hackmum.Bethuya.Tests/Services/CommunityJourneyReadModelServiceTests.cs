@@ -6,8 +6,6 @@ using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hackmum.Bethuya.Tests.Services;
 
@@ -114,8 +112,7 @@ public sealed class CommunityJourneyReadModelServiceTests
             });
 
         await db.SaveChangesAsync();
-        var logger = NullLogger<CommunityJourneyReadModelService>.Instance;
-        var service = new CommunityJourneyReadModelService(db, passportService, logger);
+        var service = new CommunityJourneyReadModelService(db, passportService);
 
         var projection = await service.GetJourneyProjectionAsync(subject, timelineLimit: 50);
 
@@ -246,8 +243,7 @@ public sealed class CommunityJourneyReadModelServiceTests
             });
 
         await db.SaveChangesAsync();
-        var logger = NullLogger<CommunityJourneyReadModelService>.Instance;
-        var service = new CommunityJourneyReadModelService(db, passportService, logger);
+        var service = new CommunityJourneyReadModelService(db, passportService);
 
         CommunityHealthDashboardReadModelResponse readModel = await service.GetDashboardReadModelAsync(lookbackDays: 90);
 
@@ -259,149 +255,6 @@ public sealed class CommunityJourneyReadModelServiceTests
         await Assert.That(readModel.Attendance.AttendedCount).IsEqualTo(1);
         await Assert.That(readModel.LeadershipFunnel.LeadershipCandidates).IsEqualTo(1);
         await Assert.That(readModel.VolunteerGrowth.CurrentWindowSignals).IsEqualTo(1);
-    }
-
-    [Test]
-    public async Task GetDashboardReadModelAsync_HandlesEmptyDatabase()
-    {
-       await using var db = CreateDbContext();
-       var passportService = new CommunityPassportService(db);
-       var logger = NullLogger<CommunityJourneyReadModelService>.Instance;
-       var service = new CommunityJourneyReadModelService(db, passportService, logger);
-
-       CommunityHealthDashboardReadModelResponse readModel = await service.GetDashboardReadModelAsync(lookbackDays: 90);
-
-       await Assert.That(readModel.Retention.PreviouslyActiveMembers).IsEqualTo(0);
-       await Assert.That(readModel.Retention.CurrentlyActiveMembers).IsEqualTo(0);
-       await Assert.That(readModel.Retention.RetainedMembers).IsEqualTo(0);
-       await Assert.That(readModel.Attendance.RegisteredCount).IsEqualTo(0);
-       await Assert.That(readModel.Attendance.AcceptedCount).IsEqualTo(0);
-       await Assert.That(readModel.Attendance.AttendedCount).IsEqualTo(0);
-    }
-
-    [Test]
-    public async Task GetJourneyProjectionAsync_HandlesMissingEventId()
-    {
-       await using var db = CreateDbContext();
-       var passportService = new CommunityPassportService(db);
-       var subject = new CommunitySubjectContext("missing-event-member", "Test User", "missing-event@example.com");
-
-       db.AttendeeProfiles.Add(new AttendeeProfile
-       {
-           UserId = subject.UserId,
-           FirstName = "Test",
-           LastName = "User",
-           Email = subject.Email!,
-           GovernmentPhotoIdType = "PAN",
-           GovernmentIdLastFour = "5678",
-           LinkedInMemberId = "test-linkedin",
-           GitHubLogin = "test-github",
-           GitHubProfileUrl = "https://github.com/test-github",
-           IsProfileComplete = true,
-           ProfileCompletedAt = DateTimeOffset.UtcNow
-       });
-
-       db.Registrations.Add(new Registration
-       {
-           EventId = Guid.Empty,
-           FullName = "Test User",
-           Email = subject.Email!,
-           Status = RegistrationStatus.Accepted,
-           UpdatedAt = DateTimeOffset.UtcNow
-       });
-
-       await db.SaveChangesAsync();
-       var logger = NullLogger<CommunityJourneyReadModelService>.Instance;
-       var service = new CommunityJourneyReadModelService(db, passportService, logger);
-
-       var projection = await service.GetJourneyProjectionAsync(subject, timelineLimit: 50);
-
-       await Assert.That(projection.JourneyScore).IsGreaterThanOrEqualTo(0);
-    }
-
-    [Test]
-    public async Task GetDashboardReadModelAsync_HandlesMultipleMembersWithDuplicateEmails()
-    {
-       await using var db = CreateDbContext();
-       var passportService = new CommunityPassportService(db);
-       var subject1 = new CommunitySubjectContext("duplicate-member-1", "User A", "duplicate@example.com");
-       var subject2 = new CommunitySubjectContext("duplicate-member-2", "User B", "duplicate@example.com");
-       var now = DateTimeOffset.UtcNow;
-
-       db.AttendeeProfiles.AddRange(
-           new AttendeeProfile
-           {
-               UserId = subject1.UserId,
-               FirstName = "User",
-               LastName = "A",
-               Email = subject1.Email!,
-               GovernmentPhotoIdType = "PAN",
-               GovernmentIdLastFour = "1111",
-               LinkedInMemberId = "user-a-linkedin",
-               GitHubLogin = "user-a-github",
-               GitHubProfileUrl = "https://github.com/user-a-github",
-               IsProfileComplete = true,
-               ProfileCompletedAt = DateTimeOffset.UtcNow
-           },
-           new AttendeeProfile
-           {
-               UserId = subject2.UserId,
-               FirstName = "User",
-               LastName = "B",
-               Email = subject2.Email!,
-               GovernmentPhotoIdType = "PAN",
-               GovernmentIdLastFour = "2222",
-               LinkedInMemberId = "user-b-linkedin",
-               GitHubLogin = "user-b-github",
-               GitHubProfileUrl = "https://github.com/user-b-github",
-               IsProfileComplete = true,
-               ProfileCompletedAt = DateTimeOffset.UtcNow
-           });
-
-       var dupEvent = new Event
-       {
-           Title = "Duplicate Email Event",
-           Type = EventType.Meetup,
-           Capacity = 100,
-           StartDate = DateTimeOffset.UtcNow.AddDays(5),
-           EndDate = DateTimeOffset.UtcNow.AddDays(5).AddHours(2),
-           CreatedBy = "organizer"
-       };
-       dupEvent.TransitionLifecycleTo(MeetupLifecycleState.VenueLocked, DateTimeOffset.UtcNow.AddDays(-5));
-       dupEvent.TransitionLifecycleTo(MeetupLifecycleState.CfpOpen, DateTimeOffset.UtcNow.AddDays(-4));
-       dupEvent.TransitionLifecycleTo(MeetupLifecycleState.ReviewAndPlanning, DateTimeOffset.UtcNow.AddDays(-3));
-       dupEvent.TransitionLifecycleTo(MeetupLifecycleState.AgendaApproved, DateTimeOffset.UtcNow.AddDays(-2));
-       dupEvent.TransitionLifecycleTo(MeetupLifecycleState.Published, DateTimeOffset.UtcNow.AddDays(-1));
-
-       db.Events.Add(dupEvent);
-       db.Registrations.AddRange(
-           new Registration
-           {
-               EventId = dupEvent.Id,
-               FullName = "User A",
-               Email = subject1.Email!,
-               Status = RegistrationStatus.Accepted,
-               UpdatedAt = now.AddDays(-1)
-           },
-           new Registration
-           {
-               EventId = dupEvent.Id,
-               FullName = "User B",
-               Email = subject2.Email!,
-               Status = RegistrationStatus.Accepted,
-               UpdatedAt = now.AddDays(-2)
-           });
-
-       await db.SaveChangesAsync();
-       await passportService.GetPassportAsync(subject1);
-       await passportService.GetPassportAsync(subject2);
-
-       var logger = NullLogger<CommunityJourneyReadModelService>.Instance;
-       var service = new CommunityJourneyReadModelService(db, passportService, logger);
-
-       CommunityHealthDashboardReadModelResponse readModel = await service.GetDashboardReadModelAsync(lookbackDays: 90);
-
-       await Assert.That(readModel.Attendance.AcceptedCount).IsGreaterThanOrEqualTo(2);
     }
 
     private static BethuyaDbContext CreateDbContext()

@@ -24,6 +24,8 @@ public sealed class BethuyaDbContext(DbContextOptions<BethuyaDbContext> options)
     public DbSet<PlannerInvocationAudit> PlannerInvocationAudits => Set<PlannerInvocationAudit>();
     public DbSet<PublishedScheduleSnapshot> PublishedScheduleSnapshots => Set<PublishedScheduleSnapshot>();
     public DbSet<PendingImageUpload> PendingImageUploads => Set<PendingImageUpload>();
+    /// <summary>Mentor opt-in profiles; one record per community member who has opted into the mentorship programme.</summary>
+    public DbSet<MentorProfile> MentorProfiles => Set<MentorProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

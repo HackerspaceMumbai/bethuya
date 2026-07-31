@@ -12,6 +12,9 @@ public static class BethuyaAuthorizationPolicies
     /// <summary>Requires the user to be in the <see cref="BethuyaRoles.Organizer"/> or <see cref="BethuyaRoles.Curator"/> role.</summary>
     public const string RequireOrganizerOrCurator = nameof(RequireOrganizerOrCurator);
 
+    /// <summary>Requires connector-ingestion authority via role or explicit ingestion claim.</summary>
+    public const string RequireConnectorIngestion = nameof(RequireConnectorIngestion);
+
     /// <summary>Requires the user to be in the <see cref="BethuyaRoles.Attendee"/> role.</summary>
     public const string RequireAttendee = nameof(RequireAttendee);
 

@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Hackmum.Bethuya.Backend.Agents;
 using Hackmum.Bethuya.Backend.Contracts;
@@ -18,9 +16,6 @@ namespace Hackmum.Bethuya.Backend.Services;
 public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plannerInvoker)
 {
     private const int MaxWorkItemIdLength = 100;
-    private const int MaxPersistedTraceMetadataLength = 200;
-    private const int MaxPersistedProviderMetadataLength = 200;
-    private const string MissingTraceParentPrefix = "missing-traceparent:";
 
     public async Task<PlanningCycleResponse?> GetActiveCycleAsync(Guid eventId, CancellationToken ct = default)
     {
@@ -118,9 +113,9 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
             PriorEventsContext: request.PriorEventsContext,
             HumanEditedMarkdown: request.HumanEditedMarkdown);
 
-        var inputHash = ComputeInputHash(invocationInput);
-        var traceParent = NormalizeOptionalTraceMetadata(Activity.Current?.Id);
-        var correlationId = NormalizeRequiredTraceMetadata(Activity.Current?.TraceId.ToString() ?? Guid.CreateVersion7().ToString("N"));
+        var inputHash = AiAuditMetadata.ComputeInputHash(invocationInput);
+        var traceParent = AiAuditMetadata.NormalizeOptionalTraceMetadata(Activity.Current?.Id);
+        var correlationId = AiAuditMetadata.NormalizeRequiredTraceMetadata(Activity.Current?.TraceId.ToString() ?? Guid.CreateVersion7().ToString("N"));
         var invocation = await plannerInvoker.InvokePlannerAsync(
             invocationInput,
             cycle.ConversationId,
@@ -128,6 +123,7 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
             traceParent,
             correlationId,
             ct);
+        var serializedAgendaJson = JsonSerializer.Serialize(invocation.AgendaJson);
 
         var draft = new PlannerDraft
         {
@@ -135,10 +131,10 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
             WorkItemId = request.WorkItemId,
             InputHash = inputHash,
             MarkdownAgenda = invocation.MarkdownAgenda,
-            AgendaJson = JsonSerializer.Serialize(invocation.AgendaJson),
-            ResponseId = NormalizeOptionalPersistedProviderMetadata(invocation.ResponseId),
-            AgentName = NormalizeOptionalPersistedProviderMetadata(invocation.AgentName),
-            AgentVersionTag = NormalizeOptionalPersistedProviderMetadata(invocation.AgentVersionTag),
+            AgendaJson = serializedAgendaJson,
+            ResponseId = AiAuditMetadata.NormalizeOptionalPersistedProviderMetadata(invocation.ResponseId),
+            AgentName = AiAuditMetadata.NormalizeOptionalPersistedProviderMetadata(invocation.AgentName),
+            AgentVersionTag = AiAuditMetadata.NormalizeOptionalPersistedProviderMetadata(invocation.AgentVersionTag),
             TraceParent = traceParent,
             CorrelationId = correlationId
         };
@@ -151,12 +147,12 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
             ConversationId = cycle.ConversationId,
             CycleState = cycle.Status,
             InputHash = inputHash,
-            ResponseId = NormalizeRequiredPersistedProviderMetadata(invocation.ResponseId, "unavailable"),
-            AgentName = NormalizeOptionalPersistedProviderMetadata(invocation.AgentName),
-            AgentVersionTag = NormalizeRequiredPersistedProviderMetadata(invocation.AgentVersionTag, "unknown"),
+            ResponseId = AiAuditMetadata.NormalizeRequiredPersistedProviderMetadata(invocation.ResponseId, "unavailable"),
+            AgentName = AiAuditMetadata.NormalizeOptionalPersistedProviderMetadata(invocation.AgentName),
+            AgentVersionTag = AiAuditMetadata.NormalizeRequiredPersistedProviderMetadata(invocation.AgentVersionTag, "unknown"),
             MarkdownAgenda = invocation.MarkdownAgenda,
-            AgendaJson = JsonSerializer.Serialize(invocation.AgendaJson),
-            TraceParent = BuildAuditTraceParent(traceParent, correlationId),
+            AgendaJson = serializedAgendaJson,
+            TraceParent = AiAuditMetadata.BuildAuditTraceParent(traceParent, correlationId),
             CorrelationId = correlationId
         };
 
@@ -265,65 +261,6 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
             PublishedBy: snapshot.PublishedBy);
     }
 
-    private static string ComputeInputHash(PlannerInvocationInput input)
-    {
-        var payload = JsonSerializer.Serialize(input);
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
-        return Convert.ToHexString(hash);
-    }
-
-    private static string BuildAuditTraceParent(string? traceParent, string correlationId)
-    {
-        if (!string.IsNullOrWhiteSpace(traceParent))
-        {
-            return NormalizeRequiredTraceMetadata(traceParent);
-        }
-
-        var availableCorrelationLength = Math.Max(0, MaxPersistedTraceMetadataLength - MissingTraceParentPrefix.Length);
-        var boundedCorrelationId = correlationId.Length <= availableCorrelationLength
-            ? correlationId
-            : correlationId[..availableCorrelationLength];
-
-        return MissingTraceParentPrefix + boundedCorrelationId;
-    }
-
-    private static string NormalizeRequiredTraceMetadata(string value)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value);
-        return value.Length <= MaxPersistedTraceMetadataLength
-            ? value
-            : value[..MaxPersistedTraceMetadataLength];
-    }
-
-    private static string? NormalizeOptionalPersistedProviderMetadata(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Length <= MaxPersistedProviderMetadataLength
-            ? value
-            : value[..MaxPersistedProviderMetadataLength];
-    }
-
-    private static string NormalizeRequiredPersistedProviderMetadata(string? value, string fallback)
-    {
-        return NormalizeOptionalPersistedProviderMetadata(value)
-            ?? NormalizeOptionalPersistedProviderMetadata(fallback)
-            ?? throw new InvalidOperationException("Required persisted provider metadata could not be normalized.");
-    }
-
-    private static string? NormalizeOptionalTraceMetadata(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return NormalizeRequiredTraceMetadata(value);
-    }
-
     private static void ValidateWorkItemId(string workItemId)
     {
         if (string.IsNullOrWhiteSpace(workItemId))
@@ -369,4 +306,3 @@ public sealed class PlanningCycleService(BethuyaDbContext db, IAgentInvoker plan
         return $"Markdown changes: +{added} / -{removed} lines.";
     }
 }
-

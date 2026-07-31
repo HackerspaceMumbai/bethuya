@@ -3,6 +3,7 @@ using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
+using Hackmum.Bethuya.Core.ValueObjects;
 
 namespace Hackmum.Bethuya.Backend.Services;
 
@@ -24,6 +25,7 @@ public sealed class CurationFairnessService
 
         var dimensions = new List<FairnessDimensionProgressResponse>
         {
+            genderProgress,
             BuildGeoProgress(selected, targets),
             BuildLanguageProgress(selected, targets),
             BuildEducationProgress(selected, targets)
@@ -96,7 +98,7 @@ public sealed class CurationFairnessService
         var recommendation = BuildRecommendation(registration, impact, profile, reliability, intent, dimensions);
 
         return new CurationRegistrantResponse(
-            RegistrationId: registration.Id,
+            RegistrationId: RegistrationId.From(registration.Id),
             FullName: registration.FullName,
             Email: registration.Email,
             Status: registration.Status.ToString(),
@@ -757,9 +759,7 @@ public sealed class CurationFairnessService
         var liveEnd = DateTimeOffset.Compare(evt.EndDate.AddMinutes(-30), liveStart) > 0
             ? evt.EndDate.AddMinutes(-30)
             : evt.EndDate;
-        var closeoutStart = DateTimeOffset.Compare(liveEnd, evt.EndDate) < 0
-            ? liveEnd
-            : evt.EndDate.AddMinutes(-15);
+        var closeoutStart = liveEnd;
 
         return
         [

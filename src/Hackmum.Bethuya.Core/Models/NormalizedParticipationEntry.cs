@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Core.Enums;
+using Hackmum.Bethuya.Core.ValueObjects;
 
 namespace Hackmum.Bethuya.Core.Models;
 
@@ -12,7 +13,7 @@ public sealed record NormalizedParticipationEntry(
     DateTimeOffset OccurredAt,
     string Evidence,
     string ProvenanceKey,
-    Guid? EventId = null,
+    EventId? EventId = null,
     string? ExternalEventId = null,
     string? ExternalRecordId = null,
     string? SourceCorrelationId = null);
