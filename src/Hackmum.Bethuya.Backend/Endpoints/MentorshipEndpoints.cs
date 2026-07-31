@@ -170,7 +170,8 @@ public static class MentorshipEndpoints
         var parsed = new List<MentorExpertiseArea>();
         foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            if (Enum.TryParse<MentorExpertiseArea>(part, ignoreCase: true, out var area))
+            if (Enum.TryParse<MentorExpertiseArea>(part, ignoreCase: true, out var area)
+                && Enum.IsDefined(area))
             {
                 parsed.Add(area);
             }
