@@ -71,6 +71,11 @@ public sealed class CommunityRecommendationService(
             return ToDraftResponse(decision.Id, decision.EntityType, payload);
         }
 
+        if (decision.Status != DecisionStatus.Pending)
+        {
+            throw new InvalidOperationException($"Recommendation draft is in status '{decision.Status}' and cannot be approved.");
+        }
+
         decision.Status = DecisionStatus.Applied;
         decision.Type = DecisionType.Approve;
         decision.Reason = string.IsNullOrWhiteSpace(request.ApprovalNotes)

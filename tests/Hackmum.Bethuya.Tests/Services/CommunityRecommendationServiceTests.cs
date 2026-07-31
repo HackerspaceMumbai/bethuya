@@ -7,6 +7,7 @@ using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hackmum.Bethuya.Tests.Services;
 
@@ -65,7 +66,8 @@ public sealed class CommunityRecommendationServiceTests
     private static CommunityRecommendationService CreateService(BethuyaDbContext db)
     {
         var passportService = new CommunityPassportService(db);
-        var journeyReadModelService = new CommunityJourneyReadModelService(db, passportService);
+        var journeyReadModelService = new CommunityJourneyReadModelService(
+            db, passportService, NullLogger<CommunityJourneyReadModelService>.Instance);
         var decisionRepository = new DecisionRepository(db);
         return new CommunityRecommendationService(journeyReadModelService, decisionRepository);
     }
