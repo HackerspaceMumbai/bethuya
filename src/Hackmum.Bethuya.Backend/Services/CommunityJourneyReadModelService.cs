@@ -95,12 +95,12 @@ public sealed partial class CommunityJourneyReadModelService(
 
         var registrations = await db.Registrations
             .AsNoTracking()
-            .Where(registration => registration.UpdatedAt >= previousWindowStart)
+            .Where(registration => registration.UpdatedAt >= previousWindowStart && registration.UpdatedAt <= now)
             .ToListAsync(ct);
 
         var ledgerEntries = await db.ParticipationLedgerEntries
             .AsNoTracking()
-            .Where(entry => entry.OccurredAt >= previousWindowStart)
+            .Where(entry => entry.OccurredAt >= previousWindowStart && entry.OccurredAt <= now)
             .ToListAsync(ct);
 
         var communityMembers = await db.CommunityMembers
@@ -138,14 +138,21 @@ public sealed partial class CommunityJourneyReadModelService(
             RetainedMembers: retainedMembers,
             RetentionRatePercent: ToPercent(retainedMembers, previousActiveMembers.Count));
 
-        var acceptedCount = currentRegistrations.Count(registration =>
-            registration.Status is RegistrationStatus.Accepted or RegistrationStatus.CheckedIn);
-        var attendedCount = currentRegistrations.Count(registration => registration.Status == RegistrationStatus.CheckedIn);
+        int acceptedCount = 0, attendedCount = 0, waitlistedCount = 0;
+        foreach (var registration in currentRegistrations)
+        {
+            if (registration.Status is RegistrationStatus.Accepted or RegistrationStatus.CheckedIn)
+                acceptedCount++;
+            if (registration.Status == RegistrationStatus.CheckedIn)
+                attendedCount++;
+            if (registration.Status == RegistrationStatus.Waitlisted)
+                waitlistedCount++;
+        }
         var attendance = new AttendanceReadModelResponse(
             RegisteredCount: currentRegistrations.Length,
             AcceptedCount: acceptedCount,
             AttendedCount: attendedCount,
-            WaitlistedCount: currentRegistrations.Count(registration => registration.Status == RegistrationStatus.Waitlisted),
+            WaitlistedCount: waitlistedCount,
             AttendanceRatePercent: ToPercent(attendedCount, acceptedCount));
 
         var currentVolunteerSignals = CountVolunteerSignals(currentRegistrations, ledgerEntries, currentWindowStart, now);
@@ -173,7 +180,11 @@ public sealed partial class CommunityJourneyReadModelService(
         var membersByEmailDict = membersByEmail
             .ToDictionary(
                 group => group.Key,
-                group => new CommunityMemberLookup(group.OrderByDescending(m => m.Id).First().Id, group.OrderByDescending(m => m.Id).First().IsDiscoverableToCommunity),
+                group =>
+                {
+                    var newestMember = group.OrderByDescending(m => m.Id).First();
+                    return new CommunityMemberLookup(newestMember.Id, newestMember.IsDiscoverableToCommunity);
+                },
                 StringComparer.Ordinal);
         var interestedMemberIds = ResolveVolunteerInterestedMemberIds(registrations, ledgerEntries, membersByEmailDict);
         var activeVolunteerIds = ResolveActiveVolunteerIds(currentWindowStart, now, registrations, ledgerEntries, membersByEmailDict);
