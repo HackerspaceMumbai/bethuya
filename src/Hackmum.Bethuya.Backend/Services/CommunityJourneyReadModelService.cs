@@ -151,6 +151,8 @@ public sealed class CommunityJourneyReadModelService(
                 : Math.Round(((double)(currentVolunteerSignals - previousVolunteerSignals) / previousVolunteerSignals) * 100d, 2));
 
         var membersByEmail = communityMembers
+            .GroupBy(member => member.Email.Trim().ToUpperInvariant())
+            .Select(group => group.First())
             .ToDictionary(
                 member => member.Email.Trim().ToUpperInvariant(),
                 member => new CommunityMemberLookup(member.Id, member.IsDiscoverableToCommunity),
@@ -183,7 +185,13 @@ public sealed class CommunityJourneyReadModelService(
             return query.Where(registration => EF.Functions.ILike(registration.Email, pattern));
         }
 
-        return query.Where(registration => string.Equals(registration.Email, email, StringComparison.OrdinalIgnoreCase));
+        // CA1862: We use ToUpperInvariant() comparison instead of string.Equals(..., StringComparison.OrdinalIgnoreCase)
+        // because the latter is not translatable by EF Core on non-Npgsql relational providers (e.g., SQLite, SQL Server).
+        // ToUpperInvariant() is consistently translatable across all EF Core providers.
+#pragma warning disable CA1862
+        var normalizedEmail = email.Trim().ToUpperInvariant();
+        return query.Where(registration => registration.Email.ToUpperInvariant() == normalizedEmail);
+#pragma warning restore CA1862
     }
 
     private static List<JourneyTimelineEntryResponse> BuildTimeline(
@@ -213,6 +221,10 @@ public sealed class CommunityJourneyReadModelService(
 
         foreach (var entry in ledgerEntries)
         {
+            var eventTitle = entry.EventId.HasValue && eventsById.TryGetValue(entry.EventId.Value, out var evt)
+                ? evt.Title
+                : entry.EventId.HasValue ? "Unknown event" : null;
+
             timeline.Add(new JourneyTimelineEntryResponse(
                 OccurredAt: entry.OccurredAt,
                 Source: entry.Connector.ToString(),
@@ -220,9 +232,7 @@ public sealed class CommunityJourneyReadModelService(
                 Points: PointsForActivity(entry.Activity),
                 Evidence: entry.Evidence,
                 EventId: entry.EventId,
-                EventTitle: entry.EventId.HasValue && eventsById.TryGetValue(entry.EventId.Value, out var evt)
-                    ? evt.Title
-                    : null));
+                EventTitle: eventTitle));
         }
 
         return timeline;
