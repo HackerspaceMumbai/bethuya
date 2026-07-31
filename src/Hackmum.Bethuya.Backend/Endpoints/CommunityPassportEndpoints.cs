@@ -93,7 +93,7 @@ public static class CommunityPassportEndpoints
                 });
             }
         })
-        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+        .RequireAuthorization(BethuyaPolicyNames.RequireConnectorIngestion);
 
         group.MapGet("/participation/timeline", async (
             int? limit,

@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-07-31] Scope/permissions claims are often tokenized, not exact-match strings
+- **What happened:** The first connector-ingestion policy check used exact-value claim matching (`scope == "connector.ingest"`), which would reject common OAuth tokens where scope values are space-delimited.
+- **Root cause:** We reused a simple `HasClaim(type, value)` pattern without accounting for tokenized claim semantics.
+- **Fix:** Switched to token-aware scope/permissions parsing and added endpoint authorization coverage for multi-scope claims.
+- **Prevention:** For OAuth-style claims (`scope`, `permissions`), always parse token lists instead of relying on exact claim-value equality.
+
 ## [2026-07-31] TUnit CLI filtering differs from VSTest conventions
 - **What happened:** A targeted test run failed before execution because `dotnet test --filter ...` was passed to the TUnit runner.
 - **Root cause:** This repository uses TUnit on Microsoft.Testing.Platform, where `--filter` is not a supported option.

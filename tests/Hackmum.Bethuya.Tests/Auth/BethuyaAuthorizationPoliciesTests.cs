@@ -13,9 +13,10 @@ public class BethuyaAuthorizationPoliciesTests
             BethuyaAuthorizationPolicies.RequireOrganizer,
             BethuyaAuthorizationPolicies.RequireCurator,
             BethuyaAuthorizationPolicies.RequireOrganizerOrCurator,
+            BethuyaAuthorizationPolicies.RequireConnectorIngestion,
             BethuyaAuthorizationPolicies.RequireAttendee
         };
-        await Assert.That(policies.Distinct().Count()).IsEqualTo(5);
+        await Assert.That(policies.Distinct().Count()).IsEqualTo(6);
     }
 
     [Test]
@@ -27,6 +28,7 @@ public class BethuyaAuthorizationPoliciesTests
             BethuyaAuthorizationPolicies.RequireOrganizer,
             BethuyaAuthorizationPolicies.RequireCurator,
             BethuyaAuthorizationPolicies.RequireOrganizerOrCurator,
+            BethuyaAuthorizationPolicies.RequireConnectorIngestion,
             BethuyaAuthorizationPolicies.RequireAttendee
         };
         foreach (var policy in policies)
