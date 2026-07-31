@@ -67,6 +67,7 @@ public sealed class ParticipationLedgerService(
                 .ToListAsync(ct);
             var existingDedupeKeys = existingKeys.ToHashSet();
 
+            List<ParticipationLedgerEntry> pendingEntries = [];
             foreach (var resolvedEntry in resolvedEntries)
             {
                 var normalized = resolvedEntry.Normalized;
@@ -77,7 +78,7 @@ public sealed class ParticipationLedgerService(
                     continue;
                 }
 
-                var ledgerEntry = new ParticipationLedgerEntry
+                pendingEntries.Add(new ParticipationLedgerEntry
                 {
                     CommunityMemberId = resolvedEntry.MemberId,
                     Connector = normalized.Connector,
@@ -90,33 +91,52 @@ public sealed class ParticipationLedgerService(
                     ProvenanceKey = normalized.ProvenanceKey,
                     SourceCorrelationId = normalized.SourceCorrelationId,
                     OccurredAt = normalized.OccurredAt
-                };
+                });
+                existingDedupeKeys.Add(dedupeKey);
+            }
 
-                db.ParticipationLedgerEntries.Add(ledgerEntry);
-
+            if (pendingEntries.Count > 0)
+            {
                 try
                 {
+                    db.ParticipationLedgerEntries.AddRange(pendingEntries);
                     await db.SaveChangesAsync(ct);
-                    existingDedupeKeys.Add(dedupeKey);
-                    attemptStoredCount++;
+                    attemptStoredCount += pendingEntries.Count;
                 }
                 catch (DbUpdateException)
                 {
-                    db.Entry(ledgerEntry).State = EntityState.Detached;
-
-                    var keyExists = await db.ParticipationLedgerEntries
-                        .AsNoTracking()
-                        .AnyAsync(entry =>
-                            entry.CommunityMemberId == resolvedEntry.MemberId
-                            && entry.Connector == normalized.Connector
-                            && entry.ProvenanceKey == normalized.ProvenanceKey, ct);
-                    if (!keyExists)
+                    foreach (var pendingEntry in pendingEntries)
                     {
-                        throw;
+                        db.Entry(pendingEntry).State = EntityState.Detached;
                     }
 
-                    existingDedupeKeys.Add(dedupeKey);
-                    attemptDuplicateCount++;
+                    foreach (var pendingEntry in pendingEntries)
+                    {
+                        db.ParticipationLedgerEntries.Add(pendingEntry);
+
+                        try
+                        {
+                            await db.SaveChangesAsync(ct);
+                            attemptStoredCount++;
+                        }
+                        catch (DbUpdateException)
+                        {
+                            db.Entry(pendingEntry).State = EntityState.Detached;
+
+                            var keyExists = await db.ParticipationLedgerEntries
+                                .AsNoTracking()
+                                .AnyAsync(entry =>
+                                    entry.CommunityMemberId == pendingEntry.CommunityMemberId
+                                    && entry.Connector == pendingEntry.Connector
+                                    && entry.ProvenanceKey == pendingEntry.ProvenanceKey, ct);
+                            if (!keyExists)
+                            {
+                                throw;
+                            }
+
+                            attemptDuplicateCount++;
+                        }
+                    }
                 }
             }
 
