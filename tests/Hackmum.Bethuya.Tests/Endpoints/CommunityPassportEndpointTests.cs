@@ -44,7 +44,10 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
             .AddAuthentication("Test")
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
         builder.Services.AddAuthorization(options =>
-            options.AddPolicy("RequireOrganizer", policy => policy.RequireRole("Organizer", "Admin")));
+        {
+            options.AddPolicy("RequireOrganizer", policy => policy.RequireRole("Organizer", "Admin"));
+            options.AddPolicy("RequireConnectorIngestion", policy => policy.RequireRole("Organizer", "Admin"));
+        });
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddDbContext<BethuyaDbContext>(options =>

@@ -28,6 +28,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Description:** Evolve curation fairness/capacity/candidate scoring into a generalized opportunity engine foundation by adding volunteer role definitions, shift-assignment rules, and conflict detection seams while reusing existing fairness budget heuristics and organizer curation workflow surfaces.
 - **Acceptance:** Curation dashboard contracts include opportunity engine outputs (roles, shifts/rules, conflicts, candidate suggestions), backend fairness service produces these outputs from existing curation signals and fairness dimensions, organizer-curator authorization is enforced on curation surfaces, and focused TUnit coverage validates opportunity engine behavior plus role-gated endpoint access.
 
+## [2026-07-31] Apply PR3 rubber-duck hardening in stacked PR4
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Implement the deferred PR3 rubber-duck feedback in participation ledger flows by resolving write attribution via `ExternalMemberKey` identity links, tightening dedupe scope to avoid cross-member collisions, and adding an ingestion authorization seam suitable for connector/webhook principals.
+- **Acceptance:** Participation writes resolve each entry to the correct member via linked external identities (with deterministic fallback), dedupe uniqueness is scoped by member+connector+provenance, ingestion endpoints enforce a dedicated connector-ingestion policy, and focused tests cover the new behavior.
+
 ## [2026-07-31] Build connector and participation ledger foundation (PR3)
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

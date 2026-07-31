@@ -26,7 +26,7 @@ public sealed class CurationEndpointAuthorizationTests
     [Test]
     public async Task CurationDashboard_ForbidsAttendeeRole()
     {
-        await using var app = await CreateAppAsync("Attendee");
+        await using var app = await CreateAppAsync(BethuyaRoleNames.Attendee);
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test");
 
@@ -38,7 +38,19 @@ public sealed class CurationEndpointAuthorizationTests
     [Test]
     public async Task CurationDashboard_AllowsOrganizerRole()
     {
-        await using var app = await CreateAppAsync("Organizer");
+        await using var app = await CreateAppAsync(BethuyaRoleNames.Organizer);
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test");
+
+        var response = await client.GetAsync($"/api/curation/{TestEventId}");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task CurationDashboard_AllowsCuratorRole()
+    {
+        await using var app = await CreateAppAsync(BethuyaRoleNames.Curator);
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test");
 

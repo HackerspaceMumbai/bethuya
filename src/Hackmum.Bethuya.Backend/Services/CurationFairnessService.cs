@@ -757,9 +757,7 @@ public sealed class CurationFairnessService
         var liveEnd = DateTimeOffset.Compare(evt.EndDate.AddMinutes(-30), liveStart) > 0
             ? evt.EndDate.AddMinutes(-30)
             : evt.EndDate;
-        var closeoutStart = DateTimeOffset.Compare(liveEnd, evt.EndDate) < 0
-            ? liveEnd
-            : evt.EndDate.AddMinutes(-15);
+        var closeoutStart = liveEnd;
 
         return
         [

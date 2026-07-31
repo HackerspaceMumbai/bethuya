@@ -3,6 +3,7 @@ using System;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(BethuyaDbContext))]
-    partial class BethuyaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260731150408_ParticipationLedgerDedupeHardening")]
+    partial class ParticipationLedgerDedupeHardening
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -747,52 +750,6 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.ToTable("FairnessBudgets");
                 });
 
-            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.MentorProfile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AvailabilityHoursPerMonth")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ExpertiseAreasJson")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("[]")
-                        .HasColumnName("ExpertiseAreas");
-
-                    b.Property<string>("IntroductionBio")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsDiscoverable")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("MemberId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("OptedInAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MemberId")
-                        .IsUnique();
-
-                    b.HasIndex("Status", "IsDiscoverable");
-
-                    b.ToTable("MentorProfiles");
-                });
-
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ParticipationLedgerEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1316,17 +1273,6 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.Navigation("AttendanceProposal");
 
                     b.Navigation("Event");
-                });
-
-            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.MentorProfile", b =>
-                {
-                    b.HasOne("Hackmum.Bethuya.Core.Models.CommunityMember", "Member")
-                        .WithOne()
-                        .HasForeignKey("Hackmum.Bethuya.Core.Models.MentorProfile", "MemberId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Member");
                 });
 
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ParticipationLedgerEntry", b =>

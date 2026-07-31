@@ -18,32 +18,44 @@ public static class ParticipationNormalizationEngine
 
         return entry with
         {
-            ExternalMemberKey = NormalizeRequired(entry.ExternalMemberKey, 200, "External member key"),
-            Evidence = NormalizeRequired(entry.Evidence, 600, "Evidence"),
-            ProvenanceKey = NormalizeRequired(entry.ProvenanceKey, 300, "Provenance key"),
-            ExternalEventId = NormalizeOptional(entry.ExternalEventId, 200),
-            ExternalRecordId = NormalizeOptional(entry.ExternalRecordId, 200),
-            SourceCorrelationId = NormalizeOptional(entry.SourceCorrelationId, 200)
+            ExternalMemberKey = NormalizeRequired(
+                entry.ExternalMemberKey,
+                200,
+                nameof(entry.ExternalMemberKey),
+                "External member key"),
+            Evidence = NormalizeRequired(
+                entry.Evidence,
+                600,
+                nameof(entry.Evidence),
+                "Evidence"),
+            ProvenanceKey = NormalizeRequired(
+                entry.ProvenanceKey,
+                300,
+                nameof(entry.ProvenanceKey),
+                "Provenance key"),
+            ExternalEventId = NormalizeOptional(entry.ExternalEventId, 200, nameof(entry.ExternalEventId), "External event id"),
+            ExternalRecordId = NormalizeOptional(entry.ExternalRecordId, 200, nameof(entry.ExternalRecordId), "External record id"),
+            SourceCorrelationId = NormalizeOptional(entry.SourceCorrelationId, 200, nameof(entry.SourceCorrelationId), "Source correlation id")
         };
     }
 
-    private static string NormalizeRequired(string value, int maxLength, string fieldName)
+    private static string NormalizeRequired(string value, int maxLength, string paramName, string displayName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new ArgumentException($"{fieldName} is required.", fieldName);
+            throw new ArgumentException($"{displayName} is required.", paramName);
         }
 
         var normalized = value.Trim();
         if (normalized.Length > maxLength)
         {
-            throw new ArgumentException($"{fieldName} must be {maxLength} characters or fewer.", fieldName);
+            throw new ArgumentException($"{displayName} must be {maxLength} characters or fewer.", paramName);
         }
 
         return normalized;
     }
 
-    private static string? NormalizeOptional(string? value, int maxLength)
+    private static string? NormalizeOptional(string? value, int maxLength, string paramName, string displayName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -53,7 +65,7 @@ public static class ParticipationNormalizationEngine
         var normalized = value.Trim();
         if (normalized.Length > maxLength)
         {
-            throw new ArgumentException($"Value must be {maxLength} characters or fewer.", nameof(value));
+            throw new ArgumentException($"{displayName} must be {maxLength} characters or fewer.", paramName);
         }
 
         return normalized;
