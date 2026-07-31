@@ -1,11 +1,19 @@
+using System.Collections.Generic;
 using System.Security.Claims;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
+/// <summary>
+/// Community Passport API endpoint mappings.
+/// </summary>
 public static class CommunityPassportEndpoints
 {
+    /// <summary>
+    /// Maps authenticated Community Passport read and privacy-update endpoints.
+    /// </summary>
+    /// <param name="app">Application instance to map endpoints on.</param>
     public static void MapCommunityPassportEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/community/passport")
@@ -33,6 +41,14 @@ public static class CommunityPassportEndpoints
             CommunityPassportService service,
             CancellationToken ct) =>
         {
+            if (!Enum.IsDefined(request.Visibility))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["visibility"] = ["Visibility must be a valid ProfileVisibilityScope value."]
+                });
+            }
+
             var subject = GetSubject(user);
             if (subject is null)
             {

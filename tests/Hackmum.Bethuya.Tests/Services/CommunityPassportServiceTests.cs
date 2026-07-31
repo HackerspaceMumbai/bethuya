@@ -96,6 +96,57 @@ public sealed class CommunityPassportServiceTests
     }
 
     [Test]
+    public async Task GetPassportAsync_MatchesRegistrationsCaseInsensitively()
+    {
+        await using var db = CreateDbContext();
+        var userId = "user-case-match";
+
+        db.AttendeeProfiles.Add(new AttendeeProfile
+        {
+            UserId = userId,
+            FirstName = "Casey",
+            LastName = "Matcher",
+            Email = "casey@example.com",
+            GovernmentPhotoIdType = "PAN",
+            GovernmentIdLastFour = "4321",
+            LinkedInMemberId = "casey-li",
+            GitHubLogin = "casey-gh",
+            GitHubProfileUrl = "https://github.com/casey-gh",
+            Country = "INDIA",
+            IsProfileComplete = true,
+            ProfileCompletedAt = DateTimeOffset.UtcNow
+        });
+
+        var evt = new Event
+        {
+            Title = "Case Match Event",
+            Type = EventType.Meetup,
+            Capacity = 20,
+            StartDate = DateTimeOffset.UtcNow.AddDays(3),
+            EndDate = DateTimeOffset.UtcNow.AddDays(3).AddHours(2),
+            CreatedBy = "organizer"
+        };
+
+        db.Events.Add(evt);
+        db.Registrations.Add(new Registration
+        {
+            EventId = evt.Id,
+            FullName = "Casey Matcher",
+            Email = "CASEY@EXAMPLE.COM",
+            Status = RegistrationStatus.Accepted
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new CommunityPassportService(db);
+        var passport = await service.GetPassportAsync(new CommunitySubjectContext(userId, "Casey Matcher", "casey@example.com"));
+
+        await Assert.That(passport.Metrics.EventsRegistered).IsEqualTo(1);
+        await Assert.That(passport.Residency.Region).IsEqualTo("South India");
+        await Assert.That(passport.Residency.ComplianceProfile).IsEqualTo("DPDP-ready");
+    }
+
+    [Test]
     public async Task UpdatePrivacyAsync_PersistsRequestedControls()
     {
         await using var db = CreateDbContext();

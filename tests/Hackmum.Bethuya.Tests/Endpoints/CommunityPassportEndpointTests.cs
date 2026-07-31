@@ -30,6 +30,7 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
 
     private WebApplication _app = null!;
     private HttpClient _client = null!;
+    private readonly string _dbName = $"community-passport-endpoint-tests-{Guid.NewGuid():N}";
 
     [Before(Test)]
     public async Task Setup()
@@ -40,8 +41,10 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
             .AddAuthentication("Test")
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
         builder.Services.AddAuthorization();
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddDbContext<BethuyaDbContext>(options =>
-            options.UseInMemoryDatabase($"community-passport-endpoint-tests-{Guid.NewGuid():N}"));
+            options.UseInMemoryDatabase(_dbName));
         builder.Services.AddScoped<CommunityPassportService>();
 
         _app = builder.Build();
@@ -94,6 +97,18 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
         await Assert.That(privacy!.Visibility.ToString()).IsEqualTo("OrganizerOnly");
         await Assert.That(privacy.ShareParticipationWithOrganizers).IsFalse();
         await Assert.That(privacy.IsDiscoverableToCommunity).IsFalse();
+
+        var persistedResponse = await _client.GetAsync("/api/community/passport");
+        await Assert.That(persistedResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        await using var scope = _app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
+        var hasPersistedPrivacy = await db.CommunityMembers.AnyAsync(member =>
+            member.Visibility == Hackmum.Bethuya.Core.Enums.ProfileVisibilityScope.OrganizerOnly
+            && !member.ShareParticipationWithOrganizers
+            && !member.IsDiscoverableToCommunity);
+
+        await Assert.That(hasPersistedPrivacy).IsTrue();
     }
 
     public async ValueTask DisposeAsync()
@@ -115,12 +130,12 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
     {
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            var claims = new[]
-            {
+            Claim[] claims =
+            [
                 new Claim("sub", "passport-user"),
                 new Claim("name", "Passport Tester"),
                 new Claim(ClaimTypes.Email, "passport@example.com")
-            };
+            ];
 
             var identity = new ClaimsIdentity(claims, Scheme.Name);
             var principal = new ClaimsPrincipal(identity);

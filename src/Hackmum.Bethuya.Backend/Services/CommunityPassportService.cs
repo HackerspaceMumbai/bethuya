@@ -13,6 +13,25 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
 {
     private const string DefaultCommunitySlug = "hackerspace-mumbai";
     private const string DefaultResidencyRegion = "South India";
+    private const string EuropeanUnionResidencyRegion = "European Union";
+
+    private static readonly HashSet<string> EuJurisdictions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Germany",
+        "France",
+        "Netherlands",
+        "Spain",
+        "Italy",
+        "Belgium",
+        "Ireland",
+        "Portugal",
+        "Poland",
+        "Sweden",
+        "Finland",
+        "Denmark",
+        "Austria",
+        "Czech Republic"
+    };
 
     public async Task<CommunityPassportResponse> GetPassportAsync(CommunitySubjectContext subject, CancellationToken ct = default)
     {
@@ -42,9 +61,19 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
 
     private async Task<CommunityPassportResponse> BuildPassportAsync(CommunityMember member, CancellationToken ct)
     {
-        var registrations = await db.Registrations
-            .AsNoTracking()
-            .Where(registration => registration.Email == member.Email)
+        var registrationsQuery = db.Registrations.AsNoTracking();
+        if (db.Database.IsNpgsql())
+        {
+            registrationsQuery = registrationsQuery
+                .Where(registration => EF.Functions.ILike(registration.Email, member.Email));
+        }
+        else
+        {
+            registrationsQuery = registrationsQuery
+                .Where(registration => string.Equals(registration.Email, member.Email, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var registrations = await registrationsQuery
             .OrderByDescending(registration => registration.UpdatedAt)
             .ToListAsync(ct);
 
@@ -151,8 +180,21 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
             SyncLegacyIdentities(member, profile);
 
             db.CommunityMembers.Add(member);
-            await db.SaveChangesAsync(ct);
-            return member;
+
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return member;
+            }
+            catch (DbUpdateException)
+            {
+                if (await TryLoadProvisionedMemberAsync(subject.UserId, ct) is { } provisioned)
+                {
+                    return provisioned;
+                }
+
+                throw;
+            }
         }
 
         var changed = false;
@@ -166,6 +208,19 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
         }
 
         return member;
+    }
+
+    private async Task<CommunityMember?> TryLoadProvisionedMemberAsync(string userId, CancellationToken ct)
+    {
+        if (db.ChangeTracker.Entries<CommunityMember>().FirstOrDefault(entry =>
+                string.Equals(entry.Entity.UserId, userId, StringComparison.Ordinal)) is { } memberEntry)
+        {
+            memberEntry.State = EntityState.Detached;
+        }
+
+        return await db.CommunityMembers
+            .Include(existing => existing.ExternalIdentities)
+            .FirstOrDefaultAsync(existing => existing.UserId == userId, ct);
     }
 
     private static bool ApplyProfileSync(CommunityMember member, AttendeeProfile? profile, CommunitySubjectContext subject)
@@ -369,29 +424,48 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
     }
 
     private static string ResolveResidencyRegion(AttendeeProfile? profile)
-        => profile?.Country?.Trim() switch
+    {
+        var country = NormalizeCountry(profile?.Country);
+        return country switch
         {
-            "India" => DefaultResidencyRegion,
-            "Germany" or "France" or "Netherlands" or "Spain" or "Italy" or "Belgium" or "Ireland" or "Portugal" or "Poland" or "Sweden" or "Finland" or "Denmark" or "Austria" or "Czech Republic" => "West Europe",
+            not null when country.Equals("India", StringComparison.OrdinalIgnoreCase) => DefaultResidencyRegion,
+            not null when EuJurisdictions.Contains(country) => EuropeanUnionResidencyRegion,
             { Length: > 0 } => "Jurisdiction policy required",
             _ => DefaultResidencyRegion
         };
+    }
 
     private static SensitiveDataResidencyMode ResolveResidencyMode(AttendeeProfile? profile)
-        => profile?.Country?.Trim() switch
+    {
+        var country = NormalizeCountry(profile?.Country);
+        return country switch
         {
-            "Germany" or "France" or "Netherlands" or "Spain" or "Italy" or "Belgium" or "Ireland" or "Portugal" or "Poland" or "Sweden" or "Finland" or "Denmark" or "Austria" or "Czech Republic" => SensitiveDataResidencyMode.JurisdictionLocked,
+            not null when EuJurisdictions.Contains(country) => SensitiveDataResidencyMode.JurisdictionLocked,
             _ => SensitiveDataResidencyMode.SovereignRegion
         };
+    }
 
     private static string ResolveComplianceProfile(AttendeeProfile? profile)
-        => profile?.Country?.Trim() switch
+    {
+        var country = NormalizeCountry(profile?.Country);
+        return country switch
         {
-            "India" => "DPDP-ready",
-            "Germany" or "France" or "Netherlands" or "Spain" or "Italy" or "Belgium" or "Ireland" or "Portugal" or "Poland" or "Sweden" or "Finland" or "Denmark" or "Austria" or "Czech Republic" => "GDPR-ready",
+            not null when country.Equals("India", StringComparison.OrdinalIgnoreCase) => "DPDP-ready",
+            not null when EuJurisdictions.Contains(country) => "GDPR-ready",
             { Length: > 0 } => "Jurisdiction policy review required",
             _ => "DPDP-ready"
         };
+    }
+
+    private static string? NormalizeCountry(string? country)
+    {
+        if (string.IsNullOrWhiteSpace(country))
+        {
+            return null;
+        }
+
+        return country.Trim();
+    }
 
     private static bool HasVolunteerSignal(Registration registration)
         => registration.ContributionPreferences.Any(preference =>
@@ -448,5 +522,3 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
             _ => "Registered"
         };
 }
-
-public sealed record CommunitySubjectContext(string UserId, string? DisplayName, string? Email);

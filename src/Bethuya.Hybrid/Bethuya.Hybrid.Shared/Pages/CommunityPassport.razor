@@ -124,29 +124,29 @@
                             <BbCardContent Class="space-y-4">
                                 <BbFormFieldSelect TValue="string"
                                                    @bind-Value="_visibility"
-                                                   Label="Profile visibility">
+                                                   Label="Profile visibility"
+                                                   data-test="passport-visibility-select">
                                     <BbSelectItem Value="@("Public")" Text="Public" />
                                     <BbSelectItem Value="@("CommunityOnly")" Text="Community only" />
                                     <BbSelectItem Value="@("OrganizerOnly")" Text="Organizer only" />
                                 </BbFormFieldSelect>
 
-                                <label class="flex items-center gap-3 rounded-md border p-3" data-test="passport-share-participation-toggle">
-                                    <input type="checkbox" @bind="_shareParticipationWithOrganizers" />
+                                <label class="flex items-center gap-3 rounded-md border p-3">
+                                    <input type="checkbox" @bind="_shareParticipationWithOrganizers" data-test="passport-share-participation-toggle" />
                                     <span>Share participation signals with organizers</span>
                                 </label>
 
-                                <label class="flex items-center gap-3 rounded-md border p-3" data-test="passport-discoverable-toggle">
-                                    <input type="checkbox" @bind="_isDiscoverableToCommunity" />
+                                <label class="flex items-center gap-3 rounded-md border p-3">
+                                    <input type="checkbox" @bind="_isDiscoverableToCommunity" data-test="passport-discoverable-toggle" />
                                     <span>Allow community discovery in mentorship and opportunity flows</span>
                                 </label>
 
-                                <div data-test="passport-save-privacy-btn">
-                                    <BbButton Variant="ButtonVariant.Default"
-                                              OnClick="SavePrivacyAsync"
-                                              Disabled="@_isSavingPrivacy">
-                                        @(_isSavingPrivacy ? "Saving..." : "Save Privacy Settings")
-                                    </BbButton>
-                                </div>
+                                <BbButton Variant="ButtonVariant.Default"
+                                          OnClick="SavePrivacyAsync"
+                                          Disabled="@_isSavingPrivacy"
+                                          data-test="passport-save-privacy-btn">
+                                    @(_isSavingPrivacy ? "Saving..." : "Save Privacy Settings")
+                                </BbButton>
                             </BbCardContent>
                         </BbCard>
                     </div>

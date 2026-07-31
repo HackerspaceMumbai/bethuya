@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using Hackmum.Bethuya.Core.Enums;
 
 namespace Hackmum.Bethuya.Backend.Contracts;
@@ -70,6 +69,6 @@ public sealed record PassportTimelineEntryResponse(
 /// Request payload for updating Community Passport privacy settings.
 /// </summary>
 public sealed record UpdateCommunityPassportPrivacyRequest(
-    [Required] ProfileVisibilityScope Visibility,
+    ProfileVisibilityScope Visibility,
     bool ShareParticipationWithOrganizers,
     bool IsDiscoverableToCommunity);
