@@ -870,5 +870,49 @@ public class CurationViewRenderTests
         CurationInsights:
         [
             "Geo diversity is below target."
-        ]);
+        ],
+        OpportunityEngine: new OpportunityEngineDto(
+            VolunteerRoles:
+            [
+                new VolunteerRoleDefinitionDto(
+                    RoleKey: "welcome-desk",
+                    Label: "Welcome desk volunteer",
+                    Summary: "Greets attendees and helps first-timers settle in.",
+                    RequiredVolunteersPerShift: 2,
+                    SupportedShiftKeys: ["arrival", "live-core"],
+                    PreferredDimensionKeys: ["geo", "language"])
+            ],
+            VolunteerShifts:
+            [
+                new VolunteerShiftDefinitionDto(
+                    ShiftKey: "arrival",
+                    Label: "Arrival & onboarding",
+                    StartsAt: DateTimeOffset.UtcNow.AddHours(-1),
+                    EndsAt: DateTimeOffset.UtcNow,
+                    RequiredVolunteers: 2)
+            ],
+            ShiftAssignmentRules:
+            [
+                new ShiftAssignmentRuleDto(
+                    RuleKey: "single-role-per-shift",
+                    Description: "A volunteer can hold at most one role in the same shift window.",
+                    Severity: "blocking")
+            ],
+            Candidates:
+            [
+                new OpportunityCandidateDto(
+                    RegistrationId: Guid.NewGuid(),
+                    FullName: "Asha Kulkarni",
+                    SuggestedRoleKey: "welcome-desk",
+                    SuggestedShiftKey: "arrival",
+                    Score: 82,
+                    Rationale: ["Builder intent", "First-timer inclusion"])
+            ],
+            Conflicts: [],
+            OrganizerWorkflow:
+            [
+                "Generate curation proposal to establish a baseline fairness cohort.",
+                "Review suggested volunteer assignments with fairness deltas and reliability context.",
+                "Apply organizer/curator decisions manually before publishing final assignments."
+            ]));
 }

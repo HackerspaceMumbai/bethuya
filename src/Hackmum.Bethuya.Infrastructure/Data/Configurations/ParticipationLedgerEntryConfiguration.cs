@@ -47,7 +47,7 @@ internal sealed class ParticipationLedgerEntryConfiguration : IEntityTypeConfigu
         builder.Property(entry => entry.SourceCorrelationId)
             .HasMaxLength(200);
 
-        builder.HasIndex(entry => entry.ProvenanceKey)
+        builder.HasIndex(entry => new { entry.CommunityMemberId, entry.Connector, entry.ProvenanceKey })
             .IsUnique();
 
         builder.HasIndex(entry => new { entry.CommunityMemberId, entry.OccurredAt });

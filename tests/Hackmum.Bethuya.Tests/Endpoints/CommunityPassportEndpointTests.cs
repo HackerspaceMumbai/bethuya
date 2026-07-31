@@ -19,6 +19,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Tests.Endpoints;
 
@@ -43,7 +44,8 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
             .AddAuthentication("Test")
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
         builder.Services.AddAuthorization(options =>
-            options.AddPolicy("RequireOrganizer", policy => policy.RequireRole("Organizer", "Admin")));
+            options.AddPolicy(BethuyaPolicyNames.RequireConnectorIngestion, policy =>
+                policy.RequireRole("Organizer", "Admin")));
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddDbContext<BethuyaDbContext>(options =>
