@@ -23,6 +23,18 @@ public interface ICommunityPassportApi
     /// <returns>Persisted privacy view.</returns>
     [Post("/api/community/passport/privacy")]
     Task<PassportPrivacyDto> SavePrivacyAsync([Body] UpdateCommunityPassportPrivacyDto request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Writes normalized participation entries into the member ledger.
+    /// </summary>
+    [Post("/api/community/passport/participation")]
+    Task<ParticipationEntryWriteResultDto> WriteParticipationAsync([Body] UpsertParticipationEntriesDto request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reads the current member timeline projection backed by the participation ledger.
+    /// </summary>
+    [Get("/api/community/passport/participation/timeline")]
+    Task<MemberParticipationTimelineDto> GetParticipationTimelineAsync([AliasAs("limit")] int? limit = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -131,3 +143,51 @@ public sealed record UpdateCommunityPassportPrivacyDto(
     string Visibility,
     bool ShareParticipationWithOrganizers,
     bool IsDiscoverableToCommunity);
+
+/// <summary>
+/// Batched participation write payload.
+/// </summary>
+public sealed record UpsertParticipationEntriesDto(
+    IReadOnlyList<ParticipationEntryWriteDto> Entries);
+
+/// <summary>
+/// One normalized participation entry submitted by orchestration flows.
+/// </summary>
+public sealed record ParticipationEntryWriteDto(
+    string Connector,
+    string ExternalMemberKey,
+    string Activity,
+    DateTimeOffset OccurredAt,
+    string Evidence,
+    string ProvenanceKey,
+    Guid? EventId = null,
+    string? ExternalEventId = null,
+    string? ExternalRecordId = null,
+    string? SourceCorrelationId = null);
+
+/// <summary>
+/// Participation write result summary.
+/// </summary>
+public sealed record ParticipationEntryWriteResultDto(
+    int ReceivedCount,
+    int StoredCount,
+    int DuplicateCount);
+
+/// <summary>
+/// Member participation timeline projection DTO.
+/// </summary>
+public sealed record MemberParticipationTimelineDto(
+    IReadOnlyList<MemberParticipationTimelineEntryDto> Entries);
+
+/// <summary>
+/// One timeline item from the unified participation ledger.
+/// </summary>
+public sealed record MemberParticipationTimelineEntryDto(
+    Guid EntryId,
+    string Connector,
+    string Activity,
+    DateTimeOffset OccurredAt,
+    string Evidence,
+    string ProvenanceKey,
+    Guid? EventId,
+    string? EventTitle);

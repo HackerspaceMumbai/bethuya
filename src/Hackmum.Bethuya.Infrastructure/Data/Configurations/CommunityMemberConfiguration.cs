@@ -65,5 +65,10 @@ internal sealed class CommunityMemberConfiguration : IEntityTypeConfiguration<Co
             .WithOne(identity => identity.CommunityMember)
             .HasForeignKey(identity => identity.CommunityMemberId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(member => member.ParticipationLedgerEntries)
+            .WithOne(entry => entry.CommunityMember)
+            .HasForeignKey(entry => entry.CommunityMemberId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

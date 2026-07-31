@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -57,6 +58,65 @@ public static class CommunityPassportEndpoints
 
             var updatedPrivacy = await service.UpdatePrivacyAsync(subject, request, ct);
             return Results.Ok(updatedPrivacy);
+        });
+
+        group.MapPost("/participation", async (
+            UpsertParticipationEntriesRequest request,
+            ClaimsPrincipal user,
+            ParticipationLedgerService service,
+            CancellationToken ct) =>
+        {
+            if (request.Entries is null || request.Entries.Count == 0)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["entries"] = ["At least one participation entry is required."]
+                });
+            }
+
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await service.WriteAsync(subject, request, ct);
+                return Results.Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["entries"] = [ex.Message]
+                });
+            }
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapGet("/participation/timeline", async (
+            int? limit,
+            ClaimsPrincipal user,
+            ParticipationLedgerService service,
+            CancellationToken ct) =>
+        {
+            if (limit is <= 0 or > 200)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["limit"] = ["Limit must be between 1 and 200."]
+                });
+            }
+
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var timeline = await service.ReadTimelineAsync(subject, limit ?? 25, ct);
+            return Results.Ok(timeline);
         });
     }
 

@@ -8,12 +8,14 @@ using System.Text.Json.Serialization;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Endpoints;
 using Hackmum.Bethuya.Backend.Services;
+using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -40,12 +42,16 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
         builder.Services
             .AddAuthentication("Test")
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorization(options =>
+            options.AddPolicy("RequireOrganizer", policy => policy.RequireRole("Organizer", "Admin")));
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddDbContext<BethuyaDbContext>(options =>
-            options.UseInMemoryDatabase(_dbName));
+            options
+                .UseInMemoryDatabase(_dbName)
+                .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
         builder.Services.AddScoped<CommunityPassportService>();
+        builder.Services.AddScoped<ParticipationLedgerService>();
 
         _app = builder.Build();
         _app.UseAuthentication();
@@ -111,6 +117,38 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
         await Assert.That(hasPersistedPrivacy).IsTrue();
     }
 
+    [Test]
+    public async Task ParticipationEndpoints_WriteAndReadTimeline()
+    {
+        var now = new DateTimeOffset(2026, 7, 31, 12, 15, 0, TimeSpan.Zero);
+        var writeResponse = await _client.PostAsJsonAsync(
+            "/api/community/passport/participation",
+            new UpsertParticipationEntriesRequest(
+            [
+                new ParticipationEntryWriteRequest(
+                    Connector: ParticipationConnectorKind.Discord,
+                    ExternalMemberKey: "discord:user:1",
+                    Activity: ParticipationActivityKind.JoinedCommunity,
+                    OccurredAt: now,
+                    Evidence: "Joined #welcome",
+                    ProvenanceKey: "discord:welcome:1")
+            ]));
+
+        await Assert.That(writeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var writeResult = await writeResponse.Content.ReadFromJsonAsync<ParticipationEntryWriteResult>(JsonOptions);
+        await Assert.That(writeResult).IsNotNull();
+        await Assert.That(writeResult!.StoredCount).IsEqualTo(1);
+
+        var timelineResponse = await _client.GetAsync("/api/community/passport/participation/timeline?limit=10");
+        await Assert.That(timelineResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var timeline = await timelineResponse.Content.ReadFromJsonAsync<MemberParticipationTimelineResponse>(JsonOptions);
+        await Assert.That(timeline).IsNotNull();
+        await Assert.That(timeline!.Entries.Count).IsEqualTo(1);
+        await Assert.That(timeline.Entries[0].ProvenanceKey).IsEqualTo("discord:welcome:1");
+    }
+
     public async ValueTask DisposeAsync()
     {
         _client?.Dispose();
@@ -134,7 +172,8 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
             [
                 new Claim("sub", "passport-user"),
                 new Claim("name", "Passport Tester"),
-                new Claim(ClaimTypes.Email, "passport@example.com")
+                new Claim(ClaimTypes.Email, "passport@example.com"),
+                new Claim(ClaimTypes.Role, "Organizer")
             ];
 
             var identity = new ClaimsIdentity(claims, Scheme.Name);

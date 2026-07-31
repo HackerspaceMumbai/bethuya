@@ -37,3 +37,15 @@ public readonly partial struct EventId
             ? Validation.Ok
             : Validation.Invalid("Event id cannot be empty.");
 }
+
+/// <summary>
+/// Stable identifier for a normalized participation ledger entry.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct ParticipationLedgerEntryId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Participation ledger entry id cannot be empty.");
+}
