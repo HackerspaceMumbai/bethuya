@@ -54,6 +54,7 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
                 .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
         builder.Services.AddScoped<CommunityPassportService>();
         builder.Services.AddScoped<ParticipationLedgerService>();
+        builder.Services.AddScoped<CommunityJourneyReadModelService>();
 
         _app = builder.Build();
         _app.UseAuthentication();
@@ -151,6 +152,55 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
         await Assert.That(timeline.Entries[0].ProvenanceKey).IsEqualTo("discord:welcome:1");
     }
 
+    [Test]
+    public async Task JourneyEndpoint_ReturnsLifecycleJourneyProjection()
+    {
+        var writeResponse = await _client.PostAsJsonAsync(
+            "/api/community/passport/participation",
+            new UpsertParticipationEntriesRequest(
+            [
+                new ParticipationEntryWriteRequest(
+                    Connector: ParticipationConnectorKind.GitHub,
+                    ExternalMemberKey: "github:passport-user",
+                    Activity: ParticipationActivityKind.Volunteered,
+                    OccurredAt: DateTimeOffset.UtcNow.AddDays(-2),
+                    Evidence: "Helped with volunteer onboarding",
+                    ProvenanceKey: "journey:test:volunteer:1")
+            ]));
+
+        await Assert.That(writeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var journeyResponse = await _client.GetAsync("/api/community/passport/journey?timelineLimit=10");
+
+        await Assert.That(journeyResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var journey = await journeyResponse.Content.ReadFromJsonAsync<CommunityJourneyProjectionResponse>(JsonOptions);
+        await Assert.That(journey).IsNotNull();
+        await Assert.That(journey!.JourneyScore).IsGreaterThan(0);
+        await Assert.That(journey.Timeline.Count).IsGreaterThan(0);
+    }
+
+    [Test]
+    public async Task DashboardReadModel_ReturnsMetricsForOrganizer()
+    {
+        var response = await _client.GetAsync("/api/community/passport/dashboard/read-model?lookbackDays=90");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var dashboard = await response.Content.ReadFromJsonAsync<CommunityHealthDashboardReadModelResponse>(JsonOptions);
+        await Assert.That(dashboard).IsNotNull();
+        await Assert.That(dashboard!.LookbackDays).IsEqualTo(90);
+    }
+
+    [Test]
+    public async Task DashboardReadModel_ForbidsNonOrganizerRole()
+    {
+        using var attendeeRequest = new HttpRequestMessage(HttpMethod.Get, "/api/community/passport/dashboard/read-model");
+        attendeeRequest.Headers.Add("x-test-role", "Attendee");
+
+        var response = await _client.SendAsync(attendeeRequest);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
     public async ValueTask DisposeAsync()
     {
         _client?.Dispose();
@@ -170,12 +220,17 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
     {
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            var role = Request.Headers.TryGetValue("x-test-role", out var requestedRole)
+                && !string.IsNullOrWhiteSpace(requestedRole)
+                    ? requestedRole.ToString()
+                    : "Organizer";
+
             Claim[] claims =
             [
                 new Claim("sub", "passport-user"),
                 new Claim("name", "Passport Tester"),
                 new Claim(ClaimTypes.Email, "passport@example.com"),
-                new Claim(ClaimTypes.Role, "Organizer")
+                new Claim(ClaimTypes.Role, role)
             ];
 
             var identity = new ClaimsIdentity(claims, Scheme.Name);
