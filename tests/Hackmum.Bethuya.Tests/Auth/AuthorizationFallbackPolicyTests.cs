@@ -56,6 +56,7 @@ public class AuthorizationFallbackPolicyTests
 
         await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireOrganizer)).IsNotNull();
         await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireCurator)).IsNotNull();
+        await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireOrganizerOrCurator)).IsNotNull();
         await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireAttendee)).IsNotNull();
         await Assert.That(await policyProvider.GetPolicyAsync(BethuyaPolicyNames.RequireAdmin)).IsNotNull();
     }

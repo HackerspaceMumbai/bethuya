@@ -25,6 +25,7 @@ public class AuthConstantsParityTests
         await Assert.That(BethuyaPolicyNames.RequireAdmin).IsEqualTo(BethuyaAuthorizationPolicies.RequireAdmin);
         await Assert.That(BethuyaPolicyNames.RequireOrganizer).IsEqualTo(BethuyaAuthorizationPolicies.RequireOrganizer);
         await Assert.That(BethuyaPolicyNames.RequireCurator).IsEqualTo(BethuyaAuthorizationPolicies.RequireCurator);
+        await Assert.That(BethuyaPolicyNames.RequireOrganizerOrCurator).IsEqualTo(BethuyaAuthorizationPolicies.RequireOrganizerOrCurator);
         await Assert.That(BethuyaPolicyNames.RequireAttendee).IsEqualTo(BethuyaAuthorizationPolicies.RequireAttendee);
     }
 }

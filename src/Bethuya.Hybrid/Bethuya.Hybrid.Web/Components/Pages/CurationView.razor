@@ -1,6 +1,6 @@
 @page "/curation/{EventId:guid}"
 @rendermode InteractiveServer
-@attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireCurator)]
+@attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireOrganizerOrCurator)]
 @using System.Globalization
 @using Bethuya.Hybrid.Shared.Services
 @using BlazorBlueprint.Icons.Lucide.Components

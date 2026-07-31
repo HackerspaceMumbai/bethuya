@@ -9,6 +9,9 @@ public static class BethuyaAuthorizationPolicies
     /// <summary>Requires the user to be in the <see cref="BethuyaRoles.Curator"/> role.</summary>
     public const string RequireCurator = nameof(RequireCurator);
 
+    /// <summary>Requires the user to be in the <see cref="BethuyaRoles.Organizer"/> or <see cref="BethuyaRoles.Curator"/> role.</summary>
+    public const string RequireOrganizerOrCurator = nameof(RequireOrganizerOrCurator);
+
     /// <summary>Requires the user to be in the <see cref="BethuyaRoles.Attendee"/> role.</summary>
     public const string RequireAttendee = nameof(RequireAttendee);
 

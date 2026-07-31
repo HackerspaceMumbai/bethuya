@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-07-31] TUnit CLI filtering differs from VSTest conventions
+- **What happened:** A targeted test run failed before execution because `dotnet test --filter ...` was passed to the TUnit runner.
+- **Root cause:** This repository uses TUnit on Microsoft.Testing.Platform, where `--filter` is not a supported option.
+- **Fix:** Switched to a normal `dotnet test` invocation for the suite and fixed failures found there.
+- **Prevention:** For TUnit projects, use supported filters such as `--treenode-filter` (or run the suite directly) instead of VSTest-style `--filter`.
+
 ## [2026-07-25] Redirect-only OAuth error handling hides operational root cause
 - **What happened:** Social OAuth failures on `/registration/social` showed a user-visible error state, but Aspire logs/traces often lacked actionable server-side context for why the callback failed.
 - **Root cause:** The auth flow mapped failures to query-string error codes and redirected immediately without emitting structured telemetry at each failure seam; the UI also had broad catches with no logging.

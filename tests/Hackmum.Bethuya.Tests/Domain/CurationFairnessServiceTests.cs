@@ -265,6 +265,53 @@ public class CurationFairnessServiceTests
         await Assert.That(registrant.Recommendation.Label).IsEqualTo("Returning standout");
     }
 
+    [Test]
+    public async Task CurationFairnessService_OpportunityEngine_ProvidesRolesShiftsRulesAndWorkflow()
+    {
+        var evt = CreateRecommendationEvent();
+        var registrations = CreateRecommendationBaseline(evt.Id)
+            .Append(CreatePendingCandidate(evt.Id, "candidate@example.com"))
+            .ToList();
+
+        var dashboard = await new CurationFairnessService().BuildDashboardAsync(
+            evt,
+            registrations,
+            CreateProfileRepository(),
+            CreateRegistrationRepository());
+
+        await Assert.That(dashboard.OpportunityEngine.VolunteerRoles.Count).IsGreaterThan(0);
+        await Assert.That(dashboard.OpportunityEngine.VolunteerShifts.Count).IsGreaterThan(0);
+        await Assert.That(dashboard.OpportunityEngine.ShiftAssignmentRules.Any(rule =>
+            rule.RuleKey == "facilitator-needs-reliability")).IsTrue();
+        await Assert.That(dashboard.OpportunityEngine.Candidates.Count).IsGreaterThan(0);
+        await Assert.That(dashboard.OpportunityEngine.OrganizerWorkflow.Count).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task CurationFairnessService_OpportunityEngine_FlagsCapacityOverflowConflicts()
+    {
+        var evt = CreateRecommendationEvent();
+        var registrations = new List<Registration>
+        {
+            CreateAcceptedRegistrationForEvent(evt.Id, "BaselineA"),
+            CreateAcceptedRegistrationForEvent(evt.Id, "BaselineB"),
+            CreatePendingNonBuilderCandidate(evt.Id, "candidate1@example.com"),
+            CreatePendingNonBuilderCandidate(evt.Id, "candidate2@example.com"),
+            CreatePendingNonBuilderCandidate(evt.Id, "candidate3@example.com")
+        };
+
+        var dashboard = await new CurationFairnessService().BuildDashboardAsync(
+            evt,
+            registrations,
+            CreateProfileRepository(),
+            CreateRegistrationRepository());
+
+        await Assert.That(dashboard.OpportunityEngine.Conflicts.Any(conflict =>
+            conflict.ConflictKey == "capacity-overflow"
+            && conflict.RoleKey == "welcome-desk"
+            && conflict.ShiftKey == "arrival")).IsTrue();
+    }
+
     private static Registration CreateAcceptedRegistration(
         string suffix,
         GeoBucket geo,
@@ -340,6 +387,22 @@ public class CurationFairnessServiceTests
                 HasLocalLanguage = true,
                 SpeaksMarathi = true,
                 EducationBucket = EducationBucket.SchoolOrLower
+            }
+        };
+
+    private static Registration CreatePendingNonBuilderCandidate(Guid eventId, string email)
+        => new()
+        {
+            EventId = eventId,
+            FullName = $"Candidate {email[..1].ToUpperInvariant()}",
+            Email = email,
+            Bio = "I am keen to attend and connect with other attendees in the community.",
+            Status = RegistrationStatus.Pending,
+            InclusionSignals = new InclusionSignals
+            {
+                GeoBucket = GeoBucket.MumbaiSuburban,
+                HasLocalLanguage = false,
+                EducationBucket = EducationBucket.Undergraduate
             }
         };
 

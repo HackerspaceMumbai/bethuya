@@ -33,6 +33,8 @@ public static class BethuyaAuthorizationExtensions
                 policy.RequireRole(BethuyaRoleNames.Admin, BethuyaRoleNames.Organizer))
             .AddPolicy(BethuyaPolicyNames.RequireCurator, policy =>
                 policy.RequireRole(BethuyaRoleNames.Admin, BethuyaRoleNames.Curator))
+            .AddPolicy(BethuyaPolicyNames.RequireOrganizerOrCurator, policy =>
+                policy.RequireRole(BethuyaRoleNames.Admin, BethuyaRoleNames.Organizer, BethuyaRoleNames.Curator))
             .AddPolicy(BethuyaPolicyNames.RequireAttendee, policy =>
                 policy.RequireRole(
                     BethuyaRoleNames.Admin,
