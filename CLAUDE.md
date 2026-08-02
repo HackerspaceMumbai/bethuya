@@ -61,7 +61,7 @@ Post-event drafts → human edit pass → publish with attribution.
 1. Plan first — add to `tasks/todo.md` before coding
 2. No hacks — fix root causes
 3. Record all lessons in `tasks/lessons.md`
-4. Test-first with TUnit; E2E with Playwright (`data-test` selectors)
+4. Test-first with TUnit; E2E with Playwright (`data-test` selectors). **BB component rule:** `data-test` must go on a wrapping `<div>`, never directly on a `<Bb...>` component — BB components reject unknown parameters at runtime. Every page with BB components needs a bUnit render test to catch this at test time.
 5. Screenshot UI changes before marking done
 6. **Pre-commit review (mandatory):** Run `code-review` agent on staged changes, `dotnet-diag:optimizing-dotnet-performance` on .NET files, `/explain-diff` before PRs. Never rely on humans to catch code issues.
 7. **Operational guardrails (repeatable):**

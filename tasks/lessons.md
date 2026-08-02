@@ -16,6 +16,27 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-08-01] data-test must go on a wrapping HTML element, never directly on a BB component
+- **What happened:** `CommunityPassport.razor` passed `data-test="passport-visibility-select"` directly on `<BbFormFieldSelect>`, causing an `InvalidOperationException` at runtime: *"does not have a property matching the name 'data-test'"*.
+- **Root cause:** Blazor Blueprint form-field wrappers (`BbFormFieldSelect`, `BbFormFieldInput`, `BbFormSection`) are Blazor components that do **not** declare `[Parameter(CaptureUnmatchedValues = true)]`. They reject any attribute not declared as a `[Parameter]`, including HTML attributes like `data-test`. Native HTML elements and some BB leaf components (e.g. `BbBadge`) do forward unknown attributes, but BB form-field wrappers never do.
+- **Fix:** Moved `data-test` to a wrapping `<div>` around each affected BB component; added a bUnit render test (`CommunityPassportRenderTests`) that exercises the page and finds each `[data-test='...']` selector — this catches the error at test time, not runtime.
+- **Prevention:**
+  - **Rule:** `data-test` on native HTML elements (`<div>`, `<input>`, `<button>`) — always OK. On BB components — always wrap in a `<div data-test="...">` and place the BB component inside.
+  - **Test gate:** Every new Blazor page that contains BB form-field components must have a bUnit render test. Simply calling `ctx.RenderComponent<MyPage>()` will throw if any unknown parameter is passed to a BB component, catching the bug before it reaches the running app.
+  - **Quick check before committing:** `grep -rn '<Bb[A-Za-z]\+[^>]*data-test' src/ --include="*.razor"` — any match is a bug.
+
+## [2026-07-31] Scope/permissions claims are often tokenized, not exact-match strings
+- **What happened:** The first connector-ingestion policy check used exact-value claim matching (`scope == "connector.ingest"`), which would reject common OAuth tokens where scope values are space-delimited.
+- **Root cause:** We reused a simple `HasClaim(type, value)` pattern without accounting for tokenized claim semantics.
+- **Fix:** Switched to token-aware scope/permissions parsing and added endpoint authorization coverage for multi-scope claims.
+- **Prevention:** For OAuth-style claims (`scope`, `permissions`), always parse token lists instead of relying on exact claim-value equality.
+
+## [2026-07-31] TUnit CLI filtering differs from VSTest conventions
+- **What happened:** A targeted test run failed before execution because `dotnet test --filter ...` was passed to the TUnit runner.
+- **Root cause:** This repository uses TUnit on Microsoft.Testing.Platform, where `--filter` is not a supported option.
+- **Fix:** Switched to a normal `dotnet test` invocation for the suite and fixed failures found there.
+- **Prevention:** For TUnit projects, use supported filters such as `--treenode-filter` (or run the suite directly) instead of VSTest-style `--filter`.
+
 ## [2026-07-25] Redirect-only OAuth error handling hides operational root cause
 - **What happened:** Social OAuth failures on `/registration/social` showed a user-visible error state, but Aspire logs/traces often lacked actionable server-side context for why the callback failed.
 - **Root cause:** The auth flow mapped failures to query-string error codes and redirected immediately without emitting structured telemetry at each failure seam; the UI also had broad catches with no logging.

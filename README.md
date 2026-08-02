@@ -15,6 +15,8 @@
 * **Manage lifecycle** — move events from draft through CFP, review, agenda approval, publishing, schedule changes, completion, and archival.
 * **Ingest & publish sessions** — preview/import Sessionize sessions, normalize speaker metadata, and publish deterministic GitHub event artifacts.
 * **Curate (Attendees)** — *Curator Agent* helps select attendees fairly when registrations exceed capacity (often **3×**), balancing **theme suitability** and **DEI**; outputs are explainable **recommendations**, never auto‑rejections.
+* **Build Community Passport** — unify member identity badges, participation timeline entries, and privacy controls for reusable growth signals.
+* **Mentor growth surfaces** — allow mentor opt‑in, discovery, and organizer-reviewed mentor-pairing recommendation drafts.
 * **Run** — *Facilitator Agent* suggests prompts, Q\&A, and captures notes (organizer‑controlled).
 * **Report** — *Reporter Agent* drafts summaries, highlights, and action items.
 * **Approve** — **Human‑in‑the‑loop** diffs, approvals, and a full audit trail.
@@ -170,7 +172,7 @@ Accessible, headless primitives for a high-performance shadcn/ui inspired fronte
     │  │   │   └─ Auth/                    # DevelopmentAuthStateProvider, ClaimsCurrentUserService
     │  │   ├─ Bethuya.Hybrid.Web.Client/   # Blazor WebAssembly client
     │  │   └─ Bethuya.Hybrid.Shared/       # Shared Razor components, Auth (roles, policies, UserInfo)
-    │  ├─ Hackmum.Bethuya.Core/             # Domain: Events, Registrations, Decisions, FairnessBudget
+    │  ├─ Hackmum.Bethuya.Core/             # Domain: Events, Registrations, Decisions, Community Passport, Mentorship
     │  ├─ Hackmum.Bethuya.Agents/           # Planner, Curator, Facilitator, Reporter agents
     │  ├─ Hackmum.Bethuya.AI/               # Provider router (Foundry/Ollama/Azure/OpenAI), prompts, memory
     │  ├─ Hackmum.Bethuya.Backend/          # Minimal API (Aspire-connected, Refit-ready)
@@ -235,6 +237,23 @@ Summary, highlights, action items → human edits → publish (attribution).
       ├─ Queue (optional) for async agent jobs
       └─ Observability (Aspire Dashboard)
 ```
+
+***
+
+## ✅ Foundation slices delivered (PR2 → PR7)
+
+These stacked PRs established the current platform backbone and are now reflected in `main` behavior:
+
+| Slice | Foundation added |
+| :--- | :--- |
+| PR2 | **Community Passport** core (`CommunityMember`, linked identities, privacy + residency metadata) |
+| PR3 | **Participation Ledger** ingestion and timeline projection foundations |
+| PR4 | **Opportunity signals** and community growth read-model primitives |
+| PR5 | **Journey projections** and organizer dashboard read models |
+| PR6 | **Recommendation envelope + audit** foundation (human-approval required drafts via `Decision`) |
+| PR7 | **Mentor growth surfaces**: mentor opt-in, discovery, and policy-bound mentor-pairing recommendation draft endpoint |
+
+Key rule across all slices: AI can draft recommendations, but publication or operational action remains human-approved.
 
 ***
 
@@ -689,10 +708,12 @@ This section documents the current Curation Intelligence interaction model so fu
 
 * [x] Event model & storage
 * [x] Event lifecycle, Sessionize ingestion, GitHub artifact publishing, and cover-image upload handling
-* [ ] Planner + **Curator (attendees)** agents
-* [ ] Diff + approval workflow (HIL)
-* [ ] Reporter draft
-* [ ] Aspire AppHost + telemetry
+* [x] Community Passport + participation ledger foundations
+* [x] Recommendation envelopes + auditable HIL draft/approval backbone
+* [x] Mentor opt-in/discovery + organizer-gated pairing recommendation surface
+* [ ] Planner + **Curator (attendees)** full production policy packs
+* [ ] Reporter publishing workflow
+* [ ] Extended AppHost operational hardening + cloud deployment packs
 
 ### Post‑Hackathon (Backbone Goals)
 

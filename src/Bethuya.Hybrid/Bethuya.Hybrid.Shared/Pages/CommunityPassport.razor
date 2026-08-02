@@ -1,0 +1,276 @@
+@page "/passport"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Bethuya.Hybrid.Shared.Services
+@inject ICommunityPassportApi CommunityPassportApi
+
+<PageTitle>Community Passport — Bethuya</PageTitle>
+
+<main class="container mx-auto p-4" data-test="community-passport-page">
+    @if (_isLoading)
+    {
+        <div data-test="community-passport-loading">
+            <BbAlert Variant="AlertVariant.Info">
+                Loading your Community Passport...
+            </BbAlert>
+        </div>
+    }
+    else if (_errorMessage is not null)
+    {
+        <div data-test="community-passport-error">
+            <BbAlert Variant="AlertVariant.Danger">
+                @_errorMessage
+            </BbAlert>
+        </div>
+    }
+    else if (_passport is not null)
+    {
+        <div class="space-y-4">
+            @if (_statusMessage is not null)
+            {
+                <div data-test="community-passport-status">
+                    <BbAlert Variant="AlertVariant.Success">
+                        @_statusMessage
+                    </BbAlert>
+                </div>
+            }
+
+            <div data-test="community-passport-header">
+                <BbCard>
+                    <BbCardHeader>
+                        <BbCardTitle>Community Passport</BbCardTitle>
+                        <BbCardDescription>Verified identity, contribution history, and privacy controls for your Bethuya profile.</BbCardDescription>
+                    </BbCardHeader>
+                    <BbCardContent Class="space-y-4">
+                        <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <h2 class="text-2xl font-bold">@_passport.DisplayName</h2>
+                                <p class="text-sm text-muted-foreground">@_passport.Email</p>
+                                @if (!string.IsNullOrWhiteSpace(_passport.CompanyName) || !string.IsNullOrWhiteSpace(_passport.EducationInstitute))
+                                {
+                                    <p class="text-sm text-muted-foreground">
+                                        @GetAffiliationLine(_passport)
+                                    </p>
+                                }
+                            </div>
+                            <div data-test="community-passport-tier">
+                                <BbBadge Variant="BadgeVariant.Default">
+                                    @_passport.CurrentTier
+                                </BbBadge>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2" data-test="community-passport-identities">
+                            @foreach (var identity in _passport.LinkedIdentities)
+                            {
+                                <BbBadge Variant="BadgeVariant.Secondary">
+                                    @GetIdentityLabel(identity)
+                                </BbBadge>
+                            }
+                        </div>
+                    </BbCardContent>
+                </BbCard>
+            </div>
+
+            <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5" data-test="community-passport-metrics">
+                <BbCard><BbCardContent Class="p-4"><p class="text-sm text-muted-foreground">Events Registered</p><p class="text-2xl font-bold">@_passport.Metrics.EventsRegistered</p></BbCardContent></BbCard>
+                <BbCard><BbCardContent Class="p-4"><p class="text-sm text-muted-foreground">Events Attended</p><p class="text-2xl font-bold">@_passport.Metrics.EventsAttended</p></BbCardContent></BbCard>
+                <BbCard><BbCardContent Class="p-4"><p class="text-sm text-muted-foreground">Waitlisted</p><p class="text-2xl font-bold">@_passport.Metrics.EventsWaitlisted</p></BbCardContent></BbCard>
+                <BbCard><BbCardContent Class="p-4"><p class="text-sm text-muted-foreground">Volunteer Signals</p><p class="text-2xl font-bold">@_passport.Metrics.VolunteerSignals</p></BbCardContent></BbCard>
+                <BbCard><BbCardContent Class="p-4"><p class="text-sm text-muted-foreground">Milestones Earned</p><p class="text-2xl font-bold">@_passport.Metrics.MilestonesEarned</p></BbCardContent></BbCard>
+            </section>
+
+            <section class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div data-test="community-passport-timeline">
+                    <BbCard>
+                        <BbCardHeader>
+                            <BbCardTitle>Activity Journey Timeline</BbCardTitle>
+                            <BbCardDescription>Built from your existing event registrations and outcomes.</BbCardDescription>
+                        </BbCardHeader>
+                        <BbCardContent>
+                            @if (_passport.Timeline.Count == 0)
+                            {
+                                <p class="text-sm text-muted-foreground">No event activity yet. Register for an event to start your journey.</p>
+                            }
+                            else
+                            {
+                                <div class="space-y-3">
+                                    @foreach (var entry in _passport.Timeline)
+                                    {
+                                        <div class="rounded-md border p-3" data-test="community-passport-timeline-entry">
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p class="font-semibold">@entry.EventTitle</p>
+                                                    <p class="text-sm text-muted-foreground">@entry.Evidence</p>
+                                                </div>
+                                                <BbBadge Variant="@GetTimelineBadgeVariant(entry.Status)">@entry.Status</BbBadge>
+                                            </div>
+                                            <p class="mt-2 text-xs text-muted-foreground">@entry.OccurredAt.LocalDateTime.ToString("dd MMM yyyy")</p>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </BbCardContent>
+                    </BbCard>
+                </div>
+
+                <div class="space-y-4">
+                    <div data-test="community-passport-privacy">
+                        <BbCard>
+                            <BbCardHeader>
+                                <BbCardTitle>Privacy &amp; Data Controls</BbCardTitle>
+                                <BbCardDescription>Decide who can see your passport and how organizers can use your participation signals.</BbCardDescription>
+                            </BbCardHeader>
+                            <BbCardContent Class="space-y-4">
+                                @* BB form-field wrappers don't expose AdditionalAttributes; place data-test on the wrapper div *@
+                                <div data-test="passport-visibility-select">
+                                    <BbFormFieldSelect TValue="string"
+                                                       @bind-Value="_visibility"
+                                                       Label="Profile visibility">
+                                        <BbSelectItem Value="@("Public")" Text="Public" />
+                                        <BbSelectItem Value="@("CommunityOnly")" Text="Community only" />
+                                        <BbSelectItem Value="@("OrganizerOnly")" Text="Organizer only" />
+                                    </BbFormFieldSelect>
+                                </div>
+
+                                <label class="flex items-center gap-3 rounded-md border p-3">
+                                    <input type="checkbox" @bind="_shareParticipationWithOrganizers" data-test="passport-share-participation-toggle" />
+                                    <span>Share participation signals with organizers</span>
+                                </label>
+
+                                <label class="flex items-center gap-3 rounded-md border p-3">
+                                    <input type="checkbox" @bind="_isDiscoverableToCommunity" data-test="passport-discoverable-toggle" />
+                                    <span>Allow community discovery in mentorship and opportunity flows</span>
+                                </label>
+
+                                @* BbButton may not forward arbitrary attributes; wrap for data-test stability *@
+                                <div data-test="passport-save-privacy-btn">
+                                    <BbButton Variant="ButtonVariant.Default"
+                                              OnClick="SavePrivacyAsync"
+                                              Disabled="@_isSavingPrivacy">
+                                        @(_isSavingPrivacy ? "Saving..." : "Save Privacy Settings")
+                                    </BbButton>
+                                </div>
+                            </BbCardContent>
+                        </BbCard>
+                    </div>
+
+                    <div data-test="community-passport-residency">
+                        <BbCard>
+                            <BbCardHeader>
+                                <BbCardTitle>Jurisdiction-Aware Data Residency</BbCardTitle>
+                                <BbCardDescription>vNext routes sensitive workflows by policy instead of forcing a single hosting model.</BbCardDescription>
+                            </BbCardHeader>
+                            <BbCardContent Class="space-y-2">
+                                <p><strong>Region:</strong> @_passport.Residency.Region</p>
+                                <p><strong>Mode:</strong> @FormatResidencyMode(_passport.Residency.Mode)</p>
+                                <p><strong>Compliance profile:</strong> @_passport.Residency.ComplianceProfile</p>
+                            </BbCardContent>
+                        </BbCard>
+                    </div>
+                </div>
+            </section>
+        </div>
+    }
+</main>
+
+@code {
+    private CommunityPassportDto? _passport;
+    private string? _errorMessage;
+    private string? _statusMessage;
+    private bool _isLoading = true;
+    private bool _isSavingPrivacy;
+    private string _visibility = "CommunityOnly";
+    private bool _shareParticipationWithOrganizers = true;
+    private bool _isDiscoverableToCommunity = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPassportAsync();
+    }
+
+    private async Task LoadPassportAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _passport = await CommunityPassportApi.GetPassportAsync();
+            ApplyPrivacyState(_passport.Privacy);
+        }
+        catch (Exception)
+        {
+            _errorMessage = "We couldn't load your Community Passport right now. Please refresh and try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SavePrivacyAsync()
+    {
+        _isSavingPrivacy = true;
+        _statusMessage = null;
+        _errorMessage = null;
+
+        try
+        {
+            var updated = await CommunityPassportApi.SavePrivacyAsync(new UpdateCommunityPassportPrivacyDto(
+                _visibility,
+                _shareParticipationWithOrganizers,
+                _isDiscoverableToCommunity));
+
+            ApplyPrivacyState(updated);
+
+            if (_passport is not null)
+            {
+                _passport = _passport with { Privacy = updated };
+            }
+
+            _statusMessage = "Privacy settings saved.";
+        }
+        catch (Exception)
+        {
+            _errorMessage = "We couldn't save your privacy settings right now.";
+        }
+        finally
+        {
+            _isSavingPrivacy = false;
+        }
+    }
+
+    private void ApplyPrivacyState(PassportPrivacyDto privacy)
+    {
+        _visibility = privacy.Visibility;
+        _shareParticipationWithOrganizers = privacy.ShareParticipationWithOrganizers;
+        _isDiscoverableToCommunity = privacy.IsDiscoverableToCommunity;
+    }
+
+    private static string GetAffiliationLine(CommunityPassportDto passport)
+        => !string.IsNullOrWhiteSpace(passport.CompanyName)
+            ? $"{passport.OccupationStatus ?? "Community member"} · {passport.CompanyName}"
+            : $"{passport.OccupationStatus ?? "Community member"} · {passport.EducationInstitute}";
+
+    private static string GetIdentityLabel(PassportIdentityDto identity)
+        => $"{identity.Provider}: {identity.Username ?? identity.Subject}";
+
+    private static BadgeVariant GetTimelineBadgeVariant(string status)
+        => status switch
+        {
+            "Attended" or "Accepted" => BadgeVariant.Default,
+            "Waitlisted" => BadgeVariant.Secondary,
+            "Rejected" => BadgeVariant.Destructive,
+            _ => BadgeVariant.Outline
+        };
+
+    private static string FormatResidencyMode(string mode)
+        => mode switch
+        {
+            "SovereignRegion" => "Sovereign region",
+            "JurisdictionLocked" => "Jurisdiction locked",
+            "LocalOnly" => "Local only",
+            _ => mode
+        };
+}
