@@ -85,3 +85,45 @@
 
 **Decision recorded:** `.squad/decisions.md` (merged from inbox, 2026-04-15)
 
+---
+
+## Session Work Log: Developer Persona Identity Switching — Layer 2 Security Review (2026-08-04)
+
+**PR:** #52 · Commit: `3c793da` · Branch: `indcoder-developer-identity-switching`
+**Verdict:** APPROVED WITH FIXES
+
+**Review scope:** Full threat-model review of the three-way persona resolution infrastructure
+(catalog, handler, propagation handler, persona endpoints, dev diagnostic endpoint).
+
+**Findings (all 7 threat-model items):**
+
+- TM-1 Unknown key privilege escalation — **PASS**. Exhaustively verified: empty, null, whitespace,
+  case-mangled, `dev-user-001`, multi-value header, comma-in-header all fail-closed with zero roles.
+  `RequireAttendee` (not just admin) also returns 403 on unknown key.
+- TM-2 No caller-supplied claims — **PASS**. Only opaque key crosses the wire; claims from catalog only.
+- TM-3 Inert outside Dev+Provider=None — **PASS**. Three independent gates verified: handler re-check,
+  PropagationHandler registration (DI conditional), endpoint mapping conditional.
+- TM-4 Cookie hygiene — **PASS**. HttpOnly set, SameSite=Lax (acceptable), Secure=IsHttps (pragmatic),
+  no Expires (session cookie is correct for dev).
+- TM-5 Log injection — **PASS**. `LoggerMessage.Define<string,string?>` with static template; key
+  passed as typed arg, not interpolated.
+- TM-6 `DecidedBy` claim — **PASS**. `email` claim type matches `CurationEndpoints.FindFirst("email")`;
+  end-to-end chain confirmed: cookie → PropagationHandler → Backend handler → HttpContext.User.
+- TM-7 Existing tests and real-provider paths — **PASS**. 311 existing tests unchanged; default vs
+  unknown principal distinguished by different `sub` values.
+
+**Defect found and fixed:**
+`DevelopmentEndpoints.MapDevelopmentEndpoints` had no internal `IsDevelopment()` guard — only the
+call-site in `Program.cs` was guarded. The `/api/dev/curation/seed` endpoint (data mutator, no auth)
+and `/api/dev/identity` endpoint (identity diagnostic, no auth) would be exposed in production if
+the call-site guard were ever removed.
+
+**Fix:** Added `if (!app.Environment.IsDevelopment()) throw InvalidOperationException(...)` at
+method entry (mirrors `EnsureInsecureDevAuthAllowed` pattern). Added 3 TUnit guard tests.
+
+**Learning:** "Guaranteed by the call-site" is not a security invariant. Security-sensitive
+endpoint registration methods must enforce their own environment preconditions. Fail-fast at
+startup (throw) is better than silently registering routes that should not exist.
+
+**Test delta:** 311 → 314 passed, 0 regressions.
+

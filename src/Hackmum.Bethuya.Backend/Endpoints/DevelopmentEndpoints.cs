@@ -7,6 +7,19 @@ public static class DevelopmentEndpoints
 {
     public static void MapDevelopmentEndpoints(this WebApplication app)
     {
+        // Belt-and-suspenders: enforce the Development-only invariant at the method level.
+        // The call-site in Program.cs already guards with IsDevelopment(), but an explicit
+        // check here prevents accidental exposure if that guard is ever inadvertently removed —
+        // especially important for the /curation/seed endpoint, which mutates data.
+        if (!app.Environment.IsDevelopment())
+        {
+            throw new InvalidOperationException(
+                $"Development endpoints (curation seeder + identity diagnostic) must only be " +
+                $"registered in the Development environment. Current environment: " +
+                $"'{app.Environment.EnvironmentName}'. Remove the {nameof(MapDevelopmentEndpoints)}() " +
+                $"call from non-Development startup paths.");
+        }
+
         var group = app.MapGroup("/api/dev").WithTags("Development");
 
         group.MapPost("/curation/seed", async (
@@ -19,8 +32,8 @@ public static class DevelopmentEndpoints
         });
 
         // Returns the Backend-observed identity so developers can verify that persona switching
-        // propagated correctly end-to-end. Only mapped inside app.Environment.IsDevelopment()
-        // (guaranteed by the call-site in Program.cs — no redundant gate needed here).
+        // propagated correctly end-to-end. Reachability is doubly guarded: the environment check
+        // above (method-level) and the call-site guard in Program.cs.
         group.MapGet("/identity", (HttpContext context) =>
         {
             var user = context.User;
