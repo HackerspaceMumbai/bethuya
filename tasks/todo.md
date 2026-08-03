@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-08-04] Developer Testing Harness — Layer 1: Developer Authentication Review (PR1)
+- **Status:** done
+- **Agent/Owner:** Copilot CLI (Neo/Morpheus review boundary)
+- **Description:** Characterization-only layer of the approved Bethuya Developer Testing Harness PR stack. Document the current dev auth path (Browser → Web `DevelopmentAuthenticationStateProvider` → Refit clients (no token attached when `Provider=None`) → Backend `DevelopmentAuthenticationHandler` → ASP.NET authorization policies) and the fixed `dev-user-001` / `dev@bethuya.local` admin-everything defect. Record the proposed future persona-boundary decision in `.squad/decisions/inbox/`. Extend TUnit coverage to characterize (not change) current fixed-principal behavior and the environment/provider fail-closed guard. Add an integration test exercising the Backend-observed identity/authorization outcome via the existing Aspire fixture, scoped to what the current architecture actually supports. Do NOT implement persona switching, toolbar, seeder, new roles, or v2 domains.
+- **Acceptance:** `docs/development-authentication.md` added; `.squad/decisions/inbox/copilot-dev-persona-auth.md` added; `DevelopmentAuthenticationBoundaryTests.cs` added with fixed-principal/policy characterization tests; `Bethuya.IntegrationTests/DevelopmentAuthenticationFlowTests.cs` added (Backend-direct scope documented — full Web→Refit path infeasible without persona-switching infra); targeted TUnit tests pass and both projects build; code-review and .NET performance review run with findings resolved; PR opened targeting `main` explaining this is characterization-only with no persona switching implemented.
+
 ## [2026-07-31] Build recommendation audit foundation (PR6)
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
