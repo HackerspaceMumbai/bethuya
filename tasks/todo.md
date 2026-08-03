@@ -16,6 +16,33 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-08-04] Developer Testing Harness — Layer 2: Developer Identity Switching Infrastructure (PR2)
+- **Status:** in-progress
+- **Agent/Owner:** Tank (implementation ✅), Morpheus (security review — pending), Neo (architecture/code review — pending), Switch (integration test verification — pending)
+- **Description:** Implement trustworthy end-to-end persona identity propagation for Development+Provider=None only: a fixed allowlisted persona catalog in ServiceDefaults (Anish/Priya/Rohan/Maya/Farah/Vikram with existing roles only), Backend construction of claims from an allowlisted persona key (never trusting arbitrary caller claims), a Web SSR persona cookie + Backend persona header, a `DevPersonaPropagationHandler` attached to every Backend Refit client, Web persona selection endpoint, Backend identity-diagnostic endpoint, structured auth logs, TUnit unit tests (catalog/principal, unknown-key fail-closed, environment/provider isolation, Web principal, Refit propagation, policy differences), and an Aspire/Postgres integration test proving Farah→403 vs Vikram→success on an organizer-gated endpoint plus a Decision record reflecting the selected persona. No toolbar, seeder, new roles, manual role override, or v2 domains. Base branch `indcoder-developer-auth-review` (PR #51), not main.
+- **Acceptance:** Persona catalog + catalog-driven principal construction; Backend never trusts caller-asserted roles; unknown/malformed persona key fails closed (does not escalate to admin); default (no persona selected) preserves existing fixed dev-admin characterization tests; mechanism inert outside Development+Provider=None; Refit clients (Event, ImageUpload, PlanningCycle, Profile, CommunityPassport, Registration, Curation) all carry the selected persona key; a Decision-producing endpoint records `DecidedBy` from the selected persona, not the fixed dev admin; targeted TUnit suites and both project builds pass; code-review + dotnet performance review findings resolved; Anvil evidence produced; PR opened targeting `indcoder-developer-auth-review`.
+
+### Deliverable completion status (Tank — 2026-08-04)
+
+1. ✅ `ServiceDefaults/Auth/DevelopmentPersona.cs` — immutable record created
+2. ✅ `ServiceDefaults/Auth/DevelopmentPersonaCatalog.cs` — 6 personas, TryGet case-insensitive, cookie/header name constants (`bethuya-dev-persona` / `X-Bethuya-Dev-Persona`)
+3. ✅ `DevelopmentAuthenticationDefaults.cs` updated — `CreatePersonaPrincipal()` + `CreateUnknownPersonaPrincipal()` added alongside unchanged `CreatePrincipal()`
+4. ✅ `DevelopmentAuthenticationHandler.cs` rewritten — three-way resolution (no-persona→legacy / known-key→catalog / unknown-key→fail-closed), IHostEnvironment+IConfiguration injection, structured logging via LoggerMessage.Define
+5. ✅ `DevelopmentAuthenticationStateProvider.cs` updated — per-request via IHttpContextAccessor, no longer static cached
+6. ✅ `DevPersonaPropagationHandler.cs` created — DelegatingHandler that propagates persona cookie as request header on all 7 Refit clients
+7. ✅ `DevPersonaEndpointExtensions.cs` created — `GET /dev/persona/{key}` (set) + `GET /dev/persona/clear` (clear), dev+Provider=None only, HttpOnly/SameSite=Lax cookie
+8. ✅ `Program.cs` (Web) refactored — `ConfigureBackendAuth` adds `DevPersonaPropagationHandler` to all 7 Refit clients in dev mode; `MapDevPersonaEndpoints()` called
+9. ✅ `DevelopmentEndpoints.cs` (Backend) updated — `GET /api/dev/identity` diagnostic endpoint added
+10. ✅ TUnit tests — `DevelopmentPersonaSwitchingTests.cs` with 19 new tests covering catalog, principal shape, three-way resolution, Farah-vs-Vikram policy proof, env isolation, StateProvider per-request, PropagationHandler. All 311 tests pass (0 regressions).
+11. ✅ `.squad/decisions/inbox/tank-persona-fail-closed-default.md` — three-way contract and cookie/header semantics recorded
+12. ✅ `docs/development-authentication.md` — "Superseded by Layer 2" note added
+13. ⏳ Full Aspire+Postgres integration test (Farah→403 vs Vikram→200 with persisted Decision) — **Switch/coordinator scope**, not Tank's
+14. ⏳ Morpheus security review + Neo architecture review — pending PR open
+
+**`DecidedBy` path:** `CurationEndpoints.cs` line ~136 already derives `DecidedBy` from `user.FindFirst("email")`. Once the Backend authenticates as a named persona, `DecidedBy` automatically reflects the persona email (e.g. `vikram@bethuya.dev`). No changes to `CurationEndpoints.cs` required — confirmed by code trace.
+
+**Build status:** ServiceDefaults ✅ · Bethuya.Hybrid.Web ✅ · Hackmum.Bethuya.Backend ✅ · Hackmum.Bethuya.Tests ✅ (311/311, 0 failures, 0 warnings)
+
 ## [2026-08-04] Developer Testing Harness — Layer 1: Developer Authentication Review (PR1)
 - **Status:** done
 - **Agent/Owner:** Copilot CLI (Neo/Morpheus review boundary)
