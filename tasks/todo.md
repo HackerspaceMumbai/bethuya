@@ -36,7 +36,7 @@ All work items must be added here **before** writing code (plan-first protocol).
 10. ✅ TUnit tests — `DevelopmentPersonaSwitchingTests.cs` with 19 new tests covering catalog, principal shape, three-way resolution, Farah-vs-Vikram policy proof, env isolation, StateProvider per-request, PropagationHandler. All 311 tests pass (0 regressions).
 11. ✅ `.squad/decisions/inbox/tank-persona-fail-closed-default.md` — three-way contract and cookie/header semantics recorded
 12. ✅ `docs/development-authentication.md` — "Superseded by Layer 2" note added
-13. ⏳ Full Aspire+Postgres integration test (Farah→403 vs Vikram→200 with persisted Decision) — **Switch/coordinator scope**, not Tank's
+13. ✅ Full Aspire+Postgres integration test — Switch added `tests/Bethuya.IntegrationTests/DevelopmentPersonaSwitchingFlowTests.cs` (5 tests: Farah→403, Vikram→auth-gate 404, Vikram decision→DecidedBy=vikram@bethuya.dev, Farah/Vikram identity diagnostics). Build: 0 errors, 0 warnings. Docker available in sandbox; test execution not run as part of authoring commit.
 14. ⏳ Morpheus security review + Neo architecture review — pending PR open
 
 **`DecidedBy` path:** `CurationEndpoints.cs` line ~136 already derives `DecidedBy` from `user.FindFirst("email")`. Once the Backend authenticates as a named persona, `DecidedBy` automatically reflects the persona email (e.g. `vikram@bethuya.dev`). No changes to `CurationEndpoints.cs` required — confirmed by code trace.

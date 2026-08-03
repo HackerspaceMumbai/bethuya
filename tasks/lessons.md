@@ -620,3 +620,16 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** The stacked layout solved card asymmetry, but discoverability still depended on scroll affordance instead of durable visible copy.
 - **Fix:** Add regression coverage for visible stack text that mentions GitHub and that it continues below, alongside the CTA gating tests.
 - **Prevention:** When one stacked card can legitimately dominate the viewport, require an explicit continuation cue and test it semantically rather than relying on screenshots.
+
+
+## [2026-08-04] Layer 2 integration test: RegistrationId Vogen value object serializes as plain Guid in JSON
+
+- **What happened:** CurationRegistrantResponse.RegistrationId is a Vogen [ValueObject<Guid>]. When reading the curation dashboard JSON response in an integration test using JsonElement, the field is a plain GUID string, not a nested { "value": "..." } object.
+- **Root cause:** Vogen generates a System.Text.Json.Serialization.JsonConverter attribute on value objects by default. The generated converter serializes/deserializes to the underlying primitive (Guid), not a wrapper object.
+- **Fix/Takeaway:** In integration tests, lement.GetProperty("registrationId").GetGuid() works directly for Vogen Guid value objects — no .GetProperty("value") nesting needed.
+- **Prevention:** When writing integration tests against endpoints that return Vogen value objects in their response contracts, treat them as their underlying primitive type in JSON. Only add nesting if a custom converter explicitly wraps them.
+
+## [2026-08-04] Layer 2 integration tests: POST /api/dev/curation/seed minimum reviewableCount is 26
+
+- **What happened:** CurationSampleSeeder.SeedAsync uses Math.Clamp(reviewableCount, SandboxCapacity + 1, MaxReviewableRegistrants) where SandboxCapacity = 25. Passing ?reviewableCount=0 via query string results in 26 registrants being seeded (clamped to minimum). Minimal safe value for seeding just enough to get one registrant for a decision test: pass ?reviewableCount=26 explicitly.
+- **Prevention:** When writing seeded integration tests for the curation endpoint, use ?reviewableCount=26 as the minimum. The seeder always creates 8 pre-selected + N reviewable + historical registrants; the selected ones come first in the dashboard Registrants list.
