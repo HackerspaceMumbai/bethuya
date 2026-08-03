@@ -22,6 +22,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Description:** Characterization-only layer of the approved Bethuya Developer Testing Harness PR stack. Document the current dev auth path (Browser → Web `DevelopmentAuthenticationStateProvider` → Refit clients (no token attached when `Provider=None`) → Backend `DevelopmentAuthenticationHandler` → ASP.NET authorization policies) and the fixed `dev-user-001` / `dev@bethuya.local` admin-everything defect. Record the proposed future persona-boundary decision in `.squad/decisions/inbox/`. Extend TUnit coverage to characterize (not change) current fixed-principal behavior and the environment/provider fail-closed guard. Add an integration test exercising the Backend-observed identity/authorization outcome via the existing Aspire fixture, scoped to what the current architecture actually supports. Do NOT implement persona switching, toolbar, seeder, new roles, or v2 domains.
 - **Acceptance:** `docs/development-authentication.md` added; `.squad/decisions/inbox/copilot-dev-persona-auth.md` added; `DevelopmentAuthenticationBoundaryTests.cs` added with fixed-principal/policy characterization tests; `Bethuya.IntegrationTests/DevelopmentAuthenticationFlowTests.cs` added (Backend-direct scope documented — full Web→Refit path infeasible without persona-switching infra); targeted TUnit tests pass and both projects build; code-review and .NET performance review run with findings resolved; PR opened targeting `main` explaining this is characterization-only with no persona switching implemented.
 
+## [2026-08-01] Implement observability framework foundations
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Implement the first observability framework slice by reusing `ServiceDefaults` for shared telemetry/resource metadata, extending planner-agent trace tags, adding health endpoint compatibility aliases, and updating project docs for portability/security/performance guardrails.
+- **Acceptance:** Shared telemetry/resource defaults and health endpoint aliases are in code, planner invocation telemetry carries `gen_ai`/`mcp` tags with existing bounded trace persistence, focused tests cover the new behavior, and README/docs explain the observability contract.
+
 ## [2026-07-31] Build recommendation audit foundation (PR6)
 - **Status:** done
 - **Agent/Owner:** Copilot CLI
