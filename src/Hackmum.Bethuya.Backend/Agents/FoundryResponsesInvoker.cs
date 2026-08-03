@@ -26,7 +26,7 @@ public sealed class FoundryResponsesInvoker(
         activity?.SetTag("gen_ai.system", "foundry");
         activity?.SetTag("gen_ai.request.model", _options.Model ?? "planner-chat");
         activity?.SetTag("gen_ai.operation.name", "planner.schedule_draft");
-        activity?.SetTag("mcp.server.identity", "planner-hosted");
+        activity?.SetTag("mcp.server.identity", _options.AgentName ?? "planner-hosted");
         activity?.SetTag("mcp.tool.name", "planner.responses");
 
         var apiResponse = await responsesApi.CreateResponseAsync(
