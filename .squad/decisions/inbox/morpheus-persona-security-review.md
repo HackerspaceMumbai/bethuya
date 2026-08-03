@@ -5,15 +5,16 @@
 **PR:** #52 — `feat(auth): Layer 2 - Developer Identity Switching Infrastructure`
 **Commit:** `3c793da`
 **Branch:** `indcoder-developer-identity-switching`
-**Status:** ✅ APPROVED WITH FIXES
+**Status:** ✅ APPROVED WITH FIXES (3 total fixes)
 
 ---
 
 ## Verdict
 
-**APPROVED WITH FIXES.** One defense-in-depth defect was found and fixed by the reviewer
-(commit appended to branch). All seven threat-model items pass after the fix. The
-implementation is principled and the three-way resolution contract is sound.
+**APPROVED WITH FIXES (3 total fixes).** One defense-in-depth defect was found and fixed by the
+reviewer (commit `95b7234`). Two additional HIGH/MEDIUM findings were identified by an independent
+code-review pass and fixed (see Additional Findings section below). All seven original threat-model
+items pass. The implementation is principled and the three-way resolution contract is sound.
 
 ---
 
@@ -185,19 +186,122 @@ pattern already established in `BethuyaAuthenticationExtensions`.
 - `MapDevelopmentEndpoints_Staging_Throws` — asserts throw in Staging
 - `MapDevelopmentEndpoints_Development_DoesNotThrow` — asserts no throw in Development
 
-**Test delta:** 311 → 314 passed (0 failed, 0 regressions).
+**Test delta:** 311 → 314 → 321 passed (0 failed, 0 regressions).
 
 ---
 
-## Build / Anvil Evidence (Morpheus-run)
+## Additional Findings (Post-Review Pass)
+
+These two findings were identified by an independent code-review pass after the initial 7-item
+threat-model review. Both were fixed directly by the security reviewer per commit authority.
+
+---
+
+### F1 — CSRF via Cross-Origin Drive-By Cookie Plant (HIGH)
+
+**Affected file:** `src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Auth/DevPersonaEndpointExtensions.cs`
+
+**Vector:**
+`GET /dev/persona/{key}` was `.AllowAnonymous()` with no cross-origin check. `SameSite=Lax` only
+restricts when the cookie is **sent back** in subsequent requests — it does NOT prevent a
+cross-origin response from **setting** the cookie on the developer's browser. A hostile page open
+in the same browser (e.g. a compromised npm package's dev server) could escalate the dev session
+to full-admin with:
+
+```html
+<img src="http://localhost:PORT/dev/persona/Vikram">
+```
+
+No click or interaction required. This is exactly the "silent escalation to admin" scenario the
+original spec said must never happen, just via a cross-origin GET vector rather than a malformed
+key.
+
+**Assessment:** HIGH severity within the dev-only threat model. The endpoint is only reachable in
+`Development+Provider=None`, so production is unaffected. But within a developer's active session,
+this is a meaningful trust boundary violation.
+
+**Fix:**
+Added `Sec-Fetch-Site` header check at the top of both `/{key}` and `/clear` handlers:
+
+```csharp
+var fetchSite = context.Request.Headers["Sec-Fetch-Site"].FirstOrDefault();
+if (string.Equals(fetchSite, "cross-site", StringComparison.Ordinal))
+    return Results.StatusCode(StatusCodes.Status403Forbidden);
+```
+
+**Rationale for `Sec-Fetch-Site` over POST+antiforgery:**
+- `Sec-Fetch-Site` cannot be forged by cross-origin scripts/images/iframes — it is browser-set
+  from the browser's Fetch metadata spec (RFC 8942-style)
+- Absent header = direct navigation (typed URL, bookmark, curl) — the primary developer UX must
+  be preserved; absent must allow
+- `cross-site` is the only blocked value; `same-origin`, `same-site`, and absent all allow
+- Switching to POST+antiforgery would break the `GET /dev/persona/{key}` URL-navigation UX that
+  is part of the deliverable's described "redirects/reloads" flow — I judged `Sec-Fetch-Site`
+  sufficient for a dev-only endpoint where the threat model is "rogue page in same browser session"
+
+**Proof tests (added to `DevelopmentPersonaSwitchingTests.cs`):**
+- `PersonaEndpoint_CrossSiteRequest_Returns403`
+- `PersonaEndpoint_CrossSiteRequest_ClearAlsoReturns403`
+- `PersonaEndpoint_SameOriginRequest_SetsPersonaCookieAndRedirects`
+- `PersonaEndpoint_NoFetchSiteHeader_DirectNavigation_SetsPersonaCookieAndRedirects`
+
+---
+
+### F2 — Open Redirect via Unvalidated `returnUrl` (MEDIUM, compounds F1)
+
+**Affected file:** `src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Auth/DevPersonaEndpointExtensions.cs`
+
+**Vector:**
+The original `returnUrl` handler used `Results.Redirect(returnUrl)` without validating whether the
+URL is local. An attacker could craft:
+
+```
+GET /dev/persona/Vikram?returnUrl=https://evil.example/phish
+```
+
+This both escalates the developer to admin (F1) AND redirects their browser to an attacker
+page in a single request.
+
+**Fix:**
+Added `IsLocalUrl` private helper (accepts only paths starting with `/` but not `//` — blocking
+both absolute URLs and protocol-relative URLs):
+
+```csharp
+private static bool IsLocalUrl([NotNullWhen(true)] string? url) =>
+    !string.IsNullOrWhiteSpace(url)
+    && url.StartsWith('/')
+    && !url.StartsWith("//", StringComparison.Ordinal);
+```
+
+Changed the redirect to:
+
+```csharp
+var safeReturnUrl = IsLocalUrl(returnUrl) ? returnUrl! : "/";
+return Results.LocalRedirect(safeReturnUrl);
+```
+
+`Results.LocalRedirect` is an additional backstop — it throws `InvalidOperationException` for
+non-local URLs. The `IsLocalUrl` guard filters before reaching it so the exception path is never
+hit in practice. The clear endpoint already redirected to `"/"` (literal) so that was updated to
+`Results.LocalRedirect("/")` for consistency.
+
+**Proof tests (added to `DevelopmentPersonaSwitchingTests.cs`):**
+- `PersonaEndpoint_AbsoluteReturnUrl_RedirectsToSafeRoot`
+- `PersonaEndpoint_ProtocolRelativeReturnUrl_RedirectsToSafeRoot`
+- `PersonaEndpoint_ValidLocalReturnUrl_RedirectsToIt`
+
+---
+
+## Build / Anvil Evidence (Morpheus-run — Final)
 
 ```
 dotnet build Bethuya.slnx
   Build succeeded — 0 Warning(s), 0 Error(s)
 
 dotnet test tests/Hackmum.Bethuya.Tests
-  Before fix: 311/311 passed
-  After fix:  314/314 passed (+3 new guard tests)
+  Before initial fix:             311/311 passed
+  After Fix #1 (env guard):       314/314 passed (+3 guard tests)
+  After Fix #2+3 (CSRF, redirect): 321/321 passed (+7 new endpoint security tests)
 ```
 
 ---

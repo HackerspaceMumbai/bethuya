@@ -556,4 +556,129 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
             => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DevPersonaEndpointExtensions — CSRF (Sec-Fetch-Site) and open-redirect guards
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task PersonaEndpoint_CrossSiteRequest_Returns403()
+    {
+        // A cross-origin page (<img>, <script>, etc.) sends Sec-Fetch-Site: cross-site.
+        // The endpoint must reject it unconditionally — persona changes via cross-origin
+        // requests are the silent-escalation vector the spec forbids.
+        var (_, client) = await CreateWebPersonaEndpointServerAsync();
+        client.DefaultRequestHeaders.Add("Sec-Fetch-Site", "cross-site");
+
+        var response = await client.GetAsync("/dev/persona/Vikram");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task PersonaEndpoint_CrossSiteRequest_ClearAlsoReturns403()
+    {
+        // The clear endpoint performs a state-changing side effect too (cookie deletion).
+        var (_, client) = await CreateWebPersonaEndpointServerAsync();
+        client.DefaultRequestHeaders.Add("Sec-Fetch-Site", "cross-site");
+
+        var response = await client.GetAsync("/dev/persona/clear");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task PersonaEndpoint_SameOriginRequest_SetsPersonaCookieAndRedirects()
+    {
+        // A same-origin request (developer navigating within the app) must succeed.
+        var (_, client) = await CreateWebPersonaEndpointServerAsync();
+        client.DefaultRequestHeaders.Add("Sec-Fetch-Site", "same-origin");
+
+        var response = await client.GetAsync("/dev/persona/Farah");
+
+        // Should redirect (302) and set the persona cookie.
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        response.Headers.TryGetValues("Set-Cookie", out var cookieValues);
+        await Assert.That(
+            cookieValues?.Any(v => v.StartsWith(DevelopmentPersonaCatalog.PersonaCookieName, StringComparison.Ordinal))
+        ).IsTrue();
+    }
+
+    [Test]
+    public async Task PersonaEndpoint_NoFetchSiteHeader_DirectNavigation_SetsPersonaCookieAndRedirects()
+    {
+        // Absent Sec-Fetch-Site header = typed URL or bookmark (direct navigation).
+        // This is the primary developer UX and must never be blocked.
+        var (_, client) = await CreateWebPersonaEndpointServerAsync();
+        // No Sec-Fetch-Site header added.
+
+        var response = await client.GetAsync("/dev/persona/Anish");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+    }
+
+    [Test]
+    public async Task PersonaEndpoint_AbsoluteReturnUrl_RedirectsToSafeRoot()
+    {
+        // Open redirect: attacker crafts a link that escalates persona AND sends dev to evil.example.
+        // The endpoint must ignore the absolute URL and redirect to "/" instead.
+        var (_, client) = await CreateWebPersonaEndpointServerAsync();
+
+        var response = await client.GetAsync("/dev/persona/Anish?returnUrl=https://evil.example/phish");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        var location = response.Headers.Location?.ToString() ?? "";
+        await Assert.That(location).IsEqualTo("/");
+    }
+
+    [Test]
+    public async Task PersonaEndpoint_ProtocolRelativeReturnUrl_RedirectsToSafeRoot()
+    {
+        // Protocol-relative URLs (//evil.example) are also absolute-destination attacks.
+        var (_, client) = await CreateWebPersonaEndpointServerAsync();
+
+        // URL-encoded "//" so the router doesn't parse it as a path separator.
+        var response = await client.GetAsync("/dev/persona/Anish?returnUrl=%2F%2Fevil.example");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        var location = response.Headers.Location?.ToString() ?? "";
+        await Assert.That(location).IsEqualTo("/");
+    }
+
+    [Test]
+    public async Task PersonaEndpoint_ValidLocalReturnUrl_RedirectsToIt()
+    {
+        // A legitimate local return URL must be honoured after persona selection.
+        var (_, client) = await CreateWebPersonaEndpointServerAsync();
+
+        var response = await client.GetAsync("/dev/persona/Anish?returnUrl=/events");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        var location = response.Headers.Location?.ToString() ?? "";
+        await Assert.That(location).IsEqualTo("/events");
+    }
+
+    private async Task<(WebApplication App, HttpClient Client)> CreateWebPersonaEndpointServerAsync()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Development
+        });
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Authentication:Provider"] = "None"
+        });
+
+        var app = builder.Build();
+        _apps.Add(app);
+
+        app.MapDevPersonaEndpoints();
+
+        await app.StartAsync();
+        var client = app.GetTestClient();
+        _clients.Add(client);
+
+        return (app, client);
+    }
 }
