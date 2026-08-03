@@ -33,9 +33,14 @@ public sealed class MentorProfileRepository(BethuyaDbContext db) : IMentorProfil
                 profile.Member.IsDiscoverableToCommunity)
             .AsNoTracking();
 
-        // Push expertise area filtering to SQL when possible using JSON column LIKE check,
-        // then apply exact in-memory match to handle JSON ordering variance.
-        if (filterAreas is { Count: > 0 })
+        // Push expertise-area prefiltering when supported by the provider, then
+        // apply exact in-memory enum matching to handle JSON ordering variance.
+        var canApplyServerAreaFilter = !string.Equals(
+            db.Database.ProviderName,
+            "Microsoft.EntityFrameworkCore.InMemory",
+            StringComparison.Ordinal);
+
+        if (filterAreas is { Count: > 0 } && canApplyServerAreaFilter)
         {
             var areaNames = filterAreas.Select(a => a.ToString()).ToList();
             query = query.Where(profile => areaNames.Any(area => profile.ExpertiseAreasJson.Contains(area)));

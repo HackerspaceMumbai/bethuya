@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-08-01] Implement observability framework foundations
+- **Status:** done
+- **Agent/Owner:** Copilot CLI
+- **Description:** Implement the first observability framework slice by reusing `ServiceDefaults` for shared telemetry/resource metadata, extending planner-agent trace tags, adding health endpoint compatibility aliases, and updating project docs for portability/security/performance guardrails.
+- **Acceptance:** Shared telemetry/resource defaults and health endpoint aliases are in code, planner invocation telemetry carries `gen_ai`/`mcp` tags with existing bounded trace persistence, focused tests cover the new behavior, and README/docs explain the observability contract.
+
 ## [2026-07-31] Build recommendation audit foundation (PR6)
 - **Status:** done
 - **Agent/Owner:** Copilot CLI

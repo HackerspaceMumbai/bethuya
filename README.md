@@ -96,6 +96,16 @@ Bethuya supports member progression throughout the entire community lifecycle:
                  Community Leader
 ```
 
+## 🔭 Observability Standards (Aspire + OTEL)
+
+- **Shared defaults first:** every service uses `builder.AddServiceDefaults()` so logs, traces, metrics, service discovery, health checks, and resilience are configured uniformly.
+- **Portable export contract:** telemetry emits through OTLP (`OTEL_EXPORTER_OTLP_ENDPOINT`) and can additionally route to Azure Monitor (`APPLICATIONINSIGHTS_CONNECTION_STRING`) with no code changes.
+- **Deployment correlation:** resources include `deployment.environment.name`, `service.version`, and `service.build.id` so incidents can be tied to releases quickly.
+- **Trace-safe planning/agent workflows:** planner invocations propagate `traceparent` and `x-correlation-id`, persist bounded trace metadata, and tag spans with `gen_ai.*` + `mcp.*` attributes for agent/tool visibility.
+- **Operational health endpoints:** all services expose `/health` + `/alive` and compatibility aliases `/healthz` + `/livez`.
+
+See [`docs/OBSERVABILITY_FRAMEWORK.md`](docs/OBSERVABILITY_FRAMEWORK.md) for implementation details, guardrails, and rollout phases.
+
 Success is not measured by event count alone, but also by
 
 - members retained
