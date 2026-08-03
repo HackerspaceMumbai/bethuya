@@ -2,6 +2,7 @@ using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -9,7 +10,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System.Reflection;
 using System.Threading.RateLimiting;
 
 namespace Microsoft.Extensions.Hosting;
@@ -52,6 +55,10 @@ public static class Extensions
 
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        var serviceVersion = ResolveServiceVersion(builder.Configuration);
+        var buildSha = ResolveBuildSha(builder.Configuration);
+        var deploymentEnvironment = builder.Environment.EnvironmentName;
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;
@@ -59,6 +66,15 @@ public static class Extensions
         });
 
         builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource =>
+            {
+                resource.AddAttributes(
+                [
+                    new KeyValuePair<string, object>("deployment.environment.name", deploymentEnvironment),
+                    new KeyValuePair<string, object>("service.version", serviceVersion),
+                    new KeyValuePair<string, object>("service.build.id", buildSha)
+                ]);
+            })
             .WithMetrics(metrics =>
             {
                 metrics.AddAspNetCoreInstrumentation()
@@ -73,6 +89,8 @@ public static class Extensions
                         tracing.Filter = context =>
                             !context.Request.Path.StartsWithSegments(HealthEndpointPath)
                             && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
+                            && !context.Request.Path.StartsWithSegments("/healthz")
+                            && !context.Request.Path.StartsWithSegments("/livez")
                     )
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
@@ -121,9 +139,14 @@ public static class Extensions
 
         // All health checks must pass for app to be considered ready to accept traffic after starting
         app.MapHealthChecks(HealthEndpointPath);
+        app.MapHealthChecks("/healthz");
 
         // Only health checks tagged with the "live" tag must pass for app to be considered alive
         app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
+        {
+            Predicate = r => r.Tags.Contains("live")
+        });
+        app.MapHealthChecks("/livez", new HealthCheckOptions
         {
             Predicate = r => r.Tags.Contains("live")
         });
@@ -192,6 +215,34 @@ public static class Extensions
         });
 
         return services;
+    }
+
+    private static string ResolveServiceVersion(IConfiguration configuration)
+    {
+        var configuredVersion = configuration["OTEL_SERVICE_VERSION"];
+        if (!string.IsNullOrWhiteSpace(configuredVersion))
+        {
+            return configuredVersion;
+        }
+
+        var entryAssembly = Assembly.GetEntryAssembly();
+        var informationalVersion = entryAssembly?
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(informationalVersion))
+        {
+            return informationalVersion;
+        }
+
+        return entryAssembly?.GetName().Version?.ToString() ?? "unknown";
+    }
+
+    private static string ResolveBuildSha(IConfiguration configuration)
+    {
+        return configuration["BUILD_SHA"]
+            ?? configuration["GIT_COMMIT_SHA"]
+            ?? configuration["RELEASE_ID"]
+            ?? "unknown";
     }
 }
 

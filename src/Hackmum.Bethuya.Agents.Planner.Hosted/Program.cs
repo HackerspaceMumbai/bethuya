@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using Hackmum.Bethuya.Agents.Planner.Hosted;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Planning;
@@ -14,7 +15,15 @@ var app = builder.Build();
 
 app.MapPost("/responses", (PlannerResponsesRequest request) =>
 {
+    var activity = Activity.Current;
+    activity?.SetTag("gen_ai.system", "foundry");
+    activity?.SetTag("gen_ai.request.model", request.Model ?? "planner-chat");
+    activity?.SetTag("gen_ai.operation.name", "planner.schedule_draft");
+    activity?.SetTag("mcp.server.identity", "planner-hosted");
+    activity?.SetTag("mcp.tool.name", "planner.responses");
+
     var generated = GenerateHybridAgenda(request);
+    activity?.SetTag("bethuya.planner.block_count", generated.AgendaJson.Agenda.Blocks.Count);
     var schemaErrors = PlanningAgendaValidator.Validate(generated.AgendaJson);
     var consistencyErrors = PlanningAgendaValidator.ValidateMarkdownConsistency(generated.AgendaJson, generated.MarkdownAgenda);
 
@@ -32,8 +41,11 @@ app.MapPost("/responses", (PlannerResponsesRequest request) =>
         });
     }
 
+    var responseId = $"resp_{Guid.CreateVersion7():N}";
+    activity?.SetTag("gen_ai.response.id", responseId);
+
     return Results.Ok(new PlannerResponsesSuccess(
-        ResponseId: $"resp_{Guid.CreateVersion7():N}",
+        ResponseId: responseId,
         ConversationId: request.Conversation ?? $"pc_{Guid.CreateVersion7():N}",
         MarkdownAgenda: generated.MarkdownAgenda,
         AgendaJson: generated.AgendaJson,
@@ -248,4 +260,3 @@ static string ResolveTheme(PlannerHostedInput input)
 
     return "applied engineering for local communities";
 }
-

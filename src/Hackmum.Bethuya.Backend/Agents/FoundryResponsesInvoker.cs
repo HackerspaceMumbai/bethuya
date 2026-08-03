@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Planning;
 using Microsoft.Extensions.Options;
@@ -21,6 +22,13 @@ public sealed class FoundryResponsesInvoker(
         string? correlationId,
         CancellationToken ct = default)
     {
+        var activity = Activity.Current;
+        activity?.SetTag("gen_ai.system", "foundry");
+        activity?.SetTag("gen_ai.request.model", _options.Model ?? "planner-chat");
+        activity?.SetTag("gen_ai.operation.name", "planner.schedule_draft");
+        activity?.SetTag("mcp.server.identity", "planner-hosted");
+        activity?.SetTag("mcp.tool.name", "planner.responses");
+
         var apiResponse = await responsesApi.CreateResponseAsync(
             new PlannerResponsesApiRequest(
                 ConversationId: conversationId,
@@ -30,6 +38,10 @@ public sealed class FoundryResponsesInvoker(
             traceParent,
             correlationId,
             ct);
+
+        activity?.SetTag("gen_ai.response.id", apiResponse.ResponseId);
+        activity?.SetTag("bethuya.agent.name", apiResponse.AgentName);
+        activity?.SetTag("bethuya.agent.version", apiResponse.AgentVersion ?? "unknown");
 
         var schemaErrors = PlanningAgendaValidator.Validate(apiResponse.AgendaJson);
         if (schemaErrors.Count > 0)
@@ -51,4 +63,3 @@ public sealed class FoundryResponsesInvoker(
             AgentVersionTag: apiResponse.AgentVersion);
     }
 }
-
