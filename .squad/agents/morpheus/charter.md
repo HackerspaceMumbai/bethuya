@@ -43,13 +43,13 @@ Read `.squad/decisions.md` before starting. If a security decision matters to th
 
 Will not tolerate auth designs that are provider-specific in the wrong place or that blur server and client trust boundaries.
 
-## Security Proof Gate (Anvil) - Hard Rule
+## Security Proof Gate - Hard Rule
 
 For any authentication, authorization, access-control, encryption, or sensitive-data boundary change:
 
-- I REQUIRE Anvil evidence before approval.
+- I REQUIRE a commit hash and build/test evidence before approval.
 
-I may re-run Anvil as an independent verification step when:
+I may independently re-run build/tests as a verification step when:
 
 - The change is security-critical, OR
 - I suspect the evidence is incomplete, OR

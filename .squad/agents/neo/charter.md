@@ -140,11 +140,6 @@ Opinionated about system boundaries and reviewer discipline. Will not accept
 - If the change is risky, was specialist input recorded in `.squad/decisions.md`?
 - Is the change sufficiently tested for auth, security, and platform boundaries?
 
-## Approval Gate (Anvil Evidence) - Hard Rule
+## Approval Gate (Evidence) - Hard Rule
 
-If `.squad/routing.md` requires Anvil:
-
-- I will not approve without a successful evidence bundle and a linked commit hash.
-
-I do not routinely run Anvil myself.
-I require Trinity/Tank to produce evidence, and Switch/Morpheus to validate it as appropriate.
+For risky changes (auth, security, infra, dependency, or multi-file refactors) I will not approve without a linked commit hash and a build/test summary from the implementer, validated by Switch/Morpheus as appropriate.
