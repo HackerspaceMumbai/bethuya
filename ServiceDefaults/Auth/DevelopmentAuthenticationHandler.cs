@@ -2,7 +2,6 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -35,7 +34,7 @@ internal sealed class DevelopmentAuthenticationHandler(
     ILoggerFactory logger,
     UrlEncoder encoder,
     IHostEnvironment environment,
-    IConfiguration configuration)
+    IOptionsMonitor<BethuyaAuthOptions> authOptionsMonitor)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     private static readonly Action<ILogger, string, string?, Exception?> s_personaResolved =
@@ -58,9 +57,7 @@ internal sealed class DevelopmentAuthenticationHandler(
         // (e.g. AllowInsecureDevAuth=true in Production) the persona surface is never activated
         // outside a true Development environment.
         var isDevEnvironment = environment.IsDevelopment();
-        var providerStr = configuration.GetValue<string>($"{BethuyaAuthOptions.SectionName}:Provider");
-        var isProviderNone = string.IsNullOrEmpty(providerStr)
-            || providerStr.Equals("None", StringComparison.OrdinalIgnoreCase);
+        var isProviderNone = authOptionsMonitor.CurrentValue.Provider == AuthProviderType.None;
 
         if (!isDevEnvironment || !isProviderNone)
         {

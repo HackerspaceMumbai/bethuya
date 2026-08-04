@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-08-04] Development auth handlers should consume typed options, not raw configuration on every request
+- **What happened:** The Layer 2 developer persona handler originally called `IConfiguration.GetValue<string>("Authentication:Provider")` inside `HandleAuthenticateAsync()` for every authenticated request, then did a case-insensitive `"None"` comparison to decide whether persona switching was active.
+- **Root cause:** The auth extension methods already bound `BethuyaAuthOptions` into a throwaway local instance for startup branching, but they did not also register the same section with `Services.Configure<BethuyaAuthOptions>(...)`, so the handler fell back to raw configuration reads instead of DI-provided typed options.
+- **Fix:** Registered `BethuyaAuthOptions` in both `AddBethuyaWebAuthentication` and `AddBethuyaApiAuthentication`, then switched `DevelopmentAuthenticationHandler` to `IOptionsMonitor<BethuyaAuthOptions>` and a direct enum comparison against `AuthProviderType.None`.
+- **Prevention:** Any ASP.NET Core handler, middleware, or other per-request component that depends on app configuration should consume typed options via `IOptionsMonitor<T>` (or `IOptions<T>` where reload is irrelevant) and avoid reparsing configuration strings on the request path when the same section is already bound at startup.
+
 ## [2026-08-04] Bethuya.IntegrationTests requires Docker and is not wired into CI today
 - **What happened:** While adding `DevelopmentAuthenticationFlowTests.cs` (Developer Testing
   Harness Layer 1), the new integration test built successfully but could not be executed in

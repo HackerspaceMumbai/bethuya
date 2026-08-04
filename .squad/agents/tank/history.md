@@ -7,6 +7,7 @@
 
 ## Learnings
 
+- Development auth hot paths should bind `BethuyaAuthOptions` once with `Services.Configure<BethuyaAuthOptions>(Configuration.GetSection(...))` and consume `IOptionsMonitor<BethuyaAuthOptions>` in handlers; `IConfiguration.GetValue<string>()` inside `HandleAuthenticateAsync()` adds needless per-request parsing even in dev-only flows.
 - `Authentication:Provider=None` still needs a concrete auth scheme in both `ServiceDefaults/Auth/BethuyaAuthenticationExtensions.cs` and the ASP.NET Core pipeline; a Blazor `AuthenticationStateProvider` alone does not satisfy `[Authorize]` pages or backend `ClaimsPrincipal` injection.
 - Shared dev-auth files for local onboarding now live in `ServiceDefaults/Auth/DevelopmentAuthenticationDefaults.cs` and `ServiceDefaults/Auth/DevelopmentAuthenticationHandler.cs`; web wiring is in `src/Bethuya.Hybrid/Bethuya.Hybrid.Web/Program.cs`, backend wiring is in `src/Hackmum.Bethuya.Backend/Program.cs`, and regression coverage is in `tests/Hackmum.Bethuya.Tests/Auth/DevelopmentAuthenticationTests.cs`.
 - `src/Bethuya.Hybrid/Bethuya.Hybrid.Shared/Pages/NewUserProfile.razor` cannot pass `InputType` to `BbFormFieldInput`; unsupported Blazor Blueprint wrapper parameters fail at runtime, not compile time.

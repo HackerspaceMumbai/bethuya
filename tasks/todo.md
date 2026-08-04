@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-08-04] Perf follow-up — cache dev auth provider options
+- **Status:** done
+- **Agent/Owner:** Tank
+- **Description:** Close the remaining dotnet performance review finding on Layer 2 by registering `BethuyaAuthOptions` with `Configure<T>` in both auth builder extensions, switching `DevelopmentAuthenticationHandler` from per-request raw configuration parsing to `IOptionsMonitor<BethuyaAuthOptions>`, and recording the learning/decision trail.
+- **Acceptance:** `DevelopmentAuthenticationHandler` resolves `Authentication:Provider` via typed options instead of `IConfiguration.GetValue<string>()` per request, build stays at 0 warnings/0 errors, `tests\\Hackmum.Bethuya.Tests` stays green, history is updated, and the fix is committed/pushed on `indcoder-developer-identity-switching`.
+
 ## [2026-08-04] Developer Testing Harness — Layer 2: Developer Identity Switching Infrastructure (PR2)
 - **Status:** in-progress
 - **Agent/Owner:** Tank (implementation ✅), Morpheus (security review — pending), Neo (architecture/code review — pending), Switch (integration test verification — pending)
