@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.Extensions.DependencyInjection
+<!DOCTYPE html>
 <html lang="en" class="dark">
 
 <head>
@@ -15,8 +16,25 @@
 
 <body>
     <Routes @rendermode="InteractiveServer" />
+    @if (DevPersonaToolbarFeature is not null)
+    {
+        <Bethuya.Hybrid.Web.Components.Dev.DevPersonaToolbar @rendermode="InteractiveServer" />
+    }
     <script src="_content/Bethuya.Hybrid.Shared/js/cloudinaryUploadGlobal.js"></script>
     <script src="_framework/blazor.web.js"></script>
 </body>
 
 </html>
+
+@code {
+    [Inject]
+    private IServiceProvider Services { get; set; } = default!;
+
+    // Resolved once via IServiceProvider (not @inject) so the toolbar's DI marker remains the
+    // single source of truth for "dev-only" gating: when IDevPersonaToolbarFeature is not
+    // registered (Production, or Authentication:Provider != None), GetService returns null and
+    // the component is never constructed — not merely hidden — avoiding a redundant lifecycle
+    // (including prerendering) on every request outside Development+Provider=None.
+    private Bethuya.Hybrid.Web.Auth.IDevPersonaToolbarFeature? DevPersonaToolbarFeature =>
+        Services.GetService<Bethuya.Hybrid.Web.Auth.IDevPersonaToolbarFeature>();
+}
