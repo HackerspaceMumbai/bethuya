@@ -26,7 +26,7 @@ The single most important fact in this document is:
 
 ## End-to-end path
 
-```
+```text
 Browser
   │  (renders Blazor Web App, InteractiveServer)
   ▼
@@ -136,10 +136,15 @@ Audit / Decision record path (Hackmum.Bethuya.Core.Models.Decision)
 ## The fixed-admin defect, precisely stated
 
 1. **Single identity, all roles, always.** `DevelopmentAuthenticationDefaults.CreatePrincipal()`
-   attaches all four `BethuyaRoleNames` (`Admin`, `Organizer`, `Curator`, `Attendee`) to
-   one static `ClaimsPrincipal`. There is no configuration knob, header, cookie, or query
-   parameter that changes this. Every request authenticated via the `Development` scheme —
-   on the Web host or the Backend host — gets exactly this principal.
+   builds a `ClaimsPrincipal` carrying all four `BethuyaRoleNames` (`Admin`, `Organizer`,
+   `Curator`, `Attendee`) and the fixed `dev-user-001` / `dev@bethuya.local` identity claims.
+   The Backend's `DevelopmentAuthenticationHandler` calls this method fresh on every
+   `HandleAuthenticateAsync()` (a new object each time, not a cached/static instance), while
+   the Web tier's `DevelopmentAuthenticationStateProvider` caches one static result for the
+   process lifetime — but both paths always resolve to the identical fixed claim values.
+   There is no configuration knob, header, cookie, or query parameter that changes this. Every
+   request authenticated via the `Development` scheme — on the Web host or the Backend host —
+   gets exactly this same fixed identity.
 2. **The two hosts do not communicate identity.** The Web host's
    `DevelopmentAuthenticationStateProvider` and `ClaimsCurrentUserService` describe what the
    *Blazor UI* believes about "the current user," but because `ConfigureBackendAuth` never
