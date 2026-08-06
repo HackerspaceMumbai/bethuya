@@ -22,23 +22,6 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ## Active Decisions
 
-### 2026-08-04 - Developer Testing Harness Layer 2/3: Persona propagation boundary, security review, and integration test design
-
-**Owners:** Copilot CLI/Tank (proposal + implementation), Morpheus (security review), Switch (integration test design)
-
-**Proposed boundary (recorded during Layer 1, honored by Layer 2 implementation):** one fixed allowlisted persona key per request (never a client-supplied arbitrary claim set); shared persona catalog lives in `ServiceDefaults` (single source of truth, mirrored with parity-test discipline like `BethuyaRoleNames`); propagation only in Development + `Authentication:Provider=None`, reusing the `EnsureInsecureDevAuthAllowed` fail-closed guard pattern; the Backend constructs the claims principal from the propagated persona key (Web never constructs/forwards a serialized `ClaimsPrincipal`); only the existing four roles (`Admin`, `Organizer`, `Curator`, `Attendee`) are representable; no toolbar/UI work until Backend parity is proven with build+test+integration evidence that `HttpContext.User` on the Backend actually changes per persona.
-
-**Morpheus security review of PR #52 (commit `3c793da`) — ✅ APPROVED WITH FIXES (3 total):**
-- TM-1..TM-7b threat model (privilege escalation via unknown/malformed keys, no caller-supplied claims cross the trust boundary, mechanism inert outside Development+Provider=None via 4 independent gates, cookie hygiene, header/cookie confusion + log injection via `LoggerMessage.Define`, `Decision.DecidedBy` end-to-end chain, real-provider paths unaffected) — all **PASS**.
-- Fix 1 (self-found, commit `95b7234`): added a defense-in-depth environment guard directly inside `DevelopmentEndpoints.MapDevelopmentEndpoints` (throws in Production/Staging) rather than relying solely on the `Program.cs` call-site guard. Proof: `DevelopmentEndpointGuardTests.cs` (3 tests).
-- Fix 2 (F1, HIGH — CSRF via cross-origin drive-by cookie plant): `GET /dev/persona/{key}` was `.AllowAnonymous()` with no cross-origin check; a hostile page could silently escalate a developer's session to Vikram/admin via `<img src="http://localhost:PORT/dev/persona/Vikram">`. Fixed with a `Sec-Fetch-Site: cross-site` → 403 guard (chosen over POST+antiforgery to preserve the required GET-navigation UX; absent header/same-origin/same-site all still allow). 4 proof tests added.
-- Fix 3 (F2, MEDIUM, compounds F1 — open redirect via unvalidated `returnUrl`): fixed via an `IsLocalUrl()` helper (rejects `//` protocol-relative and absolute URLs) + `Results.LocalRedirect()` as a backstop. 3 proof tests added.
-- Final evidence: `dotnet build` 0 warnings/0 errors; `dotnet test tests/Hackmum.Bethuya.Tests` 311→314→321 passed (0 regressions) across the three fixes.
-
-**Switch integration test design (`DevelopmentPersonaSwitchingFlowTests.cs`, Aspire+Postgres):** followed the Layer 1 fixture pattern (`[ClassDataSource<BethuyaAppFixture>(Shared = SharedType.PerTestSession)]`, no `DatabaseFixture` — fresh unique-ID seed data avoids cross-test pollution); used the existing `/api/dev/curation/seed` endpoint rather than direct EF/Npgsql injection; proved `Decision.DecidedBy` via `GET /api/approvals/{entityType}/{entityId}` (HTTP-level, not a raw DB query); hardcoded persona header name/subjects/emails/roles per BP6 (contract-duplication-as-safety-net — a `ServiceDefaults` rename that breaks this test is a deliberate compile-time signal); structured-log verification for EventId 3100/3101 scoped to unit tests only (`BethuyaAppFixture` has no log-capture seam) — verified in `DevelopmentPersonaSwitchingTests.cs`, which registers a real `ILoggerProvider` (via `ILoggingBuilder.AddProvider`) and asserts both EventIds fire with the expected persona key/subject. Independently executed by the coordinator against live Docker/Aspire/Postgres containers: 9/9 passed (2 full runs).
-
-**Status:** Superseded by shipped code — PR #52 (Layer 2) merged into the harness base branch, PR #53 (Layer 3, toolbar) built on top and is open. Recorded here for the permanent decision trail per Scribe's drop-box merge protocol (these entries had accumulated unmerged in `.squad/decisions/inbox/` since 2026-08-04).
-
 ### 2026-04-27 - Apply central DataProtection patch for GHSA-9mv3-2cwr-p262
 
 **Date:** 2026-04-27  
