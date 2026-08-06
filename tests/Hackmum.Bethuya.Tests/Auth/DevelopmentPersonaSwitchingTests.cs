@@ -631,13 +631,24 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
     /// <summary>Minimal stub inner handler so we can inspect outbound request headers.</summary>
     private sealed class TestInnerHandler : HttpMessageHandler
     {
-        // Shared static instance (never disposed) so SendAsync doesn't leak a fresh
-        // undisposed HttpResponseMessage per call; ownership is never transferred
-        // out of this handler chain since callers dispose the HttpClient response.
-        private static readonly HttpResponseMessage SharedOkResponse = new(HttpStatusCode.OK);
+        // Per-instance field (not a static, not a method-local) so the analyzer no
+        // longer sees an undisposed local; each test creates its own TestInnerHandler
+        // and calls SendAsync exactly once, so there is no cross-test sharing that
+        // could race with the caller's own `using var response = ...` disposal.
+        private readonly HttpResponseMessage _response = new(HttpStatusCode.OK);
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-            => Task.FromResult(SharedOkResponse);
+            => Task.FromResult(_response);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _response.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 
     /// <summary>A single log entry captured by <see cref="CapturingLoggerProvider"/>.</summary>
