@@ -16,6 +16,56 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-08-04] Bethuya.IntegrationTests requires Docker and is not wired into CI today
+- **What happened:** While adding `DevelopmentAuthenticationFlowTests.cs` (Developer Testing
+  Harness Layer 1), the new integration test built successfully but could not be executed in
+  this sandboxed session because `docker info` failed (`dockerDesktopLinuxEngine` pipe not
+  found) — Aspire's `DistributedApplicationTestingBuilder` needs a container runtime for the
+  Postgres resource referenced by `BethuyaAppFixture`.
+- **Root cause:** `Bethuya.IntegrationTests` depends on real containers (Postgres via Aspire)
+  and is not currently invoked anywhere in `.github/workflows/ci.yml` — only
+  `Hackmum.Bethuya.Tests` (unit) and `Hackmum.Bethuya.E2E` (Playwright) are run in CI today.
+  This is a pre-existing gap, not something introduced by this layer.
+- **Fix:** None required for this layer — documented the limitation in the PR evidence instead
+  of silently claiming the integration test was verified. The new test file was validated by
+  `dotnet build` only in this environment; a reviewer with Docker/Aspire available (or CI, once
+  wired up) should execute it before relying on it as a merge gate.
+- **Prevention:** When adding to `tests/Bethuya.IntegrationTests`, explicitly note in the PR
+  whether the test was actually executed (requires Docker) or only built, so reviewers don't
+  assume container-backed integration coverage ran when it didn't.
+
+## [2026-08-04] Mandatory code-review agent caught two documentation/test accuracy defects
+- **What happened:** The mandatory `code-review` agent run against the staged Layer 1 diff
+  found two real issues before the PR was opened: (1) `docs/development-authentication.md`
+  originally claimed `Decision.DecidedBy` is "not derived from ICurrentUserService or the
+  authenticated ClaimsPrincipal" at all live call sites — false for 3 of 4 named call sites
+  (`CurationEndpoints`, `MentorshipEndpoints`/`MentorshipService`,
+  `CommunityPassportEndpoints`/`CommunityRecommendationService` all derive it from claims via
+  `user.FindFirst(...)` / `GetSubject()`); only the unused `ApprovalWorkflow.CreateDecision`
+  method takes an arbitrary string, and it has no callers in `src/` today. (2) The original
+  `Backend_ProfileCompletionStatus_ResolvesSameIdentity_...` integration test asserted
+  byte-identical responses for a bogus-token vs. no-credentials client, but
+  `/api/profile/completion-status` returns the identical "no profile" default for *any*
+  profile-less userId — so the assertion would have passed even if the Backend read identity
+  from the client-supplied token, as long as that different identity also lacked a profile row.
+- **Root cause:** (1) Was written from a partial memory of the audit-trail code without
+  re-verifying every named call site against current source. (2) Relied on response-shape
+  equality as a proxy for identity-resolution equality without checking whether the endpoint's
+  "not found" default response is identity-independent.
+- **Fix:** Corrected the doc's "Audit / Decision record path" section to state precisely which
+  call sites derive `DecidedBy` from claims and narrowed the real gap to
+  `ApprovalWorkflow.CreateDecision` (dead code) and `ApprovalEndpoints` lacking
+  `RequireAuthorization()`. Rewrote the integration test as
+  `Backend_ProfileWrite_ResolvesSameIdentity_RegardlessOfClientSuppliedCredentials`: one client
+  (bogus token) writes a uniquely-marked `AttendeeProfile` via `POST /api/profile`, and a second
+  client (no credentials) reads it back via `GET /api/profile` — this is only possible if both
+  requests resolved to the identical backend-authenticated principal, making the test
+  genuinely falsifiable.
+- **Prevention:** For characterization docs, re-grep every named call site at doc-review time
+  rather than trusting an earlier investigation pass. For "same identity" integration tests,
+  prefer a write-then-cross-read assertion over a "responses look the same" assertion whenever
+  the endpoint has an identity-independent default/empty state.
+
 ## [2026-08-01] data-test must go on a wrapping HTML element, never directly on a BB component
 - **What happened:** `CommunityPassport.razor` passed `data-test="passport-visibility-select"` directly on `<BbFormFieldSelect>`, causing an `InvalidOperationException` at runtime: *"does not have a property matching the name 'data-test'"*.
 - **Root cause:** Blazor Blueprint form-field wrappers (`BbFormFieldSelect`, `BbFormFieldInput`, `BbFormSection`) are Blazor components that do **not** declare `[Parameter(CaptureUnmatchedValues = true)]`. They reject any attribute not declared as a `[Parameter]`, including HTML attributes like `data-test`. Native HTML elements and some BB leaf components (e.g. `BbBadge`) do forward unknown attributes, but BB form-field wrappers never do.
