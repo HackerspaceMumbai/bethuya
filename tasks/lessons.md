@@ -632,7 +632,7 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 - **What happened:** CurationRegistrantResponse.RegistrationId is a Vogen [ValueObject<Guid>]. When reading the curation dashboard JSON response in an integration test using JsonElement, the field is a plain GUID string, not a nested { "value": "..." } object.
 - **Root cause:** Vogen generates a System.Text.Json.Serialization.JsonConverter attribute on value objects by default. The generated converter serializes/deserializes to the underlying primitive (Guid), not a wrapper object.
-- **Fix/Takeaway:** In integration tests, lement.GetProperty("registrationId").GetGuid() works directly for Vogen Guid value objects — no .GetProperty("value") nesting needed.
+- **Fix/Takeaway:** In integration tests, JsonElement.GetProperty("registrationId").GetGuid() works directly for Vogen Guid value objects — no .GetProperty("value") nesting needed.
 - **Prevention:** When writing integration tests against endpoints that return Vogen value objects in their response contracts, treat them as their underlying primitive type in JSON. Only add nesting if a custom converter explicitly wraps them.
 
 ## [2026-08-04] Layer 2 integration tests: POST /api/dev/curation/seed minimum reviewableCount is 26

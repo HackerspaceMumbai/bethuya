@@ -34,7 +34,7 @@ Per BP6 (Contract duplication as safety net), persona header name (`X-Bethuya-De
 
 ### 5. Structured log verification scoped to unit tests only (not this integration tier)
 
-`BethuyaAppFixture` provides no log-capture seam. Adding one would be new test infrastructure beyond Layer 2 scope. Log verification for `LoggerMessage.Define` EventId 3100/3101 is documented as Tank's responsibility, verified via fake-ILogger unit tests in `DevelopmentPersonaSwitchingTests.cs`. This decision is explicitly noted in the test file header comment.
+`BethuyaAppFixture` provides no log-capture seam. Adding one would be new test infrastructure beyond Layer 2 scope. Log verification for `LoggerMessage.Define` EventId 3100/3101 is verified at the unit-test level in `DevelopmentPersonaSwitchingTests.cs`, which registers a real `ILoggerProvider` (via `ILoggingBuilder.AddProvider`) and asserts both EventIds fire with the expected persona key/subject. This decision is explicitly noted in the test file header comment.
 
 ### 6. Execution status: build confirmed, runtime requires Docker
 

@@ -12,9 +12,10 @@
 //   No seam exists in BethuyaAppFixture to capture Backend console/structured logs at the
 //   Aspire/Postgres integration tier. Log verification for the Layer 2 persona resolution
 //   (LoggerMessage.Define EventId 3100 "s_personaResolved" and EventId 3101 "s_personaUnknown")
-//   relies exclusively on Tank's unit-test-level proof in
-//   `tests/Hackmum.Bethuya.Tests/Auth/DevelopmentPersonaSwitchingTests.cs`, which validates
-//   the structured log fields via a fake ILogger capture. No new logging infrastructure was
+//   relies exclusively on unit-test-level proof in
+//   `tests/Hackmum.Bethuya.Tests/Auth/DevelopmentPersonaSwitchingTests.cs`, which registers a
+//   real `ILoggerProvider` (via `ILoggingBuilder.AddProvider`) and asserts both EventIds
+//   actually fire with the expected persona key/subject. No new logging infrastructure was
 //   invented for this integration tier — doing so would be out of scope (Layer 2 spec §5).
 //
 // SCOPE LIMITATION (same as Layer 1 — DevelopmentAuthenticationFlowTests.cs):
@@ -29,6 +30,7 @@
 //   unit-test level by DevPersonaPropagationHandler's DelegatingHandler tests.
 // =====================================================================================
 
+using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -118,7 +120,10 @@ public sealed class DevelopmentPersonaSwitchingFlowTests(BethuyaAppFixture fixtu
         var eventId = seed.GetProperty("eventId").GetGuid();
 
         // Step 2 — Retrieve the curation dashboard as Vikram to discover a reviewable
-        //   registrant's ID. The seeder always produces at least one Pending registrant.
+        //   registrant's ID. Select by Status == "Pending" rather than a fixed index:
+        //   CurationSampleSeeder emits pre-selected registrants first in the Registrants
+        //   list, so registrants[0] is not guaranteed to be pending (see tasks/lessons.md).
+        //   reviewableCount=26 guarantees at least one Pending registrant exists.
         using var vikramClient = fixture.CreateBackendClient();
         vikramClient.DefaultRequestHeaders.Add(PersonaHeaderName, "Vikram");
 
@@ -127,8 +132,11 @@ public sealed class DevelopmentPersonaSwitchingFlowTests(BethuyaAppFixture fixtu
 
         // RegistrationId is a Vogen value object wrapping Guid; its System.Text.Json
         // converter serialises it as a plain Guid string in the JSON response.
-        var registrationId = dashboard
-            .GetProperty("registrants")[0]
+        var pendingRegistrant = dashboard
+            .GetProperty("registrants")
+            .EnumerateArray()
+            .First(r => r.GetProperty("status").GetString() == "Pending");
+        var registrationId = pendingRegistrant
             .GetProperty("registrationId")
             .GetGuid();
 

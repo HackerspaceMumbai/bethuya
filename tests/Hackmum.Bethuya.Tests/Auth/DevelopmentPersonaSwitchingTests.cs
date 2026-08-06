@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using ServiceDefaults.Auth;
 
@@ -19,7 +20,9 @@ namespace Hackmum.Bethuya.Tests.Auth;
 /// Covers: persona catalog completeness; principal claim shape; three-way resolution
 /// (legacy default / catalog match / unknown-key fail-closed); environment+provider isolation;
 /// <see cref="DevelopmentAuthenticationStateProvider"/> per-request reflection;
-/// <see cref="DevPersonaPropagationHandler"/> header attachment; Farah-vs-Vikram policy proof.
+/// <see cref="DevPersonaPropagationHandler"/> header attachment; Farah-vs-Vikram policy proof;
+/// structured-log verification via a real captured <see cref="Microsoft.Extensions.Logging.ILoggerProvider"/>
+/// asserting EventId 3100 (DevPersonaResolved) and 3101 (DevPersonaUnknown) actually fire.
 /// </para>
 /// </summary>
 public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
@@ -248,6 +251,55 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
         await Assert.That(curatorResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
         await Assert.That(attendeeResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
         await Assert.That(orgOrCuratorResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Structured logging: EventId 3100 (resolved) / 3101 (unknown, fail-closed)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task ApiAuthentication_KnownPersonaHeader_LogsPersonaResolvedEvent()
+    {
+        // Verifies DevelopmentAuthenticationHandler actually emits the structured
+        // "DevPersonaResolved" (EventId 3100) log entry containing the persona key
+        // and resolved subject — not just that the principal is correct.
+        var capturedLogs = new List<CapturedLogEntry>();
+        var (app, client) = await CreateApiTestServerWithLoggingAsync(capturedLogs);
+
+        client.DefaultRequestHeaders.Add(DevelopmentPersonaCatalog.PersonaHeaderName, "Priya");
+        var response = await client.GetAsync("/whoami");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var resolvedEntry = capturedLogs.SingleOrDefault(e => e.EventId.Id == 3100);
+        await Assert.That(resolvedEntry).IsNotNull();
+        await Assert.That(resolvedEntry!.EventId.Name).IsEqualTo("DevPersonaResolved");
+        await Assert.That(resolvedEntry.LogLevel).IsEqualTo(LogLevel.Information);
+        await Assert.That(resolvedEntry.Message).Contains("Priya");
+        await Assert.That(resolvedEntry.Message).Contains("dev-persona-priya");
+        await Assert.That(capturedLogs.Any(e => e.EventId.Id == 3101)).IsFalse();
+    }
+
+    [Test]
+    public async Task ApiAuthentication_UnknownPersonaHeader_LogsPersonaUnknownEvent()
+    {
+        // Verifies the fail-closed path emits the structured "DevPersonaUnknown"
+        // (EventId 3101) warning — the observable audit trail for a tampered or
+        // typo'd persona key that must never silently escalate to admin.
+        var capturedLogs = new List<CapturedLogEntry>();
+        var (app, client) = await CreateApiTestServerWithLoggingAsync(capturedLogs);
+
+        client.DefaultRequestHeaders.Add(DevelopmentPersonaCatalog.PersonaHeaderName, "not-a-real-persona-xyz");
+        var response = await client.GetAsync("/whoami");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var unknownEntry = capturedLogs.SingleOrDefault(e => e.EventId.Id == 3101);
+        await Assert.That(unknownEntry).IsNotNull();
+        await Assert.That(unknownEntry!.EventId.Name).IsEqualTo("DevPersonaUnknown");
+        await Assert.That(unknownEntry.LogLevel).IsEqualTo(LogLevel.Warning);
+        await Assert.That(unknownEntry.Message).Contains("not-a-real-persona-xyz");
+        await Assert.That(capturedLogs.Any(e => e.EventId.Id == 3100)).IsFalse();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -519,6 +571,32 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
         return (app, client);
     }
 
+    private async Task<(WebApplication App, HttpClient Client)> CreateApiTestServerWithLoggingAsync(
+        List<CapturedLogEntry> capturedLogs)
+    {
+        var builder = CreateBuilderWithProviderNone();
+        builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(new CapturingLoggerProvider(capturedLogs));
+        builder.Logging.SetMinimumLevel(LogLevel.Trace);
+        builder.AddBethuyaApiAuthentication();
+        builder.AddBethuyaAuthorization();
+
+        var app = builder.Build();
+        _apps.Add(app);
+
+        app.UseBethuyaAuthentication();
+        app.MapGet("/whoami", (HttpContext ctx) => Results.Ok(new WhoAmIResponse(
+            ctx.User.FindFirst("sub")?.Value,
+            ctx.User.Claims.Where(c => c.Type == "role").Select(c => c.Value).ToArray()
+        ))).RequireAuthorization();
+
+        await app.StartAsync();
+        var client = app.GetTestClient();
+        _clients.Add(client);
+
+        return (app, client);
+    }
+
     private static WebApplicationBuilder CreateBuilderWithProviderNone()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -555,6 +633,41 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
             => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+    }
+
+    /// <summary>A single log entry captured by <see cref="CapturingLoggerProvider"/>.</summary>
+    private sealed record CapturedLogEntry(LogLevel LogLevel, EventId EventId, string Message);
+
+    /// <summary>
+    /// Real <see cref="ILoggerProvider"/> that captures every log entry emitted during a test,
+    /// used to assert that <see cref="DevelopmentAuthenticationHandler"/> actually emits the
+    /// structured "DevPersonaResolved" (3100) / "DevPersonaUnknown" (3101) events — not a fake
+    /// stand-in, but a real provider wired through <c>ILoggingBuilder.AddProvider</c>.
+    /// </summary>
+    private sealed class CapturingLoggerProvider(List<CapturedLogEntry> sink) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(sink);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class CapturingLogger(List<CapturedLogEntry> sink) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                sink.Add(new CapturedLogEntry(logLevel, eventId, formatter(state, exception)));
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
