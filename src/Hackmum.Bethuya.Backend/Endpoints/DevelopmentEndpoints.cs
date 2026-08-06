@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Hackmum.Bethuya.Backend.Services;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
