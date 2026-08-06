@@ -403,10 +403,10 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
         {
             InnerHandler = new TestInnerHandler()
         };
-        var client = new HttpClient(handler);
+        using var client = new HttpClient(handler);
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "http://backend/api/test");
-        await client.SendAsync(request);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "http://backend/api/test");
+        using var response = await client.SendAsync(request);
 
         await Assert.That(
             request.Headers.TryGetValues(DevelopmentPersonaCatalog.PersonaHeaderName, out var values)
@@ -425,10 +425,10 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
         {
             InnerHandler = new TestInnerHandler()
         };
-        var client = new HttpClient(handler);
+        using var client = new HttpClient(handler);
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "http://backend/api/test");
-        await client.SendAsync(request);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "http://backend/api/test");
+        using var response = await client.SendAsync(request);
 
         await Assert.That(
             request.Headers.Contains(DevelopmentPersonaCatalog.PersonaHeaderName)
@@ -448,13 +448,13 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
         {
             InnerHandler = new TestInnerHandler()
         };
-        var client = new HttpClient(handler);
+        using var client = new HttpClient(handler);
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "http://backend/api/test");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "http://backend/api/test");
         // Pre-set the header with a different value (caller already set it).
         request.Headers.TryAddWithoutValidation(DevelopmentPersonaCatalog.PersonaHeaderName, "Vikram");
 
-        await client.SendAsync(request);
+        using var response = await client.SendAsync(request);
 
         // Header must still be Vikram, not overwritten with Farah from cookie.
         request.Headers.TryGetValues(DevelopmentPersonaCatalog.PersonaHeaderName, out var values);
