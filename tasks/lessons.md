@@ -16,6 +16,13 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-08-05] CommunityMember privacy flags and ParticipationLedger already define the reuse boundary for Community OS v2
+
+- **What happened:** While designing Community OS v2, it would have been easy to invent separate privacy toggles for graph visibility, duplicate participation evidence stores for project or volunteer activity, or fixture-only reset markers on production aggregates.
+- **Root cause:** The existing vNext foundation already carries the relevant cross-cutting state in the right places: `CommunityMember` owns discoverability, organizer-sharing, residency, and compliance, while `ParticipationLedgerEntry` already provides canonical, member-scoped evidence with explicit provenance and dedupe.
+- **Fix:** The design proposal reuses `CommunityMember` privacy/residency settings and `ParticipationLedgerEntry` provenance for community graph, project participation, volunteer readiness, and recommendation read models. For development reset safety, it proposes a separate `SimulationArtifact` registry instead of polluting production aggregates with fixture-only flags.
+- **Prevention:** Before adding any new Community OS write model, first classify the need as either (a) authoritative new business state that warrants its own aggregate, or (b) a projection/evidence consumer of `CommunityMember`, `ExternalIdentity`, `ParticipationLedgerEntry`, or `Decision`. Only add new writes when those existing foundations cannot express the workflow safely.
+
 ## [2026-08-04] Bethuya.IntegrationTests requires Docker and is not wired into CI today
 - **What happened:** While adding `DevelopmentAuthenticationFlowTests.cs` (Developer Testing
   Harness Layer 1), the new integration test built successfully but could not be executed in

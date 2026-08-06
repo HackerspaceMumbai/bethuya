@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-08-05] v2 Community OS — Design Proposal (issue #50)
+- **Status:** done
+- **Agent/Owner:** Neo
+- **Description:** Produced the architecture-only design proposal for the Community OS capabilities intentionally deferred from the Developer Testing Harness stack. The proposal is grounded in the existing `CommunityMember`, `ExternalIdentity`, `ParticipationLedgerEntry`, `MentorProfile`, `Decision`, Community Passport, journey read-model, mentorship, and recommendation foundations; it makes explicit bounded-context, privacy, authorization, migration, and Aspire calls for issue #50 without changing code, tests, or AppHost wiring. Recorded the key architecture calls in `.squad/decisions.md` and captured the reusable modeling lesson in `tasks/lessons.md`.
+- **Acceptance:** ✅ `docs/community-os-v2-design-proposal.md` gives every issue #50 scope item a production use case independent of test data. ✅ Aggregate boundaries and ownership are documented for every proposed capability. ✅ Authorization capabilities are explicitly separated from community progression state, including a decisive recommendation to use scoped capability grants instead of a new global `CommunityLead` role. ✅ Privacy, residency, deletion, and audit behavior are defined per capability. ✅ Database impact and migration sequencing are reviewed, including transitional guidance for `CommunitySlug` and explicit dataset-scoped reset safety. ✅ Aspire/resource impact is reviewed and the proposal recommends staying inside the existing backend/AppHost topology for the first v2 stack. ✅ A separate implementation PR stack is proposed at the end of the design doc. ✅ This branch remains documentation-only: no `.cs`, `.razor`, `.csproj`, or AppHost behavior changes were made.
+
 ## [2026-08-04] Developer Testing Harness — Layer 1: Developer Authentication Review (PR1)
 - **Status:** done
 - **Agent/Owner:** Copilot CLI (Neo/Morpheus review boundary)

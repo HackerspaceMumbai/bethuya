@@ -23,6 +23,28 @@ Scribe (Session Logger) ensures evidence references are captured in this file or
 
 ## Active Decisions
 
+### 2026-08-05 - Proposed Community OS v2 architecture boundary (issue #50, design only)
+
+**Owner:** Neo (Lead/System Architect)
+
+This entry records the architectural calls for the deferred Community OS domains described in issue #50. It is design-only and does not implement code, tests, AppHost changes, or new runtime behavior. Full detail in `docs/community-os-v2-design-proposal.md`.
+
+Key decisions:
+
+1. **Keep the first v2 implementation stack inside the existing backend + Postgres + AppHost topology.** No new Aspire resource is justified yet. Graph analytics, recommendations, and dataset reset orchestration should start as backend-hosted logic and earn any future service split with measured evidence.
+2. **Do not add a new global `CommunityLead` platform role.** `Admin`, `Organizer`, `Curator`, and `Attendee` remain the platform roles. Community stewardship should be modeled as scoped `CommunityCapabilityGrant` records (chapter management, project management, volunteer-plan management, graph moderation, insight review), not as a global ASP.NET role.
+3. **Reuse the current Community OS foundations instead of cloning them.** `CommunityMember` remains the canonical member identity and privacy boundary; `ParticipationLedgerEntry` remains the canonical cross-connector evidence feed; `Decision` + `RecommendationEnvelope` remain the approval/audit contract for recommendations. New domains may reference these foundations, but must not duplicate their payloads or privacy flags.
+4. **The real new write models are production domains, not fixture support:** Community Administration (`Chapter`, `ChapterMembership`, `FederationLink`, `CommunityCapabilityGrant`); Project Communities (`ProjectCommunity`, `ProjectMembership`); Community Topology (asserted `CommunityGraphEdge` + provenance); Volunteer Coordination (`VolunteerPlan`, `VolunteerAssignment`); Mentorship extension (`MentorshipRelationship`, `MentorshipSession`); Development Harness Operations (`SimulationDataset`, `SimulationArtifact`, `SimulationResetRun`, `DevelopmentActionRun`).
+5. **Community graph and member insights must stay projection-first.** Derived graph connections are read models over existing evidence, not authoritative writes. Member-level readiness/risk/candidate labels remain deterministic read models first and stay human-reviewed before action. Any future AI narrative for member-level PII must use Foundry Local.
+6. **Development quick actions and resets must become dataset-scoped and auditable.** Future `/api/dev` mutators must require Development environment, `Authentication:Provider=None`, and an explicit dev capability boundary. No reset may operate by broad table heuristics or "seed-looking" data — resets must target `SimulationDataset` ownership through a `SimulationArtifact` registry. Every quick action/reset must record actor, reason, dataset id, trace id, and affected entities.
+7. **Migration sequence matters:** introduce chapter ids before retiring `CommunitySlug`; add project-community membership before project-scoped insight models; promote volunteer suggestions into persisted assignments before calculating volunteer readiness from them; extend mentorship from directory-only opt-in to relationships/sessions before relying on mentorship as a graph or insight signal.
+
+**Why:** The current Bethuya foundation is already strong enough to support Community OS v2 if the team protects the existing boundaries instead of layering ad hoc role flags, duplicate evidence stores, or fixture-driven schema shortcuts on top of it.
+
+**Status:** Design proposal only — not approval to implement. A proposed v2-PR1..v2-PR7 stack is outlined in the design doc, gated on this decision being reviewed.
+
+---
+
 ### 2026-04-27 - Apply central DataProtection patch for GHSA-9mv3-2cwr-p262
 
 **Date:** 2026-04-27  
