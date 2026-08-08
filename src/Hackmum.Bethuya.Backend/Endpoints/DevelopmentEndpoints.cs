@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Backend.Services;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -9,11 +10,12 @@ public static class DevelopmentEndpoints
         // Belt-and-suspenders: enforce the Development-only invariant at the method level.
         // The call-site in Program.cs already guards with IsDevelopment(), but an explicit
         // check here prevents accidental exposure if that guard is ever inadvertently removed —
-        // especially important for the /curation/seed endpoint, which mutates data.
+        // especially important for the /curation/seed and /community-simulation/seed endpoints,
+        // which mutate data.
         if (!app.Environment.IsDevelopment())
         {
             throw new InvalidOperationException(
-                $"Development endpoints (curation seeder + identity diagnostic) must only be " +
+                $"Development endpoints (curation seeder + community-simulation seeder + identity diagnostic) must only be " +
                 $"registered in the Development environment. Current environment: " +
                 $"'{app.Environment.EnvironmentName}'. Remove the {nameof(MapDevelopmentEndpoints)}() " +
                 $"call from non-Development startup paths.");
@@ -29,6 +31,15 @@ public static class DevelopmentEndpoints
             var result = await seeder.SeedAsync(reviewableCount == 0 ? 50 : reviewableCount, ct);
             return Results.Ok(result);
         });
+
+        group.MapPost("/community-simulation/seed", async (
+            CommunitySimulationSeeder seeder,
+            CancellationToken ct) =>
+        {
+            var result = await seeder.SeedAsync(ct);
+            return Results.Ok(result);
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         // Returns the Backend-observed identity so developers can verify that persona switching
         // propagated correctly end-to-end. Reachability is doubly guarded: the environment check
