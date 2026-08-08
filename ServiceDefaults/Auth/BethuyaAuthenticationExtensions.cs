@@ -26,6 +26,9 @@ public static class BethuyaAuthenticationExtensions
     /// </summary>
     public static TBuilder AddBethuyaWebAuthentication<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        builder.Services.Configure<BethuyaAuthOptions>(
+            builder.Configuration.GetSection(BethuyaAuthOptions.SectionName));
+
         var authOptions = new BethuyaAuthOptions();
         builder.Configuration.GetSection(BethuyaAuthOptions.SectionName).Bind(authOptions);
 
@@ -65,6 +68,9 @@ public static class BethuyaAuthenticationExtensions
     /// </summary>
     public static TBuilder AddBethuyaApiAuthentication<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        builder.Services.Configure<BethuyaAuthOptions>(
+            builder.Configuration.GetSection(BethuyaAuthOptions.SectionName));
+
         var authOptions = new BethuyaAuthOptions();
         builder.Configuration.GetSection(BethuyaAuthOptions.SectionName).Bind(authOptions);
 

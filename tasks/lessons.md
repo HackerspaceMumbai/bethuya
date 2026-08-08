@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-08-04] Development auth handlers should consume typed options, not raw configuration on every request
+- **What happened:** The Layer 2 developer persona handler originally called `IConfiguration.GetValue<string>("Authentication:Provider")` inside `HandleAuthenticateAsync()` for every authenticated request, then did a case-insensitive `"None"` comparison to decide whether persona switching was active.
+- **Root cause:** The auth extension methods already bound `BethuyaAuthOptions` into a throwaway local instance for startup branching, but they did not also register the same section with `Services.Configure<BethuyaAuthOptions>(...)`, so the handler fell back to raw configuration reads instead of DI-provided typed options.
+- **Fix:** Registered `BethuyaAuthOptions` in both `AddBethuyaWebAuthentication` and `AddBethuyaApiAuthentication`, then switched `DevelopmentAuthenticationHandler` to `IOptionsMonitor<BethuyaAuthOptions>` and a direct enum comparison against `AuthProviderType.None`.
+- **Prevention:** Any ASP.NET Core handler, middleware, or other per-request component that depends on app configuration should consume typed options via `IOptionsMonitor<T>` (or `IOptions<T>` where reload is irrelevant) and avoid reparsing configuration strings on the request path when the same section is already bound at startup.
+
 ## [2026-08-04] Bethuya.IntegrationTests requires Docker and is not wired into CI today
 - **What happened:** While adding `DevelopmentAuthenticationFlowTests.cs` (Developer Testing
   Harness Layer 1), the new integration test built successfully but could not be executed in
@@ -137,6 +143,36 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 
 <!-- Lessons are appended here as they are discovered -->
+
+## [2026-08-04] TUnit does NOT accept a message parameter on IsTrue/IsFalse
+
+- **What happened:** `await Assert.That(condition).IsTrue("message string")` compiled fine with xUnit-style mental model but caused a build error (`CS1503: Argument type string is not assignable to...`) at CI time because TUnit's fluent assertion chain does not support a message parameter on `.IsTrue()`.
+- **Root cause:** TUnit's `AssertionBuilder` uses a fluent chain (`Assert.That(value).IsTrue()`) that does not have an overload accepting a failure message — unlike NUnit's `Assert.That(condition, Is.True, "message")` or xUnit's `Assert.True(condition, "message")`.
+- **Fix:** Removed the string argument from the `.IsTrue()` call. If context is needed for a failing assertion, restructure the loop to track failing values and assert on the collected list, or add a comment above the assertion explaining the expected invariant.
+- **Prevention:** For TUnit, never pass a message to `.IsTrue()`, `.IsFalse()`, `.IsEqualTo()`, etc. — the fluent chain has no message overload. Context belongs in the test method name or a leading comment, not in the assertion call itself.
+
+## [2026-08-04] [Description] attribute unavailable in TUnit test projects by default
+
+- **What happened:** Added `[Description("...")]` attributes to TUnit test methods, expecting xUnit-style annotation support. Build failed with `CS0246: The type or namespace name 'Description' could not be found`.
+- **Root cause:** TUnit test projects do not automatically include `System.ComponentModel`. `[Description]` is not a TUnit test attribute; it is `System.ComponentModel.DescriptionAttribute` and is not referenced in the TUnit NuGet package's implicit usings.
+- **Fix:** Removed all `[Description]` attributes via PowerShell batch replacement. For documenting test intent, use the method name (descriptive, gerund form) or XML summary comments.
+- **Prevention:** TUnit test methods support `[Test]`, `[TestCase]`, `[Arguments]`, `[Category]`, `[Skip]` etc. Do not use `[Description]` — it requires a separate `using` and adds no runtime value over a well-named method.
+
+## [2026-08-04] CA1848/CA1873 require LoggerMessage.Define when TreatWarningsAsErrors is on
+
+- **What happened:** `DevelopmentAuthenticationHandler.cs` initially used `Logger.LogInformation("template {Arg1}", value)` interpolation-style calls. With `TreatWarningsAsErrors=true`, these triggered CA1848 (`LoggerMessage.Define` recommended) and CA1873 (logger message delegate) as errors.
+- **Root cause:** `AnalysisLevel=latest-Recommended` activates CA1848 and CA1873 which treat interpolated/`params`-based logging as warnings (treated as errors here) because they allocate for every log call even when the log level is disabled.
+- **Fix:** Replaced with `static readonly` `LoggerMessage.Define<T1, T2>` delegates (two delegates: `s_personaResolved` EventId 3100 and `s_personaUnknown` EventId 3101). Called via `s_personaResolved(Logger, personaKey, sub, null)`.
+- **Prevention:** For any `AuthenticationHandler` or hot-path service, always use `LoggerMessage.Define` delegates. The compiler/analyzer will enforce this via CA1848 under `AnalysisLevel=latest-Recommended`. Check for CA1848/CA1873 warnings as a pre-commit step on any new logging code.
+
+## [2026-08-04] TUnit treenode-filter syntax requires exact namespace-qualified class path
+
+- **What happened:** `dotnet test -- --treenode-filter "*/DevelopmentPersonaSwitchingTests/*"` returned zero tests, even though `--list-tests` showed 19 tests from that class. Several variations all returned zero.
+- **Root cause:** TUnit's treenode-filter format expects the assembly-specific path. The assembly name and namespace must be included. The working form appears to be `--list-tests` to discover names then run the full suite rather than a targeted treenode filter.
+- **Fix:** For verifying new tests, use `dotnet test --list-tests 2>&1 | Select-String "TestName"` to confirm discovery, then run the full suite `dotnet test` to validate all tests pass. Targeted by-class filtering is not reliably supported by the simple `--treenode-filter` pattern documented for TUnit 0.x.
+- **Prevention:** For TUnit test projects, prefer full-suite runs for pre-commit verification rather than targeted treenode filters. If you need to isolate a subset, use `--treenode-filter "/AssemblyName/Namespace.ClassName/*"` (exact path) or just run the full suite and check the summary.
+
+
 
 ## [2026-06-09] EF filtered index SQL is provider-specific
 
@@ -590,3 +626,16 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Root cause:** The stacked layout solved card asymmetry, but discoverability still depended on scroll affordance instead of durable visible copy.
 - **Fix:** Add regression coverage for visible stack text that mentions GitHub and that it continues below, alongside the CTA gating tests.
 - **Prevention:** When one stacked card can legitimately dominate the viewport, require an explicit continuation cue and test it semantically rather than relying on screenshots.
+
+
+## [2026-08-04] Layer 2 integration test: RegistrationId Vogen value object serializes as plain Guid in JSON
+
+- **What happened:** CurationRegistrantResponse.RegistrationId is a Vogen [ValueObject<Guid>]. When reading the curation dashboard JSON response in an integration test using JsonElement, the field is a plain GUID string, not a nested { "value": "..." } object.
+- **Root cause:** Vogen generates a System.Text.Json.Serialization.JsonConverter attribute on value objects by default. The generated converter serializes/deserializes to the underlying primitive (Guid), not a wrapper object.
+- **Fix/Takeaway:** In integration tests, JsonElement.GetProperty("registrationId").GetGuid() works directly for Vogen Guid value objects — no .GetProperty("value") nesting needed.
+- **Prevention:** When writing integration tests against endpoints that return Vogen value objects in their response contracts, treat them as their underlying primitive type in JSON. Only add nesting if a custom converter explicitly wraps them.
+
+## [2026-08-04] Layer 2 integration tests: POST /api/dev/curation/seed minimum reviewableCount is 26
+
+- **What happened:** CurationSampleSeeder.SeedAsync uses Math.Clamp(reviewableCount, SandboxCapacity + 1, MaxReviewableRegistrants) where SandboxCapacity = 25. Passing ?reviewableCount=0 via query string results in 26 registrants being seeded (clamped to minimum). Minimal safe value for seeding just enough to get one registrant for a decision test: pass ?reviewableCount=26 explicitly.
+- **Prevention:** When writing seeded integration tests for the curation endpoint, use ?reviewableCount=26 as the minimum. The seeder always creates 8 pre-selected + N reviewable + historical registrants; the selected ones come first in the dashboard Registrants list.

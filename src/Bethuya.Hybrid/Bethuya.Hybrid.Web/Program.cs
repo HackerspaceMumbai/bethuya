@@ -84,10 +84,18 @@ builder.Configuration.GetSection(BethuyaAuthOptions.SectionName).Bind(authOption
 
 if (authOptions.Provider == AuthProviderType.None)
 {
-    // Dev mode: fake auth state + shared development principal
+    // Dev mode: persona-aware auth state + claims-based user service.
     builder.Services.AddScoped<AuthenticationStateProvider, DevelopmentAuthenticationStateProvider>();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUserService, ClaimsCurrentUserService>();
+
+    // Belt-and-suspenders: only register persona propagation handler in Development.
+    // The handler forwards the selected persona cookie key as a header to all Backend Refit calls
+    // so the Backend DevelopmentAuthenticationHandler constructs the matching persona principal.
+    if (builder.Environment.IsDevelopment())
+    {
+        builder.Services.AddTransient<DevPersonaPropagationHandler>();
+    }
 }
 else
 {
@@ -101,13 +109,20 @@ else
     builder.Services.AddTransient<BackendAccessTokenHandler>();
 }
 
-// Attaches the backend access-token handler to a Refit client, but only when a real auth provider
-// is configured (in dev mode Provider=None there is no token to forward and the handler is unregistered).
+// Attaches the backend access-token handler (real providers) or persona propagation handler
+// (Provider=None + Development) to a Refit client. In dev mode the selected persona cookie key
+// is forwarded as X-Bethuya-Dev-Persona so the Backend constructs the matching persona principal.
 IHttpClientBuilder ConfigureBackendAuth(IHttpClientBuilder clientBuilder)
 {
     if (authOptions.Provider != AuthProviderType.None)
     {
         clientBuilder.AddHttpMessageHandler<BackendAccessTokenHandler>();
+    }
+    else if (builder.Environment.IsDevelopment())
+    {
+        // DevPersonaPropagationHandler forwards the persona cookie key to the Backend as a header.
+        // No-op when no persona cookie is set (legacy default behavior is preserved).
+        clientBuilder.AddHttpMessageHandler<DevPersonaPropagationHandler>();
     }
 
     return clientBuilder;
@@ -261,6 +276,12 @@ app.MapStaticAssets();
 // Auth endpoints (login/logout/user-info) — only functional when a provider is configured
 app.MapBethuyaAuthEndpoints();
 app.MapSocialProfileConnectionEndpoints();
+
+// Dev-only persona selection endpoints (Provider=None + Development only).
+if (authOptions.Provider == AuthProviderType.None && app.Environment.IsDevelopment())
+{
+    app.MapDevPersonaEndpoints();
+}
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

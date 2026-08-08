@@ -8,6 +8,17 @@
 > v2 domain changes.** Those are out of scope for this layer (PR1 of the Developer Testing
 > Harness stack) and are tracked separately — see the proposed boundary recorded in
 > `.squad/decisions/inbox/copilot-dev-persona-auth.md`.
+>
+> **Superseded by Layer 2 (PR2, branch `indcoder-developer-identity-switching`):**
+> The defect described in "The fixed-admin defect, precisely stated" and the future design
+> observations in "Authorization-boundary implications for a persona-switching design" have
+> been resolved. `DevelopmentAuthenticationHandler` now implements three-way persona
+> resolution (no persona → legacy fixed admin; known key → catalog-driven principal;
+> unknown key → fail-closed / zero roles). `DevPersonaPropagationHandler` propagates the
+> selected persona key from Web SSR cookie to Backend via `X-Bethuya-Dev-Persona` header
+> on all 7 Refit clients. The sections below remain as historical characterization; the
+> behavior they describe now applies ONLY to the "no persona selected" (Case 1) path.
+> See `.squad/decisions/inbox/tank-persona-fail-closed-default.md` for the Layer 2 contract.
 
 ## Why this document exists
 
