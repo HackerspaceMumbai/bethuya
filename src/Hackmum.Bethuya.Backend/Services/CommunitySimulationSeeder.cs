@@ -207,10 +207,8 @@ public sealed partial class CommunitySimulationSeeder(
                         .Where(i => i.Provider == IdentityProviderKind.Platform && savedSubjects.Contains(i.Subject))
                         .Select(i => i.Subject)
                         .ToHashSetAsync(ct);
-                    foreach (var persona in personas)
+                    foreach (var persona in personas.Where(p => !fallbackIdentitySubjects.Contains(p.Subject)))
                     {
-                        if (fallbackIdentitySubjects.Contains(persona.Subject))
-                            continue;
                         var member = memberByPersonaKey[persona.Key];
                         var identity = new ExternalIdentity
                         {
