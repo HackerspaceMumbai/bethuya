@@ -82,5 +82,11 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
             .WithMany(e => e!.Registrations)
             .HasForeignKey(r => r.EventId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Unique per (event, email) — natural idempotency key used by seeding and deduplication.
+        // Email is stored as-is (no citext); persona emails are controlled-lowercase, consistent with
+        // the OrdinalIgnoreCase pre-read check in the seeder and ILike matching in PassportService.
+        builder.HasIndex(r => new { r.EventId, r.Email })
+            .IsUnique();
     }
 }
