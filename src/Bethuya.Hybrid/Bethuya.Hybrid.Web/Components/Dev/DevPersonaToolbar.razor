@@ -1,0 +1,115 @@
+@* Dev-only persona switcher. Rendered only when IDevPersonaToolbarFeature is registered in DI
+   (Authentication:Provider=None AND Environment=Development — see Program.cs), never solely by
+   the @if below. All personas come from the shared DevelopmentPersonaCatalog (no duplication);
+   the active identity/roles come from the existing AuthenticationStateProvider via
+   AuthorizeView (no new authorization state). Selecting a persona navigates (forceLoad: true,
+   matching the repo's existing auth-endpoint navigation pattern in SocialProfileConnections.razor)
+   to the existing Layer 2 secure endpoint (/dev/persona/{key}) — a true full browser reload,
+   NOT a Blazor enhanced-navigation fetch, is required here because the SignalR circuit's
+   AuthenticationState is only re-evaluated when a fresh HttpContext connects; enhanced nav would
+   swap the DOM without ever re-authenticating the circuit. This reuses that endpoint's CSRF
+   (Sec-Fetch-Site) guard and local-only returnUrl validation. No cookie is ever set directly by
+   this component. *@
+@using Bethuya.Hybrid.Shared.Auth
+@using Bethuya.Hybrid.Web.Auth
+@using ServiceDefaults.Auth
+
+@inject IServiceProvider ServiceProvider
+@inject NavigationManager Navigation
+
+@if (_isFeatureEnabled)
+{
+    <div class="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2" data-test="dev-persona-toolbar">
+        <div data-test="dev-persona-toggle">
+            <BbButton Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" OnClick="ToggleExpanded">
+                🧪 @(_isExpanded ? "Hide dev personas" : "Dev personas")
+            </BbButton>
+        </div>
+
+        @if (_isExpanded)
+        {
+            <BbCard Class="w-80 max-w-[90vw] border-2 border-dashed border-amber-500 bg-amber-50/95 shadow-xl dark:bg-amber-950/90">
+                <BbCardHeader>
+                    <BbCardTitle>🧪 Dev Persona Switcher</BbCardTitle>
+                    <BbCardDescription>Development environment only — switches the signed-in identity.</BbCardDescription>
+                </BbCardHeader>
+                <BbCardContent>
+                    <AuthorizeView>
+                        <Authorized>
+                            <div class="mb-3 text-sm" data-test="active-persona">
+                                <div class="font-semibold">@(context.User.FindFirst("name")?.Value ?? "Unknown")</div>
+                                <div class="text-muted-foreground">@(context.User.FindFirst("email")?.Value ?? "—")</div>
+                                <div class="text-muted-foreground">sub: @(context.User.FindFirst("sub")?.Value ?? "—")</div>
+                            </div>
+                            <div class="mb-3 text-sm" data-test="active-persona-role">
+                                Roles: @FormatRoles(GetActiveRoles(context.User))
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <BbSeparator Class="my-2" />
+
+                    <div class="flex flex-col gap-1" data-test="persona-selector">
+                        @foreach (var persona in DevelopmentPersonaCatalog.All)
+                        {
+                            <button type="button"
+                                    class="flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-amber-100 dark:hover:bg-amber-900"
+                                    data-test="@GetPersonaTestId(persona)"
+                                    @onclick="@(() => SelectPersona(persona))">
+                                <span>@persona.DisplayName</span>
+                                <span class="text-xs text-muted-foreground">@string.Join("/", persona.Roles)</span>
+                            </button>
+                        }
+                    </div>
+                </BbCardContent>
+            </BbCard>
+        }
+    </div>
+}
+
+@code {
+    private static readonly string[] KnownRoles =
+    [
+        BethuyaRoles.Admin,
+        BethuyaRoles.Organizer,
+        BethuyaRoles.Curator,
+        BethuyaRoles.Attendee,
+    ];
+
+    private bool _isFeatureEnabled;
+    private bool _isExpanded = true;
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        // DI-driven gate: absent outside Development+Provider=None (see IDevPersonaToolbarFeature).
+        _isFeatureEnabled = ServiceProvider.GetService<IDevPersonaToolbarFeature>() is not null;
+    }
+
+    private void ToggleExpanded() => _isExpanded = !_isExpanded;
+
+    /// <summary>Returns only the effective existing auth roles the current identity holds.</summary>
+    private static IReadOnlyList<string> GetActiveRoles(System.Security.Claims.ClaimsPrincipal user) =>
+        [.. KnownRoles.Where(user.IsInRole)];
+
+    private static string FormatRoles(IReadOnlyList<string> roles) =>
+        roles.Count > 0 ? string.Join(", ", roles) : "None";
+
+    private static string GetPersonaTestId(DevelopmentPersona persona) =>
+        $"persona-{persona.Key.ToLowerInvariant()}";
+
+    /// <summary>
+    /// Navigates (full reload) to the Layer 2 persona selection endpoint, with a validated
+    /// local-only returnUrl so the endpoint's <c>IsLocalUrl</c> guard accepts it and redirects
+    /// back here. <c>forceLoad: true</c> is required: Blazor's enhanced navigation would
+    /// otherwise intercept this as a same-origin SPA-style fetch and never re-establish the
+    /// SignalR circuit's <see cref="System.Security.Claims.ClaimsPrincipal"/>, leaving the
+    /// stale identity displayed even though the persona cookie changed server-side.
+    /// </summary>
+    private void SelectPersona(DevelopmentPersona persona)
+    {
+        var currentPath = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        var url = $"/dev/persona/{persona.Key}?returnUrl={Uri.EscapeDataString(currentPath)}";
+        Navigation.NavigateTo(url, forceLoad: true);
+    }
+}

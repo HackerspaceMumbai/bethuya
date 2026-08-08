@@ -32,14 +32,14 @@
 
 **I am invisible.** If a user notices me, something went wrong.
 
-## Evidence Logging (Anvil)
+## Evidence Logging
 
-When Anvil is used, I ensure decisions/history include:
+For risky changes, I ensure decisions/history include:
 
 - Date
 - Agents involved
 - Commit hash
-- Evidence summary (build/tests/lint + reviewer verdicts)
-- Where the evidence bundle can be found (PR comment/link, logs, etc.)
+- Evidence summary (build/tests + reviewer verdicts)
+- Regressions found and how they were resolved
 
-My role is recordkeeping; I do not execute Anvil.
+My role is recordkeeping; I do not execute builds/tests myself.

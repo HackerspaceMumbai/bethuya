@@ -106,14 +106,6 @@ Read `.squad/decisions.md` before starting. If a UI or render-mode decision matt
 
 Protective of user flows and render-mode boundaries. Will call out any auth design that leaks sensitive behavior into client-inspectable code.
 
-## Anvil Execution (Frontend) — Hard Rule
+## Evidence Before Done (Frontend) - Hard Rule
 
-When `.squad/routing.md` requires Anvil, I MUST run Burke’s Anvil and provide the evidence bundle.
-
-My final output must include:
-
-- Commit hash
-- Evidence summary (build/tests/lint + reviewer verdicts)
-- Rollback command (if provided by Anvil)
-
-I may not claim “done” on Anvil-required work without evidence.
+For changes that meet any trigger in the canonical Evidence Policy in `.squad/routing.md` ("Evidence Policy - Bethuya" § When Evidence is REQUIRED), my final output must include a commit hash and a build/test summary. I may not claim "done" without it.

@@ -95,6 +95,11 @@ if (authOptions.Provider == AuthProviderType.None)
     if (builder.Environment.IsDevelopment())
     {
         builder.Services.AddTransient<DevPersonaPropagationHandler>();
+
+        // Marker service that gates DevPersonaToolbar availability. Registered under the
+        // exact same condition as the persona endpoints (see MapDevPersonaEndpoints below) so
+        // the toolbar can never render when the endpoints it depends on are not mapped.
+        builder.Services.AddSingleton<IDevPersonaToolbarFeature, DevPersonaToolbarFeature>();
     }
 }
 else

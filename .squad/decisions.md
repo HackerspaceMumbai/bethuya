@@ -2,24 +2,23 @@
 
 ## Evidence & Verification Policy (Hard Rules)
 
-This file is the canonical memory for Bethuya’s Squad. Decisions recorded here must be durable, inspectable, and actionable. [1](https://www.youtube.com/watch?v=eyQx9wTUQgg)[2](https://burkeholland.github.io/anvil/)
+This file is the canonical memory for Bethuya’s Squad. Decisions recorded here must be durable, inspectable, and actionable.
 
 ### When Evidence is Required
 
-If `.squad/routing.md` requires Burke’s Anvil, the related decision entry MUST include:
+If `.squad/routing.md` requires evidence, the related decision entry MUST include:
 
 - commit hash
-- Anvil evidence summary (build/tests/lint + reviewer verdicts)
+- evidence summary (build/tests + reviewer verdicts)
 - any regressions found and how they were resolved
-- rollback command (if provided) [3](https://github.com/HackerspaceMumbai/bethuya/tree/main/.github/workflows)[4](https://github.com/HackerspaceMumbai/bethuya/blob/main/.claude/skills/aspire/SKILL.md)
 
 ### Validity Rule
 
-Any Anvil-required decision entry without evidence is considered **INCOMPLETE** and must not be treated as approved/merge-ready.
+Any evidence-required decision entry without evidence is considered **INCOMPLETE** and must not be treated as approved/merge-ready.
 
 ### Recording Rule (Scribe)
 
-Scribe (Session Logger) ensures evidence references are captured in this file or linked from it, so future sessions can reason from proof, not memory. [1](https://www.youtube.com/watch?v=eyQx9wTUQgg)[2](https://burkeholland.github.io/anvil/)
+Scribe (Session Logger) ensures evidence references are captured in this file or linked from it, so future sessions can reason from proof, not memory.
 
 ## Active Decisions
 
@@ -547,19 +546,17 @@ and contributors:
 - **Implementer(s):** <Trinity/Tank/@copilot?>
 - **Tester verification:** Switch
 - **Security review:** Morpheus (if applicable)
-- **Recorder:** Scribe [2](https://burkeholland.github.io/anvil/)[1](https://www.youtube.com/watch?v=eyQx9wTUQgg)
+- **Recorder:** Scribe
 
-### Verification (Required when Anvil is required by routing.md)
+### Verification (Required when evidence is required by routing.md)
 
-- **Anvil used:** <Yes/No>
 - **Commit:** <hash>
 - **Evidence summary:**
   - Build: <✅/❌> <command if known>
   - Tests: <✅/❌> <counts / key suites>
   - Lint/format: <✅/❌> <tool>
-  - Reviewers (Anvil): <Model A verdict> / <Model B verdict> / <Model C verdict> [3](https://github.com/HackerspaceMumbai/bethuya/tree/main/.github/workflows)[4](https://github.com/HackerspaceMumbai/bethuya/blob/main/.claude/skills/aspire/SKILL.md)
+  - Reviewers: <Neo verdict> / <Switch verdict> / <Morpheus verdict (if applicable)>
 - **Regressions:** <None / list>
-- **Rollback:** <command> (if provided by Anvil) [3](https://github.com/HackerspaceMumbai/bethuya/tree/main/.github/workflows)[4](https://github.com/HackerspaceMumbai/bethuya/blob/main/.claude/skills/aspire/SKILL.md)
 
 ### Follow-ups
 
@@ -575,7 +572,7 @@ and contributors:
 
 Examples of decisions recorded in this format
 
-Example 1 - Standard “Anvil Required” entry
+Example 1 - Standard "Evidence Required" entry
 
 ---
 ```markdown
@@ -604,19 +601,17 @@ Example 1 - Standard “Anvil Required” entry
 - **Implementer(s):** Trinity
 - **Tester verification:** Switch
 - **Security review:** N/A
-- **Recorder:** Scribe [2](https://burkeholland.github.io/anvil/)[1](https://www.youtube.com/watch?v=eyQx9wTUQgg)
+- **Recorder:** Scribe
 
-### Verification (Required when Anvil is required by routing.md)
+### Verification (Required when evidence is required by routing.md)
 
-- **Anvil used:** Yes
 - **Commit:** <commit-hash>
 - **Evidence summary:**
   - Build: ✅ Passed
   - Tests: ✅ <n> passed, 0 failed
   - Lint/format: ✅ Clean
-  - Reviewers (Anvil): GPT ✅ / Claude ✅ / Gemini ✅ [3](https://github.com/HackerspaceMumbai/bethuya/tree/main/.github/workflows)[4](https://github.com/HackerspaceMumbai/bethuya/blob/main/.claude/skills/aspire/SKILL.md)
+  - Reviewers: Neo ✅ / Switch ✅
 - **Regressions:** None
-- **Rollback:** <rollback-command-if-provided> [3](https://github.com/HackerspaceMumbai/bethuya/tree/main/.github/workflows)[4](https://github.com/HackerspaceMumbai/bethuya/blob/main/.claude/skills/aspire/SKILL.md)
 
 ### Follow-ups
 
@@ -648,7 +643,6 @@ Example 1 - Standard “Anvil Required” entry
 
 - Apply changes to auth boundary logic as scoped.
 - Require Morpheus security review + Switch verification.
-- Require Anvil evidence bundle before approval.
 
 ### Alternatives Considered
 
@@ -661,19 +655,17 @@ Example 1 - Standard “Anvil Required” entry
 - **Implementer(s):** Tank (and/or Trinity if UI auth involved)
 - **Tester verification:** Switch
 - **Security review:** Morpheus
-- **Recorder:** Scribe [2](https://burkeholland.github.io/anvil/)[1](https://www.youtube.com/watch?v=eyQx9wTUQgg)
+- **Recorder:** Scribe
 
-### Verification (Required when Anvil is required by routing.md)
+### Verification (Required when evidence is required by routing.md)
 
-- **Anvil used:** Yes
 - **Commit:** <commit-hash>
 - **Evidence summary:**
   - Build: ✅ Passed
   - Tests: ✅ <n> passed, 0 failed (include auth-related suites)
   - Lint/format: ✅ Clean
-  - Reviewers (Anvil): GPT ✅ / Claude ⚠️ <note> / Gemini ✅ [3](https://github.com/HackerspaceMumbai/bethuya/tree/main/.github/workflows)[4](https://github.com/HackerspaceMumbai/bethuya/blob/main/.claude/skills/aspire/SKILL.md)
+  - Reviewers: Neo ✅ / Switch ✅ / Morpheus ⚠️ <note>
 - **Regressions:** <None / list>
-- **Rollback:** <rollback-command-if-provided> [3](https://github.com/HackerspaceMumbai/bethuya/tree/main/.github/workflows)[4](https://github.com/HackerspaceMumbai/bethuya/blob/main/.claude/skills/aspire/SKILL.md)
 
 ### Follow-ups
 
