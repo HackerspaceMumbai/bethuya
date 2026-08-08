@@ -98,10 +98,10 @@ public class CommunitySimulationSeederTests
             .Where(e => e.Hashtag == "community-simulation-fixture")
             .ToListAsync();
         await Assert.That(events.Count).IsEqualTo(1);
-        await Assert.That(events[0].Id).IsEqualTo(result.EventId);
+        await Assert.That(events[0].Id).IsEqualTo(result.EventId.Value);
 
         var registrations = await dbContext.Registrations
-            .Where(r => r.EventId == result.EventId)
+            .Where(r => r.EventId == result.EventId.Value)
             .ToListAsync();
         await Assert.That(registrations.Count).IsEqualTo(6);
 
@@ -132,7 +132,7 @@ public class CommunitySimulationSeederTests
         // Row counts unchanged
         var memberCount = await dbContext.CommunityMembers.CountAsync();
         var ledgerCount = await dbContext.ParticipationLedgerEntries.CountAsync();
-        var regCount = await dbContext.Registrations.Where(r => r.EventId == result1.EventId).CountAsync();
+        var regCount = await dbContext.Registrations.Where(r => r.EventId == result1.EventId.Value).CountAsync();
         await Assert.That(memberCount).IsEqualTo(6);
         await Assert.That(ledgerCount).IsEqualTo(result1.LedgerEntriesCreated);
         await Assert.That(regCount).IsEqualTo(6);

@@ -311,12 +311,18 @@ public sealed partial class CommunitySimulationSeeder(
             // case-sensitive SQL filter on the lowercase set is equivalent to case-insensitive
             // matching here — but pre-lowering both sides makes that invariant explicit and
             // keeps the query correct even if a persona email's casing ever changes upstream.
+            // In-memory list: ToLowerInvariant() is correct and analyzer-clean here.
             var personaEmails = personas.Select(p => p.Email.ToLowerInvariant()).ToList();
+#pragma warning disable CA1304, CA1311 // r.Email.ToLower() runs inside an EF LINQ query lambda
+            // translated to SQL by Npgsql (lower()); ToLowerInvariant() is not translatable and
+            // would throw at runtime. Culture-sensitivity is moot server-side (Postgres applies
+            // its own collation), so the invariant-culture guidance does not apply here.
             var existingRegistrationEmails = await dbContext.Registrations
                 .AsNoTracking()
-                .Where(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email.ToLowerInvariant()))
+                .Where(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email.ToLower()))
                 .Select(r => r.Email)
                 .ToListAsync(ct);
+#pragma warning restore CA1304, CA1311
             var existingRegistrationEmailSet = existingRegistrationEmails
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -361,9 +367,11 @@ public sealed partial class CommunitySimulationSeeder(
                         entry.State = EntityState.Detached;
 
                     var pendingCount = registrationsCreated;          // capture before zeroing
+#pragma warning disable CA1304, CA1311 // see rationale at the pre-read query above
                     var nowActualCount = await dbContext.Registrations
                         .AsNoTracking()
-                        .CountAsync(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email.ToLowerInvariant()), ct);
+                        .CountAsync(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email.ToLower()), ct);
+#pragma warning restore CA1304, CA1311
 
                     // If actual count is less than the rows we expected to exist (pre-read + attempted),
                     // this is a genuine failure (e.g. FK violation), not a benign concurrency race — re-throw.
@@ -382,7 +390,7 @@ public sealed partial class CommunitySimulationSeeder(
             ledgerEntriesCreated, registrationsCreated);
 
         return new CommunitySimulationSeedResult(
-            EventId: fixtureEventId,
+            EventId: Hackmum.Bethuya.Core.ValueObjects.EventId.From(fixtureEventId),
             EventTitle: fixtureEventTitle,
             PersonasProvisioned: personas.Count,
             MembersCreated: membersCreated,
@@ -459,8 +467,23 @@ public sealed partial class CommunitySimulationSeeder(
         int registrationsCreated);
 }
 
+/// <summary>
+/// Bounded, non-PII summary of a <see cref="CommunitySimulationSeeder.SeedAsync"/> run.
+/// Reports created/already-existed counts and stable fixture identifiers only.
+/// </summary>
+/// <param name="EventId">Stable identifier of the shared fixture <see cref="Event"/>.</param>
+/// <param name="EventTitle">Display title of the shared fixture event.</param>
+/// <param name="PersonasProvisioned">Total number of canonical development personas processed.</param>
+/// <param name="MembersCreated">Count of <see cref="CommunityMember"/> rows created this run.</param>
+/// <param name="MembersAlreadyExisted">Count of personas whose <see cref="CommunityMember"/> row already existed.</param>
+/// <param name="ExternalIdentitiesCreated">Count of <see cref="ExternalIdentity"/> rows created this run.</param>
+/// <param name="LedgerEntriesCreated">Count of <see cref="ParticipationLedgerEntry"/> rows created this run.</param>
+/// <param name="LedgerEntriesAlreadyExisted">Count of ledger entries that already existed (idempotent repeat run).</param>
+/// <param name="RegistrationsCreated">Count of <see cref="Registration"/> rows created this run.</param>
+/// <param name="RegistrationsAlreadyExisted">Count of registrations that already existed.</param>
+/// <param name="PersonaKeys">Stable natural keys of every persona provisioned (from <c>DevelopmentPersonaCatalog</c>).</param>
 public sealed record CommunitySimulationSeedResult(
-    Guid EventId,
+    Hackmum.Bethuya.Core.ValueObjects.EventId EventId,
     string EventTitle,
     int PersonasProvisioned,
     int MembersCreated,

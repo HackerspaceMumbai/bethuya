@@ -146,7 +146,8 @@ public sealed class CommunitySimulationSeederFlowTests(BethuyaAppFixture fixture
     {
         using var seedClient = fixture.CreateBackendClient();
         seedClient.DefaultRequestHeaders.Add(PersonaHeaderName, "Vikram");
-        await seedClient.PostAsync("/api/dev/community-simulation/seed", null);
+        var seedResponse = await seedClient.PostAsync("/api/dev/community-simulation/seed", null);
+        await Assert.That(seedResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         using var priyaClient = fixture.CreateBackendClient();
         priyaClient.DefaultRequestHeaders.Add(PersonaHeaderName, "Priya");
@@ -166,7 +167,8 @@ public sealed class CommunitySimulationSeederFlowTests(BethuyaAppFixture fixture
     {
         using var vikramClient = fixture.CreateBackendClient();
         vikramClient.DefaultRequestHeaders.Add(PersonaHeaderName, "Vikram");
-        await vikramClient.PostAsync("/api/dev/community-simulation/seed", null);
+        var seedResponse = await vikramClient.PostAsync("/api/dev/community-simulation/seed", null);
+        await Assert.That(seedResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var journeyResponse = await vikramClient.GetAsync("/api/community/passport/journey?timelineLimit=20");
         await Assert.That(journeyResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -185,7 +187,8 @@ public sealed class CommunitySimulationSeederFlowTests(BethuyaAppFixture fixture
     {
         using var vikramClient = fixture.CreateBackendClient();
         vikramClient.DefaultRequestHeaders.Add(PersonaHeaderName, "Vikram");
-        await vikramClient.PostAsync("/api/dev/community-simulation/seed", null);
+        var seedResponse = await vikramClient.PostAsync("/api/dev/community-simulation/seed", null);
+        await Assert.That(seedResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var dashboardResponse = await vikramClient.GetAsync(
             "/api/community/passport/dashboard/read-model?lookbackDays=90");
