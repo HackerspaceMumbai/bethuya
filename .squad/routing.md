@@ -93,4 +93,4 @@ Switch may independently re-run build/tests ONLY for verification, and ONLY when
 If Switch re-runs under this exception:
 
 - It must be verification-only (no feature edits, no behavior changes).
-- Output must include the evidence summary and commit hash (or explain why no commit was produced).
+- Output must include the evidence summary and the hash of the commit being verified. If the rerun creates no new commit, state that separately.

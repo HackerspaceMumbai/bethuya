@@ -643,7 +643,6 @@ Example 1 - Standard "Evidence Required" entry
 
 - Apply changes to auth boundary logic as scoped.
 - Require Morpheus security review + Switch verification.
-- Require Anvil evidence bundle before approval.
 
 ### Alternatives Considered
 

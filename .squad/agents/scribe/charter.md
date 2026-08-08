@@ -40,5 +40,6 @@ For risky changes, I ensure decisions/history include:
 - Agents involved
 - Commit hash
 - Evidence summary (build/tests + reviewer verdicts)
+- Regressions found and how they were resolved
 
 My role is recordkeeping; I do not execute builds/tests myself.

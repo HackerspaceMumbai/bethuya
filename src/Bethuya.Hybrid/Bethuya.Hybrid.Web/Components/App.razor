@@ -16,7 +16,7 @@
 
 <body>
     <Routes @rendermode="InteractiveServer" />
-    @if (DevPersonaToolbarFeature is not null)
+    @if (_devPersonaToolbarFeature is not null)
     {
         <Bethuya.Hybrid.Web.Components.Dev.DevPersonaToolbar @rendermode="InteractiveServer" />
     }
@@ -30,11 +30,16 @@
     [Inject]
     private IServiceProvider Services { get; set; } = default!;
 
-    // Resolved once via IServiceProvider (not @inject) so the toolbar's DI marker remains the
-    // single source of truth for "dev-only" gating: when IDevPersonaToolbarFeature is not
-    // registered (Production, or Authentication:Provider != None), GetService returns null and
-    // the component is never constructed — not merely hidden — avoiding a redundant lifecycle
-    // (including prerendering) on every request outside Development+Provider=None.
-    private Bethuya.Hybrid.Web.Auth.IDevPersonaToolbarFeature? DevPersonaToolbarFeature =>
-        Services.GetService<Bethuya.Hybrid.Web.Auth.IDevPersonaToolbarFeature>();
+    // Resolved once in OnInitialized (not a computed property) via IServiceProvider (not
+    // @inject) so the toolbar's DI marker remains the single source of truth for "dev-only"
+    // gating: when IDevPersonaToolbarFeature is not registered (Production, or
+    // Authentication:Provider != None), GetService returns null and the component is never
+    // constructed — not merely hidden — avoiding a redundant lifecycle (including prerendering)
+    // on every request outside Development+Provider=None.
+    private Bethuya.Hybrid.Web.Auth.IDevPersonaToolbarFeature? _devPersonaToolbarFeature;
+
+    protected override void OnInitialized()
+    {
+        _devPersonaToolbarFeature = Services.GetService<Bethuya.Hybrid.Web.Auth.IDevPersonaToolbarFeature>();
+    }
 }
