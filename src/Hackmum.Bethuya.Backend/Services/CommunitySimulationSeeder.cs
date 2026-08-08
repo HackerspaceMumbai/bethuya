@@ -354,10 +354,21 @@ public sealed partial class CommunitySimulationSeeder(
                 }
                 catch (DbUpdateException)
                 {
-                    // Concurrent call already inserted some registrations — treat as existing.
+                    // Concurrent call hit the unique index on (EventId, Email) — re-query to get the real counts.
                     foreach (var entry in dbContext.ChangeTracker.Entries<Registration>().ToList())
                         entry.State = EntityState.Detached;
-                    registrationsAlreadyExisted += registrationsCreated;
+
+                    var pendingCount = registrationsCreated;          // capture before zeroing
+                    var nowActualCount = await dbContext.Registrations
+                        .AsNoTracking()
+                        .CountAsync(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email), ct);
+
+                    // If actual count is less than the rows we expected to exist (pre-read + attempted),
+                    // this is a genuine failure (e.g. FK violation), not a benign concurrency race — re-throw.
+                    if (nowActualCount < registrationsAlreadyExisted + pendingCount)
+                        throw;
+
+                    registrationsAlreadyExisted = nowActualCount;
                     registrationsCreated = 0;
                 }
             }
