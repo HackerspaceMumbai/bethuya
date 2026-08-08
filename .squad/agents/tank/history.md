@@ -68,4 +68,4 @@
 
 **Results:** 334 unit + 16 integration tests passing (0 failures). Build: 0 warnings, 0 errors.
 
-**Key decisions:** See 	ank-community-simulation-seeder.md in decisions inbox.
+**Key decisions:** See tank-community-simulation-seeder.md in decisions inbox.

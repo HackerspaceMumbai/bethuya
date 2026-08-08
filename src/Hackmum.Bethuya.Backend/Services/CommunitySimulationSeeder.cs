@@ -171,7 +171,7 @@ public sealed partial class CommunitySimulationSeeder(
                 }
             }
 
-            if (pendingMembersByPersonaKey.Count > 0)
+            if (pendingMembersByPersonaKey.Count > 0 || externalIdentitiesCreated > 0)
             {
                 try
                 {
@@ -309,10 +309,14 @@ public sealed partial class CommunitySimulationSeeder(
             }
 
             // ── 5. Find-or-create Registrations (one per persona per fixture event) ─
-            var personaEmails = personas.Select(p => p.Email).ToList();
+            // Fixture emails are always seeded lowercase (DevelopmentPersonaCatalog), so a
+            // case-sensitive SQL filter on the lowercase set is equivalent to case-insensitive
+            // matching here — but pre-lowering both sides makes that invariant explicit and
+            // keeps the query correct even if a persona email's casing ever changes upstream.
+            var personaEmails = personas.Select(p => p.Email.ToLowerInvariant()).ToList();
             var existingRegistrationEmails = await dbContext.Registrations
                 .AsNoTracking()
-                .Where(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email))
+                .Where(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email.ToLowerInvariant()))
                 .Select(r => r.Email)
                 .ToListAsync(ct);
             var existingRegistrationEmailSet = existingRegistrationEmails
@@ -361,7 +365,7 @@ public sealed partial class CommunitySimulationSeeder(
                     var pendingCount = registrationsCreated;          // capture before zeroing
                     var nowActualCount = await dbContext.Registrations
                         .AsNoTracking()
-                        .CountAsync(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email), ct);
+                        .CountAsync(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email.ToLowerInvariant()), ct);
 
                     // If actual count is less than the rows we expected to exist (pre-read + attempted),
                     // this is a genuine failure (e.g. FK violation), not a benign concurrency race — re-throw.
