@@ -45,4 +45,4 @@ Skeptical of clever abstractions that make DI harder to reason about. Prefers pr
 
 ## Evidence Before Done (Backend) - Hard Rule
 
-For risky changes (auth, data access, or infra), or whenever Neo/Morpheus demands proof, my final output must include a commit hash, a build/test summary, and any regressions found and how they were resolved. I may not claim "done" without it.
+For changes that meet any trigger in the canonical Evidence Policy in `.squad/routing.md` ("Evidence Policy - Bethuya" § When Evidence is REQUIRED), or whenever Neo/Morpheus demands proof, my final output must include a commit hash, a build/test summary, and any regressions found and how they were resolved. I may not claim "done" without it.

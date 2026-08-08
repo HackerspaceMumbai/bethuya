@@ -108,4 +108,4 @@ Protective of user flows and render-mode boundaries. Will call out any auth desi
 
 ## Evidence Before Done (Frontend) - Hard Rule
 
-For risky changes (auth, render-mode, or multi-file), my final output must include a commit hash and a build/test summary. I may not claim "done" without it.
+For changes that meet any trigger in the canonical Evidence Policy in `.squad/routing.md` ("Evidence Policy - Bethuya" § When Evidence is REQUIRED), my final output must include a commit hash and a build/test summary. I may not claim "done" without it.

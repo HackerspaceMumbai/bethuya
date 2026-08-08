@@ -65,7 +65,7 @@ I may independently re-run build/tests ONLY when:
 - A failure is suspected flaky/nondeterministic and needs independent reproduction, OR
 - Neo or Morpheus explicitly requests an independent verification re-run.
 
-If I re-run under this exception, it is verification-only (no feature edits, no behavior changes), and I report results with the commit hash (if any).
+If I re-run under this exception, it is verification-only (no feature edits, no behavior changes), and I report results with the hash of the commit being verified. If the rerun creates no new commit, I state that separately.
 
 ### Rejection Rule (Hard Gate)
 

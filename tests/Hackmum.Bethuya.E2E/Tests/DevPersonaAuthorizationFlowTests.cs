@@ -10,7 +10,8 @@
 //   This test proves the OTHER surface the same handler supports: the
 //   `bethuya-dev-persona` COOKIE, set exclusively by the Layer 2 secure endpoint
 //   (`GET /dev/persona/{key}`, CSRF-guarded + local-redirect-validated) that the
-//   toolbar's native anchors link to. It drives the toolbar through a real browser
+//   toolbar's persona buttons navigate to (via NavigationManager.NavigateTo with
+//   forceLoad: true). It drives the toolbar through a real browser
 //   against the real running Web app, confirms the persona survives a hard reload
 //   (proving the cookie — not transient view-state — is what persists), and then
 //   confirms an organizer/curator-gated Blazor page (`/curation/{eventId}`,
@@ -95,7 +96,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
         }
 
         // -----------------------------------------------------------------------
-        // Step 1: switch to Farah via the toolbar's native anchor. This is a full
+        // Step 1: switch to Farah via the toolbar's persona button. This triggers a full
         // server-driven navigation to the Layer 2 secure endpoint
         // (GET /dev/persona/Farah?returnUrl=...) — CSRF-guarded, local-redirect
         // validated — followed by the intentional full page reload back to "/".
@@ -110,7 +111,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-toolbar-farah-active-{unique}.png"),
+            Path = Path.Join("artifacts", $"persona-toolbar-farah-active-{unique}.png"),
             FullPage = true
         });
 
@@ -136,7 +137,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-toolbar-farah-curation-denied-{unique}.png"),
+            Path = Path.Join("artifacts", $"persona-toolbar-farah-curation-denied-{unique}.png"),
             FullPage = true
         });
 
@@ -152,7 +153,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-toolbar-vikram-active-{unique}.png"),
+            Path = Path.Join("artifacts", $"persona-toolbar-vikram-active-{unique}.png"),
             FullPage = true
         });
 
@@ -174,7 +175,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-toolbar-vikram-curation-allowed-{unique}.png"),
+            Path = Path.Join("artifacts", $"persona-toolbar-vikram-curation-allowed-{unique}.png"),
             FullPage = true
         });
     }

@@ -106,6 +106,12 @@ public sealed class DevPersonaToolbarRenderTests
         farahButton.Click();
 
         await Assert.That(navigationManager.Uri).Contains("/dev/persona/Farah?returnUrl=");
+
+        // FakeNavigationManager silently accepts forceLoad: false too, so asserting only on
+        // .Uri would not catch a regression that dropped forceLoad. Assert on the recorded
+        // NavigationOptions directly to prove the call site really requested a full reload.
+        var lastNavigation = navigationManager.History.Last();
+        await Assert.That(lastNavigation.Options.ForceLoad).IsTrue();
     }
 
     [Test]
