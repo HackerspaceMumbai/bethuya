@@ -53,3 +53,19 @@
   - **Created:** `tests/Hackmum.Bethuya.Tests/Auth/DevelopmentPersonaSwitchingTests.cs` (32 tests: catalog completeness, principal shape, three-way resolution via TestServer, Farah-vs-Vikram policy proof, env isolation, StateProvider per-request, PropagationHandler, structured-log capture for EventId 3100/3101)
   - **Created:** `.squad/decisions/inbox/tank-persona-fail-closed-default.md` (security-relevant contract record)
   - All 323 tests in `Hackmum.Bethuya.Tests` pass (0 regressions). All 4 projects build clean (0 warnings, 0 errors, warnaserror).
+
+## 2026-08-08 — Layer 4: Community Simulation Seeder
+
+**Branch:** indcoder-community-simulation-seeder  
+**Commit:** 0693d88  
+**Task:** Implement the Deterministic Community Simulation Seeder for the Developer Testing Harness.
+
+**What was built:**
+- CommunitySimulationSeeder service: provisions all 6 dev personas as durable CommunityMember + ExternalIdentity + ParticipationLedgerEntry rows + one shared fixture Event + one Registration per persona — idempotent, EF retry-safe.
+- POST /api/dev/community-simulation/seed endpoint gated with RequireOrganizer.
+- seed-community-simulation Aspire resource command (sends X-Bethuya-Dev-Persona: Vikram header — development-only trust boundary).
+- 6 TUnit unit tests (in-memory EF) + 7 TUnit integration tests.
+
+**Results:** 334 unit + 16 integration tests passing (0 failures). Build: 0 warnings, 0 errors.
+
+**Key decisions:** See 	ank-community-simulation-seeder.md in decisions inbox.
