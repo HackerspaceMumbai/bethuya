@@ -111,7 +111,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-toolbar-farah-active-{unique}.png"),
+            Path = Path.Join("artifacts", $"persona-toolbar-farah-active-{unique}.png"),
             FullPage = true
         });
 
@@ -137,7 +137,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-toolbar-farah-curation-denied-{unique}.png"),
+            Path = Path.Join("artifacts", $"persona-toolbar-farah-curation-denied-{unique}.png"),
             FullPage = true
         });
 
@@ -153,7 +153,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-toolbar-vikram-active-{unique}.png"),
+            Path = Path.Join("artifacts", $"persona-toolbar-vikram-active-{unique}.png"),
             FullPage = true
         });
 
@@ -175,7 +175,7 @@ public class DevPersonaAuthorizationFlowTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-toolbar-vikram-curation-allowed-{unique}.png"),
+            Path = Path.Join("artifacts", $"persona-toolbar-vikram-curation-allowed-{unique}.png"),
             FullPage = true
         });
     }
