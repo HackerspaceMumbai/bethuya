@@ -7,6 +7,8 @@
 // buttons (not fake <select> elements) and proven `/curation/{eventId}` route.
 // =====================================================================================
 
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Playwright;
 
 namespace Hackmum.Bethuya.E2E.Tests;
@@ -17,11 +19,13 @@ namespace Hackmum.Bethuya.E2E.Tests;
 /// - Persona switching through the native toolbar buttons (proven pattern)
 /// - Persistence of seeded data and persona across hard refresh
 /// - Authorization differences via proven `/curation/{eventId}` route
-/// - All 6 catalog personas with external identity relationships
+/// - All 6 catalog personas with stable seeded fixture participation
 /// </summary>
 [TestClass]
 public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
 {
+    private static readonly HttpClient BackendClient = new();
+
     /// <summary>
     /// Seeds the community simulation data once per test class before any tests run.
     /// Seeds via the Backend `/api/dev/community-simulation/seed` endpoint as Vikram (Organizer).
@@ -31,18 +35,15 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
     [ClassInitialize(InheritanceBehavior.BeforeEachDerivedClass)]
     public static async Task ClassSetup(TestContext context)
     {
-        // NOTE: For E2E tests against a live Aspire instance, seed via the Backend endpoint directly.
-        // The Backend is discoverable via Aspire's service discovery at http://backend:8080 (internal)
-        // or via known port (http://localhost:8080). This test runs inside Aspire's network, so use
-        // the service name. If running remotely, use explicit Backend URL from environment.
-        var backendUrl = Environment.GetEnvironmentVariable("ASPIRE_BACKEND_URL") 
-            ?? "http://localhost:8080";  // Local Aspire default
-        
+        // Prefer ASPIRE_BACKEND_URL when the Backend is hosted outside this test process.
+        // When running the local AppHost, the Backend is fixed at http://localhost:8080.
+        var backendUrl = GetBackendUrlFromEnvironment();
+
         using var seedClient = new HttpClient();
         seedClient.BaseAddress = new Uri(backendUrl);
         seedClient.DefaultRequestHeaders.Add("X-Bethuya-Dev-Persona", "Vikram");
         seedClient.Timeout = TimeSpan.FromSeconds(30);
-        
+
         // POST to the seeding endpoint as Vikram (Organizer, required by endpoint auth)
         var response = await seedClient.PostAsync("/api/dev/community-simulation/seed", null);
         if (!response.IsSuccessStatusCode)
@@ -63,6 +64,9 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
         }
         return url;
     }
+
+    private static string GetBackendUrlFromEnvironment() =>
+        Environment.GetEnvironmentVariable("ASPIRE_BACKEND_URL") ?? "http://localhost:8080";
 
     /// <summary>
     /// Proves that the app home page loads and the developer persona toolbar is available
@@ -85,7 +89,7 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
     [TestMethod]
     public async Task AcceptanceHarness_PersonaSwitching_FarahPersistsAfterHardRefresh()
     {
-        Directory.CreateDirectory("artifacts");
+        Directory.CreateDirectory(Path.Combine("artifacts", "layer5"));
         var unique = Guid.NewGuid().ToString("N")[..8];
 
         // ============================================================
@@ -117,7 +121,7 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"harness-persona-farah-active-{unique}.png"),
+            Path = Path.Combine("artifacts", "layer5", $"harness-persona-farah-active-{unique}.png"),
             FullPage = true
         });
 
@@ -132,7 +136,7 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
 
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"harness-persona-farah-persisted-{unique}.png"),
+            Path = Path.Combine("artifacts", "layer5", $"harness-persona-farah-persisted-{unique}.png"),
             FullPage = true
         });
     }
@@ -152,21 +156,21 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
         await Assertions.Expect(Page.Locator("[data-test='active-persona']"))
             .ToContainTextAsync("Vikram");
 
-        // Use a known fixture event ID (from Layer 4 seeding). The route is
-        // /curation/{eventId}, decorated with [Authorize(Policy = RequireOrganizerOrCurator)]
+        // Use a random probe ID so the curation page is reached only after auth.
+        // The route is /curation/{eventId}, decorated with [Authorize(Policy = RequireOrganizerOrCurator)]
         // on an InteractiveServer page component, so authorization is enforced by
         // ASP.NET Core's endpoint routing (HTTP 403 if denied, not Blazor-level).
-        var fixtureEventId = Guid.NewGuid(); // Placeholder; real tests use seeded event ID
-        var response = await GotoWithBudgetAsync($"/curation/{fixtureEventId}");
+        var authProbeEventId = Guid.NewGuid();
+        var response = await GotoWithBudgetAsync($"/curation/{authProbeEventId}");
 
         // Vikram has Organizer role, so access is allowed (HTTP 200)
         Assert.IsTrue(response?.Ok ?? false, "Vikram (Organizer) must be able to access /curation");
 
-        Directory.CreateDirectory("artifacts");
+        Directory.CreateDirectory(Path.Combine("artifacts", "layer5"));
         var unique = Guid.NewGuid().ToString("N")[..8];
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-vikram-curation-allowed-{unique}.png"),
+            Path = Path.Combine("artifacts", "layer5", $"persona-vikram-curation-allowed-{unique}.png"),
             FullPage = true
         });
     }
@@ -187,25 +191,24 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
             .ToContainTextAsync("Farah");
 
         // Try to access curation (organizer-gated)
-        var fixtureEventId = Guid.NewGuid(); // Placeholder; real tests use seeded event ID
-        var response = await GotoWithBudgetAsync($"/curation/{fixtureEventId}");
+        var authProbeEventId = Guid.NewGuid();
+        var response = await GotoWithBudgetAsync($"/curation/{authProbeEventId}");
 
         // Farah has Attendee-only role, so access is denied (HTTP 403)
         Assert.AreEqual(403, response?.Status, "Farah (Attendee-only) must be denied with HTTP 403");
 
-        Directory.CreateDirectory("artifacts");
+        Directory.CreateDirectory(Path.Combine("artifacts", "layer5"));
         var unique = Guid.NewGuid().ToString("N")[..8];
         await Page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine("artifacts", $"persona-farah-curation-denied-{unique}.png"),
+            Path = Path.Combine("artifacts", "layer5", $"persona-farah-curation-denied-{unique}.png"),
             FullPage = true
         });
     }
 
     /// <summary>
-    /// Proves that seeded data (events, registrations) is visible when browsing as a seeded persona.
-    /// Locates the deterministic fixture event by its stable hashtag/key through the API seam,
-    /// not by generic row count, to ensure assertions are stable across data changes.
+    /// Proves that seeded data is visible when browsing as a seeded persona.
+    /// Uses the exact fixture event from the Backend API, then verifies the matching UI row.
     /// </summary>
     [TestMethod]
     public async Task AcceptanceHarness_SeededData_IsVisibleThroughUI()
@@ -213,22 +216,28 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
        // Note: ClassSetup() runs once before any tests and calls the seeding endpoint,
        // ensuring all seeded data is available for UI navigation and assertions.
 
+       var backendUrl = GetBackendUrlFromEnvironment();
+       BackendClient.BaseAddress = new Uri(backendUrl);
+       var fixtureEventResponse = await BackendClient.GetAsync("/api/events/slug/community-simulation-fixture");
+       Assert.IsTrue(fixtureEventResponse.IsSuccessStatusCode, $"Fixture event lookup failed via {backendUrl}");
+
+       var fixtureEvent = await fixtureEventResponse.Content.ReadFromJsonAsync<JsonElement>();
+       var fixtureEventId = fixtureEvent.GetProperty("id").GetGuid();
+       var fixtureEventTitle = fixtureEvent.GetProperty("title").GetString()
+           ?? throw new InvalidOperationException("Fixture event title was missing.");
+       Assert.AreEqual("Community Simulation Fixture", fixtureEventTitle);
+       Assert.AreNotEqual(Guid.Empty, fixtureEventId);
+
        await GotoWithBudgetAsync("/events");
 
-       // Wait for events list to load. Verify at least one event is present.
-       // TODO: Future: Pinpoint the fixture event by its deterministic title/hashtag
-       // via the existing Events API seam to make the assertion stable.
-       var eventRows = Page.Locator("[data-test='event-row']");
-       var count = await eventRows.CountAsync();
+       var eventRow = Page.Locator("[data-test='event-row']").Filter(new() { HasText = fixtureEventTitle }).First;
+       await Assertions.Expect(eventRow).ToBeVisibleAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
-       // We expect at least the seeded fixture event to be present
-       Assert.IsTrue(count > 0, "At least one event (the seeded fixture) should be visible");
-
-       Directory.CreateDirectory("artifacts");
+       Directory.CreateDirectory(Path.Combine("artifacts", "layer5"));
        var unique = Guid.NewGuid().ToString("N")[..8];
        await Page.ScreenshotAsync(new PageScreenshotOptions
        {
-           Path = Path.Combine("artifacts", $"events-page-seeded-{unique}.png"),
+           Path = Path.Combine("artifacts", "layer5", $"events-page-seeded-{unique}.png"),
            FullPage = true
        });
     }

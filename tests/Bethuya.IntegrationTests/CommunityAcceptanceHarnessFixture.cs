@@ -21,6 +21,7 @@ public sealed class CommunityAcceptanceHarnessFixture
 
     private readonly BethuyaAppFixture _appFixture;
     private readonly Dictionary<string, HttpClient> _personaClients = [];
+    private HttpClient? _eventClient;
     private bool _seeded;
 
     public CommunityAcceptanceHarnessFixture(BethuyaAppFixture appFixture)
@@ -37,10 +38,7 @@ public sealed class CommunityAcceptanceHarnessFixture
         if (_seeded)
             return;
 
-        using var seedClient = _appFixture.CreateBackendClient();
-        seedClient.DefaultRequestHeaders.Add(PersonaHeaderName, "Vikram");
-
-        var response = await seedClient.PostAsync("/api/dev/community-simulation/seed", null);
+        var response = await GetPersonaClient("Vikram").PostAsync("/api/dev/community-simulation/seed", null);
         if (!response.IsSuccessStatusCode)
         {
             var content = await response.Content.ReadAsStringAsync();
@@ -74,6 +72,17 @@ public sealed class CommunityAcceptanceHarnessFixture
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }
 
+    /// <summary>Gets an event by hashtag/slug from the Backend events API.</summary>
+    public async Task<JsonElement> GetEventByHashtagAsync(string hashtag)
+    {
+        _eventClient ??= _appFixture.CreateBackendClient();
+        var response = await _eventClient.GetAsync($"/api/events/slug/{hashtag}");
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException($"Event API failed: {response.StatusCode}");
+
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
     /// <summary>
     /// Gets the Community Passport dashboard read-model (retention/attendance stats).
     /// Requires Organizer role.
@@ -94,6 +103,8 @@ public sealed class CommunityAcceptanceHarnessFixture
     {
         foreach (var client in _personaClients.Values)
             client?.Dispose();
+        _eventClient?.Dispose();
         _personaClients.Clear();
+        _eventClient = null;
     }
 }
