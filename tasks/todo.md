@@ -16,6 +16,28 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-08-08] Developer Testing Harness — Layer 5: Community Acceptance Test Harness
+- **Status:** done
+- **Completion Evidence:** 
+  - Branch: `indcoder-musical-spork`
+  - Build: `dotnet build Bethuya.slnx --nologo` — 0 errors, 0 warnings
+  - Integration: `tests\\Bethuya.IntegrationTests\\bin\\Debug\\net10.0\\Bethuya.IntegrationTests.exe --filter-uid <7 harness UIDs>` — 7/7 passed, 0 failed, 0 skipped
+  - E2E: `BETHUYA_BASE_URL=https://localhost:7112 ASPIRE_BACKEND_URL=http://localhost:8080 dotnet test tests\\Hackmum.Bethuya.E2E\\Hackmum.Bethuya.E2E.csproj --filter "FullyQualifiedName~CommunityAcceptanceHarnessTests" --no-build` — 5/5 passed, 0 failed, 0 skipped
+  - Screenshots: `artifacts\\layer5\\*.png`
+  - Evidence: exact fixture-event lookup against `/api/events/slug/community-simulation-fixture`, seeded persona journey proof, curation auth gate proof, and exact event-row UI assertion
+  - Review gates: thread-safe persona client caching, concurrency-safe seeding, falsifiable curation auth probe, and shared HttpClient mutation fixes verified
+  - PR #57 remained on the existing harness branch; final SHA recorded in the handoff
+- **Agent/Owner:** Squad Coordinator (Copilot, autopilot mode)
+- **Description:** Implement Layer 5 acceptance test harness proving deterministic seeding from Layer 4 enables repeatable acceptance tests. Focus on persona persistence, auth boundaries, decision audit attribution, and structured log capture using existing APIs (Passport/Dashboard).
+- **Surfaces:**
+  1. `tests/Bethuya.IntegrationTests/CommunityAcceptanceHarnessFixture.cs` — typed helper for seeding orchestration and persona client provisioning; reuses `BethuyaAppFixture`; provides `SeedAsync()`, `GetPersonaClient()`, `GetPassportJourneyAsync()`, `GetDashboardReadModelAsync()`.
+  2. `tests/Bethuya.IntegrationTests/CommunityAcceptanceHarnessTests.cs` — TUnit acceptance tests (7 tests in this class): deterministic seeding (all 6 personas, stable IDs), idempotency (zero new rows on reseed), journey/API persistence for the exact community-simulation fixture event, authorization boundaries (Farah→403, Vikram→200), and dashboard visibility.
+  3. `tests/Hackmum.Bethuya.E2E/Tests/CommunityAcceptanceHarnessTests.cs` — Playwright E2E acceptance flow (5 tests): homepage/toolbar visibility, persona switching persistence across nav, Vikram/Farah curation auth probes, exact fixture event lookup + UI row match, persona screenshots.
+  4. No new CLI commands or entry points (targeted `dotnet test` uses `--filter-uid` for TUnit and `--filter` for E2E).
+  5. No new production code (tests-only layer leverages Layer 4 endpoints).
+- **Constraints satisfied:** Reused Layer 4 seeding endpoint only; no new seeder/duplicated seed-curation; tested current models/APIs only (no Graph/Chapters/Projects/Mentorship); TUnit+Playwright per standards; Vogen/Refit/BB/EF-retry/auth/privacy rules honored; central package management preserved; no Layer 6 work.
+- **Acceptance:** All Layer 5 TUnit tests pass against real Aspire/Postgres; all Layer 5 Playwright tests pass with `BETHUYA_BASE_URL` and `ASPIRE_BACKEND_URL` set; `dotnet build Bethuya.slnx` 0 warnings; screenshots captured under `artifacts/layer5`; PR #57 updated on the existing harness branch and pushed forward from remote tip `ca3cb75`.
+
 ## [2026-08-08] Developer Testing Harness — Layer 4: Deterministic Community Simulation Seeder
 - **Status:** done
 - **Agent/Owner:** Tank (implementation + tests), code-review + dotnet-diag:optimizing-dotnet-performance (review gates, run by Squad Coordinator)
