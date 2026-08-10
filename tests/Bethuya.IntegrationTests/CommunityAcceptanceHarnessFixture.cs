@@ -63,7 +63,10 @@ public sealed class CommunityAcceptanceHarnessFixture
         return client;
     }
 
-    /// <summary>Gets the Community Passport journey (participation timeline) for a persona.</summary>
+    /// <summary>
+    /// Gets the Community Passport journey (participation timeline) for a persona.
+    /// Includes the external identity key used for passport resolution (ExternalIdentity.Key).
+    /// </summary>
     public async Task<JsonElement> GetPassportJourneyAsync(string personaKey, int? timelineLimit = 20)
     {
         var client = GetPersonaClient(personaKey);
@@ -72,6 +75,16 @@ public sealed class CommunityAcceptanceHarnessFixture
             throw new HttpRequestException($"Journey API failed: {response.StatusCode}");
 
         return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    /// <summary>
+    /// Gets all personas' external identity keys for dashboard filtering/validation.
+    /// Used to falsify dashboard read-model assertions by verifying specific persona membership.
+    /// </summary>
+    public static Task<string[]> GetSeededPersonaExternalIdentityKeysAsync()
+    {
+        // Return the canonical persona keys that SeedAsync creates with ExternalIdentity
+        return Task.FromResult(AllPersonaKeys);
     }
 
     /// <summary>

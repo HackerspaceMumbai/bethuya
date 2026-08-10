@@ -20,23 +20,30 @@ namespace Hackmum.Bethuya.E2E.Tests;
 /// - All 6 catalog personas with external identity relationships
 /// </summary>
 [TestClass]
-public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
+public sealed class CommunityAcceptanceHarnessTests : BethuyaE2ETest
 {
     /// <summary>
     /// Seeds the community simulation data once per test class before any tests run.
     /// Seeds via the Backend `/api/dev/community-simulation/seed` endpoint as Vikram (Organizer).
-    /// The E2E tests discover Backend via environment-configured endpoint URL.
+    /// 
+    /// BACKEND URL CONFIGURATION:
+    /// - Tests running outside Aspire's network MUST set ASPIRE_BACKEND_URL environment variable.
+    /// - If ASPIRE_BACKEND_URL is not set, falls back to http://localhost:8080, which requires:
+    ///   * Aspire running locally with fixed backend port configuration:
+    ///     .WithHttpEndpoint(port: 8080, targetPort: 8080, isProxied: false)
+    ///   * This fixed-port configuration is hardcoded in AppHost.cs and enables predictable
+    ///     local test execution without ephemeral port assignment.
+    ///   * The fallback is NOT suitable for isolated test runs or CI environments where Aspire
+    ///     assigns ephemeral ports or runs in a container. Set ASPIRE_BACKEND_URL explicitly
+    ///     for reliable CI/containerized execution (e.g., http://backend:8080 on Docker network).
+    /// 
     /// Seed is idempotent and provides deterministic fixture data.
     /// </summary>
-    [ClassInitialize(InheritanceBehavior.BeforeEachDerivedClass)]
-    public static async Task ClassSetup(TestContext context)
+    [ClassInitialize]
+    public static async Task ClassSetup(TestContext? context)
     {
-        // NOTE: For E2E tests against a live Aspire instance, seed via the Backend endpoint directly.
-        // The Backend is discoverable via Aspire's service discovery at http://backend:8080 (internal)
-        // or via known port (http://localhost:8080). This test runs inside Aspire's network, so use
-        // the service name. If running remotely, use explicit Backend URL from environment.
         var backendUrl = Environment.GetEnvironmentVariable("ASPIRE_BACKEND_URL") 
-            ?? "http://localhost:8080";  // Local Aspire default
+            ?? "http://localhost:8080";  // Fixed port fallback (non-isolated Aspire only)
         
         using var seedClient = new HttpClient();
         seedClient.BaseAddress = new Uri(backendUrl);
@@ -140,6 +147,8 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
     /// <summary>
     /// Proves that Vikram (Organizer+Curator+Attendee) can access the organizer-gated
     /// curation page, proving Web→Refit→Backend authorization chain end-to-end.
+    /// Authorization checks are performed before data lookup, ensuring that persona→role
+    /// resolution happens at the endpoint boundary.
     /// </summary>
     [TestMethod]
     public async Task AcceptanceHarness_VikramPersona_CanAccessCurationPage()
@@ -152,11 +161,13 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
         await Assertions.Expect(Page.Locator("[data-test='active-persona']"))
             .ToContainTextAsync("Vikram");
 
-        // Use a known fixture event ID (from Layer 4 seeding). The route is
-        // /curation/{eventId}, decorated with [Authorize(Policy = RequireOrganizerOrCurator)]
-        // on an InteractiveServer page component, so authorization is enforced by
-        // ASP.NET Core's endpoint routing (HTTP 403 if denied, not Blazor-level).
-        var fixtureEventId = Guid.NewGuid(); // Placeholder; real tests use seeded event ID
+        // Use an event ID from the seeded fixture. The route is /curation/{eventId},
+        // decorated with [Authorize(Policy = RequireOrganizerOrCurator)] on an InteractiveServer
+        // page component. Authorization is enforced by ASP.NET Core's endpoint routing before
+        // the component loads (HTTP 403 if denied, not Blazor-level).
+        // Note: Authorization check happens before any data lookup, so the exact eventId validity
+        // is not tested here—only that Vikram's role permits access.
+        var fixtureEventId = Guid.NewGuid();
         var response = await GotoWithBudgetAsync($"/curation/{fixtureEventId}");
 
         // Vikram has Organizer role, so access is allowed (HTTP 200)
@@ -174,6 +185,7 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
     /// <summary>
     /// Proves that Farah (Attendee-only) is denied access to the organizer-gated
     /// curation page via HTTP 403, proving authorization enforcement.
+    /// Authorization check happens at the endpoint boundary before any data lookup.
     /// </summary>
     [TestMethod]
     public async Task AcceptanceHarness_FarahPersona_IsDeniedCurationPage()
@@ -186,8 +198,9 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
         await Assertions.Expect(Page.Locator("[data-test='active-persona']"))
             .ToContainTextAsync("Farah");
 
-        // Try to access curation (organizer-gated)
-        var fixtureEventId = Guid.NewGuid(); // Placeholder; real tests use seeded event ID
+        // Try to access curation (organizer-gated). Authorization is checked before data lookup,
+        // so the exact eventId validity is not evaluated—only the persona's role.
+        var fixtureEventId = Guid.NewGuid();
         var response = await GotoWithBudgetAsync($"/curation/{fixtureEventId}");
 
         // Farah has Attendee-only role, so access is denied (HTTP 403)
@@ -203,26 +216,53 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
     }
 
     /// <summary>
-    /// Proves that seeded data (events, registrations) is visible when browsing as a seeded persona.
-    /// Locates the deterministic fixture event by its stable hashtag/key through the API seam,
-    /// not by generic row count, to ensure assertions are stable across data changes.
+    /// Proves that seeded data (events, registrations) is persisted and accessible.
+    /// Uses the Events API to locate the deterministic fixture event by hashtag, ensuring
+    /// the assertion is stable and falsifiable (fails if seeding did not occur or if the
+    /// fixture event is removed).
     /// </summary>
     [TestMethod]
     public async Task AcceptanceHarness_SeededData_IsVisibleThroughUI()
     {
        // Note: ClassSetup() runs once before any tests and calls the seeding endpoint,
-       // ensuring all seeded data is available for UI navigation and assertions.
+       // ensuring all seeded data is available for API queries and UI navigation.
 
+       // Step 1: Query the Backend Events API to locate the fixture event by its stable hashtag
+       var backendUrl = Environment.GetEnvironmentVariable("ASPIRE_BACKEND_URL") 
+           ?? "http://localhost:8080";
+        
+       using var apiClient = new HttpClient();
+       apiClient.BaseAddress = new Uri(backendUrl);
+       apiClient.DefaultRequestHeaders.Add("X-Bethuya-Dev-Persona", "Vikram");
+        
+       var eventResponse = await apiClient.GetAsync("/api/events/slug/community-simulation-fixture");
+       Assert.IsTrue(eventResponse.IsSuccessStatusCode, 
+           $"Events API should return the fixture event. Status: {eventResponse.StatusCode}");
+        
+       var eventJson = await eventResponse.Content.ReadAsStringAsync();
+       using var eventDoc = System.Text.Json.JsonDocument.Parse(eventJson);
+       var eventObj = eventDoc.RootElement;
+       
+       Assert.IsTrue(eventObj.TryGetProperty("id", out var idProp) && idProp.ValueKind != System.Text.Json.JsonValueKind.Null,
+           "Fixture event JSON must contain valid 'id' property");
+       Assert.IsTrue(eventObj.TryGetProperty("title", out var titleProp) && titleProp.ValueKind != System.Text.Json.JsonValueKind.Null,
+           "Fixture event JSON must contain valid 'title' property");
+       
+       var fixtureEventId = idProp.GetGuid();
+       var fixtureTitle = titleProp.GetString();
+         
+       Assert.IsNotNull(fixtureTitle, "Fixture event title must not be null");
+       Assert.AreEqual("Community Simulation Fixture", fixtureTitle, 
+           "Fixture event title should be exactly 'Community Simulation Fixture'");
+
+       // Step 2: Navigate to the UI events list and verify the fixture event is visible
        await GotoWithBudgetAsync("/events");
 
-       // Wait for events list to load. Verify at least one event is present.
-       // TODO: Future: Pinpoint the fixture event by its deterministic title/hashtag
-       // via the existing Events API seam to make the assertion stable.
-       var eventRows = Page.Locator("[data-test='event-row']");
-       var count = await eventRows.CountAsync();
-
-       // We expect at least the seeded fixture event to be present
-       Assert.IsTrue(count > 0, "At least one event (the seeded fixture) should be visible");
+       // Find the specific fixture event row by locating the event card containing the fixture title.
+       // This assertion is falsifiable: it fails if seeding did not occur or if the fixture event is missing.
+       // The fixture title appears as a heading (h3) within the event card; filter by text content to avoid CSS selector injection.
+       var fixtureEvent = Page.Locator("[data-test='event-row']").Filter(new() { HasText = fixtureTitle! }).First;
+       await Assertions.Expect(fixtureEvent).ToBeVisibleAsync();
 
        Directory.CreateDirectory("artifacts");
        var unique = Guid.NewGuid().ToString("N")[..8];

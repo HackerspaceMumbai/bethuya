@@ -17,16 +17,22 @@ All work items must be added here **before** writing code (plan-first protocol).
 ## Active Tasks
 
 ## [2026-08-08] Developer Testing Harness — Layer 5: Community Acceptance Test Harness
-- **Status:** done
-- **Completion Evidence:** 
-  - Branch: `indcoder-community-acceptance-harness`
-  - All 25 TUnit integration tests pass (runtime: 45s 682ms)
-  - 7 Playwright E2E tests compile successfully (runtime validated with live Aspire)
-  - Build: `dotnet build Bethuya.slnx` — 0 errors, 0 warnings
-  - Code review gate: Passed (4 issues fixed: null coalescing, execution order, duplication, doc)
-  - Perf review gate: Passed (8 issues fixed: 6 HttpClient double-dispose, 1 StringComparison, rest deferred as info)
-  - All critical and moderate findings resolved
-  - PR targeting `indcoder-community-simulation-seeder` (PR #55) — **ready for submission**
+- **Status:** in-review (recovery phase)
+- **Completion Evidence (current):** 
+  - Branch: `indcoder-community-acceptance-harness` @ SHA `ca3cb75d8be950fdeaf662566f511d214e8d4010`
+  - **Integration tests (Layer5 targeted):** 334/334 pass (real Aspire/Postgres, Release build)
+  - **E2E tests (Layer5 acceptance):** 13/20 pass, 2 skipped (auth-required), 5 timeout failures
+    - **5 passing test classes:** CommunityAcceptanceHarnessTests (5/5), NavigationTests, EventFlowTests visibility assertions
+    - **5 failing test classes:** Form submission → navigation timeouts (CoverImageFlowTests, CurationFlowTests, RegistrationFlowTests, EventFlowTests form tests)
+    - **2 skipped:** SubmitRegistration (auth setup incomplete), Cloudinary (env config missing)
+  - Build: `dotnet build Bethuya.slnx` Release — 0 errors, 0 warnings ✅
+  - Aspire: Running (PID 49888, https://localhost:7112 web, http://localhost:8080 backend)
+  - PR #57 targeting main — **OPEN, MERGEABLE**
+  - Env vars required: `BETHUYA_BASE_URL=https://localhost:7112`, `ASPIRE_BACKEND_URL=http://localhost:8080`
+- **Known Blocker (E2E navigation timeout):**
+  - Form submission completes (DOM mutation, button clickable), but `Navigation.NavigateTo("/events")` does NOT execute
+  - Affects all 5 form-submission E2E tests (plan event, cover image flow, curation, registration)
+  - Root cause unresolved: EditContext.Validate() or EventApi call or circuit detachment hypothesis
 - **Agent/Owner:** Squad Coordinator (Copilot, autopilot mode)
 - **Description:** Implement Layer 5 acceptance test harness proving deterministic seeding from Layer 4 enables repeatable acceptance tests. Focus on persona persistence, auth boundaries, decision audit attribution, and structured log capture using existing APIs (Passport/Dashboard).
 - **Surfaces:**

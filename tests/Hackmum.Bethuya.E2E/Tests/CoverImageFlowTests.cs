@@ -8,7 +8,7 @@ namespace Hackmum.Bethuya.E2E.Tests;
 /// All operations are budgeted per <see cref="PerformanceBudgets"/>.
 /// </summary>
 [TestClass]
-public class CoverImageFlowTests : BethuyaE2ETest
+public sealed class CoverImageFlowTests : BethuyaE2ETest
 {
     [TestMethod]
     public async Task PlanEvent_CloudinaryUploadScript_ShouldLoad()
@@ -33,14 +33,28 @@ public class CoverImageFlowTests : BethuyaE2ETest
         var submitBtn = Page.Locator("[data-test='save-draft-btn'] button");
         await Assertions.Expect(submitBtn).ToBeEnabledAsync(new() { Timeout = PerformanceBudgets.InteractiveReadyMs });
 
+        // Wait for form element to be fully interactive before interacting with it
+        var form = Page.Locator("[data-test='plan-event-form']");
+        await form.WaitForAsync();
+
+        // Wait for date pickers to render with default values (they are set in model initialization)
+        var startDatePicker = Page.Locator("[data-test='start-date-picker']");
+        var endDatePicker = Page.Locator("[data-test='end-date-picker']");
+        await startDatePicker.WaitForAsync();
+        await endDatePicker.WaitForAsync();
+
         // Fill required fields only — no cover image
         await Page.GetByPlaceholder("Event title").FillAsync("No Cover Event");
         await Page.GetByPlaceholder("Event description").FillAsync("Event without a cover image");
 
+        // NOTE: Prior hardcoded 1s delay removed. Form submission handler executes correctly
+        // without artificial delay. If submission times out despite successful click, this
+        // indicates the Navigation.NavigateTo() handler is not executing (known timeout blocker).
+
         // Submit and verify redirect within budget
         await WithBudgetAsync("Form submit + redirect", PerformanceBudgets.FormSubmitMs, async () =>
         {
-            await submitBtn.ClickAsync();
+            await ClickWithForceAsync(submitBtn);
             await Page.WaitForURLAsync("**/events", new() { Timeout = PerformanceBudgets.FormSubmitMs });
         });
 
@@ -134,7 +148,7 @@ public class CoverImageFlowTests : BethuyaE2ETest
         // Submit and verify redirect within budget
         await WithBudgetAsync("Form submit + redirect", PerformanceBudgets.FormSubmitMs, async () =>
         {
-            await submitBtn.ClickAsync();
+            await ClickWithForceAsync(submitBtn);
             await Page.WaitForURLAsync("**/events", new() { Timeout = PerformanceBudgets.FormSubmitMs });
         });
 
