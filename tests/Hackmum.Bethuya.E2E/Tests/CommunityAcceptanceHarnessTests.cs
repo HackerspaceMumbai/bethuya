@@ -24,7 +24,8 @@ namespace Hackmum.Bethuya.E2E.Tests;
 [TestClass]
 public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
 {
-    private static readonly HttpClient BackendClient = new();
+    private static Guid _fixtureEventId;
+    private static string _fixtureEventTitle = string.Empty;
 
     /// <summary>
     /// Seeds the community simulation data once per test class before any tests run.
@@ -45,13 +46,27 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
         seedClient.Timeout = TimeSpan.FromSeconds(30);
 
         // POST to the seeding endpoint as Vikram (Organizer, required by endpoint auth)
-        var response = await seedClient.PostAsync("/api/dev/community-simulation/seed", null);
+        using var response = await seedClient.PostAsync("/api/dev/community-simulation/seed", null);
         if (!response.IsSuccessStatusCode)
         {
             var content = await response.Content.ReadAsStringAsync();
             throw new InvalidOperationException(
                 $"Failed to seed community simulation in test setup via {backendUrl}: {response.StatusCode} - {content}");
         }
+
+        using var fixtureClient = new HttpClient { BaseAddress = new Uri(backendUrl) };
+        using var fixtureResponse = await fixtureClient.GetAsync("/api/events/slug/community-simulation-fixture");
+        if (!fixtureResponse.IsSuccessStatusCode)
+        {
+            var content = await fixtureResponse.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                $"Failed to load fixture event in test setup via {backendUrl}: {fixtureResponse.StatusCode} - {content}");
+        }
+
+        var fixtureEvent = await fixtureResponse.Content.ReadFromJsonAsync<JsonElement>();
+        _fixtureEventId = fixtureEvent.GetProperty("id").GetGuid();
+        _fixtureEventTitle = fixtureEvent.GetProperty("title").GetString()
+            ?? throw new InvalidOperationException("Fixture event title was missing.");
     }
 
     private static string GetBaseUrlFromEnvironment()
@@ -156,15 +171,16 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
         await Assertions.Expect(Page.Locator("[data-test='active-persona']"))
             .ToContainTextAsync("Vikram");
 
-        // Use a random probe ID so the curation page is reached only after auth.
-        // The route is /curation/{eventId}, decorated with [Authorize(Policy = RequireOrganizerOrCurator)]
-        // on an InteractiveServer page component, so authorization is enforced by
-        // ASP.NET Core's endpoint routing (HTTP 403 if denied, not Blazor-level).
-        var authProbeEventId = Guid.NewGuid();
-        var response = await GotoWithBudgetAsync($"/curation/{authProbeEventId}");
+        // Use the real seeded fixture event so the curation page is reached only after auth.
+        // The route is /curation/{eventId}, decorated with [Authorize(Policy = RequireOrganizerOrCurator)],
+        // so a real fixture event must load the curation dashboard if authorization succeeds.
+        var response = await GotoWithBudgetAsync($"/curation/{_fixtureEventId}");
 
-        // Vikram has Organizer role, so access is allowed (HTTP 200)
         Assert.IsTrue(response?.Ok ?? false, "Vikram (Organizer) must be able to access /curation");
+        await Assertions.Expect(Page.Locator("[data-test='curation-page']")).ToBeVisibleAsync();
+        await Assertions.Expect(Page.Locator("[data-test='curation-error']")).ToHaveCountAsync(0);
+        await Assertions.Expect(Page.Locator("[data-test='curation-registrant-list']")).ToBeVisibleAsync();
+        await Assertions.Expect(Page.Locator("[data-test='curation-page']")).ToContainTextAsync(_fixtureEventTitle);
 
         Directory.CreateDirectory(Path.Combine("artifacts", "layer5"));
         var unique = Guid.NewGuid().ToString("N")[..8];
@@ -190,9 +206,8 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
         await Assertions.Expect(Page.Locator("[data-test='active-persona']"))
             .ToContainTextAsync("Farah");
 
-        // Try to access curation (organizer-gated)
-        var authProbeEventId = Guid.NewGuid();
-        var response = await GotoWithBudgetAsync($"/curation/{authProbeEventId}");
+        // Try to access curation (organizer-gated) with the real seeded fixture event.
+        var response = await GotoWithBudgetAsync($"/curation/{_fixtureEventId}");
 
         // Farah has Attendee-only role, so access is denied (HTTP 403)
         Assert.AreEqual(403, response?.Status, "Farah (Attendee-only) must be denied with HTTP 403");
@@ -217,8 +232,8 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
        // ensuring all seeded data is available for UI navigation and assertions.
 
        var backendUrl = GetBackendUrlFromEnvironment();
-       BackendClient.BaseAddress = new Uri(backendUrl);
-       var fixtureEventResponse = await BackendClient.GetAsync("/api/events/slug/community-simulation-fixture");
+       using var backendClient = new HttpClient { BaseAddress = new Uri(backendUrl) };
+       using var fixtureEventResponse = await backendClient.GetAsync("/api/events/slug/community-simulation-fixture");
        Assert.IsTrue(fixtureEventResponse.IsSuccessStatusCode, $"Fixture event lookup failed via {backendUrl}");
 
        var fixtureEvent = await fixtureEventResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -227,6 +242,11 @@ public class CommunityAcceptanceHarnessTests : BethuyaE2ETest
            ?? throw new InvalidOperationException("Fixture event title was missing.");
        Assert.AreEqual("Community Simulation Fixture", fixtureEventTitle);
        Assert.AreNotEqual(Guid.Empty, fixtureEventId);
+
+       await GotoWithBudgetAsync("/");
+       await ClickAndNavigateWithBudgetAsync(Page.Locator("[data-test='persona-vikram']"));
+       await Assertions.Expect(Page.Locator("[data-test='active-persona']")).ToContainTextAsync("Vikram");
+       await Assertions.Expect(Page.Locator("[data-test='active-persona-role']")).ToContainTextAsync("Organizer");
 
        await GotoWithBudgetAsync("/events");
 

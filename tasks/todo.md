@@ -19,14 +19,14 @@ All work items must be added here **before** writing code (plan-first protocol).
 ## [2026-08-08] Developer Testing Harness — Layer 5: Community Acceptance Test Harness
 - **Status:** done
 - **Completion Evidence:** 
-  - Branch: `indcoder-finish-layer5-pr-57`
+  - Branch: `indcoder-musical-spork`
   - Build: `dotnet build Bethuya.slnx --nologo` — 0 errors, 0 warnings
-  - Integration: `dotnet test tests/Bethuya.IntegrationTests/Bethuya.IntegrationTests.csproj --disable-logo --filter-uid ...` — 7/7 passed
-  - E2E: `BETHUYA_BASE_URL=https://localhost:7112 ASPIRE_BACKEND_URL=http://localhost:8080 dotnet test tests/Hackmum.Bethuya.E2E/Hackmum.Bethuya.E2E.csproj --filter "FullyQualifiedName~CommunityAcceptanceHarnessTests" --no-build` — 5/5 passed
-  - Screenshots: `tests/Hackmum.Bethuya.E2E/bin/Debug/net10.0/artifacts/layer5/*.png`
-  - Code review gate: passed; one dashboard assertion flake fixed after review
-  - Perf review gate: passed; sequential persona loop and redundant HttpClient allocations removed
-  - PR #57 updated on the existing harness branch with final Layer 5 evidence
+  - Integration: `tests\\Bethuya.IntegrationTests\\bin\\Debug\\net10.0\\Bethuya.IntegrationTests.exe --filter-uid <7 harness UIDs>` — 7/7 passed, 0 failed, 0 skipped
+  - E2E: `BETHUYA_BASE_URL=https://localhost:7112 ASPIRE_BACKEND_URL=http://localhost:8080 dotnet test tests\\Hackmum.Bethuya.E2E\\Hackmum.Bethuya.E2E.csproj --filter "FullyQualifiedName~CommunityAcceptanceHarnessTests" --no-build` — 5/5 passed, 0 failed, 0 skipped
+  - Screenshots: `artifacts\\layer5\\*.png`
+  - Evidence: exact fixture-event lookup against `/api/events/slug/community-simulation-fixture`, seeded persona journey proof, curation auth gate proof, and exact event-row UI assertion
+  - Review gates: thread-safe persona client caching, concurrency-safe seeding, falsifiable curation auth probe, and shared HttpClient mutation fixes verified
+  - PR #57 remained on the existing harness branch; final SHA recorded in the handoff
 - **Agent/Owner:** Squad Coordinator (Copilot, autopilot mode)
 - **Description:** Implement Layer 5 acceptance test harness proving deterministic seeding from Layer 4 enables repeatable acceptance tests. Focus on persona persistence, auth boundaries, decision audit attribution, and structured log capture using existing APIs (Passport/Dashboard).
 - **Surfaces:**

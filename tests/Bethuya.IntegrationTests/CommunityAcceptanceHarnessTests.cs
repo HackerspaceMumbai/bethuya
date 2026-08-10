@@ -59,7 +59,7 @@ public sealed class CommunityAcceptanceHarnessTests(BethuyaAppFixture fixture) :
 
         // Do NOT dispose the client - the fixture manages client lifetime
         var client = Harness.GetPersonaClient("Vikram");
-        var response = await client.PostAsync("/api/dev/community-simulation/seed", null);
+        using var response = await client.PostAsync("/api/dev/community-simulation/seed", null);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -94,7 +94,7 @@ public sealed class CommunityAcceptanceHarnessTests(BethuyaAppFixture fixture) :
         var client = Harness.GetPersonaClient("Vikram");
 
         // Second explicit seed to prove idempotency
-        var response2 = await client.PostAsync("/api/dev/community-simulation/seed", null);
+        using var response2 = await client.PostAsync("/api/dev/community-simulation/seed", null);
         await Assert.That(response2.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var result2 = await response2.Content.ReadFromJsonAsync<JsonElement>();
@@ -176,7 +176,7 @@ public sealed class CommunityAcceptanceHarnessTests(BethuyaAppFixture fixture) :
     {
         // Do NOT dispose the client - the fixture manages client lifetime
         var client = Harness.GetPersonaClient("Farah");
-        var response = await client.PostAsync("/api/dev/community-simulation/seed", null);
+        using var response = await client.PostAsync("/api/dev/community-simulation/seed", null);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
@@ -189,7 +189,7 @@ public sealed class CommunityAcceptanceHarnessTests(BethuyaAppFixture fixture) :
     {
         // Do NOT dispose the client - the fixture manages client lifetime
         var client = Harness.GetPersonaClient("Vikram");
-        var response = await client.PostAsync("/api/dev/community-simulation/seed", null);
+        using var response = await client.PostAsync("/api/dev/community-simulation/seed", null);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
@@ -205,7 +205,7 @@ public sealed class CommunityAcceptanceHarnessTests(BethuyaAppFixture fixture) :
 
         // Do NOT dispose the client - the fixture manages client lifetime
         var client = Harness.GetPersonaClient("Farah");
-        var response = await client.GetAsync("/api/community/passport/dashboard/read-model?lookbackDays=90");
+        using var response = await client.GetAsync("/api/community/passport/dashboard/read-model?lookbackDays=90");
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }

@@ -1,5 +1,6 @@
 namespace Bethuya.IntegrationTests;
 
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -11,7 +12,7 @@ using System.Text.Json;
 /// BP6: Persona header name and catalog values are hardcoded here rather than imported
 /// from ServiceDefaults.Auth so a breaking rename fails loudly in this test fixture.
 /// </summary>
-public sealed class CommunityAcceptanceHarnessFixture
+public sealed class CommunityAcceptanceHarnessFixture : IDisposable
 {
     private const string PersonaHeaderName = "X-Bethuya-Dev-Persona";
     
@@ -20,13 +21,15 @@ public sealed class CommunityAcceptanceHarnessFixture
     public static readonly string[] AllPersonaKeys = ["Anish", "Farah", "Maya", "Priya", "Rohan", "Vikram"];
 
     private readonly BethuyaAppFixture _appFixture;
-    private readonly Dictionary<string, HttpClient> _personaClients = [];
-    private HttpClient? _eventClient;
+    private readonly ConcurrentDictionary<string, HttpClient> _personaClients = new(StringComparer.Ordinal);
+    private readonly HttpClient _eventClient;
+    private readonly SemaphoreSlim _seedGate = new(1, 1);
     private bool _seeded;
 
     public CommunityAcceptanceHarnessFixture(BethuyaAppFixture appFixture)
     {
         _appFixture = appFixture ?? throw new ArgumentNullException(nameof(appFixture));
+        _eventClient = _appFixture.CreateBackendClient();
     }
 
     /// <summary>
@@ -38,34 +41,44 @@ public sealed class CommunityAcceptanceHarnessFixture
         if (_seeded)
             return;
 
-        var response = await GetPersonaClient("Vikram").PostAsync("/api/dev/community-simulation/seed", null);
-        if (!response.IsSuccessStatusCode)
+        await _seedGate.WaitAsync();
+        try
         {
-            var content = await response.Content.ReadAsStringAsync();
-            throw new InvalidOperationException(
-                $"Seeding failed with {response.StatusCode}: {content}");
-        }
+            if (_seeded)
+                return;
 
-        _seeded = true;
+            using var response = await GetPersonaClient("Vikram").PostAsync("/api/dev/community-simulation/seed", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(
+                    $"Seeding failed with {response.StatusCode}: {content}");
+            }
+
+            _seeded = true;
+        }
+        finally
+        {
+            _seedGate.Release();
+        }
     }
 
     /// <summary>Gets or creates an HttpClient pre-configured with a persona header.</summary>
     public HttpClient GetPersonaClient(string personaKey)
     {
-        if (!_personaClients.TryGetValue(personaKey, out var client))
+        return _personaClients.GetOrAdd(personaKey, key =>
         {
-            client = _appFixture.CreateBackendClient();
-            client.DefaultRequestHeaders.Add(PersonaHeaderName, personaKey);
-            _personaClients[personaKey] = client;
-        }
-        return client;
+            var client = _appFixture.CreateBackendClient();
+            client.DefaultRequestHeaders.Add(PersonaHeaderName, key);
+            return client;
+        });
     }
 
     /// <summary>Gets the Community Passport journey (participation timeline) for a persona.</summary>
     public async Task<JsonElement> GetPassportJourneyAsync(string personaKey, int? timelineLimit = 20)
     {
         var client = GetPersonaClient(personaKey);
-        var response = await client.GetAsync($"/api/community/passport/journey?timelineLimit={timelineLimit}");
+        using var response = await client.GetAsync($"/api/community/passport/journey?timelineLimit={timelineLimit}");
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException($"Journey API failed: {response.StatusCode}");
 
@@ -75,8 +88,7 @@ public sealed class CommunityAcceptanceHarnessFixture
     /// <summary>Gets an event by hashtag/slug from the Backend events API.</summary>
     public async Task<JsonElement> GetEventByHashtagAsync(string hashtag)
     {
-        _eventClient ??= _appFixture.CreateBackendClient();
-        var response = await _eventClient.GetAsync($"/api/events/slug/{hashtag}");
+        using var response = await _eventClient.GetAsync($"/api/events/slug/{hashtag}");
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException($"Event API failed: {response.StatusCode}");
 
@@ -90,7 +102,7 @@ public sealed class CommunityAcceptanceHarnessFixture
     public async Task<JsonElement> GetDashboardReadModelAsync(string personaKey, int lookbackDays = 90)
     {
         var client = GetPersonaClient(personaKey);
-        var response = await client.GetAsync(
+        using var response = await client.GetAsync(
             $"/api/community/passport/dashboard/read-model?lookbackDays={lookbackDays}");
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException($"Dashboard API failed: {response.StatusCode}");
@@ -102,9 +114,9 @@ public sealed class CommunityAcceptanceHarnessFixture
     public void Dispose()
     {
         foreach (var client in _personaClients.Values)
-            client?.Dispose();
-        _eventClient?.Dispose();
+            client.Dispose();
+        _eventClient.Dispose();
+        _seedGate.Dispose();
         _personaClients.Clear();
-        _eventClient = null;
     }
 }
