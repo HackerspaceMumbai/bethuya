@@ -27,6 +27,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
+            LogOutboxProcessorStopped(logger);
         }
     }
 
@@ -147,4 +148,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Archive projection attempt failed; the outbox message will be retried.")]
     private static partial void LogArchiveProjectionFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "Event archive outbox processor stopped due to cancellation.")]
+    private static partial void LogOutboxProcessorStopped(ILogger logger);
 }
