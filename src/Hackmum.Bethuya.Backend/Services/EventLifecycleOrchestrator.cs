@@ -68,9 +68,20 @@ public sealed partial class EventLifecycleOrchestrator(
                     && message.IdempotencyKey == outbox.IdempotencyKey, ct);
             if (!alreadyQueued)
             {
-                dbContext.EventArchiveOutboxMessages.Add(outbox);
+                try
+                {
+                    dbContext.EventArchiveOutboxMessages.Add(outbox);
+                    await dbContext.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateException)
+                {
+                    dbContext.Entry(outbox).State = EntityState.Detached;
+                }
             }
-            await dbContext.SaveChangesAsync(ct);
+            else
+            {
+                await dbContext.SaveChangesAsync(ct);
+            }
             await transaction.CommitAsync(ct);
         });
 
@@ -160,19 +171,21 @@ public sealed partial class EventLifecycleOrchestrator(
 
     private static EventPublicationArtifact CreatePublicationArtifact(Event evt)
     {
-        var folderPath = $"events/{evt.StartDate.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{Slugify(evt.Title)}-{evt.Id:N}";
+        var slug = Slugify(evt.Title);
+        var folderSlug = $"{evt.StartDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}-{slug}";
+        var folderPath = $"events/{evt.StartDate.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{folderSlug}";
         var sessions = evt.Agenda?.Sessions.OrderBy(s => s.Order).ToArray() ?? [];
         var readme = CreateReadme(evt, sessions);
-        var metadata = CreateMetadataYaml(evt, sessions);
+        var metadata = CreateMetadataYaml(evt, sessions, folderSlug);
 
         return new EventPublicationArtifact(folderPath, readme, metadata);
     }
 
-    private static string CreateMetadataYaml(Event evt, AgendaSession[] sessions)
+    private static string CreateMetadataYaml(Event evt, AgendaSession[] sessions, string slug)
     {
         var builder = new StringBuilder()
             .Append("title: ").AppendLine(YamlString(evt.Title))
-            .Append("slug: ").AppendLine(YamlString(Slugify(evt.Title)))
+            .Append("slug: ").AppendLine(YamlString(slug))
             .Append("date: ").AppendLine(evt.StartDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
             .Append("city: ").AppendLine(YamlString(evt.Location ?? "Unknown"))
             .AppendLine("country: India")
@@ -255,9 +268,10 @@ public sealed partial class EventLifecycleOrchestrator(
         return string.IsNullOrEmpty(slug) ? "event" : slug[..Math.Min(slug.Length, 80)];
     }
 
-    private static string CreateIdempotencyKey(Guid eventId, string metadataJson)
+    private static string CreateIdempotencyKey(Guid eventId, EventPublicationArtifact artifact)
     {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(metadataJson));
+        var raw = $"{artifact.FolderPath}\n{artifact.ReadmeMarkdown}\n{artifact.MetadataJson}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
         return $"{eventId:N}-{Convert.ToHexString(hash)[..16]}";
     }
 
@@ -269,7 +283,7 @@ public sealed partial class EventLifecycleOrchestrator(
             FolderPath = artifact.FolderPath,
             ReadmeMarkdown = artifact.ReadmeMarkdown,
             MetadataJson = artifact.MetadataJson,
-            IdempotencyKey = CreateIdempotencyKey(evt.Id, artifact.MetadataJson)
+            IdempotencyKey = CreateIdempotencyKey(evt.Id, artifact)
         };
 
     private async Task QueueArchiveProjectionAsync(Event evt, CancellationToken ct)
@@ -281,7 +295,15 @@ public sealed partial class EventLifecycleOrchestrator(
                 && message.Destination == outbox.Destination
                 && message.IdempotencyKey == outbox.IdempotencyKey, ct))
         {
-            dbContext.EventArchiveOutboxMessages.Add(outbox);
+            try
+            {
+                dbContext.EventArchiveOutboxMessages.Add(outbox);
+                await dbContext.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                dbContext.Entry(outbox).State = EntityState.Detached;
+            }
         }
     }
 

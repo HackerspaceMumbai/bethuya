@@ -6,7 +6,7 @@ public sealed class GitHubEventRepositoryOptions
 
     public string Owner { get; set; } = "HackerspaceMumbai";
 
-    public string Repository { get; set; } = "bethuya";
+    public string Repository { get; set; } = "events";
 
     public string Branch { get; set; } = "main";
 

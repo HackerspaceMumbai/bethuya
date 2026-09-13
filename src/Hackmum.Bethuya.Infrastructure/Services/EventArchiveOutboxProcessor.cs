@@ -22,7 +22,18 @@ internal sealed partial class EventArchiveOutboxProcessor(
         {
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                await ProcessOneAsync(stoppingToken);
+                try
+                {
+                    await ProcessOneAsync(stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    LogArchiveProjectionFailed(logger, ex);
+                }
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -69,13 +80,22 @@ internal sealed partial class EventArchiveOutboxProcessor(
             await db.SaveChangesAsync(ct);
             LogArchiveProjectionCompleted(logger, workItem.EventId, result.FolderUrl);
         }
-        catch (Exception ex) when (
-            ex is HttpRequestException or InvalidOperationException or TimeoutException or DbUpdateException
-            || ex is OperationCanceledException && !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
         {
             if (workItem is not null)
             {
-                await RecordFailureAsync(workItem, ex, ct);
+                try
+                {
+                    await RecordFailureAsync(workItem, ex, ct);
+                }
+                catch (Exception recordEx)
+                {
+                    LogArchiveProjectionFailed(logger, recordEx);
+                }
             }
 
             LogArchiveProjectionFailed(logger, ex);
@@ -86,34 +106,43 @@ internal sealed partial class EventArchiveOutboxProcessor(
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
-        var now = DateTimeOffset.UtcNow;
-        var message = await db.EventArchiveOutboxMessages
-            .Where(item => item.ProcessedAt == null
-                && item.AvailableAt <= now
-                && (item.LockedUntil == null || item.LockedUntil < now))
-            .OrderBy(item => item.CreatedAt)
-            .FirstOrDefaultAsync(ct);
+        var strategy = db.Database.CreateExecutionStrategy();
+        EventArchiveOutboxWorkItem? result = null;
 
-        if (message is null)
+        await strategy.ExecuteAsync(async () =>
         {
-            await transaction.RollbackAsync(ct);
-            return null;
-        }
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            var now = DateTimeOffset.UtcNow;
+            var message = await db.EventArchiveOutboxMessages
+                .Where(item => item.ProcessedAt == null
+                    && item.AvailableAt <= now
+                    && (item.LockedUntil == null || item.LockedUntil < now))
+                .OrderBy(item => item.CreatedAt)
+                .FirstOrDefaultAsync(ct);
 
-        message.LockedUntil = now.Add(LeaseDuration);
-        message.AttemptCount++;
-        await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
+            if (message is null)
+            {
+                await transaction.RollbackAsync(ct);
+                result = null;
+                return;
+            }
 
-        return new(
-            message.Id,
-            message.EventId,
-            message.FolderPath,
-            message.ReadmeMarkdown,
-            message.MetadataJson,
-            message.IdempotencyKey,
-            message.AttemptCount);
+            message.LockedUntil = now.Add(LeaseDuration);
+            message.AttemptCount++;
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            result = new(
+                message.Id,
+                message.EventId,
+                message.FolderPath,
+                message.ReadmeMarkdown,
+                message.MetadataJson,
+                message.IdempotencyKey,
+                message.AttemptCount);
+        });
+
+        return result;
     }
 
     private async Task RecordFailureAsync(EventArchiveOutboxWorkItem workItem, Exception exception, CancellationToken ct)
