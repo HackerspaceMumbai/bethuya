@@ -47,6 +47,7 @@ public static class InfrastructureServiceExtensions
         builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddHostedService<PendingImageUploadCleanupService>();
+        builder.Services.AddHostedService<EventArchiveOutboxProcessor>();
 
         return builder;
     }

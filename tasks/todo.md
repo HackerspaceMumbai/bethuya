@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-09-13] Implementing durable event archive synchronization
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace synchronous GitHub publication with a transactional outbox, deterministic public archive projection, and resilient background processing while preserving existing archive contracts.
+- **Acceptance:** Published event mutations commit without GitHub availability; an outbox message is persisted atomically; a hosted worker processes with durable leasing/backoff; generated projection is public-only and deterministic; targeted tests/build pass.
+
 ## [2026-08-08] Developer Testing Harness — Layer 5: Community Acceptance Test Harness
 - **Status:** done
 - **Completion Evidence:** 
