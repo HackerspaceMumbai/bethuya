@@ -1,3 +1,4 @@
+using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
@@ -244,7 +245,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
             
             // Fetch unprocessed messages (server-side only, simpler predicate).
             // SQLite LINQ translation is limited, so we'll filter all other conditions on the client.
-            // AsNoTracking for performance; we'll update this message explicitly if claimed.
+            // AsNoTracking for performance; we'll update messages explicitly if claimed.
             var candidates = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
                 .Where(m => m.ProcessedAt == null)
@@ -257,44 +258,54 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 .OrderBy(m => m.CreatedAt)
                 .ToList();
 
-            var message = candidates.FirstOrDefault();
-            if (message is null)
+            if (candidates.Count == 0)
             {
                 await transaction.RollbackAsync(ct);
                 result = null;
                 return;
             }
 
-            // Check if there's an older unprocessed message for the same event (race condition check).
+            // Fetch all unprocessed messages once to check for ordering constraints within the transaction.
             // This must be done within the same transaction at Serializable isolation to ensure we don't claim
             // while an older message for the same event is still pending.
-            // Use client-side evaluation to work around Vogen value-object LINQ translation limitations.
-            var messageEventIdValue = message.EventId.Value;
-            var messageCreatedAtValue = message.CreatedAt;
-            
             var allUnprocessedMessages = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
                 .Where(m => m.ProcessedAt == null)
                 .ToListAsync(ct);
-            
-            var olderExists = allUnprocessedMessages.Any(m => 
-                m.EventId.Value == messageEventIdValue && 
-                m.CreatedAt < messageCreatedAtValue);
 
-            if (olderExists)
+            // Try each candidate in order, skipping those that have an older unprocessed message for the same event.
+            // This prevents a single event's backoff from starving other events' work and improves throughput.
+            EventArchiveOutboxMessage? selectedMessage = null;
+            foreach (var candidate in candidates)
             {
+                var olderExists = allUnprocessedMessages.Any(m =>
+                    m.EventId.Value == candidate.EventId.Value &&
+                    m.CreatedAt < candidate.CreatedAt);
+
+                if (olderExists)
+                {
+                    continue; // Try next candidate; this event has older pending work
+                }
+
+                selectedMessage = candidate;
+                break;
+            }
+
+            if (selectedMessage is null)
+            {
+                // All candidates have older messages pending for their respective events.
                 await transaction.RollbackAsync(ct);
                 result = null;
                 return;
             }
 
             var claimToken = Guid.NewGuid().ToString("N");
-            var newAttemptCount = message.AttemptCount + 1;
+            var newAttemptCount = selectedMessage.AttemptCount + 1;
             var newLockedUntil = now.Add(LeaseDuration);
             
             // Use ExecuteUpdateAsync for atomic claim update (message was fetched as AsNoTracking)
             var updatedRows = await db.EventArchiveOutboxMessages
-                .Where(m => m.Id == message.Id)
+                .Where(m => m.Id == selectedMessage.Id)
                 .ExecuteUpdateAsync(
                     setters => setters
                         .SetProperty(m => m.ClaimToken, claimToken)
@@ -311,12 +322,12 @@ internal sealed partial class EventArchiveOutboxProcessor(
             }
 
             result = new(
-                message.Id,
-                message.EventId,
-                message.FolderPath,
-                message.ReadmeMarkdown,
-                message.MetadataJson,
-                message.IdempotencyKey,
+                selectedMessage.Id,
+                selectedMessage.EventId,
+                selectedMessage.FolderPath,
+                selectedMessage.ReadmeMarkdown,
+                selectedMessage.MetadataJson,
+                selectedMessage.IdempotencyKey,
                 newAttemptCount,
                 claimToken);
         });
