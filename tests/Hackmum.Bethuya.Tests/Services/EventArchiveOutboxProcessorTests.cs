@@ -3,6 +3,7 @@ using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Services;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -137,6 +138,103 @@ public sealed class EventArchiveOutboxProcessorTests
         await Assert.That(claimedId).IsNull();
     }
 
+    /// <summary>
+    /// Ensures the claim-lease heartbeat renews the lease while the claim token still matches, so a live worker's
+    /// lease never lapses out from under it while it is still publishing.
+    /// </summary>
+    [Test]
+    public async Task TryRenewClaimAsync_ClaimStillHeld_RenewsLeaseAndReturnsTrue()
+    {
+        // ExecuteUpdateAsync is not supported by the EF Core InMemory provider, so this test uses a
+        // SQLite in-memory database, which is relational and exercises the real translated SQL update.
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
+
+        var message = new EventArchiveOutboxMessage
+        {
+            EventId = EventId.From(Guid.NewGuid()),
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-07-01-event-def456",
+            ReadmeMarkdown = "readme",
+            MetadataJson = "{ }",
+            IdempotencyKey = "key",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            ClaimToken = "claim-token-1",
+            LockedUntil = DateTimeOffset.UtcNow.AddSeconds(5)
+        };
+
+        db.EventArchiveOutboxMessages.Add(message);
+        await db.SaveChangesAsync();
+
+        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(db), NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var workItem = CreateWorkItem(message);
+
+        var renewMethod = typeof(EventArchiveOutboxProcessor).GetMethod("TryRenewClaimAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var renewTask = (Task<bool>)renewMethod.Invoke(processor, [workItem, CancellationToken.None])!;
+        var renewed = await renewTask;
+
+        await Assert.That(renewed).IsTrue();
+
+        var refreshed = await db.EventArchiveOutboxMessages.AsNoTracking().FirstAsync(item => item.Id == message.Id);
+        await Assert.That(refreshed.LockedUntil > DateTimeOffset.UtcNow.AddMinutes(1)).IsTrue();
+    }
+
+    /// <summary>
+    /// Ensures the claim-lease heartbeat reports the claim as lost once another worker has reclaimed the message
+    /// (its claim token no longer matches), so the in-flight publish for the superseded worker can be cancelled
+    /// before it can overwrite content a newer claimant has already published.
+    /// </summary>
+    [Test]
+    public async Task TryRenewClaimAsync_ClaimReclaimedByAnotherWorker_ReturnsFalse()
+    {
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
+
+        var message = new EventArchiveOutboxMessage
+        {
+            EventId = EventId.From(Guid.NewGuid()),
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-07-01-event-def456",
+            ReadmeMarkdown = "readme",
+            MetadataJson = "{ }",
+            IdempotencyKey = "key",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            ClaimToken = "claim-token-1",
+            LockedUntil = DateTimeOffset.UtcNow.AddSeconds(-1)
+        };
+
+        db.EventArchiveOutboxMessages.Add(message);
+        await db.SaveChangesAsync();
+
+        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(db), NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var workItem = CreateWorkItem(message);
+
+        // Simulate another worker reclaiming the (lease-expired) message with a new claim token.
+        message.ClaimToken = "claim-token-2";
+        await db.SaveChangesAsync();
+
+        var renewMethod = typeof(EventArchiveOutboxProcessor).GetMethod("TryRenewClaimAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var renewTask = (Task<bool>)renewMethod.Invoke(processor, [workItem, CancellationToken.None])!;
+        var renewed = await renewTask;
+
+        await Assert.That(renewed).IsFalse();
+    }
+
+    private static object CreateWorkItem(EventArchiveOutboxMessage message)
+    {
+        var workItemType = typeof(EventArchiveOutboxProcessor).GetNestedType("EventArchiveOutboxWorkItem", BindingFlags.NonPublic)!;
+        return Activator.CreateInstance(
+            workItemType,
+            message.Id,
+            message.EventId,
+            message.FolderPath,
+            message.ReadmeMarkdown,
+            message.MetadataJson,
+            message.IdempotencyKey,
+            message.AttemptCount,
+            message.ClaimToken)!;
+    }
+
     private static BethuyaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<BethuyaDbContext>()
@@ -145,6 +243,24 @@ public sealed class EventArchiveOutboxProcessorTests
             .Options;
 
         return new BethuyaDbContext(options);
+    }
+
+    private static SqliteConnection CreateOpenSqliteConnection()
+    {
+        var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+        return connection;
+    }
+
+    private static BethuyaDbContext CreateSqliteDbContext(SqliteConnection connection)
+    {
+        var options = new DbContextOptionsBuilder<BethuyaDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var db = new BethuyaDbContext(options);
+        db.Database.EnsureCreated();
+        return db;
     }
 
     private sealed class TestScopeFactory(BethuyaDbContext db) : IServiceScopeFactory

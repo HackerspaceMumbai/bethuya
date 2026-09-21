@@ -17,6 +17,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
     private const int MaxAttemptsBeforeFailureIsTerminal = 8;
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(30);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -48,6 +49,9 @@ internal sealed partial class EventArchiveOutboxProcessor(
     private async Task ProcessOneAsync(CancellationToken ct)
     {
         EventArchiveOutboxWorkItem? workItem = null;
+        using var publishCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        Task? heartbeatTask = null;
+        var claimLost = false;
         try
         {
             workItem = await ClaimNextAsync(ct);
@@ -55,6 +59,12 @@ internal sealed partial class EventArchiveOutboxProcessor(
             {
                 return;
             }
+
+            // Renew the claim lease periodically while the external publish is in flight.
+            // If renewal ever finds the claim has been taken over (lease expired and another
+            // worker reclaimed the message), cancel the publish so a slow, stale writer can
+            // never overwrite content a newer claimant has already published.
+            heartbeatTask = RunClaimHeartbeatAsync(workItem, publishCts, () => claimLost = true);
 
             using var scope = scopeFactory.CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<IGitHubEventRepository>();
@@ -66,7 +76,15 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     workItem.ReadmeMarkdown,
                     workItem.MetadataJson,
                     workItem.IdempotencyKey),
-                ct);
+                publishCts.Token);
+
+            await StopHeartbeatAsync(publishCts, heartbeatTask);
+            heartbeatTask = null;
+
+            if (claimLost)
+            {
+                return;
+            }
 
             var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
             var message = await db.EventArchiveOutboxMessages
@@ -93,9 +111,14 @@ internal sealed partial class EventArchiveOutboxProcessor(
         {
             throw;
         }
+        catch (OperationCanceledException) when (claimLost)
+        {
+            // The publish was deliberately cancelled because another worker reclaimed the
+            // message; that worker owns the outcome, so there is nothing further to record.
+        }
         catch (Exception ex)
         {
-            if (workItem is not null)
+            if (workItem is not null && !claimLost)
             {
                 try
                 {
@@ -108,6 +131,84 @@ internal sealed partial class EventArchiveOutboxProcessor(
             }
 
             LogArchiveProjectionFailed(logger, ex);
+        }
+        finally
+        {
+            await StopHeartbeatAsync(publishCts, heartbeatTask);
+        }
+    }
+
+    private async Task RunClaimHeartbeatAsync(
+        EventArchiveOutboxWorkItem workItem,
+        CancellationTokenSource publishCts,
+        Action onClaimLost)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(HeartbeatInterval);
+            while (await timer.WaitForNextTickAsync(publishCts.Token))
+            {
+                var renewed = await TryRenewClaimAsync(workItem, publishCts.Token);
+                if (!renewed)
+                {
+                    onClaimLost();
+                    await publishCts.CancelAsync();
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal shutdown of the heartbeat once the publish completes or is cancelled.
+        }
+        catch (Exception ex)
+        {
+            // A transient failure renewing the lease should not crash the publish in flight or
+            // the outer processing loop; worst case the lease can expire and be reclaimed,
+            // which is the pre-heartbeat behavior this method exists to reduce, not eliminate.
+            LogClaimHeartbeatFailed(logger, ex);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to extend the lease for the message identified by <paramref name="workItem"/>, but only while
+    /// its claim token still matches and it has not been processed by another worker. Returns <see langword="false"/>
+    /// when the claim has been lost (the lease was not renewed because another worker already reclaimed or completed it).
+    /// </summary>
+    private async Task<bool> TryRenewClaimAsync(EventArchiveOutboxWorkItem workItem, CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
+        var renewedRows = await db.EventArchiveOutboxMessages
+            .Where(item => item.Id == workItem.Id
+                && item.ClaimToken == workItem.ClaimToken
+                && item.ProcessedAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(item => item.LockedUntil, DateTimeOffset.UtcNow.Add(LeaseDuration)),
+                ct);
+
+        return renewedRows > 0;
+    }
+
+    private static async Task StopHeartbeatAsync(CancellationTokenSource publishCts, Task? heartbeatTask)
+    {
+        if (heartbeatTask is null)
+        {
+            return;
+        }
+
+        if (!publishCts.IsCancellationRequested)
+        {
+            await publishCts.CancelAsync();
+        }
+
+        try
+        {
+            await heartbeatTask;
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected once cancellation is requested to stop the heartbeat loop.
         }
     }
 
@@ -214,4 +315,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "Event archive outbox processor stopped due to cancellation.")]
     private static partial void LogOutboxProcessorStopped(ILogger logger);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Warning, Message = "Failed to renew the outbox claim lease; the publish will continue without further lease renewal.")]
+    private static partial void LogClaimHeartbeatFailed(ILogger logger, Exception exception);
 }
