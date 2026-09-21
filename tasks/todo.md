@@ -807,3 +807,9 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Copilot
 - **Description:** Add the organizer-facing `/imports` Blazor wizard for event/source selection, CSV/XLSX upload, Dry Run preview, and commit, backed by typed Refit contracts.
 - **Acceptance:** Full solution builds cleanly; import wizard bUnit render coverage passes; existing test suite remains green.
+
+## [2026-09-21] Fix import authorization findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Enforce batch/event ownership or admin access on import operations and owner/system/admin access on user template reads and clones.
+- **Acceptance:** ✅ Unauthorized users cannot read, replay, preview, list, clone, or commit other users' import data/templates. ✅ Template ownership regression tests pass. ✅ `dotnet build Bethuya.slnx --no-restore -v:minimal` passes with 0 warnings/errors. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-build -v q` passes (371/371).

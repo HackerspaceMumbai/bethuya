@@ -45,6 +45,8 @@ public static class ImportEndpoints
         ImportKind importKind,
         IFormFile file,
         ClaimsPrincipal user,
+        BethuyaDbContext db,
+        ImportTemplateService templateService,
         ImportDryRunService dryRunService,
         CancellationToken ct)
     {
@@ -65,6 +67,28 @@ public static class ImportEndpoints
         if (subject is null)
         {
             return Results.Unauthorized();
+        }
+
+        if (!await CanAccessEventAsync(eventId, user, db, ct))
+        {
+            return Results.NotFound();
+        }
+
+        try
+        {
+            await templateService.GetForUserAsync(
+                importTemplateId,
+                subject.UserId,
+                user.IsInRole(BethuyaRoleNames.Admin),
+                ct);
+        }
+        catch (InvalidOperationException)
+        {
+            return Results.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Results.NotFound();
         }
 
         using var buffer = new MemoryStream();
@@ -96,9 +120,16 @@ public static class ImportEndpoints
 
     private static async Task<IResult> RerunDryRunAsync(
         Guid importBatchId,
+        ClaimsPrincipal user,
+        BethuyaDbContext db,
         ImportDryRunService dryRunService,
         CancellationToken ct)
     {
+        if (!await CanAccessBatchAsync(importBatchId, user, db, ct))
+        {
+            return Results.NotFound();
+        }
+
         try
         {
             var batch = await dryRunService.RerunAsync(importBatchId, ct);
@@ -112,9 +143,15 @@ public static class ImportEndpoints
 
     private static async Task<IResult> GetBatchAsync(
         Guid importBatchId,
+        ClaimsPrincipal user,
         BethuyaDbContext db,
         CancellationToken ct)
     {
+        if (!await CanAccessBatchAsync(importBatchId, user, db, ct))
+        {
+            return Results.NotFound();
+        }
+
         var batch = await db.ImportBatches
             .Include(b => b.ImportArtifact)
             .AsNoTracking()
@@ -125,9 +162,16 @@ public static class ImportEndpoints
 
     private static async Task<IResult> GetPreviewAsync(
         Guid importBatchId,
+        ClaimsPrincipal user,
+        BethuyaDbContext db,
         ImportDryRunService dryRunService,
         CancellationToken ct)
     {
+        if (!await CanAccessBatchAsync(importBatchId, user, db, ct))
+        {
+            return Results.NotFound();
+        }
+
         try
         {
             var preview = await dryRunService.GetPreviewAsync(importBatchId, ct);
@@ -141,9 +185,16 @@ public static class ImportEndpoints
 
     private static async Task<IResult> CommitAsync(
         Guid importBatchId,
+        ClaimsPrincipal user,
+        BethuyaDbContext db,
         ImportCommitService commitService,
         CancellationToken ct)
     {
+        if (!await CanAccessBatchAsync(importBatchId, user, db, ct))
+        {
+            return Results.NotFound();
+        }
+
         try
         {
             var batch = await commitService.CommitAsync(importBatchId, ct);
@@ -157,9 +208,15 @@ public static class ImportEndpoints
 
     private static async Task<IResult> ListBatchesForEventAsync(
         Guid eventId,
+        ClaimsPrincipal user,
         BethuyaDbContext db,
         CancellationToken ct)
     {
+        if (!await CanAccessEventAsync(eventId, user, db, ct))
+        {
+            return Results.NotFound();
+        }
+
         var batches = await db.ImportBatches
             .Include(b => b.ImportArtifact)
             .AsNoTracking()
@@ -182,23 +239,42 @@ public static class ImportEndpoints
             return Results.Unauthorized();
         }
 
-        var templates = await templateService.ListAsync(subject.UserId, importKind, ct);
+        var templates = await templateService.ListAsync(
+            subject.UserId,
+            importKind,
+            user.IsInRole(BethuyaRoleNames.Admin),
+            ct);
         return Results.Ok(templates.Select(ImportTemplateResponse.FromModel).ToList());
     }
 
     private static async Task<IResult> GetTemplateAsync(
         Guid templateId,
+        ClaimsPrincipal user,
         ImportTemplateService templateService,
         CancellationToken ct)
     {
+        var subject = GetSubject(user);
+        if (subject is null)
+        {
+            return Results.Unauthorized();
+        }
+
         try
         {
-            var template = await templateService.GetAsync(templateId, ct);
+            var template = await templateService.GetForUserAsync(
+                templateId,
+                subject.UserId,
+                user.IsInRole(BethuyaRoleNames.Admin),
+                ct);
             return Results.Ok(ImportTemplateResponse.FromModel(template));
         }
         catch (InvalidOperationException ex)
         {
             return Results.NotFound(ex.Message);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Results.NotFound();
         }
     }
 
@@ -249,12 +325,21 @@ public static class ImportEndpoints
 
         try
         {
-            var clone = await templateService.CloneAsync(templateId, subject.UserId, request.NewName, ct);
+            var clone = await templateService.CloneAsync(
+                templateId,
+                subject.UserId,
+                user.IsInRole(BethuyaRoleNames.Admin),
+                request.NewName,
+                ct);
             return Results.Ok(ImportTemplateResponse.FromModel(clone));
         }
         catch (InvalidOperationException ex)
         {
             return Results.NotFound(ex.Message);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Results.NotFound();
         }
     }
 
@@ -296,4 +381,44 @@ public static class ImportEndpoints
     }
 
     private static CommunitySubjectContext? GetSubject(ClaimsPrincipal user) => user.GetSubject();
+
+    private static async Task<bool> CanAccessBatchAsync(
+        Guid importBatchId,
+        ClaimsPrincipal user,
+        BethuyaDbContext db,
+        CancellationToken ct)
+    {
+        var subject = GetSubject(user);
+        if (subject is null)
+        {
+            return false;
+        }
+
+        if (user.IsInRole(BethuyaRoleNames.Admin))
+        {
+            return await db.ImportBatches.AnyAsync(b => b.Id == importBatchId, ct);
+        }
+
+        return await db.ImportBatches
+            .Where(b => b.Id == importBatchId)
+            .Join(db.Events, batch => batch.EventId, evt => evt.Id, (batch, evt) =>
+                batch.CreatedByUserId == subject.UserId || evt.CreatedBy == subject.UserId)
+            .AnyAsync(ct);
+    }
+
+    private static async Task<bool> CanAccessEventAsync(
+        Guid eventId,
+        ClaimsPrincipal user,
+        BethuyaDbContext db,
+        CancellationToken ct)
+    {
+        var subject = GetSubject(user);
+        if (subject is null)
+        {
+            return false;
+        }
+
+        return user.IsInRole(BethuyaRoleNames.Admin) ||
+            await db.Events.AnyAsync(e => e.Id == eventId && e.CreatedBy == subject.UserId, ct);
+    }
 }

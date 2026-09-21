@@ -20,11 +20,14 @@ public sealed class ImportTemplateService(BethuyaDbContext db)
     public async Task<IReadOnlyList<ImportTemplate>> ListAsync(
         string requestingUserId,
         ImportKind? importKind = null,
+        bool requestingUserIsAdmin = false,
         CancellationToken ct = default)
     {
         var query = db.ImportTemplates
             .Include(t => t.ColumnMappings)
-            .Where(t => t.Scope == ImportTemplateScope.System || t.OwnerUserId == requestingUserId);
+            .Where(t => requestingUserIsAdmin ||
+                t.Scope == ImportTemplateScope.System ||
+                t.OwnerUserId == requestingUserId);
 
         if (importKind is not null)
         {
@@ -42,6 +45,23 @@ public sealed class ImportTemplateService(BethuyaDbContext db)
             .Include(t => t.ColumnMappings)
             .SingleOrDefaultAsync(t => t.Id == templateId, ct)
             ?? throw new InvalidOperationException($"Import template '{templateId}' was not found.");
+
+    public async Task<ImportTemplate> GetForUserAsync(
+        Guid templateId,
+        string requestingUserId,
+        bool requestingUserIsAdmin,
+        CancellationToken ct = default)
+    {
+        var template = await GetAsync(templateId, ct);
+        if (template.Scope == ImportTemplateScope.System ||
+            requestingUserIsAdmin ||
+            string.Equals(template.OwnerUserId, requestingUserId, StringComparison.Ordinal))
+        {
+            return template;
+        }
+
+        throw new UnauthorizedAccessException("Only the template's owner or an Admin can access it.");
+    }
 
     public async Task<ImportTemplate> CreateAsync(
         string name,
@@ -68,9 +88,14 @@ public sealed class ImportTemplateService(BethuyaDbContext db)
     }
 
     /// <summary>Clones any template (System or User) into a new, independently-editable User template owned by the caller.</summary>
-    public async Task<ImportTemplate> CloneAsync(Guid sourceTemplateId, string ownerUserId, string? newName = null, CancellationToken ct = default)
+    public async Task<ImportTemplate> CloneAsync(
+        Guid sourceTemplateId,
+        string ownerUserId,
+        bool requestingUserIsAdmin,
+        string? newName = null,
+        CancellationToken ct = default)
     {
-        var source = await GetAsync(sourceTemplateId, ct);
+        var source = await GetForUserAsync(sourceTemplateId, ownerUserId, requestingUserIsAdmin, ct);
 
         var clone = new ImportTemplate
         {

@@ -34,7 +34,7 @@ public sealed class ImportTemplateServiceTests
 
         var systemTemplate = await SeedSystemTemplateAsync(db);
 
-        var clone = await service.CloneAsync(systemTemplate.Id, "organizer-2");
+        var clone = await service.CloneAsync(systemTemplate.Id, "organizer-2", requestingUserIsAdmin: false);
 
         await Assert.That(clone.Id).IsNotEqualTo(systemTemplate.Id);
         await Assert.That(clone.Scope).IsEqualTo(ImportTemplateScope.User);
@@ -107,6 +107,36 @@ public sealed class ImportTemplateServiceTests
         await Assert.That(visible.Any(t => t.Scope == ImportTemplateScope.System)).IsTrue();
         await Assert.That(visible.Any(t => t.Name == "Mine")).IsTrue();
         await Assert.That(visible.Any(t => t.Name == "Someone Else's")).IsFalse();
+    }
+
+    [Test]
+    public async Task GetForUserAsync_NonOwner_Throws()
+    {
+        await using var db = CreateDbContext();
+        var service = new ImportTemplateService(db);
+        var template = await service.CreateAsync(
+            "Private", ImportSourceKind.Custom, ImportKind.Registration, "owner-1",
+            [new ImportColumnMappingInput("Email", ImportTargetField.Email)]);
+
+        var action = async () => await service.GetForUserAsync(
+            template.Id, "someone-else", requestingUserIsAdmin: false);
+
+        await Assert.That(action).Throws<UnauthorizedAccessException>();
+    }
+
+    [Test]
+    public async Task CloneAsync_NonOwner_Throws()
+    {
+        await using var db = CreateDbContext();
+        var service = new ImportTemplateService(db);
+        var template = await service.CreateAsync(
+            "Private", ImportSourceKind.Custom, ImportKind.Registration, "owner-1",
+            [new ImportColumnMappingInput("Email", ImportTargetField.Email)]);
+
+        var action = async () => await service.CloneAsync(
+            template.Id, "someone-else", requestingUserIsAdmin: false);
+
+        await Assert.That(action).Throws<UnauthorizedAccessException>();
     }
 
     private static async Task<Hackmum.Bethuya.Core.Models.ImportTemplate> SeedSystemTemplateAsync(BethuyaDbContext db)
