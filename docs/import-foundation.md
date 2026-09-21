@@ -1,11 +1,10 @@
 # Registration & Attendance Import Foundation
 
-**Status:** ✅ Backend implemented (Phase 1 MVP, [issue #59](https://github.com/HackerspaceMumbai/bethuya/issues/59))
+**Status:** ✅ Backend and organizer wizard implemented (Phase 1 MVP, [issue #59](https://github.com/HackerspaceMumbai/bethuya/issues/59))
 **Scope:** CSV/XLSX import of registrations and attendance from Luma, MLH/OrganizerHQ, and
 custom spreadsheets, via a **Dry Run → Commit** workflow.
 **Not in this phase:** API/webhook integrations, real-time sync, advanced identity matching,
-community scoring, curator recommendations, passport achievements, Community Graph analytics,
-and organizer-facing UI (backend/API only — see [Out of scope](#out-of-scope)).
+community scoring, curator recommendations, passport achievements, and Community Graph analytics.
 
 ---
 
@@ -262,10 +261,10 @@ always hashes to the same key regardless of which import batch (or how many repl
 
 Per the PRD, this phase does **not** include: API/webhook integrations with Luma/MLH/Meetup,
 real-time synchronization, advanced (fuzzy/multi-field) identity matching, community scoring,
-curator recommendations, passport achievements, or Community Graph analytics. It also does not
-include an organizer-facing Blazor UI — the backend/API described here is complete and
-independently usable via HTTP (e.g. from Scalar, curl, or a future UI), but no upload/dry-run/
-commit wizard page has been built yet.
+curator recommendations, passport achievements, or Community Graph analytics. The organizer
+workflow is available through the `/imports` Blazor page; it intentionally uses the same API
+endpoints documented below, so HTTP clients and future mobile clients can continue to use the
+same contract.
 
 ---
 

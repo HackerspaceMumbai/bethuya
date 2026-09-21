@@ -209,6 +209,21 @@ ConfigureBackendAuth(builder.Services
     .ConfigureHttpClient(c => c.BaseAddress = backendBaseAddress))
     .AddStandardResilienceHandler();
 
+ConfigureBackendAuth(builder.Services
+    .AddRefitClient<IImportApi>(new RefitSettings
+    {
+        ContentSerializer = new SystemTextJsonContentSerializer(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+    })
+    .ConfigureHttpClient(c => c.BaseAddress = backendBaseAddress))
+    .AddStandardResilienceHandler(options =>
+    {
+        options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(2);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(3);
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(5);
+        options.Retry.DisableForUnsafeHttpMethods();
+    });
+
 // Refit typed client for Backend Curation API (Aspire service discovery)
 ConfigureBackendAuth(builder.Services
     .AddRefitClient<ICurationApi>(new RefitSettings

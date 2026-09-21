@@ -48,6 +48,16 @@
         <AuthorizeView Roles="@OrganizerToolsRoles" Context="privilegedContext">
             <div class="nav-section">
                 <div class="nav-section-label">Organizer Tools</div>
+                <AuthorizeView Roles="@AgentWorkflowRoles">
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="imports" Match="NavLinkMatch.Prefix" data-test="nav-imports-link">
+                            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" />
+                            </svg>
+                            Import data
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
                 @if (_currentEventId is Guid currentEventId)
                 {
                     <AuthorizeView Roles="@AgentWorkflowRoles">

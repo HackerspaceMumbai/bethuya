@@ -689,3 +689,6 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 - **What happened:** CurationSampleSeeder.SeedAsync uses Math.Clamp(reviewableCount, SandboxCapacity + 1, MaxReviewableRegistrants) where SandboxCapacity = 25. Passing ?reviewableCount=0 via query string results in 26 registrants being seeded (clamped to minimum). Minimal safe value for seeding just enough to get one registrant for a decision test: pass ?reviewableCount=26 explicitly.
 - **Prevention:** When writing seeded integration tests for the curation endpoint, use ?reviewableCount=26 as the minimum. The seeder always creates 8 pre-selected + N reviewable + historical registrants; the selected ones come first in the dashboard Registrants list.
+
+## 2026-09-21 — Import wizard scope correction
+The original backend implementation deferred the organizer UI, but the PRD success criterion requires a non-technical organizer workflow. The `/imports` wizard was added as a follow-up, and the docs were corrected to describe the UI as implemented rather than out of scope.

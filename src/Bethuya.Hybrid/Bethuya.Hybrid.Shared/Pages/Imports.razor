@@ -1,0 +1,213 @@
+@page "/imports"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireOrganizer)]
+@using BlazorBlueprint.Components
+@inject IImportApi ImportApi
+@inject IEventApi EventApi
+
+<PageTitle>Import attendance — Bethuya</PageTitle>
+
+<div class="container mx-auto p-4" data-test="import-page">
+    <h1 class="text-2xl font-bold mb-2">Import registrations or attendance</h1>
+    <p class="text-muted-foreground mb-6">Upload a Luma, MLH, or spreadsheet export. Bethuya validates it first; nothing is changed until you commit the preview.</p>
+
+    @if (_error is not null)
+    {
+        <div data-test="import-error"><BbAlert Variant="AlertVariant.Danger">@_error</BbAlert></div>
+    }
+    @if (_message is not null)
+    {
+        <div data-test="import-success"><BbAlert Variant="AlertVariant.Success">@_message</BbAlert></div>
+    }
+
+    <BbCard Class="p-4 mb-6">
+        <BbFormSection Title="1. Choose an export">
+            <BbFormFieldSelect TValue="string" @bind-Value="_eventIdText" Label="Event" Placeholder="Choose an event">
+                @foreach (var item in _events)
+                {
+                    <BbSelectItem Value="@item.Id.ToString()" Text="@item.Title" />
+                }
+            </BbFormFieldSelect>
+            <BbFormFieldSelect TValue="string" @bind-Value="_importKind" @bind-Value:after="LoadTemplatesAsync" Label="Data type">
+                <BbSelectItem Value="@("Registration")" Text="Registrations" />
+                <BbSelectItem Value="@("Attendance")" Text="Attendance" />
+            </BbFormFieldSelect>
+            <BbFormFieldSelect TValue="string" @bind-Value="_templateIdText" Label="Source template" Placeholder="Choose a template">
+                @foreach (var template in Templates)
+                {
+                    <BbSelectItem Value="@template.Id.ToString()" Text="@template.Name" />
+                }
+            </BbFormFieldSelect>
+            <div class="form-group" data-test="import-file-field">
+                <BbLabel>CSV or XLSX file</BbLabel>
+                <BbFileUpload FilesChanged="HandleFileSelected"
+                              Accept=".csv,.xlsx"
+                              MaxFileSize="@(10 * 1024 * 1024)"
+                              MaxFileCount="1"
+                              OnValidationError="@(error => _fileError = error.Message)" />
+                @if (_selectedFile is not null)
+                {
+                    <p class="text-sm mt-2">Selected: @_selectedFile.Name</p>
+                }
+                @if (_fileError is not null)
+                {
+                    <p class="text-sm text-destructive mt-1">@_fileError</p>
+                }
+            </div>
+            <div data-test="start-dry-run">
+                <BbButton OnClick="StartDryRunAsync" Disabled="@(_busy || _selectedFile is null)">Run validation</BbButton>
+            </div>
+        </BbFormSection>
+    </BbCard>
+
+    @if (_batch is not null)
+    {
+        <BbCard Class="p-4 mb-6" data-test="import-preview">
+            <BbFormSection Title="2. Review preview">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                    <span>Total: <strong>@_batch.TotalRows</strong></span>
+                    <span>Valid: <strong>@_batch.ValidRows</strong></span>
+                    <span>Errors: <strong>@_batch.ErrorRows</strong></span>
+                    <span>Creates: <strong>@_batch.RowsToCreate</strong></span>
+                    <span>Updates: <strong>@_batch.RowsToUpdate</strong></span>
+                </div>
+                @if (_preview is not null)
+                {
+                    <div class="overflow-auto max-h-96">
+                        <table class="w-full text-sm">
+                            <thead><tr><th class="text-left">Row</th><th class="text-left">Email</th><th class="text-left">Result</th><th class="text-left">Details</th></tr></thead>
+                            <tbody>
+                            @foreach (var row in _preview.Rows)
+                            {
+                                <tr data-test="import-preview-row">
+                                    <td>@(row.RowIndex + 1)</td>
+                                    <td>@row.Email</td>
+                                    <td>@row.Disposition</td>
+                                    <td>@(_errorSummaries.TryGetValue(row.RowIndex, out var summary) ? summary : string.Empty)</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                @if (_batch.CanCommit)
+                {
+                    <div data-test="commit-import">
+                        <BbButton Variant="ButtonVariant.Default" OnClick="CommitAsync" Disabled="@_busy">Commit import</BbButton>
+                    </div>
+                }
+                else
+                {
+                    <BbAlert Variant="AlertVariant.Warning">Fix the validation errors in the source file and upload it again before committing.</BbAlert>
+                }
+            </BbFormSection>
+        </BbCard>
+    }
+
+    @if (_busy)
+    {
+        <BbAlert Variant="AlertVariant.Info">Working…</BbAlert>
+    }
+</div>
+
+@code {
+    private readonly List<EventDto> _events = [];
+    private List<ImportTemplateDto> Templates { get; set; } = [];
+    private string? _eventIdText;
+    private string _importKind = "Registration";
+    private string? _templateIdText;
+    private IBrowserFile? _selectedFile;
+    private ImportBatchDto? _batch;
+    private ImportPreviewReportDto? _preview;
+    private string? _error;
+    private string? _message;
+    private string? _fileError;
+    private bool _busy;
+    private readonly Dictionary<int, string> _errorSummaries = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _events.AddRange(await EventApi.GetAllAsync());
+            await LoadTemplatesAsync();
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "Unable to load events or import templates. Please try again.";
+        }
+    }
+
+    private async Task LoadTemplatesAsync()
+    {
+        Templates = await ImportApi.ListTemplatesAsync(_importKind);
+        if (Templates.Count > 0 && _templateIdText is null)
+        {
+            _templateIdText = Templates[0].Id.ToString();
+        }
+    }
+
+    private async Task HandleKindChanged(ChangeEventArgs args)
+    {
+        _importKind = args.Value?.ToString() ?? "Registration";
+        await LoadTemplatesAsync();
+    }
+
+    private void HandleFileSelected(IReadOnlyList<FileUploadItem> files)
+    {
+        _fileError = null;
+        _selectedFile = files.Count > 0 ? files[0].File : null;
+    }
+
+    private async Task StartDryRunAsync()
+    {
+        _error = null;
+        _message = null;
+        if (!Guid.TryParse(_eventIdText, out var eventId) || !Guid.TryParse(_templateIdText, out var templateId) || _selectedFile is null)
+        {
+            _error = "Choose an event, import template, and file first.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await using var stream = _selectedFile.OpenReadStream(10 * 1024 * 1024);
+            _batch = await ImportApi.UploadAndRunDryRunAsync(eventId, templateId, _importKind, new Refit.StreamPart(stream, _selectedFile.Name, _selectedFile.ContentType));
+            _preview = await ImportApi.GetPreviewAsync(_batch.Id);
+            _errorSummaries.Clear();
+            foreach (var row in _preview.Rows)
+            {
+                _errorSummaries[row.RowIndex] = string.Join("; ", row.ValidationErrors);
+            }
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "The file could not be validated. Check the format and try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CommitAsync()
+    {
+        if (_batch is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            _batch = await ImportApi.CommitAsync(_batch.Id);
+            _message = "Import committed successfully. Member history and event reporting are now up to date.";
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "The import could not be committed. Refresh the preview and try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

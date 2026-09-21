@@ -802,3 +802,8 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Copilot CLI
 - **Description:** Place Core chips on the first row and Diversity + Cohort Health chips on the second row, keeping full chip names visible and renaming Underrep to Access Equity.
 - **Acceptance:** Core renders as row 1, Diversity and Cohort Health render as row 2, chip labels are not ellipsized (except long term replaced by Access Equity), and tests/live UI checks pass.
+## [2026-09-21] Organizer Import Wizard UI
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add the organizer-facing `/imports` Blazor wizard for event/source selection, CSV/XLSX upload, Dry Run preview, and commit, backed by typed Refit contracts.
+- **Acceptance:** Full solution builds cleanly; import wizard bUnit render coverage passes; existing test suite remains green.
