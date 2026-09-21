@@ -258,11 +258,11 @@ public sealed partial class EventLifecycleOrchestrator(
         return string.IsNullOrEmpty(slug) ? "event" : slug[..Math.Min(slug.Length, 80)];
     }
 
-    private static string CreateIdempotencyKey(Guid eventId, EventPublicationArtifact artifact)
+    private static string CreateIdempotencyKey(Hackmum.Bethuya.Core.ValueObjects.EventId eventId, EventPublicationArtifact artifact)
     {
         var raw = $"{artifact.FolderPath}\n{artifact.ReadmeMarkdown}\n{artifact.MetadataJson}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
-        return $"{eventId:N}-{Convert.ToHexString(hash)[..16]}";
+        return $"{eventId.Value:N}-{Convert.ToHexString(hash)[..16]}";
     }
 
     private static EventArchiveOutboxMessage CreateOutboxMessage(Event evt, EventPublicationArtifact artifact)
@@ -273,7 +273,7 @@ public sealed partial class EventLifecycleOrchestrator(
             FolderPath = artifact.FolderPath,
             ReadmeMarkdown = artifact.ReadmeMarkdown,
             MetadataJson = artifact.MetadataJson,
-            IdempotencyKey = CreateIdempotencyKey(evt.Id, artifact)
+            IdempotencyKey = CreateIdempotencyKey(Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id), artifact)
         };
 
     private async Task QueueArchiveProjectionAsync(Event evt, CancellationToken ct)
