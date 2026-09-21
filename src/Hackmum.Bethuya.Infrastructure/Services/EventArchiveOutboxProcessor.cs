@@ -265,22 +265,25 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 return;
             }
 
-            // Fetch all unprocessed messages once to check for ordering constraints within the transaction.
+            // Fetch only ordering fields once to check for ordering constraints within the transaction.
             // This must be done within the same transaction at Serializable isolation to ensure we don't claim
             // while an older message for the same event is still pending.
-            var allUnprocessedMessages = await db.EventArchiveOutboxMessages
+            var oldestPendingByEvent = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
                 .Where(m => m.ProcessedAt == null)
+                .Select(m => new { m.EventId, m.CreatedAt })
                 .ToListAsync(ct);
+
+            var oldestCreatedAtByEvent = oldestPendingByEvent
+                .GroupBy(m => m.EventId.Value)
+                .ToDictionary(group => group.Key, group => group.Min(m => m.CreatedAt));
 
             // Try each candidate in order, skipping those that have an older unprocessed message for the same event.
             // This prevents a single event's backoff from starving other events' work and improves throughput.
             EventArchiveOutboxMessage? selectedMessage = null;
             foreach (var candidate in candidates)
             {
-                var olderExists = allUnprocessedMessages.Any(m =>
-                    m.EventId.Value == candidate.EventId.Value &&
-                    m.CreatedAt < candidate.CreatedAt);
+                var olderExists = oldestCreatedAtByEvent[candidate.EventId.Value] < candidate.CreatedAt;
 
                 if (olderExists)
                 {
