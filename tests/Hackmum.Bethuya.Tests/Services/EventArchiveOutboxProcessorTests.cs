@@ -1,11 +1,13 @@
 using System.Reflection;
 using Hackmum.Bethuya.Core.Models;
+using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hackmum.Bethuya.Tests.Services;
@@ -58,7 +60,7 @@ public sealed class EventArchiveOutboxProcessorTests
         db.EventArchiveOutboxMessages.AddRange(older, newer);
         await db.SaveChangesAsync();
 
-        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(db), NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(connection), NullLogger<EventArchiveOutboxProcessor>.Instance);
         var failureMethod = typeof(EventArchiveOutboxProcessor).GetMethod("RecordFailureAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
         var workItemType = typeof(EventArchiveOutboxProcessor).GetNestedType("EventArchiveOutboxWorkItem", BindingFlags.NonPublic)!;
         var workItem = Activator.CreateInstance(
@@ -122,7 +124,7 @@ public sealed class EventArchiveOutboxProcessorTests
         db.EventArchiveOutboxMessages.Add(message);
         await db.SaveChangesAsync();
 
-        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(db), NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(connection), NullLogger<EventArchiveOutboxProcessor>.Instance);
         var failureMethod = typeof(EventArchiveOutboxProcessor).GetMethod("RecordFailureAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
         var workItemType = typeof(EventArchiveOutboxProcessor).GetNestedType("EventArchiveOutboxWorkItem", BindingFlags.NonPublic)!;
         var workItem = Activator.CreateInstance(
@@ -187,7 +189,7 @@ public sealed class EventArchiveOutboxProcessorTests
         db.EventArchiveOutboxMessages.Add(message);
         await db.SaveChangesAsync();
 
-        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(db), NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(connection), NullLogger<EventArchiveOutboxProcessor>.Instance);
         var workItem = CreateWorkItem(message);
 
         var renewMethod = typeof(EventArchiveOutboxProcessor).GetMethod("TryRenewClaimAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -227,7 +229,7 @@ public sealed class EventArchiveOutboxProcessorTests
         db.EventArchiveOutboxMessages.Add(message);
         await db.SaveChangesAsync();
 
-        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(db), NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(connection), NullLogger<EventArchiveOutboxProcessor>.Instance);
         var workItem = CreateWorkItem(message);
 
         // Simulate another worker reclaiming the (lease-expired) message with a new claim token.
@@ -239,6 +241,95 @@ public sealed class EventArchiveOutboxProcessorTests
         var renewed = await renewTask;
 
         await Assert.That(renewed).IsFalse();
+    }
+
+    /// <summary>
+    /// Verifies the complete hosted service flow: the processor starts, claims a message,
+    /// publishes to GitHub, and persists completion without crashing or deadlocking.
+    /// </summary>
+    [Test]
+    public async Task HostedService_ExecuteAsync_ProcessesAndCompletesMessage()
+    {
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
+
+        // Seed an outbox message ready to claim.
+        var eventGuid = Guid.NewGuid();
+        var eventId = EventId.From(eventGuid);
+        var message = new EventArchiveOutboxMessage
+        {
+            EventId = eventId,
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-07-01-event-def456",
+            ReadmeMarkdown = "# Test Event",
+            MetadataJson = "{ \"version\": 1 }",
+            IdempotencyKey = Guid.NewGuid().ToString(),
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10),
+            ClaimToken = "initial-token"  // Will be replaced by processor when claimed
+        };
+
+        db.EventArchiveOutboxMessages.Add(message);
+        await db.SaveChangesAsync();
+
+        // Seed the Event with folder URL placeholder (GitHubEventRepository updates it after publish).
+        var @event = new Event
+        {
+            Id = eventGuid,
+            Title = "Test Event 2026",
+            CreatedBy = "test-user"
+        };
+        db.Events.Add(@event);
+        await db.SaveChangesAsync();
+
+        var publishResult = new EventPublicationResult(
+            FolderUrl: "https://github.com/org/repo/tree/main/events/2026/2026-07-01-event-def456",
+            MetadataUrl: "https://github.com/org/repo/blob/main/events/2026/2026-07-01-event-def456/metadata.json");
+
+        var mockRepository = new MockGitHubEventRepository(publishResult);
+        var scopeFactory = new TestScopeFactory(connection, mockRepository);
+        var processor = new EventArchiveOutboxProcessor(scopeFactory, NullLogger<EventArchiveOutboxProcessor>.Instance);
+
+        // Execute the processor for a short time, allowing it to claim and process the message.
+        // The processor polls every 5 seconds, so we need to wait for at least one tick.
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await processor.StartAsync(cts.Token);
+
+        // Give the processor time to run at least one polling cycle (5 seconds poll + buffer)
+        try
+        {
+            await Task.Delay(7000, cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Timeout is expected; we're stopping anyway
+        }
+
+        // Stop the processor gracefully
+        await processor.StopAsync(CancellationToken.None);
+
+        // Verify the message was published and persisted.
+        await Assert.That(mockRepository.PublishedRequests.Count).IsGreaterThanOrEqualTo(1);
+        
+        var publishedRequest = mockRepository.PublishedRequests[0];
+        var publishedEventIdGuid = publishedRequest.EventId.Value;
+        System.Console.WriteLine($"Published EventId from mock: {publishedEventIdGuid}, Expected: {eventGuid}, Match: {publishedEventIdGuid == eventGuid}");
+        await Assert.That(publishedRequest.EventId).IsEqualTo(eventId);
+
+        // Reload the message using a fresh DbContext to verify ProcessedAt was set.
+        await using var verifyDb = CreateSqliteDbContext(connection);
+        var completedMessage = await verifyDb.EventArchiveOutboxMessages.FirstAsync(m => m.Id == message.Id);
+        
+        // Debug: log the state of the reloaded message
+        var diagnosticInfo = $"Message after processor: Id={completedMessage.Id}, ProcessedAt={completedMessage.ProcessedAt}, " +
+            $"ClaimToken={completedMessage.ClaimToken}, AttemptCount={completedMessage.AttemptCount}, " +
+            $"LockedUntil={completedMessage.LockedUntil}, LastError={completedMessage.LastError}";
+        System.Console.WriteLine(diagnosticInfo);
+        
+        await Assert.That(completedMessage.ProcessedAt).IsNotNull();
+
+        var completedEvent = await verifyDb.Events.FirstAsync(e => e.Id == eventGuid);
+        await Assert.That(completedEvent.GitHubFolderUrl).IsEqualTo(publishResult.FolderUrl);
     }
 
     private static object CreateWorkItem(EventArchiveOutboxMessage message)
@@ -284,24 +375,40 @@ public sealed class EventArchiveOutboxProcessorTests
         return db;
     }
 
-    private sealed class TestScopeFactory(BethuyaDbContext db) : IServiceScopeFactory
+    private sealed class TestScopeFactory : IServiceScopeFactory
     {
+        private readonly SqliteConnection _connection;
+        private readonly IGitHubEventRepository? _repository;
+
+        public TestScopeFactory(SqliteConnection connection, IGitHubEventRepository? repository = null)
+        {
+            _connection = connection;
+            _repository = repository;
+        }
+
         public IServiceScope CreateScope()
         {
-            return new TestScope(db);
+            // Create a fresh DbContext for each scope (mimics real DI behavior)
+            var options = new DbContextOptionsBuilder<BethuyaDbContext>()
+                .UseSqlite(_connection)
+                .Options;
+            var db = new BethuyaDbContext(options);
+            return new TestScope(db, _repository);
         }
     }
 
-    private sealed class TestScope(BethuyaDbContext db) : IServiceScope
+    private sealed class TestScope(BethuyaDbContext db, IGitHubEventRepository? repository = null) : IServiceScope
     {
-        public IServiceProvider ServiceProvider { get; } = new TestServiceProvider(db);
+        public IServiceProvider ServiceProvider { get; } = new TestServiceProvider(db, repository);
 
         public void Dispose()
         {
+            // Dispose the DbContext when scope is disposed (mimics real DI behavior)
+            db?.Dispose();
         }
     }
 
-    private sealed class TestServiceProvider(BethuyaDbContext db) : IServiceProvider
+    private sealed class TestServiceProvider(BethuyaDbContext db, IGitHubEventRepository? repository = null) : IServiceProvider
     {
         public object? GetService(Type serviceType)
         {
@@ -310,7 +417,23 @@ public sealed class EventArchiveOutboxProcessorTests
                 return db;
             }
 
+            if (serviceType == typeof(IGitHubEventRepository) && repository is not null)
+            {
+                return repository;
+            }
+
             return null;
+        }
+    }
+
+    private sealed class MockGitHubEventRepository(EventPublicationResult result) : IGitHubEventRepository
+    {
+        public List<EventPublicationRequest> PublishedRequests { get; } = [];
+
+        public Task<EventPublicationResult> PublishEventAsync(EventPublicationRequest request, CancellationToken ct = default)
+        {
+            PublishedRequests.Add(request);
+            return Task.FromResult(result);
         }
     }
 }

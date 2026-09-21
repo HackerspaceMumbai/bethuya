@@ -289,11 +289,26 @@ internal sealed partial class EventArchiveOutboxProcessor(
             }
 
             var claimToken = Guid.NewGuid().ToString("N");
-            message.LockedUntil = now.Add(LeaseDuration);
-            message.ClaimToken = claimToken;
-            message.AttemptCount++;
-            await db.SaveChangesAsync(ct);
+            var newAttemptCount = message.AttemptCount + 1;
+            var newLockedUntil = now.Add(LeaseDuration);
+            
+            // Use ExecuteUpdateAsync for atomic claim update (message was fetched as AsNoTracking)
+            var updatedRows = await db.EventArchiveOutboxMessages
+                .Where(m => m.Id == message.Id)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(m => m.ClaimToken, claimToken)
+                        .SetProperty(m => m.LockedUntil, newLockedUntil)
+                        .SetProperty(m => m.AttemptCount, newAttemptCount),
+                    ct);
+
             await transaction.CommitAsync(ct);
+
+            if (updatedRows == 0)
+            {
+                result = null;
+                return;
+            }
 
             result = new(
                 message.Id,
@@ -302,7 +317,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 message.ReadmeMarkdown,
                 message.MetadataJson,
                 message.IdempotencyKey,
-                message.AttemptCount,
+                newAttemptCount,
                 claimToken);
         });
 
