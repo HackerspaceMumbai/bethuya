@@ -10,6 +10,7 @@ using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Extensions;
 using Hackmum.Bethuya.Infrastructure.Repositories;
+using Hackmum.Bethuya.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -59,6 +60,13 @@ builder.Services.AddScoped<ISessionIngestionService, SessionIngestionService>();
 builder.Services.AddScoped<IEventLifecycleOrchestrator, EventLifecycleOrchestrator>();
 builder.Services.AddScoped<IMentorProfileRepository, MentorProfileRepository>();
 builder.Services.AddScoped<MentorshipService>();
+builder.Services.AddSingleton<IImportFileParser, CsvImportFileParser>();
+builder.Services.AddSingleton<IImportFileParser, XlsxImportFileParser>();
+builder.Services.AddSingleton<ImportFileParserResolver>();
+builder.Services.AddSingleton<IImportArtifactStore>(new LocalDiskImportArtifactStore());
+builder.Services.AddScoped<ImportDryRunService>();
+builder.Services.AddScoped<ImportCommitService>();
+builder.Services.AddScoped<ImportTemplateService>();
 
 var app = builder.Build();
 
@@ -96,6 +104,7 @@ app.MapProfileEndpoints();
 app.MapCommunityPassportEndpoints();
 app.MapPlanningCycleEndpoints();
 app.MapMentorshipEndpoints();
+app.MapImportEndpoints();
 
 app.MapDefaultEndpoints();
 

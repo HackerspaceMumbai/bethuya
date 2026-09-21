@@ -22,6 +22,10 @@ internal sealed class ParticipationLedgerEntryConfiguration : IEntityTypeConfigu
             .HasConversion<string>()
             .HasMaxLength(50);
 
+        builder.Property(entry => entry.IngestionMethod)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
         builder.Property(entry => entry.ExternalMemberKey)
             .IsRequired()
             .HasMaxLength(200);
