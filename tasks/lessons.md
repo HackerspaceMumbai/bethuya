@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-09-21] Validate review state against current code
+- **What happened:** A prior CodeRabbit review retained a `CHANGES_REQUESTED` verdict even after its inline threads were resolved, and several low-risk maintainability findings were still valid in the current branch.
+- **Root cause:** Review verdicts and inline-thread state are separate GitHub records, while the original implementation still used raw outbox identifiers and undocumented public members.
+- **Fix:** Added Vogen identifiers and EF conversions, documented the outbox model and DbSet, and converted the archive migration to a file-scoped namespace; verified the solution build and all 334 unit tests.
+- **Prevention:** Re-check both live review threads and review records, and validate the current checkout before treating a stale review verdict as code-complete.
+
 ## [2026-09-13] Outbox leases must be claimed and released durably
 - **What happened:** The first archive outbox worker draft selected a row and saved its lease in a separate step, and failures left the lease and retry schedule unchanged.
 - **Root cause:** A read-then-update lease is not safe when multiple worker instances run, and logging an exception without persisting retry state loses operational recovery information.

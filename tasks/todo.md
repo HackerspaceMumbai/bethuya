@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-09-21] Address archive outbox review findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace raw archive outbox identifiers with Vogen value objects, document public members, and normalize the migration namespace syntax.
+- **Acceptance:** The infrastructure and targeted tests build cleanly with no warnings, and the review findings are resolved without changing archive behavior.
+
 ## [2026-09-13] Implementing durable event archive synchronization
 - **Status:** done
 - **Agent/Owner:** Copilot

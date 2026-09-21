@@ -73,3 +73,15 @@ public readonly partial struct RegistrationId
             ? Validation.Ok
             : Validation.Invalid("Registration id cannot be empty.");
 }
+
+/// <summary>
+/// Stable identifier for a durable event archive outbox message.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct EventArchiveOutboxMessageId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Event archive outbox message id cannot be empty.");
+}

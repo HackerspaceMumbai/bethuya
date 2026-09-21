@@ -71,7 +71,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
             message.ProcessedAt = DateTimeOffset.UtcNow;
             message.LockedUntil = null;
             message.LastError = null;
-            var evt = await db.Events.FirstOrDefaultAsync(item => item.Id == message.EventId, ct);
+            var evt = await db.Events.FirstOrDefaultAsync(item => item.Id == message.EventId.Value, ct);
             if (evt is not null)
             {
                 evt.GitHubFolderUrl = result.FolderUrl;
@@ -133,8 +133,8 @@ internal sealed partial class EventArchiveOutboxProcessor(
             await transaction.CommitAsync(ct);
 
             result = new(
-                message.Id,
-                message.EventId,
+                message.Id.Value,
+                message.EventId.Value,
                 message.FolderPath,
                 message.ReadmeMarkdown,
                 message.MetadataJson,

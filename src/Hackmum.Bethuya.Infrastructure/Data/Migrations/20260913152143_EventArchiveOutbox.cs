@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
-{
+namespace Hackmum.Bethuya.Infrastructure.Data.Migrations;
+
     /// <inheritdoc />
     public partial class EventArchiveOutbox : Migration
     {
@@ -52,5 +52,4 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
             migrationBuilder.DropTable(
                 name: "EventArchiveOutboxMessages");
         }
-    }
 }

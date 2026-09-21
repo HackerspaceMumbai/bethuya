@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Core.Models;
+using Hackmum.Bethuya.Core.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -9,6 +10,10 @@ internal sealed class EventArchiveOutboxMessageConfiguration : IEntityTypeConfig
     public void Configure(EntityTypeBuilder<EventArchiveOutboxMessage> builder)
     {
         builder.HasKey(message => message.Id);
+        builder.Property(message => message.Id)
+            .HasConversion(id => id.Value, value => EventArchiveOutboxMessageId.From(value));
+        builder.Property(message => message.EventId)
+            .HasConversion(id => id.Value, value => EventId.From(value));
         builder.Property(message => message.Destination).HasMaxLength(100).IsRequired();
         builder.Property(message => message.FolderPath).HasMaxLength(500).IsRequired();
         builder.Property(message => message.ReadmeMarkdown).IsRequired();

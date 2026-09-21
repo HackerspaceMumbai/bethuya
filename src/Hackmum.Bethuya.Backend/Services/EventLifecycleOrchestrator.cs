@@ -278,7 +278,7 @@ public sealed partial class EventLifecycleOrchestrator(
     private static EventArchiveOutboxMessage CreateOutboxMessage(Event evt, EventPublicationArtifact artifact)
         => new()
         {
-            EventId = evt.Id,
+            EventId = Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id),
             Destination = "github-events",
             FolderPath = artifact.FolderPath,
             ReadmeMarkdown = artifact.ReadmeMarkdown,
