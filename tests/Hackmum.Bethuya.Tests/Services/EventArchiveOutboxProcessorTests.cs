@@ -17,11 +17,14 @@ public sealed class EventArchiveOutboxProcessorTests
 {
     /// <summary>
     /// Ensures an exhausted older projection does not block the next valid snapshot for the same event.
+    /// ExecuteUpdateAsync is not supported by the EF Core InMemory provider, so this test uses a
+    /// SQLite in-memory database, which is relational and exercises the real translated SQL update.
     /// </summary>
     [Test]
     public async Task RecordFailureAsync_ExhaustedOlderMessage_DoesNotBlockNewerMessage()
     {
-        await using var db = CreateDbContext();
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
 
         var eventId = EventId.From(Guid.NewGuid());
         var older = new EventArchiveOutboxMessage
@@ -34,7 +37,8 @@ public sealed class EventArchiveOutboxProcessorTests
             IdempotencyKey = "old-key",
             AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             AttemptCount = 8,
-            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-30)
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-30),
+            ClaimToken = "old-claim"
         };
 
         var newer = new EventArchiveOutboxMessage
@@ -47,7 +51,8 @@ public sealed class EventArchiveOutboxProcessorTests
             IdempotencyKey = "new-key",
             AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             AttemptCount = 0,
-            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            ClaimToken = "new-claim"
         };
 
         db.EventArchiveOutboxMessages.AddRange(older, newer);
@@ -70,6 +75,12 @@ public sealed class EventArchiveOutboxProcessorTests
         var task = (Task)failureMethod.Invoke(processor, [workItem, new InvalidOperationException("permanent failure"), CancellationToken.None])!;
         await task;
 
+        // Clear EF cache to force fresh load from database
+        db.ChangeTracker.Clear();
+        
+        // Reload message from database to check updates (ExecuteUpdateAsync bypasses EF tracking)
+        var olderReloaded = await db.EventArchiveOutboxMessages.FirstAsync(m => m.Id == older.Id);
+
         var claimMethod = typeof(EventArchiveOutboxProcessor).GetMethod("ClaimNextAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
         var claimTask = (Task)claimMethod.Invoke(processor, [CancellationToken.None])!;
         await claimTask;
@@ -77,18 +88,21 @@ public sealed class EventArchiveOutboxProcessorTests
         var result = claimTask.GetType().GetProperty("Result")!.GetValue(claimTask);
         var claimedId = (object?)result?.GetType().GetProperty("Id")?.GetValue(result);
 
-        await Assert.That(older.ProcessedAt).IsNotNull();
+        await Assert.That(olderReloaded.ProcessedAt).IsNotNull();
         await Assert.That(claimedId).IsNotNull();
         await Assert.That(((EventArchiveOutboxMessageId)claimedId!).Value).IsEqualTo(newer.Id.Value);
     }
 
     /// <summary>
     /// Ensures the last remaining projection remains retryable instead of being permanently discarded.
+    /// ExecuteUpdateAsync is not supported by the EF Core InMemory provider, so this test uses a
+    /// SQLite in-memory database, which is relational and exercises the real translated SQL update.
     /// </summary>
     [Test]
     public async Task RecordFailureAsync_ExhaustedLatestMessage_KeepsMessageAvailableForRetry()
     {
-        await using var db = CreateDbContext();
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
 
         var eventId = EventId.From(Guid.NewGuid());
         var message = new EventArchiveOutboxMessage
@@ -101,7 +115,8 @@ public sealed class EventArchiveOutboxProcessorTests
             IdempotencyKey = "latest-key",
             AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             AttemptCount = 8,
-            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10),
+            ClaimToken = "latest-claim"
         };
 
         db.EventArchiveOutboxMessages.Add(message);
@@ -124,9 +139,15 @@ public sealed class EventArchiveOutboxProcessorTests
         var task = (Task)failureMethod.Invoke(processor, [workItem, new InvalidOperationException("retryable failure"), CancellationToken.None])!;
         await task;
 
-        await Assert.That(message.ProcessedAt).IsNull();
-        await Assert.That(message.LastError).IsNotNull();
-        await Assert.That(message.AvailableAt > DateTimeOffset.UtcNow).IsTrue();
+        // Clear EF cache to force fresh load from database
+        db.ChangeTracker.Clear();
+        
+        // Reload message from database to check updates (ExecuteUpdateAsync bypasses EF tracking)
+        var messageReloaded = await db.EventArchiveOutboxMessages.FirstAsync(m => m.Id == message.Id);
+
+        await Assert.That(messageReloaded.ProcessedAt).IsNull();
+        await Assert.That(messageReloaded.LastError).IsNotNull();
+        await Assert.That(messageReloaded.AvailableAt > DateTimeOffset.UtcNow).IsTrue();
 
         var claimMethod = typeof(EventArchiveOutboxProcessor).GetMethod("ClaimNextAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
         var claimTask = (Task)claimMethod.Invoke(processor, [CancellationToken.None])!;

@@ -158,7 +158,7 @@ The worker chooses the oldest eligible message that:
 - is not already processed
 - is available by `AvailableAt`
 - is not locked by an active lease
-- is not blocked by a newer unprocessed projection for the same event
+- is not blocked by an older unprocessed projection for the same event
 
 It records a claim token, increments attempts, and performs the GitHub publish. On success, it marks the message processed and stores the resulting GitHub folder URL on the event. On failure, it backs off and retries according to a bounded exponential delay schedule.
 
