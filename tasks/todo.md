@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-09-21] Address Greptile archive ordering and collision findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Prevent stale outbox projections and archive path collisions, make duplicate recovery transaction-safe, and preserve Vogen identifiers through the processor.
+- **Acceptance:** Newer projections supersede older eligible work, archive paths include immutable event identity, unique insert races recover safely, build/tests pass, and every Greptile thread is replied to and resolved.
+
 ## [2026-09-21] Address archive outbox review findings
 - **Status:** done
 - **Agent/Owner:** Copilot

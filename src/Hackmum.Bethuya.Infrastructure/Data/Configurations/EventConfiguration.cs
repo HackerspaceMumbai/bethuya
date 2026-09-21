@@ -33,6 +33,9 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.GitHubFolderUrl)
             .HasMaxLength(2048);
 
+        builder.Property(e => e.ArchiveFolderPath)
+            .HasMaxLength(500);
+
         builder.Property(e => e.TeamsAnnouncementMessageId)
             .HasMaxLength(200);
 

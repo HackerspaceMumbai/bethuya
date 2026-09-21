@@ -1,10 +1,12 @@
 using Hackmum.Bethuya.Core.Services;
+using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Data;
+using ArchiveEventId = Hackmum.Bethuya.Core.ValueObjects.EventId;
 
 namespace Hackmum.Bethuya.Infrastructure.Services;
 
@@ -78,7 +80,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
             }
 
             await db.SaveChangesAsync(ct);
-            LogArchiveProjectionCompleted(logger, workItem.EventId, result.FolderUrl);
+            LogArchiveProjectionCompleted(logger, workItem.EventId.Value, result.FolderUrl);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -116,7 +118,11 @@ internal sealed partial class EventArchiveOutboxProcessor(
             var message = await db.EventArchiveOutboxMessages
                 .Where(item => item.ProcessedAt == null
                     && item.AvailableAt <= now
-                    && (item.LockedUntil == null || item.LockedUntil < now))
+                    && (item.LockedUntil == null || item.LockedUntil < now)
+                    && !db.EventArchiveOutboxMessages.Any(older =>
+                        older.EventId == item.EventId
+                        && older.ProcessedAt == null
+                        && older.CreatedAt < item.CreatedAt))
                 .OrderBy(item => item.CreatedAt)
                 .FirstOrDefaultAsync(ct);
 
@@ -133,8 +139,8 @@ internal sealed partial class EventArchiveOutboxProcessor(
             await transaction.CommitAsync(ct);
 
             result = new(
-                message.Id.Value,
-                message.EventId.Value,
+                message.Id,
+                message.EventId,
                 message.FolderPath,
                 message.ReadmeMarkdown,
                 message.MetadataJson,
@@ -164,8 +170,8 @@ internal sealed partial class EventArchiveOutboxProcessor(
     }
 
     private sealed record EventArchiveOutboxWorkItem(
-        Guid Id,
-        Guid EventId,
+        EventArchiveOutboxMessageId Id,
+        ArchiveEventId EventId,
         string FolderPath,
         string ReadmeMarkdown,
         string MetadataJson,

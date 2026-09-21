@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-09-21] Persisting an archive path requires a data backfill
+- **What happened:** The initial stable archive-path migration added a nullable column but did not preserve locations already published to GitHub.
+- **Root cause:** Runtime initialization only protects future projections; it cannot recover the prior canonical location once mutable event metadata changes.
+- **Fix:** The migration derives existing paths from `GitHubFolderUrl` when available, then backfills deterministic legacy-style paths for remaining events.
+- **Prevention:** Whenever a mutable, derived value becomes persisted identity, add a data backfill for existing rows and review its compatibility with the previous derivation.
+
 ## [2026-09-21] Validate review state against current code
 - **What happened:** A prior CodeRabbit review retained a `CHANGES_REQUESTED` verdict even after its inline threads were resolved, and several low-risk maintainability findings were still valid in the current branch.
 - **Root cause:** Review verdicts and inline-thread state are separate GitHub records, while the original implementation still used raw outbox identifiers and undocumented public members.

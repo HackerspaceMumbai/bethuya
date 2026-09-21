@@ -6,6 +6,7 @@ using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Hackmum.Bethuya.Backend.Services;
 
@@ -62,26 +63,8 @@ public sealed partial class EventLifecycleOrchestrator(
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
             var artifact = CreatePublicationArtifact(evt);
             var outbox = CreateOutboxMessage(evt, artifact);
-            var alreadyQueued = await dbContext.EventArchiveOutboxMessages
-                .AnyAsync(message => message.EventId == outbox.EventId
-                    && message.Destination == outbox.Destination
-                    && message.IdempotencyKey == outbox.IdempotencyKey, ct);
-            if (!alreadyQueued)
-            {
-                try
-                {
-                    dbContext.EventArchiveOutboxMessages.Add(outbox);
-                    await dbContext.SaveChangesAsync(ct);
-                }
-                catch (DbUpdateException)
-                {
-                    dbContext.Entry(outbox).State = EntityState.Detached;
-                }
-            }
-            else
-            {
-                await dbContext.SaveChangesAsync(ct);
-            }
+            await AddOutboxIfMissingAsync(outbox, ct);
+            await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
         });
 
@@ -171,14 +154,21 @@ public sealed partial class EventLifecycleOrchestrator(
 
     private static EventPublicationArtifact CreatePublicationArtifact(Event evt)
     {
-        var slug = Slugify(evt.Title);
-        var folderSlug = $"{evt.StartDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}-{slug}";
-        var folderPath = $"events/{evt.StartDate.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{folderSlug}";
+        var folderPath = evt.ArchiveFolderPath ?? CreateArchiveFolderPath(evt);
+        evt.ArchiveFolderPath ??= folderPath;
+        var folderSlug = Path.GetFileName(folderPath);
         var sessions = evt.Agenda?.Sessions.OrderBy(s => s.Order).ToArray() ?? [];
         var readme = CreateReadme(evt, sessions);
         var metadata = CreateMetadataYaml(evt, sessions, folderSlug);
 
         return new EventPublicationArtifact(folderPath, readme, metadata);
+    }
+
+    private static string CreateArchiveFolderPath(Event evt)
+    {
+        var slug = Slugify(evt.Title);
+        var folderSlug = $"{evt.StartDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}-{slug}-{evt.Id:N}";
+        return $"events/{evt.StartDate.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{folderSlug}";
     }
 
     private static string CreateMetadataYaml(Event evt, AgendaSession[] sessions, string slug)
@@ -290,22 +280,44 @@ public sealed partial class EventLifecycleOrchestrator(
     {
         var artifact = CreatePublicationArtifact(evt);
         var outbox = CreateOutboxMessage(evt, artifact);
-        if (!await dbContext.EventArchiveOutboxMessages.AnyAsync(message =>
+        await AddOutboxIfMissingAsync(outbox, ct);
+    }
+
+    private async Task AddOutboxIfMissingAsync(EventArchiveOutboxMessage outbox, CancellationToken ct)
+    {
+        if (await dbContext.EventArchiveOutboxMessages.AnyAsync(message =>
                 message.EventId == outbox.EventId
                 && message.Destination == outbox.Destination
                 && message.IdempotencyKey == outbox.IdempotencyKey, ct))
         {
-            try
+            return;
+        }
+
+        const string savepointName = "OutboxInsert";
+        var transaction = dbContext.Database.CurrentTransaction;
+        if (transaction is not null)
+        {
+            await transaction.CreateSavepointAsync(savepointName, ct);
+        }
+
+        try
+        {
+            dbContext.EventArchiveOutboxMessages.Add(outbox);
+            await dbContext.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
+        {
+            if (transaction is not null)
             {
-                dbContext.EventArchiveOutboxMessages.Add(outbox);
-                await dbContext.SaveChangesAsync(ct);
+                await transaction.RollbackToSavepointAsync(savepointName, ct);
             }
-            catch (DbUpdateException)
-            {
-                dbContext.Entry(outbox).State = EntityState.Detached;
-            }
+
+            dbContext.Entry(outbox).State = EntityState.Detached;
         }
     }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException exception)
+        => exception.GetBaseException() is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
     private static bool IsPublicLifecycle(MeetupLifecycleState state)
         => state is MeetupLifecycleState.Published

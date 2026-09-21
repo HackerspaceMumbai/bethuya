@@ -1,3 +1,5 @@
+using Hackmum.Bethuya.Core.ValueObjects;
+
 namespace Hackmum.Bethuya.Core.Models;
 
 /// <summary>
@@ -12,7 +14,7 @@ public sealed record EventPublicationArtifact(
 /// Publication request sent to the GitHub publishing port.
 /// </summary>
 public sealed record EventPublicationRequest(
-    Guid EventId,
+    EventId EventId,
     string Title,
     string FolderPath,
     string ReadmeMarkdown,

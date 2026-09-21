@@ -22,6 +22,7 @@ public sealed class Event
     public string? CoverImageUrl { get; set; }
     public string? SessionizeEventId { get; set; }
     public string? GitHubFolderUrl { get; set; }
+    public string? ArchiveFolderPath { get; set; }
     public string? TeamsAnnouncementMessageId { get; set; }
     public string? RegistrationUrl { get; set; }
     public DateTimeOffset? PublishedAt { get; private set; }
