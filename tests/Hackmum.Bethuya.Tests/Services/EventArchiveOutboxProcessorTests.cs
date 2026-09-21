@@ -254,8 +254,7 @@ public sealed class EventArchiveOutboxProcessorTests
         await using var db = CreateSqliteDbContext(connection);
 
         // Seed an outbox message ready to claim.
-        var eventGuid = Guid.NewGuid();
-        var eventId = EventId.From(eventGuid);
+        var eventId = EventId.From(Guid.NewGuid());
         var message = new EventArchiveOutboxMessage
         {
             EventId = eventId,
@@ -275,7 +274,7 @@ public sealed class EventArchiveOutboxProcessorTests
         // Seed the Event with folder URL placeholder (GitHubEventRepository updates it after publish).
         var @event = new Event
         {
-            Id = eventGuid,
+            Id = eventId.Value,
             Title = "Test Event 2026",
             CreatedBy = "test-user"
         };
@@ -313,7 +312,7 @@ public sealed class EventArchiveOutboxProcessorTests
         
         var publishedRequest = mockRepository.PublishedRequests[0];
         var publishedEventIdGuid = publishedRequest.EventId.Value;
-        System.Console.WriteLine($"Published EventId from mock: {publishedEventIdGuid}, Expected: {eventGuid}, Match: {publishedEventIdGuid == eventGuid}");
+        System.Console.WriteLine($"Published EventId from mock: {publishedEventIdGuid}, Expected: {eventId.Value}, Match: {publishedEventIdGuid == eventId.Value}");
         await Assert.That(publishedRequest.EventId).IsEqualTo(eventId);
 
         // Reload the message using a fresh DbContext to verify ProcessedAt was set.
@@ -328,7 +327,7 @@ public sealed class EventArchiveOutboxProcessorTests
         
         await Assert.That(completedMessage.ProcessedAt).IsNotNull();
 
-        var completedEvent = await verifyDb.Events.FirstAsync(e => e.Id == eventGuid);
+        var completedEvent = await verifyDb.Events.FirstAsync(e => e.Id == eventId.Value);
         await Assert.That(completedEvent.GitHubFolderUrl).IsEqualTo(publishResult.FolderUrl);
     }
 
