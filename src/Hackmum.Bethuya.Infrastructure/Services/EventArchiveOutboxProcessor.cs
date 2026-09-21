@@ -14,6 +14,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
     IServiceScopeFactory scopeFactory,
     ILogger<EventArchiveOutboxProcessor> logger) : BackgroundService
 {
+    private const int MaxAttemptsBeforeFailureIsTerminal = 8;
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(2);
 
@@ -162,10 +163,19 @@ internal sealed partial class EventArchiveOutboxProcessor(
             return;
         }
 
+        message.LastError = exception.Message[..Math.Min(exception.Message.Length, 4000)];
+        if (workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal)
+        {
+            message.ProcessedAt = DateTimeOffset.UtcNow;
+            message.LockedUntil = null;
+            message.AvailableAt = message.ProcessedAt.Value;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+
         var delay = TimeSpan.FromMinutes(Math.Min(Math.Pow(2, Math.Min(workItem.AttemptCount, 6)), 60));
         message.AvailableAt = DateTimeOffset.UtcNow.Add(delay);
         message.LockedUntil = null;
-        message.LastError = exception.Message[..Math.Min(exception.Message.Length, 4000)];
         await db.SaveChangesAsync(ct);
     }
 

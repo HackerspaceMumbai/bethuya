@@ -166,17 +166,19 @@ public sealed partial class EventLifecycleOrchestrator(
 
     private static string CreateArchiveFolderPath(Event evt)
     {
+        var localStart = ToAsiaKolkata(evt.StartDate);
         var slug = Slugify(evt.Title);
-        var folderSlug = $"{evt.StartDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}-{slug}-{evt.Id:N}";
-        return $"events/{evt.StartDate.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{folderSlug}";
+        var folderSlug = $"{localStart:yyyy-MM-dd}-{slug}-{evt.Id:N}";
+        return $"events/{localStart:yyyy}/{folderSlug}";
     }
 
     private static string CreateMetadataYaml(Event evt, AgendaSession[] sessions, string slug)
     {
+        var localStart = ToAsiaKolkata(evt.StartDate);
         var builder = new StringBuilder()
             .Append("title: ").AppendLine(YamlString(evt.Title))
             .Append("slug: ").AppendLine(YamlString(slug))
-            .Append("date: ").AppendLine(evt.StartDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
+            .Append("date: ").AppendLine(localStart.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
             .Append("city: ").AppendLine(YamlString(evt.Location ?? "Unknown"))
             .AppendLine("country: India")
             .Append("eventType: ").AppendLine(ToArchiveEventType(evt.Type))
@@ -217,11 +219,12 @@ public sealed partial class EventLifecycleOrchestrator(
 
     private static string CreateReadme(Event evt, IReadOnlyCollection<AgendaSession> sessions)
     {
+        var localStart = ToAsiaKolkata(evt.StartDate);
         var builder = new StringBuilder()
             .Append("# ").AppendLine(EscapeMarkdown(evt.Title))
             .AppendLine()
             .Append("Lifecycle: ").AppendLine(evt.LifecycleState.ToString())
-            .Append("Date: ").AppendLine(evt.StartDate.ToString("u"))
+            .Append("Date: ").AppendLine(localStart.ToString("yyyy-MM-ddTHH:mm:sszzz", System.Globalization.CultureInfo.InvariantCulture))
             .Append("Location: ").AppendLine(EscapeMarkdown(evt.Location ?? "TBD"))
             .AppendLine()
             .AppendLine("## Agenda");
@@ -245,6 +248,12 @@ public sealed partial class EventLifecycleOrchestrator(
         }
 
         return builder.ToString();
+    }
+
+    private static DateTimeOffset ToAsiaKolkata(DateTimeOffset value)
+    {
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
+        return TimeZoneInfo.ConvertTime(value, timeZone);
     }
 
     private static string EscapeMarkdown(string value)

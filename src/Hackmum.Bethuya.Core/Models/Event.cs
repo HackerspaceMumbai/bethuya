@@ -22,6 +22,9 @@ public sealed class Event
     public string? CoverImageUrl { get; set; }
     public string? SessionizeEventId { get; set; }
     public string? GitHubFolderUrl { get; set; }
+    /// <summary>
+    /// Gets or sets the repository-relative archive folder path used when publishing an event snapshot to the archive.
+    /// </summary>
     public string? ArchiveFolderPath { get; set; }
     public string? TeamsAnnouncementMessageId { get; set; }
     public string? RegistrationUrl { get; set; }
