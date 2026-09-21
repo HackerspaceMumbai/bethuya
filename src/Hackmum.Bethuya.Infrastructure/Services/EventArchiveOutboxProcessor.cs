@@ -71,6 +71,12 @@ internal sealed partial class EventArchiveOutboxProcessor(
             var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
             var message = await db.EventArchiveOutboxMessages
                 .FirstAsync(item => item.Id == workItem.Id, ct);
+
+            if (message.ClaimToken != workItem.ClaimToken)
+            {
+                return;
+            }
+
             message.ProcessedAt = DateTimeOffset.UtcNow;
             message.LockedUntil = null;
             message.LastError = null;
@@ -134,7 +140,9 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 return;
             }
 
+            var claimToken = Guid.NewGuid().ToString("N");
             message.LockedUntil = now.Add(LeaseDuration);
+            message.ClaimToken = claimToken;
             message.AttemptCount++;
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
@@ -146,7 +154,8 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 message.ReadmeMarkdown,
                 message.MetadataJson,
                 message.IdempotencyKey,
-                message.AttemptCount);
+                message.AttemptCount,
+                claimToken);
         });
 
         return result;
@@ -158,16 +167,23 @@ internal sealed partial class EventArchiveOutboxProcessor(
         var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
         var message = await db.EventArchiveOutboxMessages
             .FirstOrDefaultAsync(item => item.Id == workItem.Id, ct);
-        if (message is null || message.ProcessedAt is not null)
+        if (message is null || message.ProcessedAt is not null || message.ClaimToken != workItem.ClaimToken)
         {
             return;
         }
 
         message.LastError = exception.Message[..Math.Min(exception.Message.Length, 4000)];
-        if (workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal)
+        var hasNewerProjection = await db.EventArchiveOutboxMessages.AnyAsync(item =>
+            item.EventId == message.EventId
+            && item.Id != message.Id
+            && item.CreatedAt > message.CreatedAt,
+            ct);
+
+        if (workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal && hasNewerProjection)
         {
             message.ProcessedAt = DateTimeOffset.UtcNow;
             message.LockedUntil = null;
+            message.ClaimToken = string.Empty;
             message.AvailableAt = message.ProcessedAt.Value;
             await db.SaveChangesAsync(ct);
             return;
@@ -176,6 +192,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
         var delay = TimeSpan.FromMinutes(Math.Min(Math.Pow(2, Math.Min(workItem.AttemptCount, 6)), 60));
         message.AvailableAt = DateTimeOffset.UtcNow.Add(delay);
         message.LockedUntil = null;
+        message.ClaimToken = string.Empty;
         await db.SaveChangesAsync(ct);
     }
 
@@ -186,7 +203,8 @@ internal sealed partial class EventArchiveOutboxProcessor(
         string ReadmeMarkdown,
         string MetadataJson,
         string IdempotencyKey,
-        int AttemptCount);
+        int AttemptCount,
+        string ClaimToken);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Archive projection completed for event {EventId}; folder {FolderUrl}.")]
     private static partial void LogArchiveProjectionCompleted(ILogger logger, Guid eventId, string folderUrl);

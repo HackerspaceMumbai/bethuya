@@ -9,18 +9,23 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hackmum.Bethuya.Tests.Services;
 
+/// <summary>
+/// Verifies that the archive outbox continues to process the newest event projection even when older items fail repeatedly.
+/// </summary>
 public sealed class EventArchiveOutboxProcessorTests
 {
+    /// <summary>
+    /// Ensures an exhausted older projection does not block the next valid snapshot for the same event.
+    /// </summary>
     [Test]
     public async Task RecordFailureAsync_ExhaustedOlderMessage_DoesNotBlockNewerMessage()
     {
         await using var db = CreateDbContext();
 
-        var olderEventId = EventId.From(Guid.NewGuid());
-        var newerEventId = EventId.From(Guid.NewGuid());
+        var eventId = EventId.From(Guid.NewGuid());
         var older = new EventArchiveOutboxMessage
         {
-            EventId = olderEventId,
+            EventId = eventId,
             Destination = "archive/test",
             FolderPath = "events/2026/2026-06-30-old-event-abc123",
             ReadmeMarkdown = "old readme",
@@ -33,7 +38,7 @@ public sealed class EventArchiveOutboxProcessorTests
 
         var newer = new EventArchiveOutboxMessage
         {
-            EventId = newerEventId,
+            EventId = eventId,
             Destination = "archive/test",
             FolderPath = "events/2026/2026-07-01-new-event-def456",
             ReadmeMarkdown = "new readme",
@@ -58,7 +63,8 @@ public sealed class EventArchiveOutboxProcessorTests
             older.ReadmeMarkdown,
             older.MetadataJson,
             older.IdempotencyKey,
-            older.AttemptCount);
+            older.AttemptCount,
+            older.ClaimToken);
 
         var task = (Task)failureMethod.Invoke(processor, [workItem, new InvalidOperationException("permanent failure"), CancellationToken.None])!;
         await task;
@@ -73,6 +79,62 @@ public sealed class EventArchiveOutboxProcessorTests
         await Assert.That(older.ProcessedAt).IsNotNull();
         await Assert.That(claimedId).IsNotNull();
         await Assert.That(((EventArchiveOutboxMessageId)claimedId!).Value).IsEqualTo(newer.Id.Value);
+    }
+
+    /// <summary>
+    /// Ensures the last remaining projection remains retryable instead of being permanently discarded.
+    /// </summary>
+    [Test]
+    public async Task RecordFailureAsync_ExhaustedLatestMessage_KeepsMessageAvailableForRetry()
+    {
+        await using var db = CreateDbContext();
+
+        var eventId = EventId.From(Guid.NewGuid());
+        var message = new EventArchiveOutboxMessage
+        {
+            EventId = eventId,
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-07-01-event-def456",
+            ReadmeMarkdown = "latest readme",
+            MetadataJson = "{ \"version\": 99 }",
+            IdempotencyKey = "latest-key",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            AttemptCount = 8,
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+        };
+
+        db.EventArchiveOutboxMessages.Add(message);
+        await db.SaveChangesAsync();
+
+        var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(db), NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var failureMethod = typeof(EventArchiveOutboxProcessor).GetMethod("RecordFailureAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var workItemType = typeof(EventArchiveOutboxProcessor).GetNestedType("EventArchiveOutboxWorkItem", BindingFlags.NonPublic)!;
+        var workItem = Activator.CreateInstance(
+            workItemType,
+            message.Id,
+            message.EventId,
+            message.FolderPath,
+            message.ReadmeMarkdown,
+            message.MetadataJson,
+            message.IdempotencyKey,
+            message.AttemptCount,
+            message.ClaimToken);
+
+        var task = (Task)failureMethod.Invoke(processor, [workItem, new InvalidOperationException("retryable failure"), CancellationToken.None])!;
+        await task;
+
+        await Assert.That(message.ProcessedAt).IsNull();
+        await Assert.That(message.LastError).IsNotNull();
+        await Assert.That(message.AvailableAt > DateTimeOffset.UtcNow).IsTrue();
+
+        var claimMethod = typeof(EventArchiveOutboxProcessor).GetMethod("ClaimNextAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var claimTask = (Task)claimMethod.Invoke(processor, [CancellationToken.None])!;
+        await claimTask;
+
+        var result = claimTask.GetType().GetProperty("Result")!.GetValue(claimTask);
+        var claimedId = (object?)result?.GetType().GetProperty("Id")?.GetValue(result);
+
+        await Assert.That(claimedId).IsNull();
     }
 
     private static BethuyaDbContext CreateDbContext()

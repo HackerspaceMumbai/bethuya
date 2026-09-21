@@ -41,6 +41,9 @@ public sealed class EventArchiveOutboxMessage
     /// <summary>Gets or sets the lease expiration time for the current processor.</summary>
     public DateTimeOffset? LockedUntil { get; set; }
 
+    /// <summary>Gets or sets the unique ownership token for the current lease.</summary>
+    public string ClaimToken { get; set; } = string.Empty;
+
     /// <summary>Gets or sets the time when this message was successfully processed.</summary>
     public DateTimeOffset? ProcessedAt { get; set; }
 
