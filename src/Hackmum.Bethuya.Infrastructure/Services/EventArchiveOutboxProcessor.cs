@@ -121,7 +121,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     await db.SaveChangesAsync(ct);
                 }
 
-                LogArchiveProjectionCompleted(logger, workItem.EventId.Value, result.FolderUrl);
+                LogArchiveProjectionCompleted(logger, workItem.EventId, result.FolderUrl);
             });
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -420,7 +420,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
         string ClaimToken);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Archive projection completed for event {EventId}; folder {FolderUrl}.")]
-    private static partial void LogArchiveProjectionCompleted(ILogger logger, Guid eventId, string folderUrl);
+    private static partial void LogArchiveProjectionCompleted(ILogger logger, ArchiveEventId eventId, string folderUrl);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Archive projection attempt failed; the outbox message will be retried.")]
     private static partial void LogArchiveProjectionFailed(ILogger logger, Exception exception);
