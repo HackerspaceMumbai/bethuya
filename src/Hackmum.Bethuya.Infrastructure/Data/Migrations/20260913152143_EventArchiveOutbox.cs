@@ -25,6 +25,7 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations;
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     AvailableAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     AttemptCount = table.Column<int>(type: "integer", nullable: false),
+                    ClaimToken = table.Column<string>(type: "text", nullable: false),
                     LockedUntil = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     ProcessedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     LastError = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true)
