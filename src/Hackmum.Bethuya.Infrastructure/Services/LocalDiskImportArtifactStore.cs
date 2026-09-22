@@ -9,6 +9,12 @@ namespace Hackmum.Bethuya.Infrastructure.Services;
 /// </summary>
 public sealed class LocalDiskImportArtifactStore : IImportArtifactStore
 {
+    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".csv",
+        ".xlsx"
+    };
+
     private readonly string _rootDirectory;
 
     public LocalDiskImportArtifactStore(string? rootDirectory = null)
@@ -22,8 +28,13 @@ public sealed class LocalDiskImportArtifactStore : IImportArtifactStore
         ArgumentNullException.ThrowIfNull(content);
 
         var safeExtension = Path.GetExtension(fileName);
+        if (!AllowedExtensions.Contains(safeExtension))
+        {
+            throw new InvalidOperationException("Import artifacts must use a CSV or XLSX extension.");
+        }
+
         var storageKey = $"{Guid.CreateVersion7():N}{safeExtension}";
-        var path = Path.Combine(_rootDirectory, storageKey);
+        var path = GetArtifactPath(storageKey);
 
         await File.WriteAllBytesAsync(path, content, ct);
         return storageKey;
@@ -31,12 +42,23 @@ public sealed class LocalDiskImportArtifactStore : IImportArtifactStore
 
     public async Task<byte[]> ReadAsync(string storageKey, CancellationToken ct = default)
     {
-        var path = Path.Combine(_rootDirectory, storageKey);
+        var path = GetArtifactPath(storageKey);
         if (!File.Exists(path))
         {
             throw new FileNotFoundException($"Import artifact '{storageKey}' was not found.", path);
         }
 
         return await File.ReadAllBytesAsync(path, ct);
+    }
+
+    private string GetArtifactPath(string storageKey)
+    {
+        if (!string.Equals(storageKey, Path.GetFileName(storageKey), StringComparison.Ordinal) ||
+            !AllowedExtensions.Contains(Path.GetExtension(storageKey)))
+        {
+            throw new InvalidOperationException("The import artifact key is invalid.");
+        }
+
+        return Path.Combine(_rootDirectory, storageKey);
     }
 }

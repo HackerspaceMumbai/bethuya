@@ -27,14 +27,33 @@ public sealed class CsvImportFileParser : IImportFileParser
             }
 
             var headers = csv.HeaderRecord.ToList();
+            if (headers.Count > ImportFileLimits.MaxColumns)
+            {
+                throw new ImportFileParseException(
+                    $"The CSV file has more than {ImportFileLimits.MaxColumns} columns.");
+            }
+
             var rows = new List<IReadOnlyDictionary<string, string?>>();
 
             while (csv.Read())
             {
+                if (rows.Count == ImportFileLimits.MaxRows)
+                {
+                    throw new ImportFileParseException(
+                        $"The CSV file has more than {ImportFileLimits.MaxRows} data rows.");
+                }
+
                 var row = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
                 foreach (var header in headers)
                 {
-                    row[header] = csv.GetField(header);
+                    var value = csv.GetField(header);
+                    if (value?.Length > ImportFileLimits.MaxCellLength)
+                    {
+                        throw new ImportFileParseException(
+                            $"A CSV cell exceeds the {ImportFileLimits.MaxCellLength}-character limit.");
+                    }
+
+                    row[header] = value;
                 }
 
                 rows.Add(row);

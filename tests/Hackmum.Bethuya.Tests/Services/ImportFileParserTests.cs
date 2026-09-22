@@ -43,6 +43,15 @@ public sealed class ImportFileParserTests
     }
 
     [Test]
+    public async Task CsvImportFileParser_CellExceedsLimit_Throws()
+    {
+        var parser = new CsvImportFileParser();
+        var csv = $"Email\n{new string('a', ImportFileLimits.MaxCellLength + 1)}\n";
+
+        await Assert.That(() => parser.Parse(ToStream(csv))).Throws<ImportFileParseException>();
+    }
+
+    [Test]
     public async Task XlsxImportFileParser_ParsesHeadersAndRows()
     {
         using var stream = new MemoryStream();
@@ -72,6 +81,28 @@ public sealed class ImportFileParserTests
         using (var workbook = new XLWorkbook())
         {
             workbook.Worksheets.Add("Sheet1");
+            workbook.SaveAs(stream);
+        }
+
+        stream.Position = 0;
+        var parser = new XlsxImportFileParser();
+
+        await Assert.That(() => parser.Parse(stream)).Throws<ImportFileParseException>();
+    }
+
+    [Test]
+    public async Task XlsxImportFileParser_TooManyRows_Throws()
+    {
+        using var stream = new MemoryStream();
+        using (var workbook = new XLWorkbook())
+        {
+            var worksheet = workbook.Worksheets.Add("Sheet1");
+            worksheet.Cell(1, 1).Value = "Email";
+            for (var row = 2; row <= ImportFileLimits.MaxRows + 2; row++)
+            {
+                worksheet.Cell(row, 1).Value = $"member{row}@example.com";
+            }
+
             workbook.SaveAs(stream);
         }
 

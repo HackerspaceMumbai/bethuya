@@ -20,12 +20,9 @@ public static class ImportTemplateSeeder
             .ToListAsync(ct);
         var existing = existingNames.ToHashSet(StringComparer.Ordinal);
 
-        foreach (var template in BuildSystemTemplates())
+        foreach (var template in BuildSystemTemplates().Where(template => !existing.Contains(template.Name)))
         {
-            if (!existing.Contains(template.Name))
-            {
-                db.ImportTemplates.Add(template);
-            }
+            db.ImportTemplates.Add(template);
         }
 
         await db.SaveChangesAsync(ct);

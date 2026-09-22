@@ -159,6 +159,15 @@ public sealed class ImportTemplateService(BethuyaDbContext db)
 
     private static void ApplyMappings(BethuyaDbContext db, ImportTemplate template, IReadOnlyList<ImportColumnMappingInput> mappings)
     {
+        var duplicateTarget = mappings
+            .GroupBy(mapping => mapping.TargetField)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateTarget is not null)
+        {
+            throw new InvalidOperationException(
+                $"Only one source column can map to '{duplicateTarget.Key}'.");
+        }
+
         foreach (var mapping in mappings)
         {
             db.ImportColumnMappings.Add(new ImportColumnMapping

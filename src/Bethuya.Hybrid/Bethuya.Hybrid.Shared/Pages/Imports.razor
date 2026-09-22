@@ -62,8 +62,9 @@
 
     @if (_batch is not null)
     {
-        <BbCard Class="p-4 mb-6" data-test="import-preview">
-            <BbFormSection Title="2. Review preview">
+        <div data-test="import-preview">
+            <BbCard Class="p-4 mb-6">
+                <BbFormSection Title="2. Review preview">
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
                     <span>Total: <strong>@_batch.TotalRows</strong></span>
                     <span>Valid: <strong>@_batch.ValidRows</strong></span>
@@ -100,8 +101,9 @@
                 {
                     <BbAlert Variant="AlertVariant.Warning">Fix the validation errors in the source file and upload it again before committing.</BbAlert>
                 }
-            </BbFormSection>
-        </BbCard>
+                </BbFormSection>
+            </BbCard>
+        </div>
     }
 
     @if (_busy)
@@ -141,10 +143,7 @@
     private async Task LoadTemplatesAsync()
     {
         Templates = await ImportApi.ListTemplatesAsync(_importKind);
-        if (Templates.Count > 0 && _templateIdText is null)
-        {
-            _templateIdText = Templates[0].Id.ToString();
-        }
+        _templateIdText = Templates.FirstOrDefault()?.Id.ToString();
     }
 
     private async Task HandleKindChanged(ChangeEventArgs args)

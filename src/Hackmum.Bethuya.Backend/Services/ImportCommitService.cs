@@ -17,6 +17,10 @@ namespace Hackmum.Bethuya.Backend.Services;
 /// </summary>
 public sealed class ImportCommitService(BethuyaDbContext db)
 {
+    // Member creation is keyed by a deterministic import user id. Serialize the lookup/create
+    // window so simultaneous import commits in this service host cannot race the unique index.
+    private static readonly SemaphoreSlim MemberCreationGate = new(1, 1);
+
     public async Task<ImportBatch> CommitAsync(Guid importBatchId, CancellationToken ct = default)
     {
         var batch = await db.ImportBatches
@@ -219,39 +223,47 @@ public sealed class ImportCommitService(BethuyaDbContext db)
         IReadOnlyDictionary<string, string?> fullNameByEmail,
         CancellationToken ct)
     {
-        var emails = fullNameByEmail.Keys.ToArray();
+        await MemberCreationGate.WaitAsync(ct);
+        try
+        {
+            var emails = fullNameByEmail.Keys.ToArray();
 #pragma warning disable CA1304, CA1311 // m.Email.ToLower() runs inside an EF LINQ query lambda
-        var existingMembers = emails.Length == 0
-            ? []
-            : await db.CommunityMembers
-                .Where(m => emails.Contains(m.Email.ToLower()))
-                .ToListAsync(ct);
+            var existingMembers = emails.Length == 0
+                ? []
+                : await db.CommunityMembers
+                    .Where(m => emails.Contains(m.Email.ToLower()))
+                    .ToListAsync(ct);
 #pragma warning restore CA1304, CA1311
 
-        var resolved = existingMembers
-            .GroupBy(m => m.Email.Trim().ToLowerInvariant(), StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First().Id, StringComparer.Ordinal);
+            var resolved = existingMembers
+                .GroupBy(m => m.Email.Trim().ToLowerInvariant(), StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First().Id, StringComparer.Ordinal);
 
-        foreach (var email in emails)
-        {
-            if (resolved.ContainsKey(email))
+            foreach (var email in emails)
             {
-                continue;
+                if (resolved.ContainsKey(email))
+                {
+                    continue;
+                }
+
+                var fullName = fullNameByEmail[email];
+                var member = new CommunityMember
+                {
+                    UserId = $"import:{email}",
+                    DisplayName = string.IsNullOrWhiteSpace(fullName) ? email : fullName,
+                    Email = email
+                };
+
+                db.CommunityMembers.Add(member);
+                resolved[email] = member.Id;
             }
 
-            var fullName = fullNameByEmail[email];
-            var member = new CommunityMember
-            {
-                UserId = $"import:{email}",
-                DisplayName = string.IsNullOrWhiteSpace(fullName) ? email : fullName,
-                Email = email
-            };
-
-            db.CommunityMembers.Add(member);
-            resolved[email] = member.Id;
+            await db.SaveChangesAsync(ct);
+            return resolved;
         }
-
-        await db.SaveChangesAsync(ct);
-        return resolved;
+        finally
+        {
+            MemberCreationGate.Release();
+        }
     }
 }

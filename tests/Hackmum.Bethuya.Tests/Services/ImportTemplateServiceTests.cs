@@ -27,6 +27,25 @@ public sealed class ImportTemplateServiceTests
     }
 
     [Test]
+    public async Task CreateAsync_DuplicateTargetField_Throws()
+    {
+        await using var db = CreateDbContext();
+        var service = new ImportTemplateService(db);
+
+        var action = async () => await service.CreateAsync(
+            "Ambiguous Mapping",
+            ImportSourceKind.Custom,
+            ImportKind.Registration,
+            "organizer-1",
+            [
+                new ImportColumnMappingInput("Primary Email", ImportTargetField.Email),
+                new ImportColumnMappingInput("Alternate Email", ImportTargetField.Email)
+            ]);
+
+        await Assert.That(action).Throws<InvalidOperationException>();
+    }
+
+    [Test]
     public async Task CloneAsync_ClonesSystemTemplateIntoEditableUserTemplate()
     {
         await using var db = CreateDbContext();

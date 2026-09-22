@@ -22,13 +22,14 @@ public sealed class XlsxImportFileParser : IImportFileParser
                 throw new ImportFileParseException("The XLSX file's first worksheet is empty.");
             }
 
-            var rowsUsed = usedRange.RowsUsed().ToList();
-            if (rowsUsed.Count == 0)
+            var rowsUsed = usedRange.RowsUsed();
+            var firstRow = rowsUsed.FirstOrDefault();
+            if (firstRow is null)
             {
                 throw new ImportFileParseException("The XLSX file does not contain a header row.");
             }
 
-            var headerRow = rowsUsed[0];
+            var headerRow = firstRow;
             var headers = headerRow.Cells()
                 .Select(cell => cell.GetString().Trim())
                 .Where(header => !string.IsNullOrWhiteSpace(header))
@@ -39,14 +40,33 @@ public sealed class XlsxImportFileParser : IImportFileParser
                 throw new ImportFileParseException("The XLSX file does not contain a header row.");
             }
 
+            if (headers.Count > ImportFileLimits.MaxColumns)
+            {
+                throw new ImportFileParseException(
+                    $"The XLSX file has more than {ImportFileLimits.MaxColumns} columns.");
+            }
+
             var rows = new List<IReadOnlyDictionary<string, string?>>();
             foreach (var dataRow in rowsUsed.Skip(1))
             {
+                if (rows.Count == ImportFileLimits.MaxRows)
+                {
+                    throw new ImportFileParseException(
+                        $"The XLSX file has more than {ImportFileLimits.MaxRows} data rows.");
+                }
+
                 var row = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
                 for (var columnIndex = 0; columnIndex < headers.Count; columnIndex++)
                 {
                     var cell = dataRow.Cell(columnIndex + 1);
-                    row[headers[columnIndex]] = cell.IsEmpty() ? null : cell.GetString();
+                    var value = cell.IsEmpty() ? null : cell.GetString();
+                    if (value?.Length > ImportFileLimits.MaxCellLength)
+                    {
+                        throw new ImportFileParseException(
+                            $"An XLSX cell exceeds the {ImportFileLimits.MaxCellLength}-character limit.");
+                    }
+
+                    row[headers[columnIndex]] = value;
                 }
 
                 rows.Add(row);
