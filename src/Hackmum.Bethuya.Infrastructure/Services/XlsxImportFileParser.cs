@@ -30,6 +30,7 @@ public sealed class XlsxImportFileParser : IImportFileParser
             }
 
             var headerRow = firstRow;
+            var firstColumn = usedRange.FirstColumn().ColumnNumber();
             var headers = headerRow.Cells()
                 .Select(cell => cell.GetString().Trim())
                 .Where(header => !string.IsNullOrWhiteSpace(header))
@@ -58,7 +59,7 @@ public sealed class XlsxImportFileParser : IImportFileParser
                 var row = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
                 for (var columnIndex = 0; columnIndex < headers.Count; columnIndex++)
                 {
-                    var cell = dataRow.Cell(columnIndex + 1);
+                    var cell = dataRow.Cell(firstColumn + columnIndex);
                     var value = cell.IsEmpty() ? null : cell.GetString();
                     if (value?.Length > ImportFileLimits.MaxCellLength)
                     {

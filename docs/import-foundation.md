@@ -336,10 +336,8 @@ on re-run).
    /api/import/templates/{templateId}`, then re-run `POST
    /api/import/batches/$BATCH_ID/dry-run` and re-check the preview — row counts should reflect
    the corrected mapping without re-uploading the file.
-9. **Fix the bad row in the source file and re-upload as a *new* batch**, or accept the batch as-is
-   if only the valid row should be committed — note commit is all-rows-or-none only in the sense
-   that *if any row is currently invalid, commit refuses entirely* (`Failed` status); a batch with
-   zero errors commits every valid row.
+9. **Fix every invalid row in the source file and re-upload as a *new* batch.** Commit is
+   all-rows-or-none: any validation error blocks the entire batch.
 10. **Commit:**
     ```powershell
     curl -X POST "$API/api/import/batches/$BATCH_ID/commit"

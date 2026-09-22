@@ -1,5 +1,6 @@
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
+using System.Net.Mail;
 
 namespace Hackmum.Bethuya.Core.Services;
 
@@ -58,11 +59,12 @@ public static class ImportRowNormalizer
         {
             errors.Add("Email is required.");
         }
-        else if (!email.Contains('@', StringComparison.Ordinal) || email.StartsWith('@') || email.EndsWith('@'))
+        else if (!IsValidEmail(email))
         {
             errors.Add($"'{email}' is not a valid email address.");
             email = null;
         }
+
         else
         {
             email = email.ToLowerInvariant();
@@ -103,6 +105,19 @@ public static class ImportRowNormalizer
             ExternalRecordId = TrimToNull(values.GetValueOrDefault(ImportTargetField.ExternalRecordId)),
             ValidationErrors = errors
         };
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var parsed = new MailAddress(email);
+            return string.Equals(parsed.Address, email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     private static void FlagDuplicateEmails(List<NormalizedImportRow> rows)

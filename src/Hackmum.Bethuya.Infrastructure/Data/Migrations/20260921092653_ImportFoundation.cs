@@ -23,7 +23,7 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                 type: "character varying(30)",
                 maxLength: 30,
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "ApiOrWebhook");
 
             migrationBuilder.CreateTable(
                 name: "ImportTemplates",
@@ -172,6 +172,14 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                 columns: new[] { "ImportBatchId", "RowIndex" },
                 unique: true);
 
+            migrationBuilder.AddForeignKey(
+                name: "FK_ParticipationLedgerEntries_ImportBatches_ImportBatchId",
+                table: "ParticipationLedgerEntries",
+                column: "ImportBatchId",
+                principalTable: "ImportBatches",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
+
             migrationBuilder.CreateIndex(
                 name: "IX_ImportTemplates_Scope_OwnerUserId",
                 table: "ImportTemplates",
@@ -181,6 +189,9 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_ParticipationLedgerEntries_ImportBatches_ImportBatchId",
+                table: "ParticipationLedgerEntries");
             migrationBuilder.DropTable(
                 name: "ImportArtifacts");
 

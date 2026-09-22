@@ -357,6 +357,13 @@ public static class ImportEndpoints
         }
 
         var isAdmin = user.IsInRole(BethuyaRoleNames.Admin);
+        if (string.IsNullOrWhiteSpace(request.Name) || request.ColumnMappings is null || request.ColumnMappings.Count == 0)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["template"] = ["A template name and at least one column mapping are required."]
+            });
+        }
 
         try
         {

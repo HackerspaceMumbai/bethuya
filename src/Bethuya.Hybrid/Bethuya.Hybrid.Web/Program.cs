@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Bethuya.Hybrid.Web.Components;
 using Bethuya.Hybrid.Shared.Services;
 using Bethuya.Hybrid.Web.Auth;
@@ -145,7 +146,11 @@ ConfigureBackendAuth(builder.Services
     .AddRefitClient<IEventApi>(new RefitSettings
     {
         ContentSerializer = new SystemTextJsonContentSerializer(
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            })
     })
     .ConfigureHttpClient(c => c.BaseAddress = backendBaseAddress))
     .AddStandardResilienceHandler(options =>

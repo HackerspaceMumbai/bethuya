@@ -23,7 +23,7 @@ public sealed record ParsedImportFile(
 
 /// <summary>
 /// Parses import file bytes into a <see cref="ParsedImportFile"/>. Implementations are pure
-/// (no DB access) and must not throw for well-formed-but-empty files.
+/// (no DB access) and reject files that do not contain a usable header row.
 /// </summary>
 public interface IImportFileParser
 {

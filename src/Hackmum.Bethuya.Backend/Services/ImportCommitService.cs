@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Collections.Concurrent;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Services;
@@ -19,41 +20,46 @@ public sealed class ImportCommitService(BethuyaDbContext db)
 {
     // Member creation is keyed by a deterministic import user id. Serialize the lookup/create
     // window so simultaneous import commits in this service host cannot race the unique index.
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> BatchCommitGates = [];
     private static readonly SemaphoreSlim MemberCreationGate = new(1, 1);
 
     public async Task<ImportBatch> CommitAsync(Guid importBatchId, CancellationToken ct = default)
     {
-        var batch = await db.ImportBatches
-            .Include(b => b.RawRows)
-            .SingleOrDefaultAsync(b => b.Id == importBatchId, ct)
-            ?? throw new InvalidOperationException($"Import batch '{importBatchId}' was not found.");
-
-        if (batch.Status == ImportBatchStatus.Committed)
+        var gate = BatchCommitGates.GetOrAdd(importBatchId, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
         {
-            // Idempotent: a repeated commit request (e.g. a retried client call) is a no-op.
-            return batch;
-        }
+            var batch = await db.ImportBatches
+                .Include(b => b.RawRows)
+                .SingleOrDefaultAsync(b => b.Id == importBatchId, ct)
+                ?? throw new InvalidOperationException($"Import batch '{importBatchId}' was not found.");
 
-        if (batch.Status != ImportBatchStatus.DryRunCompleted)
-        {
-            throw new InvalidOperationException(
-                "Run a Dry Run and resolve all validation errors before committing this import.");
-        }
+            if (batch.Status == ImportBatchStatus.Committed)
+            {
+                // Idempotent: a repeated commit request (e.g. a retried client call) is a no-op.
+                return batch;
+            }
 
-        var template = await db.ImportTemplates
-            .Include(t => t.ColumnMappings)
-            .SingleAsync(t => t.Id == batch.ImportTemplateId, ct);
+            if (batch.Status != ImportBatchStatus.DryRunCompleted)
+            {
+                throw new InvalidOperationException(
+                    "Run a Dry Run and resolve all validation errors before committing this import.");
+            }
 
-        var rawRows = batch.RawRows
-            .OrderBy(r => r.RowIndex)
-            .Select(r => (IReadOnlyDictionary<string, string?>)(
-                JsonSerializer.Deserialize<Dictionary<string, string?>>(r.RawDataJson) ?? []))
-            .ToList();
+            var template = await db.ImportTemplates
+                .Include(t => t.ColumnMappings)
+                .SingleAsync(t => t.Id == batch.ImportTemplateId, ct);
 
-        var normalizedRows = ImportRowNormalizer.NormalizeAll(new ParsedImportFile([], rawRows), template);
+            var rawRows = batch.RawRows
+                .OrderBy(r => r.RowIndex)
+                .Select(r => (IReadOnlyDictionary<string, string?>)(
+                    JsonSerializer.Deserialize<Dictionary<string, string?>>(r.RawDataJson) ?? []))
+                .ToList();
 
-        if (normalizedRows.Any(row => !row.IsValid))
-        {
+            var normalizedRows = ImportRowNormalizer.NormalizeAll(new ParsedImportFile([], rawRows), template);
+
+            if (normalizedRows.Any(row => !row.IsValid))
+            {
             // Defensive re-check: the underlying template or data may have changed since the last
             // Dry Run. Reject rather than commit partially-invalid data; the organizer must re-run
             // the Dry Run to see current validation state.
@@ -61,8 +67,8 @@ public sealed class ImportCommitService(BethuyaDbContext db)
             batch.FailureReason =
                 "Commit was rejected: rows failed validation on re-check. Run the Dry Run again before committing.";
             await db.SaveChangesAsync(ct);
-            return batch;
-        }
+                return batch;
+            }
 
         var connector = ImportConnectorMapper.ToConnector(template.SourceKind);
         var strategy = db.Database.CreateExecutionStrategy();
@@ -96,7 +102,13 @@ public sealed class ImportCommitService(BethuyaDbContext db)
             await transaction.CommitAsync(ct);
         });
 
-        return batch;
+            return batch;
+        }
+        finally
+        {
+            gate.Release();
+            BatchCommitGates.TryRemove(importBatchId, out _);
+        }
     }
 
     private async Task<(int Created, int Updated)> CommitRegistrationsAsync(
@@ -143,10 +155,12 @@ public sealed class ImportCommitService(BethuyaDbContext db)
                     ExperienceLevel = row.ExperienceLevel,
                     DietaryRequirements = row.DietaryRequirements,
                     AccessibilityNeeds = row.AccessibilityNeeds,
+                    Bio = row.Notes,
                     // Imported registrations originate from an organizer-managed export of an
                     // already-completed sign-up flow on the source platform — they do not need to
                     // re-enter Bethuya's own curation/waitlist review.
-                    Status = RegistrationStatus.Accepted
+                    Status = RegistrationStatus.Accepted,
+                    RegisteredAt = row.OccurredAt ?? DateTimeOffset.UtcNow
                 };
                 db.Registrations.Add(registration);
                 existingByEmail[email] = registration;
@@ -202,7 +216,9 @@ public sealed class ImportCommitService(BethuyaDbContext db)
                 EventId = batch.EventId,
                 ExternalRecordId = row.ExternalRecordId,
                 Activity = ParticipationActivityKind.Attended,
-                Evidence = $"Imported attendance record for {email}.",
+                Evidence = string.IsNullOrWhiteSpace(row.Notes)
+                    ? $"Imported attendance record for {email}."
+                    : row.Notes,
                 ProvenanceKey = provenanceKey,
                 OccurredAt = row.OccurredAt ?? DateTimeOffset.UtcNow
             });

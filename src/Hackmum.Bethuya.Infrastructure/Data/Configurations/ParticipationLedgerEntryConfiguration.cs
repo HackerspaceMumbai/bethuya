@@ -67,5 +67,10 @@ internal sealed class ParticipationLedgerEntryConfiguration : IEntityTypeConfigu
             .WithMany()
             .HasForeignKey(entry => entry.EventId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<ImportBatch>()
+            .WithMany()
+            .HasForeignKey(entry => entry.ImportBatchId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

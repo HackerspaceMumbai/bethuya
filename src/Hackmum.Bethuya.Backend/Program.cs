@@ -63,7 +63,15 @@ builder.Services.AddScoped<MentorshipService>();
 builder.Services.AddSingleton<IImportFileParser, CsvImportFileParser>();
 builder.Services.AddSingleton<IImportFileParser, XlsxImportFileParser>();
 builder.Services.AddSingleton<ImportFileParserResolver>();
-builder.Services.AddSingleton<IImportArtifactStore>(new LocalDiskImportArtifactStore());
+var importArtifactRoot = builder.Configuration["ImportArtifacts:RootDirectory"];
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(importArtifactRoot))
+{
+    throw new InvalidOperationException(
+        "ImportArtifacts:RootDirectory must reference durable shared storage outside Development.");
+}
+
+builder.Services.AddSingleton<IImportArtifactStore>(
+    new LocalDiskImportArtifactStore(importArtifactRoot));
 builder.Services.AddScoped<ImportDryRunService>();
 builder.Services.AddScoped<ImportCommitService>();
 builder.Services.AddScoped<ImportTemplateService>();

@@ -142,6 +142,12 @@ public sealed class ImportTemplateService(BethuyaDbContext db)
             throw new UnauthorizedAccessException("Only the template's owner or an Admin can edit it.");
         }
 
+        if (await db.ImportBatches.AnyAsync(batch => batch.ImportTemplateId == templateId, ct))
+        {
+            throw new InvalidOperationException(
+                "Templates referenced by an import batch are immutable. Clone the template to make changes.");
+        }
+
         template.Name = name;
         template.UpdatedAt = DateTimeOffset.UtcNow;
 
