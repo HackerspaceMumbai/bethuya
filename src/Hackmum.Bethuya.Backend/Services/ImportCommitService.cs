@@ -107,7 +107,6 @@ public sealed class ImportCommitService(BethuyaDbContext db)
         finally
         {
             gate.Release();
-            BatchCommitGates.TryRemove(importBatchId, out _);
         }
     }
 

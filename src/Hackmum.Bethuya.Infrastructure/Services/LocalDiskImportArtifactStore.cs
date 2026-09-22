@@ -53,7 +53,10 @@ public sealed class LocalDiskImportArtifactStore : IImportArtifactStore
 
     private string GetArtifactPath(string storageKey)
     {
-        if (!string.Equals(storageKey, Path.GetFileName(storageKey), StringComparison.Ordinal) ||
+        if (Path.IsPathFullyQualified(storageKey) ||
+            storageKey.Contains(Path.DirectorySeparatorChar) ||
+            storageKey.Contains(Path.AltDirectorySeparatorChar) ||
+            !string.Equals(storageKey, Path.GetFileName(storageKey), StringComparison.Ordinal) ||
             !AllowedExtensions.Contains(Path.GetExtension(storageKey)))
         {
             throw new InvalidOperationException("The import artifact key is invalid.");
