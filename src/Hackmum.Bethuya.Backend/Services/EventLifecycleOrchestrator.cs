@@ -1,25 +1,22 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Hackmum.Bethuya.Backend.Services;
 
 public sealed partial class EventLifecycleOrchestrator(
     BethuyaDbContext dbContext,
-    IGitHubEventRepository gitHubEventRepository,
     ILumaRegistrationService lumaRegistrationService,
     ITeamsNotificationService teamsNotificationService,
     IWebCacheInvalidationService cacheInvalidationService)
     : IEventLifecycleOrchestrator
 {
-    private static readonly JsonSerializerOptions MetadataJsonOptions = new() { WriteIndented = true };
-
     public async Task<EventLifecycleOperationResult> TransitionAsync(
         Guid eventId,
         MeetupLifecycleState targetState,
@@ -29,10 +26,13 @@ public sealed partial class EventLifecycleOrchestrator(
         ArgumentException.ThrowIfNullOrWhiteSpace(actor);
         var occurredAt = DateTimeOffset.UtcNow;
 
-        var evt = await dbContext.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct)
-            ?? throw new KeyNotFoundException($"Event {eventId} was not found.");
+        var evt = await LoadEventAggregateAsync(eventId, ct);
 
         evt.TransitionLifecycleTo(targetState, occurredAt);
+        if (IsPublicLifecycle(targetState))
+        {
+            await QueueArchiveProjectionAsync(evt, ct);
+        }
         await dbContext.SaveChangesAsync(ct);
 
         return ToResult(evt, $"Lifecycle transitioned to {targetState} by {actor}.");
@@ -57,27 +57,18 @@ public sealed partial class EventLifecycleOrchestrator(
             ?? await lumaRegistrationService.GetRegistrationUrlAsync(eventId, ct)
             ?? evt.RegistrationUrl;
 
-        var artifact = CreatePublicationArtifact(evt);
-        var publication = await gitHubEventRepository.PublishEventAsync(
-            new EventPublicationRequest(
-                evt.Id,
-                evt.Title,
-                artifact.FolderPath,
-                artifact.ReadmeMarkdown,
-                artifact.MetadataJson,
-                CreateIdempotencyKey(evt.Id, artifact.MetadataJson)),
-            ct);
-
         var strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
-            evt.GitHubFolderUrl = publication.FolderUrl;
+            var artifact = CreatePublicationArtifact(evt);
+            var outbox = CreateOutboxMessage(evt, artifact);
+            await AddOutboxIfMissingAsync(outbox, ct);
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
         });
 
-        return ToResult(evt, "Event published.");
+        return ToResult(evt, "Event published and queued for archive synchronization.");
     }
 
     public async Task<EventLifecycleOperationResult> AlterScheduleAsync(
@@ -101,6 +92,7 @@ public sealed partial class EventLifecycleOrchestrator(
                 evt.TransitionLifecycleTo(MeetupLifecycleState.ScheduleAltered, occurredAt);
             }
 
+            await QueueArchiveProjectionAsync(evt, ct);
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
             result = ToResult(evt, $"Schedule altered by {actor}: {reason}");
@@ -127,6 +119,7 @@ public sealed partial class EventLifecycleOrchestrator(
             session.MarkPendingUpload(assetDueAt);
         }
 
+        await QueueArchiveProjectionAsync(evt, ct);
         await dbContext.SaveChangesAsync(ct);
         return ToResult(evt, "Event completed; session assets are pending upload.");
     }
@@ -147,6 +140,7 @@ public sealed partial class EventLifecycleOrchestrator(
         }
 
         evt.TransitionLifecycleTo(MeetupLifecycleState.Archived, DateTimeOffset.UtcNow);
+        await QueueArchiveProjectionAsync(evt, ct);
         await dbContext.SaveChangesAsync(ct);
         return ToResult(evt, "Event archived.");
     }
@@ -160,43 +154,77 @@ public sealed partial class EventLifecycleOrchestrator(
 
     private static EventPublicationArtifact CreatePublicationArtifact(Event evt)
     {
-        var folderPath = $"events/{evt.StartDate.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{Slugify(evt.Title)}-{evt.Id:N}";
+        var folderPath = evt.ArchiveFolderPath ?? CreateArchiveFolderPath(evt);
+        evt.ArchiveFolderPath ??= folderPath;
+        var folderSlug = Path.GetFileName(folderPath);
         var sessions = evt.Agenda?.Sessions.OrderBy(s => s.Order).ToArray() ?? [];
         var readme = CreateReadme(evt, sessions);
-        var metadata = JsonSerializer.Serialize(
-            new
-            {
-                evt.Id,
-                evt.Title,
-                evt.Description,
-                lifecycleState = evt.LifecycleState.ToString(),
-                evt.StartDate,
-                evt.EndDate,
-                evt.Location,
-                evt.RegistrationUrl,
-                sessions = sessions.Select(s => new
-                {
-                    s.Id,
-                    s.Title,
-                    s.Speaker,
-                    s.StartTime,
-                    s.EndTime,
-                    s.Source,
-                    s.AssetStatus
-                })
-            },
-            MetadataJsonOptions);
+        var metadata = CreateMetadataYaml(evt, sessions, folderSlug);
 
         return new EventPublicationArtifact(folderPath, readme, metadata);
     }
 
+    private static string CreateArchiveFolderPath(Event evt)
+    {
+        var localStart = ToAsiaKolkata(evt.StartDate);
+        var slug = Slugify(evt.Title);
+        var folderSlug = $"{localStart:yyyy-MM-dd}-{slug}-{evt.Id:N}";
+        return $"events/{localStart:yyyy}/{folderSlug}";
+    }
+
+    private static string CreateMetadataYaml(Event evt, AgendaSession[] sessions, string slug)
+    {
+        var localStart = ToAsiaKolkata(evt.StartDate);
+        var builder = new StringBuilder()
+            .Append("title: ").AppendLine(YamlString(evt.Title))
+            .Append("slug: ").AppendLine(YamlString(slug))
+            .Append("date: ").AppendLine(localStart.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
+            .Append("city: ").AppendLine(YamlString(evt.Location ?? "Unknown"))
+            .AppendLine("country: India")
+            .Append("eventType: ").AppendLine(ToArchiveEventType(evt.Type))
+            .AppendLine("series: null")
+            .AppendLine("community: Hackerspace Mumbai")
+            .Append("venue: ").AppendLine(YamlString(evt.Location ?? "TBD"))
+            .AppendLine("website: https://hackmum.in")
+            .AppendLine("eventPage: https://hackmum.in/past-events/")
+            .Append("resourcesAvailable: ").AppendLine(sessions.Length > 0 ? "true" : "false")
+            .Append("status: ").AppendLine(evt.LifecycleState is MeetupLifecycleState.Completed or MeetupLifecycleState.Archived ? "completed" : "upcoming")
+            .AppendLine("timezone: Asia/Kolkata")
+            .Append("description: ").AppendLine(YamlString(evt.Description ?? string.Empty))
+            .AppendLine("bethuya:")
+            .Append("  eventId: ").AppendLine(evt.Id.ToString("D"))
+            .AppendLine("  projectionVersion: 1")
+            .AppendLine("  managedFields:")
+            .AppendLine("    - title")
+            .AppendLine("    - date")
+            .AppendLine("    - status")
+            .AppendLine("    - description");
+
+        return builder.ToString();
+    }
+
+    private static string ToArchiveEventType(EventType type)
+        => type switch
+        {
+            EventType.Workshop => "workshop",
+            EventType.Hackathon => "hackathon",
+            EventType.Conference => "conference",
+            EventType.Meetup or EventType.Panel or EventType.Social => "meetup",
+            _ => "meetup"
+        };
+
+    private static string YamlString(string value)
+        => '"' + value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)
+            .Replace("\r", string.Empty, StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal) + '"';
+
     private static string CreateReadme(Event evt, IReadOnlyCollection<AgendaSession> sessions)
     {
+        var localStart = ToAsiaKolkata(evt.StartDate);
         var builder = new StringBuilder()
             .Append("# ").AppendLine(EscapeMarkdown(evt.Title))
             .AppendLine()
             .Append("Lifecycle: ").AppendLine(evt.LifecycleState.ToString())
-            .Append("Date: ").AppendLine(evt.StartDate.ToString("u"))
+            .Append("Date: ").AppendLine(localStart.ToString("yyyy-MM-ddTHH:mm:sszzz", System.Globalization.CultureInfo.InvariantCulture))
             .Append("Location: ").AppendLine(EscapeMarkdown(evt.Location ?? "TBD"))
             .AppendLine()
             .AppendLine("## Agenda");
@@ -222,6 +250,12 @@ public sealed partial class EventLifecycleOrchestrator(
         return builder.ToString();
     }
 
+    private static DateTimeOffset ToAsiaKolkata(DateTimeOffset value)
+    {
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
+        return TimeZoneInfo.ConvertTime(value, timeZone);
+    }
+
     private static string EscapeMarkdown(string value)
         => value.Replace("\r", string.Empty, StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal);
 
@@ -233,11 +267,73 @@ public sealed partial class EventLifecycleOrchestrator(
         return string.IsNullOrEmpty(slug) ? "event" : slug[..Math.Min(slug.Length, 80)];
     }
 
-    private static string CreateIdempotencyKey(Guid eventId, string metadataJson)
+    private static string CreateIdempotencyKey(Hackmum.Bethuya.Core.ValueObjects.EventId eventId, EventPublicationArtifact artifact)
     {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(metadataJson));
-        return $"{eventId:N}-{Convert.ToHexString(hash)[..16]}";
+        var raw = $"{artifact.FolderPath}\n{artifact.ReadmeMarkdown}\n{artifact.MetadataJson}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
+        return $"{eventId.Value:N}-{Convert.ToHexString(hash)[..16]}";
     }
+
+    private static EventArchiveOutboxMessage CreateOutboxMessage(Event evt, EventPublicationArtifact artifact)
+        => new()
+        {
+            EventId = Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id),
+            Destination = "github-events",
+            FolderPath = artifact.FolderPath,
+            ReadmeMarkdown = artifact.ReadmeMarkdown,
+            MetadataJson = artifact.MetadataJson,
+            IdempotencyKey = CreateIdempotencyKey(Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id), artifact)
+        };
+
+    private async Task QueueArchiveProjectionAsync(Event evt, CancellationToken ct)
+    {
+        var artifact = CreatePublicationArtifact(evt);
+        var outbox = CreateOutboxMessage(evt, artifact);
+        await AddOutboxIfMissingAsync(outbox, ct);
+    }
+
+    private async Task AddOutboxIfMissingAsync(EventArchiveOutboxMessage outbox, CancellationToken ct)
+    {
+        if (await dbContext.EventArchiveOutboxMessages.AnyAsync(message =>
+                message.EventId == outbox.EventId
+                && message.Destination == outbox.Destination
+                && message.IdempotencyKey == outbox.IdempotencyKey, ct))
+        {
+            return;
+        }
+
+        const string savepointName = "OutboxInsert";
+        var transaction = dbContext.Database.CurrentTransaction;
+        if (transaction is not null)
+        {
+            await transaction.CreateSavepointAsync(savepointName, ct);
+        }
+
+        try
+        {
+            dbContext.EventArchiveOutboxMessages.Add(outbox);
+            await dbContext.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
+        {
+            if (transaction is not null)
+            {
+                await transaction.RollbackToSavepointAsync(savepointName, ct);
+            }
+
+            dbContext.Entry(outbox).State = EntityState.Detached;
+        }
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException exception)
+        => exception.GetBaseException() is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
+    private static bool IsPublicLifecycle(MeetupLifecycleState state)
+        => state is MeetupLifecycleState.Published
+            or MeetupLifecycleState.ScheduleAltered
+            or MeetupLifecycleState.Delayed
+            or MeetupLifecycleState.Completed
+            or MeetupLifecycleState.Archived;
 
     private static string? NormalizeHttpsUrl(string? value)
     {

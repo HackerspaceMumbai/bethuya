@@ -27,10 +27,10 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
         httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
 
         await UpsertFileAsync(settings, $"{request.FolderPath}/README.md", request.ReadmeMarkdown, request.IdempotencyKey, ct);
-        await UpsertFileAsync(settings, $"{request.FolderPath}/metadata.json", request.MetadataJson, request.IdempotencyKey, ct);
+        await UpsertFileAsync(settings, $"{request.FolderPath}/event.yml", request.MetadataJson, request.IdempotencyKey, ct);
 
         var folderUrl = $"https://github.com/{settings.Owner}/{settings.Repository}/tree/{settings.Branch}/{request.FolderPath}";
-        var metadataUrl = $"https://github.com/{settings.Owner}/{settings.Repository}/blob/{settings.Branch}/{request.FolderPath}/metadata.json";
+        var metadataUrl = $"https://github.com/{settings.Owner}/{settings.Repository}/blob/{settings.Branch}/{request.FolderPath}/event.yml";
         return new EventPublicationResult(folderUrl, metadataUrl);
     }
 

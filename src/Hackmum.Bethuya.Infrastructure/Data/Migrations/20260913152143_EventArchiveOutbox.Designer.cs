@@ -3,6 +3,7 @@ using System;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(BethuyaDbContext))]
-    partial class BethuyaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260913152143_EventArchiveOutbox")]
+    partial class EventArchiveOutbox
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -529,10 +532,6 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("ArchiveFolderPath")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<DateTimeOffset?>("ArchivedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -630,6 +629,7 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.EventArchiveOutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("AttemptCount")

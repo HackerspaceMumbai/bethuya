@@ -15,4 +15,8 @@
     <ProjectReference Include="..\Hackmum.Bethuya.Core\Hackmum.Bethuya.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Hackmum.Bethuya.Tests" />
+  </ItemGroup>
+
 </Project>
