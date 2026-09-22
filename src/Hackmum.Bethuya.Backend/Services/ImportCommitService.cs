@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Collections.Concurrent;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Services;
@@ -20,13 +19,11 @@ public sealed class ImportCommitService(BethuyaDbContext db)
 {
     // Member creation is keyed by a deterministic import user id. Serialize the lookup/create
     // window so simultaneous import commits in this service host cannot race the unique index.
-    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> BatchCommitGates = [];
     private static readonly SemaphoreSlim MemberCreationGate = new(1, 1);
 
     public async Task<ImportBatch> CommitAsync(Guid importBatchId, CancellationToken ct = default)
     {
-        var gate = BatchCommitGates.GetOrAdd(importBatchId, _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync(ct);
+        await ImportMutationGate.Instance.WaitAsync(ct);
         try
         {
             var batch = await db.ImportBatches
@@ -106,7 +103,7 @@ public sealed class ImportCommitService(BethuyaDbContext db)
         }
         finally
         {
-            gate.Release();
+            ImportMutationGate.Instance.Release();
         }
     }
 

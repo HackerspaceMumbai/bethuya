@@ -130,40 +130,48 @@ public sealed class ImportTemplateService(BethuyaDbContext db)
         IReadOnlyList<ImportColumnMappingInput> mappings,
         CancellationToken ct = default)
     {
-        var template = await GetAsync(templateId, ct);
-
-        if (template.Scope == ImportTemplateScope.System)
+        await ImportMutationGate.Instance.WaitAsync(ct);
+        try
         {
-            throw new InvalidOperationException("System templates are read-only. Clone this template to customize it.");
-        }
+            var template = await GetAsync(templateId, ct);
 
-        if (!requestingUserIsAdmin && !string.Equals(template.OwnerUserId, requestingUserId, StringComparison.Ordinal))
-        {
-            throw new UnauthorizedAccessException("Only the template's owner or an Admin can edit it.");
-        }
+            if (template.Scope == ImportTemplateScope.System)
+            {
+                throw new InvalidOperationException("System templates are read-only. Clone this template to customize it.");
+            }
 
-        if (await db.ImportBatches.AnyAsync(
-            batch => batch.ImportTemplateId == templateId &&
-                batch.Status == ImportBatchStatus.Committed,
-            ct))
-        {
-            throw new InvalidOperationException(
-                "Templates referenced by a committed import batch are immutable. Clone the template to make changes.");
-        }
+            if (!requestingUserIsAdmin && !string.Equals(template.OwnerUserId, requestingUserId, StringComparison.Ordinal))
+            {
+                throw new UnauthorizedAccessException("Only the template's owner or an Admin can edit it.");
+            }
 
-        template.Name = name;
-        template.UpdatedAt = DateTimeOffset.UtcNow;
+            if (await db.ImportBatches.AnyAsync(
+                batch => batch.ImportTemplateId == templateId &&
+                    batch.Status == ImportBatchStatus.Committed,
+                ct))
+            {
+                throw new InvalidOperationException(
+                    "Templates referenced by a committed import batch are immutable. Clone the template to make changes.");
+            }
+
+            template.Name = name;
+            template.UpdatedAt = DateTimeOffset.UtcNow;
 
         // Remove/add mappings directly through the DbSet rather than mutating the
         // template.ColumnMappings navigation collection. Touching that collection while an old
         // mapping is simultaneously marked Deleted triggers a relationship-fixup "reference
         // changed" notification on the same entity, which throws a DbUpdateConcurrencyException
         // against the InMemory provider.
-        db.ImportColumnMappings.RemoveRange(template.ColumnMappings.ToList());
-        ApplyMappings(db, template, mappings);
+            db.ImportColumnMappings.RemoveRange(template.ColumnMappings.ToList());
+            ApplyMappings(db, template, mappings);
 
-        await db.SaveChangesAsync(ct);
-        return template;
+            await db.SaveChangesAsync(ct);
+            return template;
+        }
+        finally
+        {
+            ImportMutationGate.Instance.Release();
+        }
     }
 
     private static void ApplyMappings(BethuyaDbContext db, ImportTemplate template, IReadOnlyList<ImportColumnMappingInput> mappings)

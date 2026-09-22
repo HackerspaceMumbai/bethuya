@@ -22,22 +22,28 @@
 
     <BbCard Class="p-4 mb-6">
         <BbFormSection Title="1. Choose an export">
-            <BbFormFieldSelect TValue="string" @bind-Value="_eventIdText" Label="Event" Placeholder="Choose an event">
-                @foreach (var item in _events)
-                {
-                    <BbSelectItem Value="@item.Id.ToString()" Text="@item.Title" />
-                }
-            </BbFormFieldSelect>
-            <BbFormFieldSelect TValue="string" @bind-Value="_importKind" @bind-Value:after="LoadTemplatesAsync" Label="Data type">
-                <BbSelectItem Value="@("Registration")" Text="Registrations" />
-                <BbSelectItem Value="@("Attendance")" Text="Attendance" />
-            </BbFormFieldSelect>
-            <BbFormFieldSelect TValue="string" @bind-Value="_templateIdText" Label="Source template" Placeholder="Choose a template">
-                @foreach (var template in Templates)
-                {
-                    <BbSelectItem Value="@template.Id.ToString()" Text="@template.Name" />
-                }
-            </BbFormFieldSelect>
+            <div data-test="import-event-select">
+                <BbFormFieldSelect TValue="string" @bind-Value="_eventIdText" Label="Event" Placeholder="Choose an event">
+                    @foreach (var item in _events)
+                    {
+                        <BbSelectItem Value="@item.Id.ToString()" Text="@item.Title" />
+                    }
+                </BbFormFieldSelect>
+            </div>
+            <div data-test="import-kind-select">
+                <BbFormFieldSelect TValue="string" @bind-Value="_importKind" @bind-Value:after="LoadTemplatesAsync" Label="Data type">
+                    <BbSelectItem Value="@("Registration")" Text="Registrations" />
+                    <BbSelectItem Value="@("Attendance")" Text="Attendance" />
+                </BbFormFieldSelect>
+            </div>
+            <div data-test="import-template-select">
+                <BbFormFieldSelect TValue="string" @bind-Value="_templateIdText" Label="Source template" Placeholder="Choose a template">
+                    @foreach (var template in Templates)
+                    {
+                        <BbSelectItem Value="@template.Id.ToString()" Text="@template.Name" />
+                    }
+                </BbFormFieldSelect>
+            </div>
             <div class="form-group" data-test="import-file-field">
                 <BbLabel>CSV or XLSX file</BbLabel>
                 <BbFileUpload FilesChanged="HandleFileSelected"
