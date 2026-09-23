@@ -185,6 +185,19 @@ public sealed class ImportTemplateService(BethuyaDbContext db)
                 $"Only one source column can map to '{duplicateTarget.Key}'.");
         }
 
+        // ImportRowNormalizer matches incoming file headers to a mapping's SourceColumnName
+        // after trimming and case-insensitive comparison, then picks the first match. Two
+        // mappings that only differ by casing/whitespace (e.g. "Email" and " email ") would
+        // otherwise silently collapse into one at normalization time, so reject that here.
+        var duplicateSource = mappings
+            .GroupBy(mapping => mapping.SourceColumnName.Trim(), StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateSource is not null)
+        {
+            throw new InvalidOperationException(
+                $"Only one mapping can use source column '{duplicateSource.Key}'.");
+        }
+
         foreach (var mapping in mappings)
         {
             db.ImportColumnMappings.Add(new ImportColumnMapping

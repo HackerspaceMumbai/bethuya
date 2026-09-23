@@ -138,6 +138,76 @@ public sealed class ImportRowNormalizerTests
         await Assert.That(rows[0].Notes).IsNull();
     }
 
+    [Test]
+    public async Task NormalizeAll_FullNameExceedsDatabaseLimit_ProducesValidationError()
+    {
+        var template = CreateTemplate(ImportKind.Registration,
+            ("Name", ImportTargetField.FullName),
+            ("Email", ImportTargetField.Email));
+
+        var file = new ParsedImportFile(
+            ["Name", "Email"],
+            [
+                new Dictionary<string, string?>
+                {
+                    ["Name"] = new string('a', 201),
+                    ["Email"] = "toolong@example.com"
+                }
+            ]);
+
+        var rows = ImportRowNormalizer.NormalizeAll(file, template);
+
+        await Assert.That(rows[0].IsValid).IsFalse();
+        await Assert.That(rows[0].ValidationErrors).Contains("Full name must be 200 characters or fewer.");
+    }
+
+    [Test]
+    public async Task NormalizeAll_AttendanceNotesExceeds600Characters_ProducesValidationError()
+    {
+        var template = CreateTemplate(ImportKind.Attendance,
+            ("Email", ImportTargetField.Email),
+            ("Notes", ImportTargetField.Notes));
+
+        var file = new ParsedImportFile(
+            ["Email", "Notes"],
+            [
+                new Dictionary<string, string?>
+                {
+                    ["Email"] = "attendee@example.com",
+                    ["Notes"] = new string('n', 601)
+                }
+            ]);
+
+        var rows = ImportRowNormalizer.NormalizeAll(file, template);
+
+        await Assert.That(rows[0].IsValid).IsFalse();
+        await Assert.That(rows[0].ValidationErrors).Contains("Notes must be 600 characters or fewer.");
+    }
+
+    [Test]
+    public async Task NormalizeAll_RegistrationNotesWithin2000Characters_IsValid()
+    {
+        var template = CreateTemplate(ImportKind.Registration,
+            ("Name", ImportTargetField.FullName),
+            ("Email", ImportTargetField.Email),
+            ("Notes", ImportTargetField.Notes));
+
+        var file = new ParsedImportFile(
+            ["Name", "Email", "Notes"],
+            [
+                new Dictionary<string, string?>
+                {
+                    ["Name"] = "Ada Lovelace",
+                    ["Email"] = "ada@example.com",
+                    ["Notes"] = new string('n', 2000)
+                }
+            ]);
+
+        var rows = ImportRowNormalizer.NormalizeAll(file, template);
+
+        await Assert.That(rows[0].IsValid).IsTrue();
+    }
+
     private static ImportTemplate CreateTemplate(ImportKind importKind, params (string SourceColumnName, ImportTargetField TargetField)[] mappings)
     {
         var template = new ImportTemplate

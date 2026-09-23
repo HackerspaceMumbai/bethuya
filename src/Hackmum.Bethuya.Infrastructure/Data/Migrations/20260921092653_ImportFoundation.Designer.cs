@@ -1065,6 +1065,8 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
 
                     b.HasIndex("EventId");
 
+                    b.HasIndex("ImportBatchId");
+
                     b.HasIndex("CommunityMemberId", "OccurredAt");
 
                     b.HasIndex("CommunityMemberId", "Connector", "ProvenanceKey")
@@ -1607,6 +1609,11 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.HasOne("Hackmum.Bethuya.Core.Models.Event", null)
                         .WithMany()
                         .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Hackmum.Bethuya.Core.Models.ImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("ImportBatchId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("CommunityMember");

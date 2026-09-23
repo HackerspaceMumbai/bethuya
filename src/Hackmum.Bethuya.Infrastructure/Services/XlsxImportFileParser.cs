@@ -30,22 +30,23 @@ public sealed class XlsxImportFileParser : IImportFileParser
             }
 
             var headerRow = firstRow;
-            var firstColumn = usedRange.FirstColumn().ColumnNumber();
-            var headers = headerRow.Cells()
-                .Select(cell => cell.GetString().Trim())
-                .Where(header => !string.IsNullOrWhiteSpace(header))
+            var headerCells = headerRow.Cells()
+                .Select(cell => (ColumnNumber: cell.Address.ColumnNumber, Header: cell.GetString().Trim()))
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.Header))
                 .ToList();
 
-            if (headers.Count == 0)
+            if (headerCells.Count == 0)
             {
                 throw new ImportFileParseException("The XLSX file does not contain a header row.");
             }
 
-            if (headers.Count > ImportFileLimits.MaxColumns)
+            if (headerCells.Count > ImportFileLimits.MaxColumns)
             {
                 throw new ImportFileParseException(
                     $"The XLSX file has more than {ImportFileLimits.MaxColumns} columns.");
             }
+
+            var headers = headerCells.Select(pair => pair.Header).ToList();
 
             var rows = new List<IReadOnlyDictionary<string, string?>>();
             foreach (var dataRow in rowsUsed.Skip(1))
@@ -57,9 +58,9 @@ public sealed class XlsxImportFileParser : IImportFileParser
                 }
 
                 var row = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-                for (var columnIndex = 0; columnIndex < headers.Count; columnIndex++)
+                foreach (var (columnNumber, header) in headerCells)
                 {
-                    var cell = dataRow.Cell(firstColumn + columnIndex);
+                    var cell = dataRow.Cell(columnNumber);
                     var value = cell.IsEmpty() ? null : cell.GetString();
                     if (value?.Length > ImportFileLimits.MaxCellLength)
                     {
@@ -67,7 +68,7 @@ public sealed class XlsxImportFileParser : IImportFileParser
                             $"An XLSX cell exceeds the {ImportFileLimits.MaxCellLength}-character limit.");
                     }
 
-                    row[headers[columnIndex]] = value;
+                    row[header] = value;
                 }
 
                 rows.Add(row);

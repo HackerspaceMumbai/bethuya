@@ -51,6 +51,17 @@ public sealed class LocalDiskImportArtifactStore : IImportArtifactStore
         return await File.ReadAllBytesAsync(path, ct);
     }
 
+    public Task DeleteAsync(string storageKey, CancellationToken ct = default)
+    {
+        var path = GetArtifactPath(storageKey);
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+
+        return Task.CompletedTask;
+    }
+
     private string GetArtifactPath(string storageKey)
     {
         if (Path.IsPathFullyQualified(storageKey) ||

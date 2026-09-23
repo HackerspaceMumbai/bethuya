@@ -51,43 +51,55 @@ public sealed class ImportDryRunService(
         var parsed = parser.Parse(contentStream);
 
         var storageKey = await artifactStore.SaveAsync(fileBytes, fileName, ct);
-        var checksum = Convert.ToHexString(SHA256.HashData(fileBytes)).ToLowerInvariant();
 
-        var batch = new ImportBatch
+        try
         {
-            EventId = eventId,
-            ImportKind = importKind,
-            ImportTemplateId = importTemplateId,
-            CreatedByUserId = createdByUserId
-        };
+            var checksum = Convert.ToHexString(SHA256.HashData(fileBytes)).ToLowerInvariant();
 
-        var artifact = new ImportArtifact
-        {
-            ImportBatchId = batch.Id,
-            FileName = fileName,
-            StorageKey = storageKey,
-            ContentType = contentType,
-            SizeBytes = fileBytes.LongLength,
-            Sha256Checksum = checksum
-        };
+            var batch = new ImportBatch
+            {
+                EventId = eventId,
+                ImportKind = importKind,
+                ImportTemplateId = importTemplateId,
+                CreatedByUserId = createdByUserId
+            };
 
-        var rawRows = parsed.Rows
-            .Select((row, index) => new ImportRawRow
+            var artifact = new ImportArtifact
             {
                 ImportBatchId = batch.Id,
-                RowIndex = index,
-                RawDataJson = JsonSerializer.Serialize(row)
-            })
-            .ToList();
+                FileName = fileName,
+                StorageKey = storageKey,
+                ContentType = contentType,
+                SizeBytes = fileBytes.LongLength,
+                Sha256Checksum = checksum
+            };
 
-        db.ImportBatches.Add(batch);
-        db.ImportArtifacts.Add(artifact);
-        db.ImportRawRows.AddRange(rawRows);
+            var rawRows = parsed.Rows
+                .Select((row, index) => new ImportRawRow
+                {
+                    ImportBatchId = batch.Id,
+                    RowIndex = index,
+                    RawDataJson = JsonSerializer.Serialize(row)
+                })
+                .ToList();
 
-        await ApplyDryRunAsync(batch, template, parsed.Rows, ct);
-        await db.SaveChangesAsync(ct);
+            db.ImportBatches.Add(batch);
+            db.ImportArtifacts.Add(artifact);
+            db.ImportRawRows.AddRange(rawRows);
 
-        return batch;
+            await ApplyDryRunAsync(batch, template, parsed.Rows, ct);
+            await db.SaveChangesAsync(ct);
+
+            return batch;
+        }
+        catch
+        {
+            // The artifact bytes were already persisted to storage before the database write.
+            // If anything after that write fails, the file would otherwise be orphaned with no
+            // ImportArtifact record and no audit trail. Clean it up before propagating.
+            await artifactStore.DeleteAsync(storageKey, ct);
+            throw;
+        }
     }
 
     /// <summary>

@@ -172,6 +172,11 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                 columns: new[] { "ImportBatchId", "RowIndex" },
                 unique: true);
 
+            migrationBuilder.CreateIndex(
+                name: "IX_ParticipationLedgerEntries_ImportBatchId",
+                table: "ParticipationLedgerEntries",
+                column: "ImportBatchId");
+
             migrationBuilder.AddForeignKey(
                 name: "FK_ParticipationLedgerEntries_ImportBatches_ImportBatchId",
                 table: "ParticipationLedgerEntries",
@@ -192,6 +197,11 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
             migrationBuilder.DropForeignKey(
                 name: "FK_ParticipationLedgerEntries_ImportBatches_ImportBatchId",
                 table: "ParticipationLedgerEntries");
+
+            migrationBuilder.DropIndex(
+                name: "IX_ParticipationLedgerEntries_ImportBatchId",
+                table: "ParticipationLedgerEntries");
+
             migrationBuilder.DropTable(
                 name: "ImportArtifacts");
 

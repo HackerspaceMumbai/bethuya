@@ -11,4 +11,12 @@ public interface IImportArtifactStore
     Task<string> SaveAsync(byte[] content, string fileName, CancellationToken ct = default);
 
     Task<byte[]> ReadAsync(string storageKey, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes a previously saved artifact. Used to clean up orphaned files when the
+    /// surrounding database write (e.g. persisting the <see cref="ImportBatch"/> record)
+    /// fails after the artifact bytes were already saved. Safe to call even if the key
+    /// does not exist.
+    /// </summary>
+    Task DeleteAsync(string storageKey, CancellationToken ct = default);
 }

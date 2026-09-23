@@ -12,6 +12,24 @@ namespace Hackmum.Bethuya.Core.Services;
 /// </summary>
 public static class ImportRowNormalizer
 {
+    // Mirrors the HasMaxLength(...) database constraints in RegistrationConfiguration and
+    // ParticipationLedgerEntryConfiguration. A row that looks valid here but exceeds these
+    // limits would otherwise pass Dry Run only to fail later, at commit time, against the
+    // database — so these are enforced as validation errors before IsValid is ever set.
+    private const int EmailMaxLength = 200;
+    private const int FullNameMaxLength = 200;
+    private const int IntentMaxLength = 4000;
+    private const int GoalsMaxLength = 1000;
+    private const int ExperienceLevelMaxLength = 50;
+    private const int DietaryRequirementsMaxLength = 500;
+    private const int AccessibilityNeedsMaxLength = 1000;
+    private const int ExternalRecordIdMaxLength = 200;
+
+    // Notes is persisted as Registration.Bio (max 2000) for registrations, or as
+    // ParticipationLedgerEntry.Evidence (max 600) for attendance.
+    private const int RegistrationNotesMaxLength = 2000;
+    private const int AttendanceNotesMaxLength = 600;
+
     /// <summary>
     /// Normalizes every row and flags in-file duplicate emails as validation errors on every
     /// row that shares the duplicated email (per the "duplicate emails within a file are
@@ -64,7 +82,10 @@ public static class ImportRowNormalizer
             errors.Add($"'{email}' is not a valid email address.");
             email = null;
         }
-
+        else if (email.Length > EmailMaxLength)
+        {
+            errors.Add($"Email must be {EmailMaxLength} characters or fewer.");
+        }
         else
         {
             email = email.ToLowerInvariant();
@@ -75,6 +96,32 @@ public static class ImportRowNormalizer
         {
             errors.Add("Full name is required for registration imports.");
         }
+        CheckLength(fullName, FullNameMaxLength, "Full name", errors);
+
+        var notes = TrimToNull(values.GetValueOrDefault(ImportTargetField.Notes));
+        CheckLength(
+            notes,
+            importKind == ImportKind.Registration ? RegistrationNotesMaxLength : AttendanceNotesMaxLength,
+            "Notes",
+            errors);
+
+        var intent = TrimToNull(values.GetValueOrDefault(ImportTargetField.Intent));
+        CheckLength(intent, IntentMaxLength, "Intent", errors);
+
+        var goals = TrimToNull(values.GetValueOrDefault(ImportTargetField.Goals));
+        CheckLength(goals, GoalsMaxLength, "Goals", errors);
+
+        var experienceLevel = TrimToNull(values.GetValueOrDefault(ImportTargetField.ExperienceLevel));
+        CheckLength(experienceLevel, ExperienceLevelMaxLength, "Experience level", errors);
+
+        var dietaryRequirements = TrimToNull(values.GetValueOrDefault(ImportTargetField.DietaryRequirements));
+        CheckLength(dietaryRequirements, DietaryRequirementsMaxLength, "Dietary requirements", errors);
+
+        var accessibilityNeeds = TrimToNull(values.GetValueOrDefault(ImportTargetField.AccessibilityNeeds));
+        CheckLength(accessibilityNeeds, AccessibilityNeedsMaxLength, "Accessibility needs", errors);
+
+        var externalRecordId = TrimToNull(values.GetValueOrDefault(ImportTargetField.ExternalRecordId));
+        CheckLength(externalRecordId, ExternalRecordIdMaxLength, "External record id", errors);
 
         DateTimeOffset? occurredAt = null;
         var occurredAtRaw = TrimToNull(values.GetValueOrDefault(ImportTargetField.OccurredAt));
@@ -96,15 +143,24 @@ public static class ImportRowNormalizer
             Email = email,
             FullName = fullName,
             OccurredAt = occurredAt,
-            Notes = TrimToNull(values.GetValueOrDefault(ImportTargetField.Notes)),
-            Intent = TrimToNull(values.GetValueOrDefault(ImportTargetField.Intent)),
-            Goals = TrimToNull(values.GetValueOrDefault(ImportTargetField.Goals)),
-            ExperienceLevel = TrimToNull(values.GetValueOrDefault(ImportTargetField.ExperienceLevel)),
-            DietaryRequirements = TrimToNull(values.GetValueOrDefault(ImportTargetField.DietaryRequirements)),
-            AccessibilityNeeds = TrimToNull(values.GetValueOrDefault(ImportTargetField.AccessibilityNeeds)),
-            ExternalRecordId = TrimToNull(values.GetValueOrDefault(ImportTargetField.ExternalRecordId)),
+            Notes = notes,
+            Intent = intent,
+            Goals = goals,
+            ExperienceLevel = experienceLevel,
+            DietaryRequirements = dietaryRequirements,
+            AccessibilityNeeds = accessibilityNeeds,
+            ExternalRecordId = externalRecordId,
             ValidationErrors = errors
         };
+    }
+
+    /// <summary>Adds a validation error if <paramref name="value"/> exceeds the given persistence limit.</summary>
+    private static void CheckLength(string? value, int maxLength, string fieldLabel, List<string> errors)
+    {
+        if (value is not null && value.Length > maxLength)
+        {
+            errors.Add($"{fieldLabel} must be {maxLength} characters or fewer.");
+        }
     }
 
     private static bool IsValidEmail(string email)

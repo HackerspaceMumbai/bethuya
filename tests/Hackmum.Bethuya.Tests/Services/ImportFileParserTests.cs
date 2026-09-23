@@ -75,6 +75,32 @@ public sealed class ImportFileParserTests
     }
 
     [Test]
+    public async Task XlsxImportFileParser_EmptyHeaderGap_KeepsSourceColumnAlignment()
+    {
+        using var stream = new MemoryStream();
+        using (var workbook = new XLWorkbook())
+        {
+            var worksheet = workbook.Worksheets.Add("Sheet1");
+            // Column B's header is intentionally blank, so it should be skipped rather than
+            // shifting Email's values into the empty column's position.
+            worksheet.Cell(1, 1).Value = "Name";
+            worksheet.Cell(1, 3).Value = "Email";
+            worksheet.Cell(2, 1).Value = "Ada Lovelace";
+            worksheet.Cell(2, 3).Value = "ada@example.com";
+            workbook.SaveAs(stream);
+        }
+
+        stream.Position = 0;
+        var parser = new XlsxImportFileParser();
+        var parsed = parser.Parse(stream);
+
+        await Assert.That(parsed.Headers).IsEquivalentTo(["Name", "Email"]);
+        await Assert.That(parsed.Rows.Count).IsEqualTo(1);
+        await Assert.That(parsed.Rows[0]["Email"]).IsEqualTo("ada@example.com");
+        await Assert.That(parsed.Rows[0]["Name"]).IsEqualTo("Ada Lovelace");
+    }
+
+    [Test]
     public async Task XlsxImportFileParser_EmptyWorksheet_Throws()
     {
         using var stream = new MemoryStream();

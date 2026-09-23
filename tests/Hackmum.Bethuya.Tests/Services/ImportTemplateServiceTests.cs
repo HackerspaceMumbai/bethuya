@@ -46,6 +46,27 @@ public sealed class ImportTemplateServiceTests
     }
 
     [Test]
+    public async Task CreateAsync_DuplicateNormalizedSourceColumn_Throws()
+    {
+        await using var db = CreateDbContext();
+        var service = new ImportTemplateService(db);
+
+        // "Email" and " email " only differ by casing/whitespace, which
+        // ImportRowNormalizer treats as the same source column at normalization time.
+        var action = async () => await service.CreateAsync(
+            "Ambiguous Source Column",
+            ImportSourceKind.Custom,
+            ImportKind.Registration,
+            "organizer-1",
+            [
+                new ImportColumnMappingInput("Email", ImportTargetField.Email),
+                new ImportColumnMappingInput(" email ", ImportTargetField.FullName)
+            ]);
+
+        await Assert.That(action).Throws<InvalidOperationException>();
+    }
+
+    [Test]
     public async Task CloneAsync_ClonesSystemTemplateIntoEditableUserTemplate()
     {
         await using var db = CreateDbContext();
