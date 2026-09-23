@@ -218,7 +218,11 @@ ConfigureBackendAuth(builder.Services
     .AddRefitClient<IImportApi>(new RefitSettings
     {
         ContentSerializer = new SystemTextJsonContentSerializer(
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            })
     })
     .ConfigureHttpClient(c => c.BaseAddress = backendBaseAddress))
     .AddStandardResilienceHandler(options =>

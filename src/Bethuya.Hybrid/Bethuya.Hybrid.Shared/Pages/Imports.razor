@@ -201,10 +201,19 @@
         if (_batch is null) return;
         _busy = true;
         _error = null;
+        _message = null;
         try
         {
             _batch = await ImportApi.CommitAsync(_batch.Id);
-            _message = "Import committed successfully. Member history and event reporting are now up to date.";
+            if (_batch.Status == ImportBatchStatusDto.Committed)
+            {
+                _message = "Import committed successfully. Member history and event reporting are now up to date.";
+                return;
+            }
+
+            _error = !string.IsNullOrWhiteSpace(_batch.FailureReason)
+                ? _batch.FailureReason
+                : "The import was not committed. Please review the validation results and try again.";
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
@@ -213,6 +222,7 @@
         finally
         {
             _busy = false;
+            StateHasChanged();
         }
     }
 }
