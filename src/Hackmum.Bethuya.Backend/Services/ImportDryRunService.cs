@@ -6,6 +6,7 @@ using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Hackmum.Bethuya.Backend.Services;
 
@@ -15,10 +16,11 @@ namespace Hackmum.Bethuya.Backend.Services;
 /// selected <see cref="ImportTemplate"/>'s column mappings, and reports what would happen on
 /// commit. Never writes to <see cref="Registration"/> or <see cref="ParticipationLedgerEntry"/>.
 /// </summary>
-public sealed class ImportDryRunService(
+public sealed partial class ImportDryRunService(
     BethuyaDbContext db,
     ImportFileParserResolver parserResolver,
-    IImportArtifactStore artifactStore)
+    IImportArtifactStore artifactStore,
+    ILogger<ImportDryRunService>? logger = null)
 {
     /// <summary>Uploads a new file and runs its first Dry Run, creating a new <see cref="ImportBatch"/>.</summary>
     public async Task<ImportBatch> StartAsync(
@@ -96,8 +98,20 @@ public sealed class ImportDryRunService(
         {
             // The artifact bytes were already persisted to storage before the database write.
             // If anything after that write fails, the file would otherwise be orphaned with no
-            // ImportArtifact record and no audit trail. Clean it up before propagating.
-            await artifactStore.DeleteAsync(storageKey, ct);
+            // ImportArtifact record and no audit trail. Clean it up before propagating, but never
+            // let a secondary cleanup failure mask the original error the caller needs to see.
+            try
+            {
+                await artifactStore.DeleteAsync(storageKey, ct);
+            }
+            catch (Exception cleanupEx)
+            {
+                if (logger is not null)
+                {
+                    LogArtifactCleanupFailed(logger, storageKey, cleanupEx);
+                }
+            }
+
             throw;
         }
     }
@@ -259,4 +273,10 @@ public sealed class ImportDryRunService(
             RowsToUpdate: updateCount,
             Rows: rowPreviews);
     }
+
+    [LoggerMessage(
+        EventId = 40,
+        Level = LogLevel.Error,
+        Message = "Failed to delete orphaned import artifact '{StorageKey}' after Dry Run failure.")]
+    private static partial void LogArtifactCleanupFailed(ILogger logger, string storageKey, Exception exception);
 }
