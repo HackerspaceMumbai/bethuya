@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Hackmum.Bethuya.Core.Enums;
@@ -94,7 +95,7 @@ public sealed partial class ImportDryRunService(
 
             return batch;
         }
-        catch
+        catch (Exception originalException)
         {
             // The artifact bytes were already persisted to storage before the database write.
             // If anything after that write fails, the file would otherwise be orphaned with no
@@ -112,6 +113,7 @@ public sealed partial class ImportDryRunService(
                 }
             }
 
+            ExceptionDispatchInfo.Capture(originalException).Throw();
             throw;
         }
     }
