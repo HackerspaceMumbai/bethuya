@@ -108,12 +108,17 @@ public sealed partial class ImportDryRunService(
                 {
                     await artifactStore.DeleteAsync(storageKey, ct);
                 }
-                catch (Exception cleanupEx)
+                catch (IOException cleanupEx) when (logger is not null)
                 {
-                    if (logger is not null)
-                    {
-                        LogArtifactCleanupFailed(logger, storageKey, cleanupEx);
-                    }
+                    LogArtifactCleanupFailed(logger, storageKey, cleanupEx);
+                }
+                catch (UnauthorizedAccessException cleanupEx) when (logger is not null)
+                {
+                    LogArtifactCleanupFailed(logger, storageKey, cleanupEx);
+                }
+                catch (InvalidOperationException cleanupEx) when (logger is not null)
+                {
+                    LogArtifactCleanupFailed(logger, storageKey, cleanupEx);
                 }
             }
         }
