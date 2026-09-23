@@ -101,6 +101,33 @@ public sealed class ImportFileParserTests
     }
 
     [Test]
+    public async Task XlsxImportFileParser_UsedRangeNotStartingAtColumnA_ResolvesCorrectColumns()
+    {
+        using var stream = new MemoryStream();
+        using (var workbook = new XLWorkbook())
+        {
+            var worksheet = workbook.Worksheets.Add("Sheet1");
+            // The used range starts at column B (no data in column A), so header cells report
+            // absolute worksheet column numbers 2 and 3 while IXLRangeRow.Cell(int) expects
+            // column numbers relative to the used range (1 and 2).
+            worksheet.Cell(1, 2).Value = "Name";
+            worksheet.Cell(1, 3).Value = "Email";
+            worksheet.Cell(2, 2).Value = "Ada Lovelace";
+            worksheet.Cell(2, 3).Value = "ada@example.com";
+            workbook.SaveAs(stream);
+        }
+
+        stream.Position = 0;
+        var parser = new XlsxImportFileParser();
+        var parsed = parser.Parse(stream);
+
+        await Assert.That(parsed.Headers).IsEquivalentTo(["Name", "Email"]);
+        await Assert.That(parsed.Rows.Count).IsEqualTo(1);
+        await Assert.That(parsed.Rows[0]["Name"]).IsEqualTo("Ada Lovelace");
+        await Assert.That(parsed.Rows[0]["Email"]).IsEqualTo("ada@example.com");
+    }
+
+    [Test]
     public async Task XlsxImportFileParser_EmptyWorksheet_Throws()
     {
         using var stream = new MemoryStream();

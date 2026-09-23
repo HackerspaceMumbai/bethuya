@@ -30,8 +30,13 @@ public sealed class XlsxImportFileParser : IImportFileParser
             }
 
             var headerRow = firstRow;
+            // IXLRangeRow.Cell(int) resolves the column number relative to the used range,
+            // not the worksheet's absolute column. Convert the header cell's absolute address
+            // into a range-relative column number so later Cell(columnNumber) lookups on data
+            // rows resolve to the same column, even when the used range doesn't start at column 1.
+            var firstColumnNumber = usedRange.RangeAddress.FirstAddress.ColumnNumber;
             var headerCells = headerRow.Cells()
-                .Select(cell => (ColumnNumber: cell.Address.ColumnNumber, Header: cell.GetString().Trim()))
+                .Select(cell => (ColumnNumber: cell.Address.ColumnNumber - firstColumnNumber + 1, Header: cell.GetString().Trim()))
                 .Where(pair => !string.IsNullOrWhiteSpace(pair.Header))
                 .ToList();
 
