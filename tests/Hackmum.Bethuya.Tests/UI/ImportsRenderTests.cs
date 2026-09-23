@@ -138,29 +138,35 @@ public class ImportsRenderTests
         var cut = ctx.RenderComponent<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
+        // Seed a committable batch (DryRunCompleted, no errors, no prior failure reason) so the
+        // rendered Commit button is what actually drives the assertion, rather than reflection
+        // invoking CommitAsync directly while _batch.CanCommit would have hidden the button.
         var batchField = typeof(Imports).GetField("_batch", BindingFlags.Instance | BindingFlags.NonPublic);
-        var batch = new ImportBatchDto(
+        var committableBatch = new ImportBatchDto(
             failedBatchId,
             eventId,
             "Registration",
             Guid.CreateVersion7(),
-            ImportBatchStatusDto.Failed,
+            ImportBatchStatusDto.DryRunCompleted,
+            3,
             3,
             0,
             3,
             0,
-            0,
-            "Two rows failed validation.",
+            null,
             "organizer",
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             null,
             "sample.csv");
-        batchField!.SetValue(cut.Instance, batch);
+        batchField!.SetValue(cut.Instance, committableBatch);
+        cut.Render();
 
-        var method = typeof(Imports).GetMethod("CommitAsync", BindingFlags.Instance | BindingFlags.NonPublic);
-        await cut.InvokeAsync(async () => await (Task)method!.Invoke(cut.Instance, null)!);
+        cut.WaitForState(() => cut.FindAll("[data-test='commit-import']").Count == 1, TimeSpan.FromSeconds(5));
+        cut.Find("[data-test='commit-import'] button").Click();
+        cut.WaitForState(() => cut.Markup.Contains("Two rows failed validation."), TimeSpan.FromSeconds(5));
 
+        await importApi.Received(1).CommitAsync(failedBatchId, Arg.Any<CancellationToken>());
         await Assert.That(cut.Markup).Contains("Two rows failed validation.");
         await Assert.That(cut.Markup).DoesNotContain("Import committed successfully");
     }
