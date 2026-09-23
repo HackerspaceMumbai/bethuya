@@ -1,4 +1,3 @@
-using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Hackmum.Bethuya.Core.Enums;
@@ -54,6 +53,7 @@ public sealed partial class ImportDryRunService(
         var parsed = parser.Parse(contentStream);
 
         var storageKey = await artifactStore.SaveAsync(fileBytes, fileName, ct);
+        var completed = false;
 
         try
         {
@@ -93,28 +93,29 @@ public sealed partial class ImportDryRunService(
             await ApplyDryRunAsync(batch, template, parsed.Rows, ct);
             await db.SaveChangesAsync(ct);
 
+            completed = true;
             return batch;
         }
-        catch (Exception originalException)
+        finally
         {
-            // The artifact bytes were already persisted to storage before the database write.
-            // If anything after that write fails, the file would otherwise be orphaned with no
-            // ImportArtifact record and no audit trail. Clean it up before propagating, but never
-            // let a secondary cleanup failure mask the original error the caller needs to see.
-            try
+            if (!completed)
             {
-                await artifactStore.DeleteAsync(storageKey, ct);
-            }
-            catch (Exception cleanupEx)
-            {
-                if (logger is not null)
+                // The artifact bytes were already persisted to storage before the database write.
+                // If anything after that write fails, the file would otherwise be orphaned with no
+                // ImportArtifact record and no audit trail. Clean it up before propagating the
+                // original failure to the caller so the database error remains the primary signal.
+                try
                 {
-                    LogArtifactCleanupFailed(logger, storageKey, cleanupEx);
+                    await artifactStore.DeleteAsync(storageKey, ct);
+                }
+                catch (Exception cleanupEx)
+                {
+                    if (logger is not null)
+                    {
+                        LogArtifactCleanupFailed(logger, storageKey, cleanupEx);
+                    }
                 }
             }
-
-            ExceptionDispatchInfo.Capture(originalException).Throw();
-            throw;
         }
     }
 
