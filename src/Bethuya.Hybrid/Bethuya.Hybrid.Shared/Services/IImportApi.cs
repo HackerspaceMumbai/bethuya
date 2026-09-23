@@ -76,6 +76,7 @@ public sealed record ImportTemplateDto(
     Guid? ClonedFromTemplateId,
     List<ImportColumnMappingDto> ColumnMappings);
 
+/// <summary>A single source-column-to-domain-field mapping within an <see cref="ImportTemplateDto"/>.</summary>
 public sealed record ImportColumnMappingDto(string SourceColumnName, string TargetField);
 
 /// <summary>Per-row disposition in a Dry Run preview.</summary>

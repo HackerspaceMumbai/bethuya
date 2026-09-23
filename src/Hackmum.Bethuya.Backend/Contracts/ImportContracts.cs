@@ -65,16 +65,20 @@ public sealed record ImportTemplateResponse(
             .ToList());
 }
 
+/// <summary>A single source-column-to-domain-field mapping within an <see cref="ImportTemplate"/>.</summary>
 public sealed record ImportColumnMappingResponse(string SourceColumnName, ImportTargetField TargetField);
 
+/// <summary>Request body to create a new organizer-owned <see cref="ImportTemplate"/>.</summary>
 public sealed record CreateImportTemplateRequest(
     string Name,
     ImportSourceKind SourceKind,
     ImportKind ImportKind,
     IReadOnlyList<ImportColumnMappingResponse> ColumnMappings);
 
+/// <summary>Request body to update the name and column mappings of an existing organizer-owned template.</summary>
 public sealed record UpdateImportTemplateRequest(
     string Name,
     IReadOnlyList<ImportColumnMappingResponse> ColumnMappings);
 
+/// <summary>Request body to clone a System (or other) template into a new organizer-owned template.</summary>
 public sealed record CloneImportTemplateRequest(string? NewName);
