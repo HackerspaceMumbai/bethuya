@@ -15,6 +15,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+## [2026-09-24] Investigating PR #60 security workflow and review state
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Determine whether the failing `.github/workflows/security-scan.yml` runs are caused by PR #60, pre-existing workflow configuration, or transient infrastructure; inspect and classify current unresolved review feedback; apply only necessary surgical fixes and validate merge readiness.
+- **Acceptance:** Failure classification is evidence-backed from GitHub run metadata and repository files; actionable review threads are fixed/resolved or explicitly classified; PR checks and local targeted validation are recorded.
+- **Completion Evidence:** PR `Security` check, CodeQL, dependency review, vulnerable-package scan, build/test, and Squad CI are green on `e5a76eb`; the failing workflow-path runs are push events with zero jobs/check-runs across repeated commits; all 43 review threads report `isResolved=true`; no code fix was warranted.
 
 ## [2026-08-08] Developer Testing Harness — Layer 5: Community Acceptance Test Harness
 - **Status:** done
