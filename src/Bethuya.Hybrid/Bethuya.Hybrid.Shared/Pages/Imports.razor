@@ -186,8 +186,16 @@
         try
         {
             await using var stream = _selectedFile.OpenReadStream(10 * 1024 * 1024);
-            _batch = await ImportApi.UploadAndRunDryRunAsync(eventId.ToString(), templateId.ToString(), _importKind, new Refit.StreamPart(stream, _selectedFile.Name, _selectedFile.ContentType));
-            _preview = await ImportApi.GetPreviewAsync(_batch.Id);
+            var newBatch = await ImportApi.UploadAndRunDryRunAsync(eventId.ToString(), templateId.ToString(), _importKind, new Refit.StreamPart(stream, _selectedFile.Name, _selectedFile.ContentType));
+
+            // Fetch the preview before publishing the new batch to the UI. If this throws,
+            // the catch blocks below null out _batch/_preview so "Commit import" is never
+            // offered for a batch whose row-level preview failed to load — an organizer must
+            // always see the preview before they can commit (see PR #60 review discussion).
+            var newPreview = await ImportApi.GetPreviewAsync(newBatch.Id);
+
+            _batch = newBatch;
+            _preview = newPreview;
             _errorSummaries.Clear();
             foreach (var row in _preview.Rows)
             {
@@ -198,11 +206,15 @@
         {
             Logger.LogWarning(ex, "Dry-run validation failed for event {EventId}, template {TemplateId}", eventId, templateId);
             _error = "The file could not be validated. Check the format and try again.";
+            _batch = null;
+            _preview = null;
         }
         catch (Exception ex) when (!IsFatalException(ex))
         {
             Logger.LogError(ex, "Unexpected error running dry-run validation for event {EventId}, template {TemplateId}", eventId, templateId);
             _error = "Something went wrong while validating the file. Please try again.";
+            _batch = null;
+            _preview = null;
         }
         finally
         {
