@@ -137,22 +137,32 @@ UserId ("import:{email}" placeholder      ...
    per-row breakdown: `WillCreate`, `WillUpdate`, or `Error` (with the specific validation
    message(s) for that row) — nothing has been written to `Registration` or
    `ParticipationLedgerEntry` yet. The "Commit import" button in `Imports.razor` is gated on
-   *both* `ImportBatch.CanCommit` and a successfully-loaded preview — if the preview call fails
-   after a successful upload, the organizer keeps their uploaded batch and sees a "Retry
-   preview" action instead of losing the batch and having to re-upload the file (which would
-   create a duplicate batch/artifact). Two invariants keep this state consistent:
-   - **Starting a new upload always clears any prior batch/preview first**, before the new
-     file's upload or dry run even begins. This means a failed upload/validation for a newly
-     selected file can never leave a previous, already-committable batch (and its "Commit
-     import" button) rendered on screen — the organizer would otherwise risk committing the
-     wrong (earlier) file without realizing it.
+   *both* `ImportBatch.CanCommit` **and** the freshest loaded preview reporting zero
+   `ErrorRows` — if the preview call fails after a successful upload, the organizer keeps their
+   uploaded batch and sees a "Retry preview" action instead of losing the batch and having to
+   re-upload the file (which would create a duplicate batch/artifact). A few invariants keep
+   this state consistent:
+   - **Starting a new upload only clears the prior batch/preview once the new attempt's inputs
+     are valid** (an event, template, and file are all selected) — never on an accidental
+     "Run validation" click with an incomplete form. This ordering matters both ways: an
+     invalid-input click leaves an already-committable batch fully intact and on screen, while
+     a valid-input attempt that goes on to fail its own upload/validation can never leave a
+     *previous*, already-committable batch (and its "Commit import" button) rendered
+     alongside it — the organizer would otherwise risk committing the wrong (earlier) file
+     without realizing it.
    - **"Retry preview" re-fetches the batch itself (`GET /api/import/batches/{id}`), not just
      the preview.** The batch's row counts and `CanCommit` are a snapshot from whenever it was
      last loaded; if the underlying batch changed on the server in the meantime (e.g. a
      `dry-run` re-run triggered elsewhere), refreshing only the preview could show an
      error-free preview next to a stale, already-`CanCommit` batch record — or vice versa.
-     Retrying always re-syncs both together, so a batch that still has row-level errors after
-     retry never surfaces the Commit button.
+     Retrying re-syncs both together, but because these are still two independent sequential
+     requests, a concurrent server-side change could in principle land between them.
+   - **The Commit button's render condition checks the freshest preview's own `ErrorRows`
+     directly**, rather than trusting `ImportBatch.CanCommit` alone. This closes the residual
+     race from the previous bullet at the source: no matter which of the batch/preview
+     round-trips is technically stale, a preview that currently shows validation errors always
+     hides the Commit button, and a batch whose `CanCommit` flag hasn't caught up yet never
+     matters because the freshest preview is authoritative for gating.
 4. **Fix and replay, if needed.** If the template mapping was wrong, the organizer edits the
    template and calls `POST /api/import/batches/{id}/dry-run` to re-validate the *same* uploaded
    file against the corrected mapping — see §7 (Replay model) for exactly what this does and does

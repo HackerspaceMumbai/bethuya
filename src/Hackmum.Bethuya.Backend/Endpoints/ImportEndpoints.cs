@@ -18,6 +18,10 @@ public static class ImportEndpoints
 {
     private const long MaxUploadSizeBytes = 10 * 1024 * 1024;
 
+    /// <summary>
+    /// Registers the Registration/Attendance import minimal API endpoints (upload, dry run,
+    /// preview, commit, and template CRUD) under <c>/api/import</c>.
+    /// </summary>
     public static void MapImportEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/import")
