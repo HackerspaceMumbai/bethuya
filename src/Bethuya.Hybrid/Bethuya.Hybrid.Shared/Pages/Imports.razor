@@ -183,6 +183,16 @@
     {
         _error = null;
         _message = null;
+
+        // Clear any batch/preview from a previous attempt before starting a new one. Without
+        // this, a failed upload/validation for a newly-selected file would leave the *previous*
+        // file's batch and preview on screen with "Commit import" still enabled, submitting the
+        // wrong (earlier) batch id (see PR #60 review discussion, "Failed upload leaves old
+        // commit").
+        _batch = null;
+        _preview = null;
+        _errorSummaries.Clear();
+
         if (!Guid.TryParse(_eventIdText, out var eventId) || !Guid.TryParse(_templateIdText, out var templateId) || _selectedFile is null)
         {
             _error = "Choose an event, import template, and file first.";
@@ -203,8 +213,6 @@
             // hidden until _preview is also populated (see the CanCommit && _preview check
             // in the markup above), so a batch is never committable without a preview.
             _batch = newBatch;
-            _preview = null;
-            _errorSummaries.Clear();
 
             var newPreview = await ImportApi.GetPreviewAsync(newBatch.Id);
             _preview = newPreview;
@@ -241,7 +249,16 @@
         _error = null;
         try
         {
+            // Re-fetch the batch alongside the preview: the batch carries TotalRows/ErrorRows
+            // and CanCommit, which the server may have changed (e.g. a re-run triggered
+            // elsewhere, or the template was edited) since this batch was first loaded. Using a
+            // stale _batch here could show a fresh, error-free preview next to a stale
+            // CanCommit=false, or vice versa — offer Commit while the freshly-fetched preview
+            // actually reports errors (see PR #60 review discussion, "Retry leaves commit
+            // eligibility stale").
+            var refreshedBatch = await ImportApi.GetBatchAsync(_batch.Id);
             var preview = await ImportApi.GetPreviewAsync(_batch.Id);
+            _batch = refreshedBatch;
             _preview = preview;
             _errorSummaries.Clear();
             foreach (var row in _preview.Rows)

@@ -140,7 +140,19 @@ UserId ("import:{email}" placeholder      ...
    *both* `ImportBatch.CanCommit` and a successfully-loaded preview — if the preview call fails
    after a successful upload, the organizer keeps their uploaded batch and sees a "Retry
    preview" action instead of losing the batch and having to re-upload the file (which would
-   create a duplicate batch/artifact).
+   create a duplicate batch/artifact). Two invariants keep this state consistent:
+   - **Starting a new upload always clears any prior batch/preview first**, before the new
+     file's upload or dry run even begins. This means a failed upload/validation for a newly
+     selected file can never leave a previous, already-committable batch (and its "Commit
+     import" button) rendered on screen — the organizer would otherwise risk committing the
+     wrong (earlier) file without realizing it.
+   - **"Retry preview" re-fetches the batch itself (`GET /api/import/batches/{id}`), not just
+     the preview.** The batch's row counts and `CanCommit` are a snapshot from whenever it was
+     last loaded; if the underlying batch changed on the server in the meantime (e.g. a
+     `dry-run` re-run triggered elsewhere), refreshing only the preview could show an
+     error-free preview next to a stale, already-`CanCommit` batch record — or vice versa.
+     Retrying always re-syncs both together, so a batch that still has row-level errors after
+     retry never surfaces the Commit button.
 4. **Fix and replay, if needed.** If the template mapping was wrong, the organizer edits the
    template and calls `POST /api/import/batches/{id}/dry-run` to re-validate the *same* uploaded
    file against the corrected mapping — see §7 (Replay model) for exactly what this does and does
