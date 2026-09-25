@@ -4,6 +4,7 @@ using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ServiceDefaults.Auth;
 
@@ -40,9 +41,9 @@ public static class ImportEndpoints
     }
 
     private static async Task<IResult> UploadAndRunDryRunAsync(
-        Guid eventId,
-        Guid importTemplateId,
-        ImportKind importKind,
+        [FromForm] Guid eventId,
+        [FromForm] Guid importTemplateId,
+        [FromForm] ImportKind importKind,
         IFormFile file,
         ClaimsPrincipal user,
         BethuyaDbContext db,

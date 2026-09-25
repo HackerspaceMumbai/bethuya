@@ -2,8 +2,10 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireOrganizer)]
 @using BlazorBlueprint.Components
+@using Microsoft.Extensions.Logging
 @inject IImportApi ImportApi
 @inject IEventApi EventApi
+@inject ILogger<Imports> Logger
 
 <PageTitle>Import attendance — Bethuya</PageTitle>
 
@@ -142,7 +144,13 @@
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
+            Logger.LogWarning(ex, "Failed to load events or import templates");
             _error = "Unable to load events or import templates. Please try again.";
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error loading events or import templates");
+            _error = "Something went wrong while loading the page. Please refresh and try again.";
         }
     }
 
@@ -178,7 +186,7 @@
         try
         {
             await using var stream = _selectedFile.OpenReadStream(10 * 1024 * 1024);
-            _batch = await ImportApi.UploadAndRunDryRunAsync(eventId, templateId, _importKind, new Refit.StreamPart(stream, _selectedFile.Name, _selectedFile.ContentType));
+            _batch = await ImportApi.UploadAndRunDryRunAsync(eventId.ToString(), templateId.ToString(), _importKind, new Refit.StreamPart(stream, _selectedFile.Name, _selectedFile.ContentType));
             _preview = await ImportApi.GetPreviewAsync(_batch.Id);
             _errorSummaries.Clear();
             foreach (var row in _preview.Rows)
@@ -188,11 +196,18 @@
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
+            Logger.LogWarning(ex, "Dry-run validation failed for event {EventId}, template {TemplateId}", eventId, templateId);
             _error = "The file could not be validated. Check the format and try again.";
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error running dry-run validation for event {EventId}, template {TemplateId}", eventId, templateId);
+            _error = "Something went wrong while validating the file. Please try again.";
         }
         finally
         {
             _busy = false;
+            StateHasChanged();
         }
     }
 
@@ -217,7 +232,13 @@
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
+            Logger.LogWarning(ex, "Commit failed for import batch {BatchId}", _batch?.Id);
             _error = "The import could not be committed. Refresh the preview and try again.";
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error committing import batch {BatchId}", _batch?.Id);
+            _error = "Something went wrong while committing the import. Please try again.";
         }
         finally
         {
@@ -225,4 +246,7 @@
             StateHasChanged();
         }
     }
+
+    private static bool IsFatalException(Exception ex) =>
+        ex is NullReferenceException or InvalidOperationException or ObjectDisposedException;
 }

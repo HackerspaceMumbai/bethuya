@@ -5,11 +5,18 @@ namespace Bethuya.Hybrid.Shared.Services;
 /// <summary>Refit-generated typed HTTP client for the Bethuya Registration/Attendance Import API.</summary>
 public interface IImportApi
 {
+    /// <summary>
+    /// Uploads a file and runs a Dry Run. <paramref name="eventId"/> and <paramref name="importTemplateId"/> are
+    /// deliberately typed as <see cref="string"/> (not <see cref="Guid"/>): Refit serializes non-string
+    /// multipart parts through the configured JSON content serializer, which wraps a <see cref="Guid"/> in quotes
+    /// (e.g. <c>"01a..."</c>) and breaks the backend's <c>[FromForm] Guid</c> model binding. Callers must pass
+    /// <c>eventId.ToString()</c> / <c>importTemplateId.ToString()</c>.
+    /// </summary>
     [Multipart]
     [Post("/api/import/batches")]
     Task<ImportBatchDto> UploadAndRunDryRunAsync(
-        [AliasAs("eventId")] Guid eventId,
-        [AliasAs("importTemplateId")] Guid importTemplateId,
+        [AliasAs("eventId")] string eventId,
+        [AliasAs("importTemplateId")] string importTemplateId,
         [AliasAs("importKind")] string importKind,
         [AliasAs("file")] StreamPart file,
         CancellationToken ct = default);

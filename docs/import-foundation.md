@@ -57,6 +57,26 @@ but header-mapping and field validation do not. Keeping `ImportRowNormalizer` pu
   Commit — there is only one code path that decides "is this row valid," so Dry Run's preview can
   never drift from what Commit will actually do.
 
+### Refit multipart gotcha (client contract)
+
+`IImportApi.UploadAndRunDryRunAsync` (in `Bethuya.Hybrid.Shared.Services`) is a Refit
+`[Multipart]` interface. Refit only special-cases `StreamPart`/`ByteArrayPart`/`FileInfoPart` and
+plain `string` parameters as raw multipart form values — any other CLR type (a `Guid`, an enum) is
+routed through the configured JSON content serializer instead, which encodes it as a *quoted* JSON
+string (e.g. `"01a0d800-..."` with the quote characters embedded in the field value). The
+backend's `[FromForm] Guid` model binder cannot parse that, so the request 400s.
+
+**Rule:** every scalar `[Multipart]` parameter on `IImportApi` must be declared as `string` and
+converted at the call site (`eventId.ToString()`), never as `Guid`/enum/int directly. This applies
+to any future Refit `[Multipart]` interface added to the project, not just Import. The backend
+endpoint's sibling scalar parameters (next to the `IFormFile`) also need an explicit `[FromForm]`
+attribute — Minimal API does not infer form-binding for them automatically and otherwise looks for
+them in the query string.
+
+`tests/Bethuya.IntegrationTests/ImportBatchMultipartBindingFlowTests.cs` is the regression test for
+this: it posts real multipart form data to the live Aspire Backend, asserting the plain-string
+wire format succeeds (200) and the pre-fix JSON-quoted format is rejected (400).
+
 ---
 
 ## 3. Domain model
@@ -292,6 +312,19 @@ attendance dedupe across batches, commit-preconditions, idempotent double-commit
 `ImportTemplateService` (create, clone, system-template immutability, ownership/Admin
 authorization, scoped listing), and `ImportTemplateSeeder` (seeds all four templates, idempotent
 on re-run).
+
+A separate suite in `tests/Bethuya.IntegrationTests/` boots the real Aspire-orchestrated Backend
+(via `BethuyaAppFixture`/`DistributedApplicationTestingBuilder`) and exercises `/api/import/*`
+over real HTTP, including genuine `multipart/form-data` requests — this is the layer that catches
+wire-format/model-binding bugs the InMemory unit tests above cannot see (see
+`ImportBatchMultipartBindingFlowTests`, and the Refit gotcha note in §2):
+
+```powershell
+dotnet test tests\Bethuya.IntegrationTests\Bethuya.IntegrationTests.csproj -- --treenode-filter "/*/*/ImportBatchMultipartBindingFlowTests/*"
+```
+
+This suite requires Docker (Postgres via Aspire) and takes noticeably longer per test than the
+InMemory suite.
 
 ### 9.2 Manual end-to-end testing via Aspire
 
