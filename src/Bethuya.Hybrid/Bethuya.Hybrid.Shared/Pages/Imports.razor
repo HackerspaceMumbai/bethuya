@@ -99,13 +99,20 @@
                         </table>
                     </div>
                 }
-                @if (_batch.CanCommit)
+                else
+                {
+                    <div data-test="import-preview-unavailable">
+                        <BbAlert Variant="AlertVariant.Warning">The row-level preview could not be loaded for this batch.</BbAlert>
+                        <BbButton OnClick="RetryPreviewAsync" Disabled="@_busy">Retry preview</BbButton>
+                    </div>
+                }
+                @if (_batch.CanCommit && _preview is not null)
                 {
                     <div data-test="commit-import">
                         <BbButton Variant="ButtonVariant.Default" OnClick="CommitAsync" Disabled="@_busy">Commit import</BbButton>
                     </div>
                 }
-                else
+                else if (!_batch.CanCommit)
                 {
                     <BbAlert Variant="AlertVariant.Warning">Fix the validation errors in the source file and upload it again before committing.</BbAlert>
                 }
@@ -183,20 +190,24 @@
         }
 
         _busy = true;
+        ImportBatchDto? newBatch = null;
         try
         {
             await using var stream = _selectedFile.OpenReadStream(10 * 1024 * 1024);
-            var newBatch = await ImportApi.UploadAndRunDryRunAsync(eventId.ToString(), templateId.ToString(), _importKind, new Refit.StreamPart(stream, _selectedFile.Name, _selectedFile.ContentType));
+            newBatch = await ImportApi.UploadAndRunDryRunAsync(eventId.ToString(), templateId.ToString(), _importKind, new Refit.StreamPart(stream, _selectedFile.Name, _selectedFile.ContentType));
 
-            // Fetch the preview before publishing the new batch to the UI. If this throws,
-            // the catch blocks below null out _batch/_preview so "Commit import" is never
-            // offered for a batch whose row-level preview failed to load — an organizer must
-            // always see the preview before they can commit (see PR #60 review discussion).
-            var newPreview = await ImportApi.GetPreviewAsync(newBatch.Id);
-
+            // Publish the batch as soon as the upload succeeds so the organizer keeps a
+            // reference to it even if the preview fetch below fails — otherwise they'd have
+            // no way to retry the preview without re-uploading the file and creating a
+            // duplicate batch/artifact (see PR #60 review discussion). "Commit import" stays
+            // hidden until _preview is also populated (see the CanCommit && _preview check
+            // in the markup above), so a batch is never committable without a preview.
             _batch = newBatch;
-            _preview = newPreview;
+            _preview = null;
             _errorSummaries.Clear();
+
+            var newPreview = await ImportApi.GetPreviewAsync(newBatch.Id);
+            _preview = newPreview;
             foreach (var row in _preview.Rows)
             {
                 _errorSummaries[row.RowIndex] = string.Join("; ", row.ValidationErrors);
@@ -205,16 +216,48 @@
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
             Logger.LogWarning(ex, "Dry-run validation failed for event {EventId}, template {TemplateId}", eventId, templateId);
-            _error = "The file could not be validated. Check the format and try again.";
-            _batch = null;
-            _preview = null;
+            _error = newBatch is null
+                ? "The file could not be validated. Check the format and try again."
+                : "The batch was uploaded, but its preview could not be loaded. Use \"Retry preview\" below, or upload the file again.";
         }
         catch (Exception ex) when (!IsFatalException(ex))
         {
             Logger.LogError(ex, "Unexpected error running dry-run validation for event {EventId}, template {TemplateId}", eventId, templateId);
-            _error = "Something went wrong while validating the file. Please try again.";
-            _batch = null;
-            _preview = null;
+            _error = newBatch is null
+                ? "Something went wrong while validating the file. Please try again."
+                : "The batch was uploaded, but something went wrong loading its preview. Use \"Retry preview\" below, or upload the file again.";
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RetryPreviewAsync()
+    {
+        if (_batch is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var preview = await ImportApi.GetPreviewAsync(_batch.Id);
+            _preview = preview;
+            _errorSummaries.Clear();
+            foreach (var row in _preview.Rows)
+            {
+                _errorSummaries[row.RowIndex] = string.Join("; ", row.ValidationErrors);
+            }
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogWarning(ex, "Retry preview failed for import batch {BatchId}", _batch.Id);
+            _error = "The preview could not be loaded. Please try again.";
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error retrying preview for import batch {BatchId}", _batch.Id);
+            _error = "Something went wrong while loading the preview. Please try again.";
         }
         finally
         {

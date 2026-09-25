@@ -136,7 +136,11 @@ UserId ("import:{email}" placeholder      ...
 3. **Review the Dry Run preview.** `GET /api/import/batches/{id}/preview` returns a
    per-row breakdown: `WillCreate`, `WillUpdate`, or `Error` (with the specific validation
    message(s) for that row) — nothing has been written to `Registration` or
-   `ParticipationLedgerEntry` yet.
+   `ParticipationLedgerEntry` yet. The "Commit import" button in `Imports.razor` is gated on
+   *both* `ImportBatch.CanCommit` and a successfully-loaded preview — if the preview call fails
+   after a successful upload, the organizer keeps their uploaded batch and sees a "Retry
+   preview" action instead of losing the batch and having to re-upload the file (which would
+   create a duplicate batch/artifact).
 4. **Fix and replay, if needed.** If the template mapping was wrong, the organizer edits the
    template and calls `POST /api/import/batches/{id}/dry-run` to re-validate the *same* uploaded
    file against the corrected mapping — see §7 (Replay model) for exactly what this does and does
