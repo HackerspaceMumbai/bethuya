@@ -24,6 +24,18 @@ public sealed class ParticipationLedgerEntry
     public ParticipationConnectorKind Connector { get; init; }
 
     /// <summary>
+    /// How this entry entered the system (live connector vs. file import), independent of
+    /// <see cref="Connector"/>.
+    /// </summary>
+    public ParticipationIngestionMethod IngestionMethod { get; init; } = ParticipationIngestionMethod.ApiOrWebhook;
+
+    /// <summary>
+    /// When <see cref="IngestionMethod"/> is <see cref="ParticipationIngestionMethod.FileImport"/>,
+    /// the originating <see cref="ImportBatch"/> id.
+    /// </summary>
+    public Guid? ImportBatchId { get; init; }
+
+    /// <summary>
     /// Connector-specific member key used for provenance and reconciliation.
     /// </summary>
     public required string ExternalMemberKey { get; init; }

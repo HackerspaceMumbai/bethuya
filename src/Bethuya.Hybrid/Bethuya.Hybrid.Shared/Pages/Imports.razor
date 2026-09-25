@@ -1,0 +1,331 @@
+@page "/imports"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireOrganizer)]
+@using BlazorBlueprint.Components
+@using Microsoft.Extensions.Logging
+@inject IImportApi ImportApi
+@inject IEventApi EventApi
+@inject ILogger<Imports> Logger
+
+<PageTitle>Import attendance — Bethuya</PageTitle>
+
+<div class="container mx-auto p-4" data-test="import-page">
+    <h1 class="text-2xl font-bold mb-2">Import registrations or attendance</h1>
+    <p class="text-muted-foreground mb-6">Upload a Luma, MLH, or spreadsheet export. Bethuya validates it first; nothing is changed until you commit the preview.</p>
+
+    @if (_error is not null)
+    {
+        <div data-test="import-error"><BbAlert Variant="AlertVariant.Danger">@_error</BbAlert></div>
+    }
+    @if (_message is not null)
+    {
+        <div data-test="import-success"><BbAlert Variant="AlertVariant.Success">@_message</BbAlert></div>
+    }
+
+    <BbCard Class="p-4 mb-6">
+        <BbFormSection Title="1. Choose an export">
+            <div data-test="import-event-select">
+                <BbFormFieldSelect TValue="string" @bind-Value="_eventIdText" Label="Event" Placeholder="Choose an event">
+                    @foreach (var item in _events)
+                    {
+                        <BbSelectItem Value="@item.Id.ToString()" Text="@item.Title" />
+                    }
+                </BbFormFieldSelect>
+            </div>
+            <div data-test="import-kind-select">
+                <BbFormFieldSelect TValue="string" @bind-Value="_importKind" @bind-Value:after="LoadTemplatesAsync" Label="Data type">
+                    <BbSelectItem Value="@("Registration")" Text="Registrations" />
+                    <BbSelectItem Value="@("Attendance")" Text="Attendance" />
+                </BbFormFieldSelect>
+            </div>
+            <div data-test="import-template-select">
+                <BbFormFieldSelect TValue="string" @bind-Value="_templateIdText" Label="Source template" Placeholder="Choose a template">
+                    @foreach (var template in Templates)
+                    {
+                        <BbSelectItem Value="@template.Id.ToString()" Text="@template.Name" />
+                    }
+                </BbFormFieldSelect>
+            </div>
+            <div class="form-group" data-test="import-file-field">
+                <BbLabel>CSV or XLSX file</BbLabel>
+                <BbFileUpload FilesChanged="HandleFileSelected"
+                              Accept=".csv,.xlsx"
+                              MaxFileSize="@(10 * 1024 * 1024)"
+                              MaxFileCount="1"
+                              OnValidationError="@(error => _fileError = error.Message)" />
+                @if (_selectedFile is not null)
+                {
+                    <p class="text-sm mt-2">Selected: @_selectedFile.Name</p>
+                }
+                @if (_fileError is not null)
+                {
+                    <p class="text-sm text-destructive mt-1">@_fileError</p>
+                }
+            </div>
+            <div data-test="start-dry-run">
+                <BbButton OnClick="StartDryRunAsync" Disabled="@(_busy || _selectedFile is null)">Run validation</BbButton>
+            </div>
+        </BbFormSection>
+    </BbCard>
+
+    @if (_batch is not null)
+    {
+        <div data-test="import-preview">
+            <BbCard Class="p-4 mb-6">
+                <BbFormSection Title="2. Review preview">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                    <span>Total: <strong>@_batch.TotalRows</strong></span>
+                    <span>Valid: <strong>@_batch.ValidRows</strong></span>
+                    <span>Errors: <strong>@_batch.ErrorRows</strong></span>
+                    <span>Creates: <strong>@_batch.RowsToCreate</strong></span>
+                    <span>Updates: <strong>@_batch.RowsToUpdate</strong></span>
+                </div>
+                @if (_preview is not null)
+                {
+                    <div class="overflow-auto max-h-96">
+                        <table class="w-full text-sm">
+                            <thead><tr><th class="text-left">Row</th><th class="text-left">Email</th><th class="text-left">Result</th><th class="text-left">Details</th></tr></thead>
+                            <tbody>
+                            @foreach (var row in _preview.Rows)
+                            {
+                                <tr data-test="import-preview-row">
+                                    <td>@(row.RowIndex + 1)</td>
+                                    <td>@row.Email</td>
+                                    <td>@row.Disposition</td>
+                                    <td>@(_errorSummaries.TryGetValue(row.RowIndex, out var summary) ? summary : string.Empty)</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div data-test="import-preview-unavailable">
+                        <BbAlert Variant="AlertVariant.Warning">The row-level preview could not be loaded for this batch.</BbAlert>
+                        <BbButton OnClick="RetryPreviewAsync" Disabled="@_busy">Retry preview</BbButton>
+                    </div>
+                }
+                @if (_batch.CanCommit && _preview is { ErrorRows: 0 })
+                {
+                    <div data-test="commit-import">
+                        <BbButton Variant="ButtonVariant.Default" OnClick="CommitAsync" Disabled="@_busy">Commit import</BbButton>
+                    </div>
+                }
+                else if (_preview is not null)
+                {
+                    <BbAlert Variant="AlertVariant.Warning">Fix the validation errors in the source file and upload it again before committing.</BbAlert>
+                }
+                </BbFormSection>
+            </BbCard>
+        </div>
+    }
+
+    @if (_busy)
+    {
+        <BbAlert Variant="AlertVariant.Info">Working…</BbAlert>
+    }
+</div>
+
+@code {
+    private readonly List<EventDto> _events = [];
+    private List<ImportTemplateDto> Templates { get; set; } = [];
+    private string? _eventIdText;
+    private string _importKind = "Registration";
+    private string? _templateIdText;
+    private IBrowserFile? _selectedFile;
+    private ImportBatchDto? _batch;
+    private ImportPreviewReportDto? _preview;
+    private string? _error;
+    private string? _message;
+    private string? _fileError;
+    private bool _busy;
+    private readonly Dictionary<int, string> _errorSummaries = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _events.AddRange(await EventApi.GetAllAsync());
+            await LoadTemplatesAsync();
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogWarning(ex, "Failed to load events or import templates");
+            _error = "Unable to load events or import templates. Please try again.";
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error loading events or import templates");
+            _error = "Something went wrong while loading the page. Please refresh and try again.";
+        }
+    }
+
+    private async Task LoadTemplatesAsync()
+    {
+        Templates = await ImportApi.ListTemplatesAsync(_importKind);
+        _templateIdText = Templates.FirstOrDefault()?.Id.ToString();
+    }
+
+    private async Task HandleKindChanged(ChangeEventArgs args)
+    {
+        _importKind = args.Value?.ToString() ?? "Registration";
+        await LoadTemplatesAsync();
+    }
+
+    private void HandleFileSelected(IReadOnlyList<FileUploadItem> files)
+    {
+        _fileError = null;
+        _selectedFile = files.Count > 0 ? files[0].File : null;
+    }
+
+    private async Task StartDryRunAsync()
+    {
+        _error = null;
+        _message = null;
+
+        if (!Guid.TryParse(_eventIdText, out var eventId) || !Guid.TryParse(_templateIdText, out var templateId) || _selectedFile is null)
+        {
+            _error = "Choose an event, import template, and file first.";
+            return;
+        }
+
+        // Clear any batch/preview from a previous attempt only once we know a genuinely new
+        // attempt is underway (inputs are valid). Clearing this unconditionally at the top of
+        // the method — before the guard above — meant an accidental "Run validation" click with
+        // incomplete inputs (e.g. no file re-selected) would wipe out a perfectly valid, already
+        // committable batch with no way back except re-uploading (see PR #60 review discussion,
+        // "Earlier batch becomes inaccessible"). Clearing here still prevents a failed
+        // *new* upload/validation from leaving a stale, still-committable PRIOR batch on screen
+        // (see "Failed upload leaves old commit"), because the old batch is for a prior attempt
+        // that is about to be superseded.
+        _batch = null;
+        _preview = null;
+        _errorSummaries.Clear();
+
+        _busy = true;
+        ImportBatchDto? newBatch = null;
+        try
+        {
+            await using var stream = _selectedFile.OpenReadStream(10 * 1024 * 1024);
+            newBatch = await ImportApi.UploadAndRunDryRunAsync(eventId.ToString(), templateId.ToString(), _importKind, new Refit.StreamPart(stream, _selectedFile.Name, _selectedFile.ContentType));
+
+            // Publish the batch as soon as the upload succeeds so the organizer keeps a
+            // reference to it even if the preview fetch below fails — otherwise they'd have
+            // no way to retry the preview without re-uploading the file and creating a
+            // duplicate batch/artifact (see PR #60 review discussion). "Commit import" stays
+            // hidden until _preview is also populated AND reports zero errors (see the markup
+            // above), so a batch is never committable without a fresh, error-free preview.
+            _batch = newBatch;
+
+            var newPreview = await ImportApi.GetPreviewAsync(newBatch.Id);
+            _preview = newPreview;
+            foreach (var row in _preview.Rows)
+            {
+                _errorSummaries[row.RowIndex] = string.Join("; ", row.ValidationErrors);
+            }
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogWarning(ex, "Dry-run validation failed for event {EventId}, template {TemplateId}", eventId, templateId);
+            _error = newBatch is null
+                ? "The file could not be validated. Check the format and try again."
+                : "The batch was uploaded, but its preview could not be loaded. Use \"Retry preview\" below, or upload the file again.";
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error running dry-run validation for event {EventId}, template {TemplateId}", eventId, templateId);
+            _error = newBatch is null
+                ? "Something went wrong while validating the file. Please try again."
+                : "The batch was uploaded, but something went wrong loading its preview. Use \"Retry preview\" below, or upload the file again.";
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RetryPreviewAsync()
+    {
+        if (_batch is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            // Re-fetch the batch alongside the preview: the batch carries TotalRows/ErrorRows
+            // and CanCommit, which the server may have changed (e.g. a re-run triggered
+            // elsewhere, or the template was edited) since this batch was first loaded. There's
+            // an inherent race between these two independent requests — a concurrent dry-run
+            // rerun could land between them — so the Commit button's render condition also
+            // checks _preview.ErrorRows == 0 directly (see the markup above) rather than relying
+            // solely on the batch's (possibly-stale) CanCommit flag. That keeps "Commit import"
+            // hidden whenever the freshest fetched preview shows errors, regardless of which of
+            // these two calls happened to land first (see PR #60 review discussion, "Retry
+            // leaves commit eligibility stale" / "Retry can show stale eligibility").
+            var refreshedBatch = await ImportApi.GetBatchAsync(_batch.Id);
+            var preview = await ImportApi.GetPreviewAsync(_batch.Id);
+            _batch = refreshedBatch;
+            _preview = preview;
+            _errorSummaries.Clear();
+            foreach (var row in _preview.Rows)
+            {
+                _errorSummaries[row.RowIndex] = string.Join("; ", row.ValidationErrors);
+            }
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogWarning(ex, "Retry preview failed for import batch {BatchId}", _batch.Id);
+            _error = "The preview could not be loaded. Please try again.";
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error retrying preview for import batch {BatchId}", _batch.Id);
+            _error = "Something went wrong while loading the preview. Please try again.";
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CommitAsync()
+    {
+        if (_batch is null) return;
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            _batch = await ImportApi.CommitAsync(_batch.Id);
+            if (_batch.Status == ImportBatchStatusDto.Committed)
+            {
+                _message = "Import committed successfully. Member history and event reporting are now up to date.";
+                return;
+            }
+
+            _error = !string.IsNullOrWhiteSpace(_batch.FailureReason)
+                ? _batch.FailureReason
+                : "The import was not committed. Please review the validation results and try again.";
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogWarning(ex, "Commit failed for import batch {BatchId}", _batch?.Id);
+            _error = "The import could not be committed. Refresh the preview and try again.";
+        }
+        catch (Exception ex) when (!IsFatalException(ex))
+        {
+            Logger.LogError(ex, "Unexpected error committing import batch {BatchId}", _batch?.Id);
+            _error = "Something went wrong while committing the import. Please try again.";
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static bool IsFatalException(Exception ex) =>
+        ex is NullReferenceException or InvalidOperationException or ObjectDisposedException;
+}

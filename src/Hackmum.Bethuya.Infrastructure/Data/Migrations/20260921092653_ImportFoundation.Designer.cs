@@ -3,6 +3,7 @@ using System;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(BethuyaDbContext))]
-    partial class BethuyaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260921092653_ImportFoundation")]
+    partial class ImportFoundation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -529,10 +532,6 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("ArchiveFolderPath")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<DateTimeOffset?>("ArchivedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -625,66 +624,6 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .HasFilter("\"SessionizeEventId\" IS NOT NULL");
 
                     b.ToTable("Events");
-                });
-
-            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.EventArchiveOutboxMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("AvailableAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Destination")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("FolderPath")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("IdempotencyKey")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<DateTimeOffset?>("LockedUntil")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("MetadataJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset?>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ReadmeMarkdown")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProcessedAt", "AvailableAt");
-
-                    b.HasIndex("EventId", "Destination", "IdempotencyKey")
-                        .IsUnique();
-
-                    b.ToTable("EventArchiveOutboxMessages");
                 });
 
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.EventReport", b =>

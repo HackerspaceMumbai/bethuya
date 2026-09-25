@@ -31,6 +31,7 @@ public sealed partial class MigrationWorker(
     {
         LogApplyingMigrations();
         await dbContext.Database.MigrateAsync(cancellationToken);
+        await ImportTemplateSeeder.EnsureSeededAsync(dbContext, cancellationToken);
         LogSchemaReady();
     }
 
