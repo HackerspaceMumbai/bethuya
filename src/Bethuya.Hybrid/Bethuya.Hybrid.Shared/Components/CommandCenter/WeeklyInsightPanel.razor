@@ -1,0 +1,33 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section data-test="weekly-insight">
+    <BbCard Class="insight-card">
+        <BbCardContent Class="insight-content">
+            <div class="insight-mark" aria-hidden="true"><LucideIcon Name="sparkles" Size="22" /></div>
+            <div class="insight-copy">
+                <p class="insight-eyebrow">@Insight.Eyebrow</p>
+                <h2>@Insight.Headline</h2>
+                @foreach (var line in Insight.Narrative)
+                {
+                    <p>@line</p>
+                }
+                <details class="signal-details">
+                    <summary>See reasoning</summary>
+                    <div>
+                        <span>Signals considered</span>
+                        <ul>
+                            @foreach (var signal in Insight.Signals)
+                            {
+                                <li>@signal</li>
+                            }
+                        </ul>
+                    </div>
+                </details>
+            </div>
+        </BbCardContent>
+    </BbCard>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public WeeklyInsight Insight { get; set; } = default!;
+}

@@ -707,3 +707,18 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 - **What happened:** CurationSampleSeeder.SeedAsync uses Math.Clamp(reviewableCount, SandboxCapacity + 1, MaxReviewableRegistrants) where SandboxCapacity = 25. Passing ?reviewableCount=0 via query string results in 26 registrants being seeded (clamped to minimum). Minimal safe value for seeding just enough to get one registrant for a decision test: pass ?reviewableCount=26 explicitly.
 - **Prevention:** When writing seeded integration tests for the curation endpoint, use ?reviewableCount=26 as the minimum. The seeder always creates 8 pre-selected + N reviewable + historical registrants; the selected ones come first in the dashboard Registrants list.
+## [2026-10-01] Validate deterministic UI independently when Aspire dependencies are unhealthy
+- An unrelated EF `PendingModelChangesWarning` in the migration/backend startup path can keep the Aspire `web` resource behind its `WaitFor(backend)` gate even when the Web project and backend-independent pages compile correctly.
+- Read `backend` and `migration-service` logs first, preserve the failure as evidence, then validate deterministic UI slices with the Web host directly instead of weakening migrations or masking the dependency failure.
+
+## [2026-10-01] Never hand-write an EF migration without metadata and snapshot updates
+- **What happened:** A hand-written `AddClaimTokenToEventArchiveOutbox` class had no generated designer metadata, so EF did not discover it and continued to report pending model changes.
+- **Root cause:** The schema change was split between an undiscoverable migration and a rewrite of an already-published historical migration, leaving the migration chain ambiguous for clean and previously initialized databases.
+- **Fix:** Restored the historical migration, regenerated a complete migration plus designer and snapshot, and made its SQL reconcile databases where `ClaimToken` is either absent or already present.
+- **Prevention:** Generate migrations with `dotnet ef migrations add`, verify `has-pending-model-changes`, and test both clean-database and upgrade paths before changing published migration history.
+
+## [2026-10-01] Microsoft Testing Platform does not accept VSTest logger arguments
+- **What happened:** The first targeted E2E invocation ran zero tests because `--logger` is not supported by this repository's Microsoft Testing Platform runner.
+- **Root cause:** The command used a VSTest CLI option even though the project uses `MSTest.Sdk`'s executable test runner.
+- **Fix:** Re-ran with `--output Detailed`; all three targeted Playwright tests passed.
+- **Prevention:** Use the runner's displayed options (`--output`, `--report-trx`) rather than VSTest-only arguments for this test project.

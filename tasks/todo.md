@@ -820,3 +820,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Copilot CLI
 - **Description:** Place Core chips on the first row and Diversity + Cohort Health chips on the second row, keeping full chip names visible and renaming Underrep to Access Equity.
 - **Acceptance:** Core renders as row 1, Diversity and Cohort Health render as row 2, chip labels are not ellipsized (except long term replaced by Access Equity), and tests/live UI checks pass.
+## [2026-09-30] Build Homepage v3 Community Command Center
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Replace the event-centric root dashboard with a role-aware organizer command center backed by deterministic rule-based intelligence behind stable shared interfaces. Preserve the current member dashboard at `/member/home`, add meaningful top-level workspace destinations, and keep the UX ready for future live intelligence providers.
+- **Acceptance:** ✅ `/` answers what changed, what needs attention, and what to do next for Community Administrator, Event Organizer, Volunteer Lead, and Mentorship Lead variants. ✅ Strategic/Event mode is explainable and manually overridable without hiding critical warnings. ✅ Current dashboard remains at `/member/home`. ✅ Every exposed workspace link resolves. ✅ TUnit/bUnit, targeted Playwright, responsive visual proof, and builds pass. ⚠️ Aspire live health is blocked by a pre-existing EF pending-model migration failure; backend and migration logs were captured, and the backend-independent UI was verified through the standalone Web host.
+## [2026-10-01] Fix migration startup and validate Homepage v3 through Aspire
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Identify and resolve the EF pending-model migration drift that prevents `migration-service`, `backend`, and `web` from becoming healthy, then run Homepage v3 Playwright tests against the actual Aspire Web endpoint.
+- **Acceptance:** ✅ Replaced the undiscoverable hand-written migration with a metadata-complete EF migration and synchronized snapshot. ✅ The migration reconciles both canonical databases without the column and databases created while the historical migration incorrectly included it. ✅ `has-pending-model-changes` reports no drift. ✅ Fresh isolated Aspire startup finishes migration and reports healthy PostgreSQL, backend, and web resources. ✅ Three targeted Playwright tests pass against the Aspire Web HTTPS endpoint, including desktop/mobile screenshots and relocated member-dashboard navigation. ✅ Full solution build passes with 0 warnings and 0 errors.

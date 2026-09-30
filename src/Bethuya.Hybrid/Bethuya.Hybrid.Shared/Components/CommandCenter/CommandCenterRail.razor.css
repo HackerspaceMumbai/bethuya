@@ -1,0 +1,70 @@
+/* BB cards do not provide the sticky, compact workload rail composition. */
+.command-rail {
+    position: sticky;
+    top: 1rem;
+    display: grid;
+    gap: 0.85rem;
+}
+
+.rail-panel {
+    display: grid;
+    overflow: hidden;
+    background: rgba(20, 15, 13, 0.76);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.8rem;
+}
+
+.rail-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0.85rem;
+    color: #8f826f;
+    border-bottom: 1px solid var(--hs-border);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.rail-heading strong {
+    color: var(--hs-gold);
+    font-size: 0.85rem;
+}
+
+.rail-panel > a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    padding: 0.72rem 0.85rem;
+    color: #b8aa96;
+    border-bottom: 1px solid rgba(212, 168, 48, 0.1);
+    font-size: 0.74rem;
+    text-decoration: none;
+}
+
+.rail-panel > a:last-child { border-bottom: 0; }
+.rail-panel > a:hover { color: #f4eee3; background: rgba(212, 168, 48, 0.05); }
+.rail-panel > a strong { color: var(--hs-gold); }
+
+.deadline-link {
+    align-items: flex-start !important;
+    flex-direction: column;
+}
+
+.deadline-link small {
+    color: #e0ad42;
+    font-size: 0.68rem;
+}
+
+@media (max-width: 1100px) {
+    .command-rail {
+        position: static;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .command-rail { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,32 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="command-section" aria-labelledby="upcoming-heading" data-test="upcoming-events">
+    <div class="section-heading section-heading--row">
+        <div>
+            <p>Next touchpoints</p>
+            <h2 id="upcoming-heading">Upcoming events</h2>
+        </div>
+        <a href="/events">View all events <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="upcoming-list">
+        @foreach (var item in Events)
+        {
+            <a class="upcoming-item" href="@item.Route">
+                <time>@item.DateLabel</time>
+                <span>
+                    <strong>@item.Title</strong>
+                    <small>@item.OperationalSummary</small>
+                </span>
+                @if (item.IsAtRisk)
+                {
+                    <span class="risk-dot" aria-label="Needs attention"></span>
+                }
+                <LucideIcon Name="chevron-right" Size="16" />
+            </a>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<UpcomingEventItem> Events { get; set; } = [];
+}

@@ -1,171 +1,145 @@
 @page "/"
 @rendermode InteractiveServer
-@using Bethuya.Hybrid.Shared.Components.Dashboard
-@using Bethuya.Hybrid.Shared.Services
-@inject IEventApi EventApi
-@inject IProfileApi ProfileApi
-@inject ICurrentUserService CurrentUser
+@using Bethuya.Hybrid.Shared.Components.CommandCenter
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+@inject ICommunityCommandCenterService CommandCenterService
 
-<PageTitle>Dashboard — Bethuya</PageTitle>
+<PageTitle>Community Command Center — Bethuya</PageTitle>
 
-<a class="skip-link" href="#dashboard-main">Skip to main content</a>
+<a class="skip-link" href="#command-center-main">Skip to community priorities</a>
 
-<main id="dashboard-main" aria-label="Dashboard">
+<main id="command-center-main" class="command-center" aria-label="Community operations command center" data-test="community-command-center">
+    <header class="command-header">
+        <div class="command-header__copy">
+            <p class="command-kicker">Community operations · Wednesday, 30 September</p>
+            <h1>Good evening, Augustine.</h1>
+            <p class="command-subtitle">Events are moments. Communities are journeys.</p>
+            <p class="command-summary">Here’s how your community is moving this week.</p>
+        </div>
+
+        <div class="command-controls" aria-label="Command center controls">
+            <div class="control-group">
+                <span class="control-label">View as</span>
+                <div class="role-switcher" role="group" aria-label="Select organizer role">
+                    @foreach (var role in Enum.GetValues<CommunityRole>())
+                    {
+                        <div data-test="@($"role-{GetRoleSlug(role)}")">
+                            <button type="button"
+                                    class="@($"control-button {(selectedRole == role ? "control-button--active" : "")}")"
+                                    aria-pressed="@(selectedRole == role ? "true" : "false")"
+                                    @onclick="@(() => SelectRoleAsync(role))">
+                                @GetRoleLabel(role)
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <a class="notification-link" href="#human-review" data-test="notification-center" aria-label="Open human review queue">
+                <LucideIcon Name="bell" Size="17" />
+                <span>@(model?.Reviews.Sum(review => review.Count) ?? 0)</span>
+            </a>
+        </div>
+    </header>
 
     @if (isLoading)
     {
-        <div data-test="loading-state" class="p-8 text-center">
-            <p>Loading events…</p>
-        </div>
+        <div class="command-loading" data-test="loading-state" role="status">Reading community signals…</div>
     }
     else if (errorMessage is not null)
     {
         <div data-test="error-state">
             <BbAlert Variant="AlertVariant.Danger">
+                <BbAlertTitle>Command center unavailable</BbAlertTitle>
                 <BbAlertDescription>@errorMessage</BbAlertDescription>
             </BbAlert>
         </div>
     }
-    else if (_redirectRoute is not null)
+    else if (model is not null)
     {
-        <section class="onboarding-redirect" aria-label="Complete your profile" data-test="onboarding-redirect">
-            <BbCard Class="onboarding-redirect-card">
-                <BbCardHeader>
-                    <BbCardTitle>Finish setup before you explore Bethuya</BbCardTitle>
-                    <BbCardDescription>
-                        We’re taking you to the three-step onboarding flow now so your dashboard, registrations, verified social identities, and accessibility preferences start in the right place.
-                    </BbCardDescription>
-                </BbCardHeader>
-                <BbCardContent Class="onboarding-redirect-card__content">
-                    <ol class="onboarding-redirect-list">
-                        <li>Add your required attendee details.</li>
-                        <li>Verify your GitHub and LinkedIn accounts.</li>
-                        <li>Optionally share accessibility and inclusion context, then return to the dashboard.</li>
-                    </ol>
-                    <BbButton Variant="ButtonVariant.Default" Class="onboarding-redirect-button"
-                              OnClick="@(() => Navigation.NavigateTo(_redirectRoute!))">
-                        Continue setup
-                    </BbButton>
-                </BbCardContent>
-            </BbCard>
-        </section>
-    }
-    else
-    {
-        @* ── AI Insights Banner ── *@
-        @if (featuredEvent is not null && featuredEvent.AgendaStatus is null)
-        {
-            <AiInsightsBanner EventTitle="@featuredEvent.Title"
-                              ReviewUrl="@($"/events/{featuredEvent.Id}")" />
-        }
-
-        @* ── Dashboard grid: stats column + featured event ── *@
-        <div class="dashboard-grid">
-            <div class="stats-column">
-                <div class="stats-grid" data-test="stats-row" aria-label="Event statistics">
-                    <StatCard Label="Total Events" Value="@events.Count" IconName="calendar" />
-                    <StatCard Label="Drafts" Value="@events.Count(e => e.Status == "Draft")" IconName="file-edit" />
-                    <StatCard Label="Upcoming" Value="@UpcomingCount" IconName="calendar-clock" />
-                    <StatCard Label="Completed" Value="@events.Count(e => e.Status == "Completed")" IconName="circle-check" />
-                </div>
-
-                <div class="plan-event-cta" data-test="plan-event-cta">
-                    <BbButton Variant="ButtonVariant.Default" Class="cta-btn"
-                              OnClick="@(() => Navigation.NavigateTo("/events/plan"))">
-                        <LucideIcon Name="plus" Size="16" />
-                        Plan New Event
-                    </BbButton>
+        <section class="mode-bar" aria-label="Active command center mode" data-test="mode-explanation">
+            <div class="mode-status">
+                <span class="mode-pulse" aria-hidden="true"></span>
+                <div>
+                    <strong>Currently in @model.EffectiveMode Mode</strong>
+                    <p>@model.ModeReason</p>
                 </div>
             </div>
-
-            <FeaturedEventCard Event="@featuredEvent"
-                               OnPanelClick="@(() => Navigation.NavigateTo("/agents"))"
-                               OnCurationClick="@(() => Navigation.NavigateTo("/curation"))"
-                               OnEditClick="@(() => { if (featuredEvent is not null) Navigation.NavigateTo($"/events/plan?edit={featuredEvent.Id}"); })" />
-        </div>
-
-        @* ── Events list ── *@
-        <section class="events-section" aria-label="All events">
-            <h2 class="section-title">Events</h2>
-
-            @if (events.Count == 0)
-            {
-                <div class="empty-state">
-                    <p>No events yet.</p>
-                    <p class="empty-hint">Plan your first community event to get started!</p>
+            <div class="mode-actions" role="group" aria-label="Select command center mode">
+                <div data-test="mode-strategic">
+                    <button type="button"
+                            class="@($"control-button {(model.EffectiveMode == CommandCenterMode.Strategic ? "control-button--active" : "")}")"
+                            aria-pressed="@(model.EffectiveMode == CommandCenterMode.Strategic ? "true" : "false")"
+                            @onclick="@(() => SelectModeAsync(CommandCenterMode.Strategic))">
+                        Strategic
+                    </button>
                 </div>
-            }
-            else
-            {
-                <div class="events-grid">
-                    @foreach (var evt in events)
-                    {
-                        <EventCard Event="@evt"
-                                   OnDraftClick="@(e => Navigation.NavigateTo(e.Status == "Draft" ? $"/events/plan?edit={e.Id}" : $"/events/{e.Id}"))"
-                                   OnRegistrationsClick="@(e => Navigation.NavigateTo($"/events/{e.Id}/registrations"))" />
-                    }
+                <div data-test="mode-event">
+                    <button type="button"
+                            class="@($"control-button {(model.EffectiveMode == CommandCenterMode.Event ? "control-button--active" : "")}")"
+                            aria-pressed="@(model.EffectiveMode == CommandCenterMode.Event ? "true" : "false")"
+                            @onclick="@(() => SelectModeAsync(CommandCenterMode.Event))">
+                        Event · Hacktoberfest
+                    </button>
                 </div>
-            }
+                <details class="mode-reasoning">
+                    <summary>View reasoning</summary>
+                    <p>Event mode is recommended when an approaching event has unresolved capacity, waitlist, volunteer, or speaker-readiness signals.</p>
+                </details>
+            </div>
         </section>
-    }
 
+        <SnapshotStrip Metrics="@model.Snapshot" />
+
+        <div class="command-layout">
+            <div class="command-main">
+                <WeeklyInsightPanel Insight="@model.Insight" />
+                <MomentumPanel People="@model.Momentum" />
+                <AttentionQueue Items="@model.AttentionItems" />
+                <ReviewQueue Items="@model.Reviews" />
+                <UpcomingEventsPanel Events="@model.UpcomingEvents" />
+            </div>
+            <CommandCenterRail Reviews="@model.Reviews"
+                               Deadlines="@model.Deadlines"
+                               Workspaces="@model.Workspaces" />
+        </div>
+    }
 </main>
 
 @code {
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
-
-    private List<EventViewModel> events = [];
+    private CommunityRole selectedRole = CommunityRole.CommunityAdministrator;
+    private CommandCenterMode? modeOverride;
+    private CommunityCommandCenter? model;
     private bool isLoading = true;
     private string? errorMessage;
-    private string? _redirectRoute;
 
-    private int UpcomingCount => events.Count(e =>
-        e.StartDate >= DateOnly.FromDateTime(DateTime.Now) &&
-        e.Status is not ("Completed" or "Cancelled"));
-    private static bool IsSocialBypassEnabled =>
-        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassSocialConnections"), "true", StringComparison.OrdinalIgnoreCase);
-    private static bool IsMandatoryBypassEnabled =>
-        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"), "true", StringComparison.OrdinalIgnoreCase);
+    protected override Task OnInitializedAsync() => LoadAsync();
 
-    private EventViewModel? featuredEvent =>
-        events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled") && e.StartDate >= DateOnly.FromDateTime(DateTime.Now))
-        ?? events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled"));
-
-    protected override async Task OnInitializedAsync()
+    private async Task SelectRoleAsync(CommunityRole role)
     {
-        // Check profile completion before loading dashboard data
-        if (CurrentUser.IsAuthenticated && !IsMandatoryBypassEnabled)
-        {
-            try
-            {
-                var status = await ProfileApi.GetCompletionStatusAsync();
-                _redirectRoute = status.IsProfileComplete switch
-                {
-                    false => "/registration/mandatory",
-                    true when !status.IsSocialConnectionsComplete => IsSocialBypassEnabled ? "/registration/aide" : "/registration/social",
-                    _ => null
-                };
-            }
-            catch
-            {
-                // If profile check fails, continue to dashboard
-            }
-        }
+        selectedRole = role;
+        modeOverride = null;
+        await LoadAsync();
+    }
 
-        if (_redirectRoute is not null)
-        {
-            isLoading = false;
-            return;
-        }
+    private async Task SelectModeAsync(CommandCenterMode mode)
+    {
+        modeOverride = mode;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
 
         try
         {
-            var dtos = await EventApi.GetAllAsync();
-            events = dtos.Select(MapToViewModel).ToList();
+            model = await CommandCenterService.GetAsync(selectedRole, modeOverride);
         }
         catch (Exception)
         {
-            errorMessage = "Failed to load events. Please try again.";
+            errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
         }
         finally
         {
@@ -173,26 +147,21 @@
         }
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    private static string GetRoleLabel(CommunityRole role) => role switch
     {
-        if (firstRender && _redirectRoute is not null)
-        {
-            Navigation.NavigateTo(_redirectRoute, replace: true);
-        }
-        return Task.CompletedTask;
-    }
+        CommunityRole.CommunityAdministrator => "Community Admin",
+        CommunityRole.EventOrganizer => "Event Organizer",
+        CommunityRole.VolunteerLead => "Volunteer Lead",
+        CommunityRole.MentorshipLead => "Mentorship Lead",
+        _ => role.ToString()
+    };
 
-    private static EventViewModel MapToViewModel(EventDto dto) => new()
+    private static string GetRoleSlug(CommunityRole role) => role switch
     {
-        Id = dto.Id,
-        Title = dto.Title,
-        Description = dto.Description,
-        Type = dto.Type,
-        Status = dto.Status,
-        Capacity = dto.Capacity,
-        Location = dto.Location,
-        CoverImageUrl = dto.CoverImageUrl,
-        StartDate = DateOnly.FromDateTime(dto.StartDate.DateTime),
-        EndDate = DateOnly.FromDateTime(dto.EndDate.DateTime)
+        CommunityRole.CommunityAdministrator => "community-administrator",
+        CommunityRole.EventOrganizer => "event-organizer",
+        CommunityRole.VolunteerLead => "volunteer-lead",
+        CommunityRole.MentorshipLead => "mentorship-lead",
+        _ => role.ToString().ToLowerInvariant()
     };
 }

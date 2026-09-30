@@ -1,0 +1,143 @@
+@page "/community-graph"
+@page "/opportunities"
+@page "/community-health"
+@page "/volunteers"
+@page "/mentorship"
+@page "/intelligence"
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+
+<PageTitle>@Definition.Title — Bethuya</PageTitle>
+
+<main class="workspace-preview" data-test="workspace-preview">
+    <a class="back-link" href="/"><LucideIcon Name="arrow-left" Size="15" /> Back to command center</a>
+
+    <header class="workspace-hero">
+        <div class="workspace-icon"><LucideIcon Name="@Definition.Icon" Size="26" /></div>
+        <div>
+            <p>@Definition.Eyebrow</p>
+            <h1>@Definition.Title</h1>
+            <span class="status-pill">Foundation preview</span>
+        </div>
+    </header>
+
+    <p class="workspace-purpose">@Definition.Purpose</p>
+
+    <div class="workspace-grid">
+        <section>
+            <BbCard Class="workspace-card">
+                <BbCardHeader>
+                    <BbCardTitle>What is available now</BbCardTitle>
+                    <BbCardDescription>Deterministic application signals already used by Homepage v3.</BbCardDescription>
+                </BbCardHeader>
+                <BbCardContent>
+                    <ul class="signal-list">
+                        @foreach (var signal in Definition.AvailableSignals)
+                        {
+                            <li><LucideIcon Name="check" Size="15" /><span>@signal</span></li>
+                        }
+                    </ul>
+                </BbCardContent>
+            </BbCard>
+        </section>
+
+        <section>
+            <BbCard Class="workspace-card">
+                <BbCardHeader>
+                    <BbCardTitle>What comes next</BbCardTitle>
+                    <BbCardDescription>The workspace will deepen without changing the command-center contract.</BbCardDescription>
+                </BbCardHeader>
+                <BbCardContent>
+                    <ul class="roadmap-list">
+                        @foreach (var capability in Definition.PlannedCapabilities)
+                        {
+                            <li>@capability</li>
+                        }
+                    </ul>
+                </BbCardContent>
+            </BbCard>
+        </section>
+    </div>
+
+    <section class="workspace-next">
+        <div>
+            <p>Continue with a working flow</p>
+            <h2>@Definition.NextActionLabel</h2>
+        </div>
+        <a href="@Definition.NextActionRoute" data-test="workspace-next-action">
+            Open workflow <LucideIcon Name="arrow-up-right" Size="15" />
+        </a>
+    </section>
+</main>
+
+@code {
+    private WorkspaceDefinition Definition => GetDefinition(Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/'));
+
+    private static WorkspaceDefinition GetDefinition(string route) => route switch
+    {
+        "community-graph" => new(
+            "Community relationships",
+            "Community Graph",
+            "network",
+            "Understand how participation, collaboration, and contribution connect people over time—without reducing the community to a contact database.",
+            ["Four momentum journeys are visible", "Returning contributors are identified", "Cross-event participation history is represented"],
+            ["Relationship exploration", "Collaboration clusters", "Consent-aware connection context"],
+            "Review the people gaining momentum",
+            "/#people-momentum"),
+        "opportunities" => new(
+            "Paths to contribute",
+            "Opportunity Engine",
+            "sparkles",
+            "Match people with volunteer, mentorship, and leadership opportunities that fit their stated interests and community journey.",
+            ["18 open opportunities", "9 volunteer roles", "5 mentorship openings", "4 leadership pathways"],
+            ["Interest-based matching", "Availability-aware recommendations", "Human-approved invitations"],
+            "Plan a new event opportunity",
+            "/events/plan"),
+        "community-health" => new(
+            "Signals, not scores",
+            "Community Health",
+            "heart-pulse",
+            "Understand participation and retention patterns early enough for organizers to act with care.",
+            ["74% retention", "38 returning members this quarter", "Repeated-waitlist risk signal"],
+            ["Cohort trends", "Re-engagement journeys", "Explainable health narratives"],
+            "Review current community priorities",
+            "/"),
+        "volunteers" => new(
+            "Contribution network",
+            "Volunteers",
+            "hand-heart",
+            "Coordinate volunteer coverage, recognize sustained contribution, and help contributors grow into organizer pathways.",
+            ["Two-person Hacktoberfest gap", "Three promotion reviews", "Returning-contributor follow-up"],
+            ["Coverage planning", "Recognition history", "Burnout-aware workload views"],
+            "View upcoming event needs",
+            "/events"),
+        "mentorship" => new(
+            "Guided growth",
+            "Mentorship",
+            "graduation-cap",
+            "Support thoughtful mentor availability and participant pairings while keeping every recommendation under human review.",
+            ["Two mentor seats required", "Two pairing reviews", "First milestone completion signal"],
+            ["Availability management", "Goal-aligned pairing", "Cohort health"],
+            "Review community opportunities",
+            "/opportunities"),
+        _ => new(
+            "Explainable community signals",
+            "Intelligence",
+            "brain-circuit",
+            "Turn deterministic participation signals into clear narratives and suggested actions while preserving human judgment.",
+            ["Weekly narrative insight", "Mode recommendation reasoning", "Five outreach drafts awaiting review"],
+            ["Live provider integration", "Auditable signal provenance", "Organizer feedback loops"],
+            "Return to this week’s insight",
+            "/")
+    };
+
+    private sealed record WorkspaceDefinition(
+        string Eyebrow,
+        string Title,
+        string Icon,
+        string Purpose,
+        IReadOnlyList<string> AvailableSignals,
+        IReadOnlyList<string> PlannedCapabilities,
+        string NextActionLabel,
+        string NextActionRoute);
+}

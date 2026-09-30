@@ -1,0 +1,29 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="command-section" aria-labelledby="attention-heading" data-test="attention-queue">
+    <div class="section-heading">
+        <p>Needs attention</p>
+        <h2 id="attention-heading">Community attention queue</h2>
+    </div>
+    <div class="attention-list">
+        @foreach (var item in Items)
+        {
+            <article class="@($"attention-item attention-item--{item.Severity.ToString().ToLowerInvariant()}")"
+                     data-test="attention-item">
+                <div class="attention-icon" aria-hidden="true">
+                    <LucideIcon Name="triangle-alert" Size="18" />
+                </div>
+                <div class="attention-copy">
+                    <span>@item.Category</span>
+                    <h3>@item.Title</h3>
+                    <p>@item.Summary</p>
+                </div>
+                <a href="@item.Route">@item.ActionLabel <span aria-hidden="true">→</span></a>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AttentionItem> Items { get; set; } = [];
+}

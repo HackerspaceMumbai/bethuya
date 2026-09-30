@@ -17,7 +17,7 @@
             <h1 class="profile-title">Accessibility &amp; Inclusion</h1>
             <p class="profile-subtitle">Optional. Share only what helps us support you better.</p>
             <p class="profile-consent-note">
-                <a href="/" class="skip-link-text" data-test="skip-aide-link">Skip for now</a>
+                <a href="/member/home" class="skip-link-text" data-test="skip-aide-link">Skip for now</a>
             </p>
             <div class="profile-progress" aria-hidden="true">
                 <span class="profile-progress__dot"></span>
@@ -134,7 +134,7 @@
                             }
                         </button>
 
-                        <a href="/" class="skip-link-text" data-test="skip-aide-link-footer">Skip for now</a>
+                        <a href="/member/home" class="skip-link-text" data-test="skip-aide-link-footer">Skip for now</a>
                     </div>
                 </EditForm>
             </section>
@@ -258,7 +258,7 @@
                 HowDidYouHear: N(NormalizeUnderrepresentedSignal(_model.UnderrepresentedInTech)),
                 AdditionalSupport: N(_model.AdditionalSupport)));
 
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/member/home");
         }
         catch (Exception)
         {

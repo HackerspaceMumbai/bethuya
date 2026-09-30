@@ -1,0 +1,32 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="command-section" aria-labelledby="momentum-heading" data-test="people-momentum">
+    <div class="section-heading section-heading--row">
+        <div>
+            <p>Journey signals</p>
+            <h2 id="momentum-heading">People gaining momentum</h2>
+        </div>
+        <a href="/community-graph">Explore community graph <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="momentum-grid">
+        @foreach (var person in People)
+        {
+            <article class="person-card">
+                <div class="person-avatar" aria-hidden="true">@person.Initials</div>
+                <div>
+                    <h3>@person.Name</h3>
+                    <p>@person.Signal</p>
+                    <div class="journey">
+                        <span>@person.JourneyFrom</span>
+                        <LucideIcon Name="arrow-right" Size="14" />
+                        <strong>@person.JourneyTo</strong>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MomentumPerson> People { get; set; } = [];
+}
