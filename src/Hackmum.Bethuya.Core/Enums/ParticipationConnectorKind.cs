@@ -10,5 +10,9 @@ public enum ParticipationConnectorKind
     Meetup,
     GitHub,
     Forms,
-    Discord
+    Discord,
+    /// <summary>MLH / OrganizerHQ hackathon registration and attendance exports.</summary>
+    MLH,
+    /// <summary>Organizer-defined source with no dedicated platform (e.g. sponsor or community spreadsheets).</summary>
+    Custom
 }

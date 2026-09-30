@@ -30,6 +30,7 @@ public class OnboardingNavigationRenderTests
 
         ctx.Services.AddSingleton(eventApi);
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.AddSingleton<ICurrentUserService>(new StubCurrentUserService(isAuthenticated: true));
 
         var cut = ctx.RenderComponent<Home>();
@@ -56,6 +57,7 @@ public class OnboardingNavigationRenderTests
 
         ctx.Services.AddSingleton(eventApi);
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.AddSingleton<ICurrentUserService>(new StubCurrentUserService(isAuthenticated: true));
 
         var cut = ctx.RenderComponent<Home>();
@@ -77,6 +79,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<Profile>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
@@ -96,6 +99,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<Profile>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
@@ -242,6 +246,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto(null, false, false, null, null, null, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/social");
 
         var cut = RenderOnboardingLayoutWithBody<SocialProfileConnections>(ctx);
@@ -267,6 +272,7 @@ public class OnboardingNavigationRenderTests
         profileApi.SaveMandatoryProfileAsync(Arg.Any<SaveMandatoryProfileDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<NewUserProfile>();
 
@@ -310,6 +316,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetMandatoryProfileAsync(Arg.Any<CancellationToken>())
             .Returns(_ => profileSource.Task);
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<NewUserProfile>();
         var saveButton = cut.Find("[data-test='save-profile-btn']");
@@ -387,6 +394,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Student", false, true, null, null, null, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/social?linkedinMemberId=yrZCpj2Z12&linkedinProfileUrl=https%3A%2F%2Fwww.linkedin.com%2Fin%2Fdev-user&githubLogin=dev-user&githubProfileUrl=https%3A%2F%2Fgithub.com%2Fdev-user");
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
@@ -414,6 +422,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, null, null, null, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/social?socialError=social-provider-not-configured&socialProvider=github");
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
@@ -435,6 +444,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Student", false, true, null, null, null, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
@@ -471,6 +481,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(_ => socialSource.Task);
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
@@ -517,6 +528,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<SocialProfileDto>(new InvalidOperationException("boom")));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
@@ -543,6 +555,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, "yrZCpj2Z12", "https://www.linkedin.com/in/dev-user", "dev-user", "https://github.com/dev-user")));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
 
@@ -565,6 +578,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, "yrZCpj2Z12", "https://www.linkedin.com/in/dev-user", null, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
 
@@ -586,6 +600,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, null, null, null, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/social?socialError=social-provider-scope-not-authorized&socialProvider=linkedin");
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
@@ -608,6 +623,7 @@ public class OnboardingNavigationRenderTests
         profileApi.SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, false, DateTimeOffset.UtcNow, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
 
@@ -633,6 +649,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Student", false, true, null, null, null, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
@@ -655,6 +672,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, null, null, "dev-user", "https://github.com/dev-user")));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
 
@@ -677,6 +695,7 @@ public class OnboardingNavigationRenderTests
         profileApi.SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, false, DateTimeOffset.UtcNow, null)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
 
@@ -706,6 +725,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new SocialProfileDto("Employee", true, false, "yrZCpj2Z12", "https://www.linkedin.com/in/dev-user", "dev-user", "https://github.com/dev-user")));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<SocialProfileConnections>();
         cut.Render();
@@ -916,6 +936,7 @@ public class OnboardingNavigationRenderTests
         profileApi.SaveAideProfileAsync(Arg.Any<SaveAideProfileDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)));
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<AideProfile>();
 
@@ -945,6 +966,7 @@ public class OnboardingNavigationRenderTests
         profileApi.GetAideProfileAsync(Arg.Any<CancellationToken>())
             .Returns(_ => aideSource.Task);
         ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
         var cut = ctx.RenderComponent<AideProfile>();
         var saveButton = cut.Find("[data-test='save-aide-btn']");

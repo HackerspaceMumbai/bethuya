@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-09-29] Compositional select values may display enum keys instead of item labels
+- **What happened:** The import-kind combobox rendered the bound internal value (`Registration`) instead of its longer organizer-facing option text.
+- **Root cause:** The compositional `BbSelectItem` children register their display text when the popover opens, so a closed, already-selected field cannot always resolve the option label on initial render.
+- **Fix:** Provide an explicit `DisplayTextSelector` for import kinds, matching the existing event selector's lookup pattern, and assert the friendly label in the bUnit render test.
+- **Prevention:** For preselected `BbFormFieldSelect` values, verify the closed field's accessible/display text in bUnit and provide a `DisplayTextSelector` when child options do not resolve before the popover opens.
+
 ## [2026-09-21] Persisting an archive path requires a data backfill
 - **What happened:** The initial stable archive-path migration added a nullable column but did not preserve locations already published to GitHub.
 - **Root cause:** Runtime initialization only protects future projections; it cannot recover the prior canonical location once mutable event metadata changes.
@@ -707,3 +713,23 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 - **What happened:** CurationSampleSeeder.SeedAsync uses Math.Clamp(reviewableCount, SandboxCapacity + 1, MaxReviewableRegistrants) where SandboxCapacity = 25. Passing ?reviewableCount=0 via query string results in 26 registrants being seeded (clamped to minimum). Minimal safe value for seeding just enough to get one registrant for a decision test: pass ?reviewableCount=26 explicitly.
 - **Prevention:** When writing seeded integration tests for the curation endpoint, use ?reviewableCount=26 as the minimum. The seeder always creates 8 pre-selected + N reviewable + historical registrants; the selected ones come first in the dashboard Registrants list.
+
+## 2026-09-21 — Import wizard scope correction
+The original backend implementation deferred the organizer UI, but the PRD success criterion requires a non-technical organizer workflow. The `/imports` wizard was added as a follow-up, and the docs were corrected to describe the UI as implemented rather than out of scope.
+
+## [2026-09-24] Distinguish zero-job workflow records from PR security failures
+- **What happened:** GitHub showed repeated failures named `.github/workflows/security-scan.yml` for push events on the PR branch, while the PR's actual `Security` check passed.
+- **Root cause:** The workflow-path records had zero jobs and zero check-runs on every observed commit, so they do not represent a gitleaks execution or a code failure. The checked-in workflow is pull-request-only, and the active PR security jobs completed successfully.
+- **Fix:** No source or workflow change was made; classify the records as a pre-existing GitHub workflow-registration/history anomaly rather than PR-caused or transient runner infrastructure.
+- **Prevention:** Always inspect event type plus job/check-run count before treating a workflow-path failure as a failed security scan; corroborate with the named PR check and repeated-run behavior.
+
+- **BbFileUpload replacement:** `MaxFileCount` counts files already in the queue, so `MaxFileCount="1"` rejects every replacement ("Maximum 1 files allowed") and the old file silently stays selected. For single-file flows, omit `MaxFileCount` and rely on non-`Multiple` mode, which clears the queue before adding. Verify replacement with a bUnit `InputFile.UploadFiles` test that uploads twice.
+
+
+- **Compositional BB selects need DisplayTextSelector whenever a value is preselected.** Items register their text only when the popover opens, so a closed select with a data-driven value (e.g. the default import template) renders the raw id. Map the value to its label with `DisplayTextSelector`.
+
+- **NavMenu event context must parse query strings.** `ToBaseRelativePath` keeps `?query`, so `/imports?eventId=…` (and `/events/{id}?x`) was never recognized as an event route and event-scoped links vanished. Strip the query before splitting segments, and read `eventId` from it where the route carries it there.
+- **Minimal API DbContext params in shared endpoint groups need `[FromServices]`.** Test hosts that don't register the DbContext otherwise fail endpoint metadata inference for the whole group ("Body was inferred").
+
+
+- **Guard messages must render next to the action that triggers them.** An early-return validation guard in the import wizard wrote to a status region at the top of the page, so clicking 'Run validation' appeared to do nothing. Also, stale query IDs (e.g. `?eventId=` after a reseed) must show a visible notice instead of silently leaving the selection empty.

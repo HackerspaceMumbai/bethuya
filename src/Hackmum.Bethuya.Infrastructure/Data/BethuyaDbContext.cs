@@ -28,6 +28,11 @@ public sealed class BethuyaDbContext(DbContextOptions<BethuyaDbContext> options)
     public DbSet<EventArchiveOutboxMessage> EventArchiveOutboxMessages => Set<EventArchiveOutboxMessage>();
     /// <summary>Mentor opt-in profiles; one record per community member who has opted into the mentorship programme.</summary>
     public DbSet<MentorProfile> MentorProfiles => Set<MentorProfile>();
+    public DbSet<ImportTemplate> ImportTemplates => Set<ImportTemplate>();
+    public DbSet<ImportColumnMapping> ImportColumnMappings => Set<ImportColumnMapping>();
+    public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
+    public DbSet<ImportArtifact> ImportArtifacts => Set<ImportArtifact>();
+    public DbSet<ImportRawRow> ImportRawRows => Set<ImportRawRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
