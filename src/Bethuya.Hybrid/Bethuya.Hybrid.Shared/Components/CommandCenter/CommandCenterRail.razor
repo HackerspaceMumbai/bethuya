@@ -1,16 +1,19 @@
 @using Bethuya.Hybrid.Shared.Models.CommandCenter
 
 <aside class="command-rail" aria-label="Organizational workload">
-    <section class="rail-panel" data-test="pending-approvals">
-        <div class="rail-heading">
-            <span>Pending approvals</span>
-            <strong>@Reviews.Sum(item => item.Count)</strong>
-        </div>
-        @foreach (var item in Reviews)
-        {
-            <a href="@item.Route"><span>@item.Label</span><strong>@item.Count</strong></a>
-        }
-    </section>
+    @if (ShowApprovals)
+    {
+        <section class="rail-panel" data-test="pending-approvals">
+            <div class="rail-heading">
+                <span>Pending approvals</span>
+                <strong>@Reviews.Sum(item => item.Count)</strong>
+            </div>
+            @foreach (var item in Reviews)
+            {
+                <a href="@item.Route"><span>@item.Label</span><strong>@item.Count</strong></a>
+            }
+        </section>
+    }
 
     <section class="rail-panel" data-test="upcoming-deadlines">
         <div class="rail-heading"><span>Upcoming deadlines</span></div>
@@ -40,4 +43,5 @@
     [Parameter, EditorRequired] public IReadOnlyList<ReviewItem> Reviews { get; set; } = [];
     [Parameter, EditorRequired] public IReadOnlyList<DeadlineItem> Deadlines { get; set; } = [];
     [Parameter, EditorRequired] public IReadOnlyList<WorkspaceLink> Workspaces { get; set; } = [];
+    [Parameter] public bool ShowApprovals { get; set; } = true;
 }

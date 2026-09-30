@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-01] Making command-center modes operational
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Make Strategic and Event modes materially change homepage hierarchy, deterministic content, operational metrics, approvals, event readiness detail, insight framing, and contributor prioritization.
+- **Acceptance:** Event Mode promotes the attention queue and approvals, uses event-specific snapshot metrics, expands event readiness intelligence, and adapts insight/momentum content; Strategic Mode keeps insight and momentum primary; TUnit, build, Aspire, targeted Playwright, and visual screenshots verify both modes.
+- **Completion Evidence:** Solution build passed with 0 warnings/errors; 438/438 TUnit tests passed; 2/2 targeted Playwright tests passed against fresh Aspire URL `https://localhost:52899`; migration-service finished successfully while backend/web became healthy; desktop Event/Strategic and mobile visual captures confirm the hierarchy shift. Pre-commit review findings for metric-label contrast, duplicate approval-rail coverage, and render-time enum allocations were resolved.
+
 ## [2026-10-01] Removing redundant profile switch condition
 - **Status:** done
 - **Agent/Owner:** Copilot

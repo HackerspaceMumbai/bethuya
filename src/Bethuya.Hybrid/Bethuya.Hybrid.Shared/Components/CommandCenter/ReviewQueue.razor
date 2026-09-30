@@ -1,9 +1,12 @@
 @using Bethuya.Hybrid.Shared.Models.CommandCenter
 
-<section id="human-review" class="command-section" aria-labelledby="review-heading" data-test="human-review-queue">
+<section id="human-review"
+         class="@($"command-section {(EventMode ? "command-section--event" : "")}")"
+         aria-labelledby="review-heading"
+         data-test="@DataTest">
     <div class="section-heading">
-        <p>Human in the loop</p>
-        <h2 id="review-heading">Human review queue</h2>
+        <p>@(EventMode ? "Decisions blocking execution" : "Human in the loop")</p>
+        <h2 id="review-heading">@(EventMode ? "Pending event approvals" : "Human review queue")</h2>
     </div>
     <div class="review-list">
         @foreach (var item in Items)
@@ -22,4 +25,6 @@
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<ReviewItem> Items { get; set; } = [];
+    [Parameter] public bool EventMode { get; set; }
+    [Parameter] public string DataTest { get; set; } = "human-review-queue";
 }

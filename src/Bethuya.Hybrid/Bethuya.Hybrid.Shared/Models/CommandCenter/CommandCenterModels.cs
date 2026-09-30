@@ -52,7 +52,12 @@ public sealed record UpcomingEventItem(
     string DateLabel,
     string OperationalSummary,
     string Route,
-    bool IsAtRisk);
+    bool IsAtRisk,
+    string ReadinessLabel,
+    string CapacityLabel,
+    string WaitlistLabel,
+    string VolunteerCoverageLabel,
+    string RiskLabel);
 
 public sealed record DeadlineItem(string Label, string DueLabel, string Route);
 

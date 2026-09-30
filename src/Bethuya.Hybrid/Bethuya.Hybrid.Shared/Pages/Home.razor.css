@@ -28,6 +28,16 @@
     filter: blur(12px);
 }
 
+.command-center--event {
+    --command-amber: #f06f4f;
+}
+
+.command-center--event::before {
+    background:
+        radial-gradient(circle at 12% 16%, rgba(240, 111, 79, 0.16), transparent 34%),
+        radial-gradient(circle at 86% 4%, rgba(212, 168, 48, 0.11), transparent 28%);
+}
+
 .skip-link {
     position: fixed;
     z-index: 100;
@@ -162,6 +172,16 @@
     border-radius: 0.8rem;
 }
 
+.command-center--event .mode-bar {
+    background: linear-gradient(90deg, rgba(240, 111, 79, 0.09), rgba(212, 168, 48, 0.035));
+    border-color: rgba(240, 111, 79, 0.28);
+}
+
+.command-center--event .mode-pulse {
+    background: #f06f4f;
+    box-shadow: 0 0 0 0.35rem rgba(240, 111, 79, 0.12);
+}
+
 .mode-status {
     display: flex;
     align-items: center;
@@ -226,6 +246,51 @@
     min-width: 0;
 }
 
+.mode-priority {
+    position: relative;
+    display: grid;
+    gap: 1.5rem;
+}
+
+.mode-priority--strategic {
+    padding: 0.2rem;
+}
+
+.mode-priority--event {
+    padding: clamp(1rem, 2.2vw, 1.5rem);
+    background:
+        linear-gradient(130deg, rgba(240, 111, 79, 0.09), transparent 48%),
+        rgba(21, 16, 14, 0.78);
+    border: 1px solid rgba(240, 111, 79, 0.28);
+    border-radius: 1rem;
+    box-shadow: 0 1.4rem 4rem rgba(0, 0, 0, 0.24);
+}
+
+.mode-priority--event::before {
+    position: absolute;
+    top: -0.55rem;
+    right: 1rem;
+    padding: 0.25rem 0.55rem;
+    color: #1b100d;
+    background: #f06f4f;
+    border-radius: 999px;
+    content: "01 / LIVE OPERATIONS";
+    font-size: 0.6rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+}
+
+.event-support-grid {
+    display: grid;
+    gap: 1.5rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.command-center--event .command-main {
+    gap: 1.75rem;
+}
+
 .command-loading {
     min-height: 20rem;
     display: grid;
@@ -273,6 +338,10 @@
     .mode-bar {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .mode-priority--event {
+        padding: 1rem;
     }
 
     .mode-reasoning p {

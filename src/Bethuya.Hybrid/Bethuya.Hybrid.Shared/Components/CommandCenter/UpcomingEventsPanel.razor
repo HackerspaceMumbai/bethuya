@@ -1,32 +1,69 @@
 @using Bethuya.Hybrid.Shared.Models.CommandCenter
 
-<section class="command-section" aria-labelledby="upcoming-heading" data-test="upcoming-events">
+<section class="@($"command-section {(Expanded ? "command-section--expanded" : "")}")"
+         aria-labelledby="upcoming-heading"
+         data-test="upcoming-events"
+data-expanded="@(Expanded ? "true" : "false")">
     <div class="section-heading section-heading--row">
         <div>
-            <p>Next touchpoints</p>
-            <h2 id="upcoming-heading">Upcoming events</h2>
+            <p>@(Expanded ? "Readiness command board" : "Next touchpoints")</p>
+            <h2 id="upcoming-heading">@(Expanded ? "Upcoming event operations" : "Upcoming events")</h2>
         </div>
         <a href="/events">View all events <span aria-hidden="true">→</span></a>
     </div>
-    <div class="upcoming-list">
-        @foreach (var item in Events)
-        {
-            <a class="upcoming-item" href="@item.Route">
-                <time>@item.DateLabel</time>
-                <span>
-                    <strong>@item.Title</strong>
-                    <small>@item.OperationalSummary</small>
-                </span>
-                @if (item.IsAtRisk)
-                {
-                    <span class="risk-dot" role="img" aria-label="Needs attention"></span>
-                }
-                <LucideIcon Name="chevron-right" Size="16" />
-            </a>
-        }
-    </div>
+    @if (Expanded)
+    {
+        <div class="readiness-grid">
+            @foreach (var item in Events)
+            {
+                <article class="@($"readiness-card {(item.IsAtRisk ? "readiness-card--risk" : "")}")"
+                         data-test="event-readiness-card">
+                    <div class="readiness-card__header">
+                        <div>
+                            <time>@item.DateLabel</time>
+                            <h3>@item.Title</h3>
+                        </div>
+                        <span class="@($"readiness-state {(item.IsAtRisk ? "readiness-state--risk" : "")}")">
+                            @item.RiskLabel
+                        </span>
+                    </div>
+                    <div class="readiness-score">
+                        <strong>@item.ReadinessLabel</strong>
+                        <span>@item.OperationalSummary</span>
+                    </div>
+                    <dl class="readiness-metrics">
+                        <div><dt>Capacity</dt><dd>@item.CapacityLabel</dd></div>
+                        <div><dt>Waitlist</dt><dd>@item.WaitlistLabel</dd></div>
+                        <div><dt>Volunteers</dt><dd>@item.VolunteerCoverageLabel</dd></div>
+                    </dl>
+                    <a href="@item.Route">Open event workspace <span aria-hidden="true">→</span></a>
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="upcoming-list">
+            @foreach (var item in Events)
+            {
+                <a class="upcoming-item" href="@item.Route">
+                    <time>@item.DateLabel</time>
+                    <span>
+                        <strong>@item.Title</strong>
+                        <small>@item.OperationalSummary</small>
+                    </span>
+                    @if (item.IsAtRisk)
+                    {
+                        <span class="risk-dot" role="img" aria-label="Needs attention"></span>
+                    }
+                    <LucideIcon Name="chevron-right" Size="16" />
+                </a>
+            }
+        </div>
+    }
 </section>
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<UpcomingEventItem> Events { get; set; } = [];
+    [Parameter] public bool Expanded { get; set; }
 }

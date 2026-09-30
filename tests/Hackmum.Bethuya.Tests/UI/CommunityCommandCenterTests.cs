@@ -51,6 +51,33 @@ public sealed class CommunityCommandCenterTests
     }
 
     [Test]
+    public async Task DeterministicProvider_ModeChangesOperationalIntelligence()
+    {
+        var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
+
+        var strategic = await service.GetAsync(
+            CommunityRole.EventOrganizer,
+            CommandCenterMode.Strategic);
+        var eventOperations = await service.GetAsync(
+            CommunityRole.EventOrganizer,
+            CommandCenterMode.Event);
+
+        await Assert.That(strategic.Snapshot[0].Label).IsEqualTo("Community health");
+        await Assert.That(strategic.Insight.Headline).Contains("Community");
+        await Assert.That(strategic.Momentum[0].JourneyTo).IsEqualTo("Volunteer");
+
+        await Assert.That(eventOperations.Snapshot[0].Label).IsEqualTo("Event readiness");
+        await Assert.That(eventOperations.Insight.Headline).Contains("execution");
+        await Assert.That(eventOperations.Momentum[0].JourneyTo).IsEqualTo("Event lead");
+        await Assert.That(eventOperations.Reviews[0].Label).IsEqualTo("Waitlist decisions");
+        await Assert.That(eventOperations.UpcomingEvents[0].ReadinessLabel).IsEqualTo("82% ready");
+        await Assert.That(eventOperations.UpcomingEvents[0].CapacityLabel).IsEqualTo("150 / 160");
+        await Assert.That(eventOperations.UpcomingEvents[0].WaitlistLabel).IsEqualTo("18 waiting");
+        await Assert.That(eventOperations.UpcomingEvents[0].VolunteerCoverageLabel).IsEqualTo("12 / 14");
+        await Assert.That(eventOperations.UpcomingEvents[0].RiskLabel).IsEqualTo("Volunteer gap");
+    }
+
+    [Test]
     [Arguments(CommunityRole.CommunityAdministrator, "Community health")]
     [Arguments(CommunityRole.EventOrganizer, "Event operations")]
     [Arguments(CommunityRole.VolunteerLead, "Volunteer network")]
@@ -99,6 +126,35 @@ public sealed class CommunityCommandCenterTests
     }
 
     [Test]
+    public async Task Home_ModeSwitchReordersPrimaryWork()
+    {
+        using var ctx = new BunitCtx();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddBlazorBlueprintComponents();
+        ctx.Services.AddSingleton(EventPressureClock);
+        ctx.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
+
+        var cut = ctx.RenderComponent<Home>();
+        cut.WaitForElement("[data-test='mode-layout-event']");
+
+        AssertAppearsBefore(cut.Markup, "attention-queue", "pending-event-approvals");
+        AssertAppearsBefore(cut.Markup, "pending-event-approvals", "upcoming-events");
+        AssertAppearsBefore(cut.Markup, "upcoming-events", "weekly-insight");
+        await Assert.That(cut.Find("[data-test='upcoming-events']").GetAttribute("data-expanded"))
+            .IsEqualTo("true");
+        await Assert.That(cut.FindAll("[data-test='pending-approvals']").Count).IsEqualTo(0);
+
+        await cut.Find("[data-test='mode-strategic'] button").ClickAsync(new());
+        cut.WaitForElement("[data-test='mode-layout-strategic']");
+
+        AssertAppearsBefore(cut.Markup, "weekly-insight", "people-momentum");
+        AssertAppearsBefore(cut.Markup, "people-momentum", "attention-queue");
+        await Assert.That(cut.Find("[data-test='upcoming-events']").GetAttribute("data-expanded"))
+            .IsEqualTo("false");
+        await Assert.That(cut.FindAll("[data-test='pending-approvals']").Count).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task WorkspacePreview_RendersMeaningfulDestination()
     {
         using var ctx = new BunitCtx();
@@ -134,5 +190,17 @@ public sealed class CommunityCommandCenterTests
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
 
         public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private static void AssertAppearsBefore(string markup, string firstDataTest, string secondDataTest)
+    {
+        var firstIndex = markup.IndexOf($"data-test=\"{firstDataTest}\"", StringComparison.Ordinal);
+        var secondIndex = markup.IndexOf($"data-test=\"{secondDataTest}\"", StringComparison.Ordinal);
+
+        if (firstIndex < 0 || secondIndex < 0 || firstIndex >= secondIndex)
+        {
+            throw new InvalidOperationException(
+                $"Expected '{firstDataTest}' to render before '{secondDataTest}'.");
+        }
     }
 }

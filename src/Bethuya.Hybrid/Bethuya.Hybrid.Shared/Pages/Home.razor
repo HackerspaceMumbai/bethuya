@@ -8,7 +8,10 @@
 
 <a class="skip-link" href="#command-center-main">Skip to community priorities</a>
 
-<main id="command-center-main" class="command-center" aria-label="Community operations command center" data-test="community-command-center">
+<main id="command-center-main"
+      class="@($"command-center command-center--{GetModeSlug(model?.EffectiveMode)}")"
+      aria-label="Community operations command center"
+      data-test="community-command-center">
     <header class="command-header">
         <div class="command-header__copy">
             <p class="command-kicker">Community operations · This week</p>
@@ -89,19 +92,41 @@
             </div>
         </section>
 
-        <SnapshotStrip Metrics="@model.Snapshot" />
+        <SnapshotStrip Metrics="@model.Snapshot"
+                       EventMode="@(model.EffectiveMode == CommandCenterMode.Event)" />
 
-        <div class="command-layout">
+        <div class="@($"command-layout command-layout--{GetModeSlug(model.EffectiveMode)}")"
+             data-test="@($"mode-layout-{GetModeSlug(model.EffectiveMode)}")">
             <div class="command-main">
-                <WeeklyInsightPanel Insight="@model.Insight" />
-                <MomentumPanel People="@model.Momentum" />
-                <AttentionQueue Items="@model.AttentionItems" />
-                <ReviewQueue Items="@model.Reviews" />
-                <UpcomingEventsPanel Events="@model.UpcomingEvents" />
+                @if (model.EffectiveMode == CommandCenterMode.Event)
+                {
+                    <div class="mode-priority mode-priority--event" data-test="event-primary-work">
+                        <AttentionQueue Items="@model.AttentionItems" Primary="true" />
+                    </div>
+                    <ReviewQueue Items="@model.Reviews"
+                                 EventMode="true"
+                                 DataTest="pending-event-approvals" />
+                    <UpcomingEventsPanel Events="@model.UpcomingEvents" Expanded="true" />
+                    <div class="event-support-grid">
+                        <WeeklyInsightPanel Insight="@model.Insight" />
+                        <MomentumPanel People="@model.Momentum" />
+                    </div>
+                }
+                else
+                {
+                    <div class="mode-priority mode-priority--strategic" data-test="strategic-primary-work">
+                        <WeeklyInsightPanel Insight="@model.Insight" />
+                        <MomentumPanel People="@model.Momentum" />
+                    </div>
+                    <AttentionQueue Items="@model.AttentionItems" />
+                    <ReviewQueue Items="@model.Reviews" />
+                    <UpcomingEventsPanel Events="@model.UpcomingEvents" Expanded="false" />
+                }
             </div>
             <CommandCenterRail Reviews="@model.Reviews"
                                Deadlines="@model.Deadlines"
-                               Workspaces="@model.Workspaces" />
+                               Workspaces="@model.Workspaces"
+                               ShowApprovals="@(model.EffectiveMode != CommandCenterMode.Event)" />
         </div>
     }
 </main>
@@ -163,5 +188,12 @@
         CommunityRole.VolunteerLead => "volunteer-lead",
         CommunityRole.MentorshipLead => "mentorship-lead",
         _ => role.ToString().ToLowerInvariant()
+    };
+
+    private static string GetModeSlug(CommandCenterMode? mode) => mode switch
+    {
+        CommandCenterMode.Strategic => "strategic",
+        CommandCenterMode.Event => "event",
+        _ => "loading"
     };
 }

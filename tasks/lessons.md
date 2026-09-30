@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-01] Full solution builds require all Aspire project resources to release assemblies
+- **What happened:** A full solution build still encountered a locked `ServiceDefaults.dll` after the `backend` and `web` resources were stopped.
+- **Root cause:** The independently hosted `planner-hosted` project also references `ServiceDefaults` and remained alive while the broader solution build tried to replace its output.
+- **Fix:** Allowed the orphaned hosted-agent process to exit, then reran the clean solution build and full TUnit suite before restarting Aspire.
+- **Prevention:** Prefer resource-specific rebuilds during development; before a full solution build, stop every running Aspire project resource that consumes shared assemblies, not only the projects directly changed.
+
 ## [2026-09-29] Compositional select values may display enum keys instead of item labels
 - **What happened:** The import-kind combobox rendered the bound internal value (`Registration`) instead of its longer organizer-facing option text.
 - **Root cause:** The compositional `BbSelectItem` children register their display text when the popover opens, so a closed, already-selected field cannot always resolve the option label on initial render.

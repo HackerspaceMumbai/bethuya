@@ -21,6 +21,42 @@
     font-weight: 500;
 }
 
+.section-heading > span {
+    display: block;
+    margin-top: 0.35rem;
+    color: #ad9d89;
+    font-size: 0.76rem;
+}
+
+.command-section--primary .section-heading h2 {
+    font-size: clamp(1.8rem, 3.5vw, 2.7rem);
+    letter-spacing: -0.03em;
+}
+
+.command-section--primary .section-heading p {
+    color: #f06f4f;
+}
+
+.command-section--primary .attention-list {
+    border-color: rgba(240, 111, 79, 0.24);
+}
+
+.command-section--primary .attention-item:first-child {
+    min-height: 7rem;
+    background: linear-gradient(90deg, rgba(240, 111, 79, 0.13), transparent 58%);
+}
+
+.command-section--primary .attention-item:first-child .attention-icon {
+    color: #1a0f0c;
+    background: #f06f4f;
+}
+
+.command-section--primary .attention-item:first-child h3 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
 .attention-list {
     overflow: hidden;
     background: rgba(24, 18, 16, 0.72);
