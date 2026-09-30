@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-01] Removing redundant profile switch condition
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace the exhaustive boolean switch arm flagged by PR #61 code quality review with direct profile property patterns.
+- **Acceptance:** The profile redirect behavior remains unchanged, the relevant tests pass, and the review thread is replied to and resolved.
+- **Completion Evidence:** The profile redirect switch now uses property patterns and the full TUnit suite passes 436/436.
+
 ## [2026-10-01] Addressing Homepage v3 review findings
 - **Status:** done
 - **Agent/Owner:** Copilot

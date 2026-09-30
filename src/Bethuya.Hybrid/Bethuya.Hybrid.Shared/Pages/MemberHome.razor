@@ -140,10 +140,10 @@
             try
             {
                 var status = await ProfileApi.GetCompletionStatusAsync();
-                _redirectRoute = status.IsProfileComplete switch
+                _redirectRoute = status switch
                 {
-                    false => "/registration/mandatory",
-                    true when !status.IsSocialConnectionsComplete =>
+                    { IsProfileComplete: false } => "/registration/mandatory",
+                    { IsSocialConnectionsComplete: false } =>
                         IsSocialBypassEnabled ? "/registration/aide" : "/registration/social",
                     _ => null
                 };
