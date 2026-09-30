@@ -119,12 +119,22 @@ UserId ("import:{email}" placeholder      ...
 | **`ImportBatch`** | One import attempt: one uploaded file, scoped to one event, one `ImportKind`. Carries row counts and status. This is the unit of audit and the unit of replay (§7). |
 | **`ImportArtifact`** | The original uploaded file's bytes (via `IImportArtifactStore`), plus `FileName`, `ContentType`, `SizeBytes`, and a `Sha256Checksum` for integrity/audit. 1:1 with `ImportBatch`. |
 | **`ImportRawRow`** | One row of the original file, persisted verbatim as JSON (`RawDataJson`), indexed by `RowIndex`. Retaining raw rows (not just normalized ones) is what makes Dry Run replay possible without re-uploading the file. |
-| **`Registration`** (existing) | Created/updated by `ImportCommitService` for Registration imports. Imported rows are stamped `RegistrationStatus.Accepted` — an import represents an already-completed sign-up on the source platform, so it does not re-enter Bethuya's own curation/waitlist flow. |
-| **`ParticipationLedgerEntry`** (existing, extended) | Appended for Attendance imports. Two columns were added: `ImportBatchId` (nullable FK, traces an entry back to the batch that wrote it) and `IngestionMethod` (`ParticipationIngestionMethod.FileImport` for imports, vs. other values for e.g. live check-in). |
+| **`Registration`** (existing) | Created/updated by `ImportCommitService` for Registration imports. `ApprovalObservedAt` is set for native organizer approvals too, not only file imports. Luma's `approval_status` is retained as Bethuya registration status (`pending_approval` → `Pending`, `approved` → `Accepted`, `declined` → `Rejected`). `ApprovalObservedAt` records when Bethuya first observed an approval (the Luma export does not provide the approval decision time). A new registration without a mapped approval status remains `Pending`; importing a request never implicitly records approval. An approval-only artifact can update an existing registration by email without repeating the member name; a name is required when the artifact would create a new registration. |
+| **`ParticipationLedgerEntry`** (existing, extended) | Appended only for Attendance rows with an actual check-in timestamp. Blank Luma `checked_in_at` values are explicitly skipped. `ImportBatchId` traces an entry to its import and `IngestionMethod` identifies file imports. |
 
 ---
 
 ## 4. Organizer workflow
+
+When the organizer opens **Import data** from inside an event (for example
+`/events/{id}/registrations`), the sidebar link becomes `/imports?eventId={id}` and the wizard
+preselects that event; opening `/imports` directly leaves the event unselected.
+
+After **Run validation**, the button reads "Validating…" and a progress notice is shown. When the
+Dry Run finishes, the page scrolls to the preview, which opens with a pass/fail result alert, the
+row counts, and the **Commit import** button, all above the row table. The row table is a
+paginated `BbDataTable` (25/50/100 rows per page) with email/result search and sortable columns,
+so large exports never push the Commit button far below the fold.
 
 1. **Choose or clone a template.** `GET /api/import/templates?importKind=Registration` lists the
    System templates (Luma, MLH) plus any of the organizer's own. If the event's export headers
@@ -134,9 +144,10 @@ UserId ("import:{email}" placeholder      ...
    `importTemplateId`, `importKind`, `file`). This immediately runs the first Dry Run and returns
    an `ImportBatch` in `DryRunCompleted` status with row counts.
 3. **Review the Dry Run preview.** `GET /api/import/batches/{id}/preview` returns a
-   per-row breakdown: `WillCreate`, `WillUpdate`, or `Error` (with the specific validation
-   message(s) for that row) — nothing has been written to `Registration` or
-   `ParticipationLedgerEntry` yet. The "Commit import" button in `Imports.razor` is gated on
+   per-row breakdown: `WillCreate`, `WillUpdate`, `Skipped` (Luma attendance row has no check-in), or
+   `Error` (with the specific validation message(s) for that row) — nothing has been written to `Registration` or
+   `ParticipationLedgerEntry` yet. The success alert names the validated file, and selecting a different file
+   clears the previous preview so organizers cannot mistake one export's result for another's. The "Commit import" button in `Imports.razor` is gated on
    *both* `ImportBatch.CanCommit` **and** the freshest loaded preview reporting zero
    `ErrorRows` — if the preview call fails after a successful upload, the organizer keeps their
    uploaded batch and sees a "Retry preview" action instead of losing the batch and having to
@@ -166,13 +177,67 @@ UserId ("import:{email}" placeholder      ...
 4. **Fix and replay, if needed.** If the template mapping was wrong, the organizer edits the
    template and calls `POST /api/import/batches/{id}/dry-run` to re-validate the *same* uploaded
    file against the corrected mapping — see §7 (Replay model) for exactly what this does and does
-   not re-check.
+   not re-check. For Luma, import the guest export as **Registrations and approval updates** before
+   the event, then re-import an updated export as that same data type when approval decisions change.
+   A platform's separate approval artifact uses a Registration template mapping email and status;
+   name can be omitted for rows that match an existing event registration. New registrations without
+   a name fail validation. After check-in, import the export as **Attendance**; only populated
+   `checked_in_at` rows create attendance history.
 5. **Commit.** Once the preview shows zero errors, `POST /api/import/batches/{id}/commit` atomically
    resolves-or-creates `CommunityMember`s, writes `Registration`/`ParticipationLedgerEntry` rows,
    and marks the batch `Committed`. The batch is now immutable.
 6. **Verify.** Imported registrations/attendance appear via the existing event/member endpoints —
    no separate "import" surface is needed to see the result, satisfying the PRD's success
    criterion that imported data becomes visible in member history and event reporting.
+
+### Luma's registration-to-attendance lifecycle
+
+Luma's guest export represents multiple milestones in one row. The seeded templates map its actual
+headers: Registration maps `name`, `email`, `created_at`, and `approval_status`; Attendance maps
+`name`, `email`, and `checked_in_at`. The registration batch preserves `pending_approval`,
+`approved`, and `declined` as `Pending`, `Accepted`, and `Rejected` respectively. Unknown or blank
+approval values are validation errors for this template rather than silently accepted. The wizard labels this data type **Registrations and approval updates** so organizers can distinguish
+it from check-ins; import type remains Registration for both combined and approval-only artifacts.
+
+Import the guest export as **Registrations and approval updates** before the event, then re-import
+that export with the same data type whenever Luma's approval values change. The matching event and
+email update the same Bethuya registration, so a refreshed export does not create another member or
+registration. A separate platform approval file works with a Registration template that maps email
+and approval status; name may be omitted for an existing registration, while a new registration
+still requires a name. A registration without a mapped approval value starts as `Pending`, never
+implicitly `Accepted`.
+
+After check-in, import the export as **Attendance** (or upload a Luma check-in export with the same
+fields). The attendance pass creates history only for rows where `checked_in_at` is populated; rows
+without check-in are shown as **Skipped**, not as attendance. It updates the matching event registration to `CheckedIn`
+and writes one attendance ledger entry. Both passes resolve the same member by case-insensitive
+email and registration by `(event, email)`. A repeated registration export updates that row rather
+than inserting another registration; repeated attendance exports are no-ops for the existing
+`(event, email)` attendance provenance key. Older exports cannot move an already approved or
+checked-in registration backwards to pending/declined. Approval timestamps shown in the passport
+are observation timestamps because this Luma export has no approval-time column.
+
+### Dashboard lifecycle counts
+
+Organizers and admins see a count row on each dashboard event card: registered, pending, approved
+and checked in. The counts come from `GET /api/import/events/registration-summaries` (Organizer
+policy). Admins see every event; other users see only events they created. **Approved** counts
+`Accepted` plus `CheckedIn`, because a checked-in guest has already passed approval. Events with no
+registrations return zeros. If the summary call fails, the dashboard still loads without counts.
+
+### Screening answers and the Curation menu
+
+Phase 1 imports identity, registration status, approval status and check-in time only. Luma
+screening or custom-question answers are **not** ingested. Curator work is out of scope for
+Phase 1, and those answers are attendee PII that must be routed through Foundry Local. The
+**Curation** navigation link appears for the `Admin` or `Curator` roles (the default dev principal
+has both) whenever the page has an event context: `/events/{id}` (including
+`/events/{id}/registrations`), `/agents/{id}`, `/curation/{id}` and `/imports?eventId={id}`. The link
+only appears once the event is oversubscribed, meaning active (non-cancelled) registrations exceed
+venue capacity. That signal comes from `GET /api/curation/{eventId}/availability`. Otherwise the menu
+explains "Curation opens when registrations exceed capacity (N of C)". If the availability call
+fails, the link stays visible, because the curation endpoints still enforce authorization. An
+Organizer without the Curator role does not see it.
 
 ### Batch status lifecycle
 
@@ -242,8 +307,8 @@ startup (see `Program.cs`):
 
 | Template | Source | Kind | Mapped columns |
 | --- | --- | --- | --- |
-| Luma Standard Registration Export | Luma | Registration | Name, Email, Registered At |
-| Luma Attendance Export | Luma | Attendance | Name, Email, Check-in Time |
+| Luma Standard Registration Export | Luma | Registration | name → FullName, email → Email, created_at → OccurredAt, approval_status → ApprovalStatus |
+| Luma Attendance Export | Luma | Attendance | name → FullName, email → Email, checked_in_at → CheckedInAt |
 | MLH Registration Export | MLH | Registration | Full Name, Email Address, Application Date, School (→ Notes) |
 | MLH Attendance Export | MLH | Attendance | Full Name, Email Address, Checked In At |
 
@@ -258,7 +323,7 @@ organizer clones a System template (`POST /api/import/templates/{id}/clone`) to 
 platform — organizers build a `User`-scope template from scratch (`POST /api/import/templates`)
 by mapping their own headers to the canonical `ImportTargetField`s (`Email`, `FullName`,
 `OccurredAt`, `Notes`, `Intent`, `Goals`, `ExperienceLevel`, `DietaryRequirements`,
-`AccessibilityNeeds`, `ExternalRecordId`).
+`AccessibilityNeeds`, `ExternalRecordId`, `ApprovalStatus`, `CheckedInAt`).
 
 ---
 
@@ -291,10 +356,11 @@ applied. `POST /api/import/batches/{id}/dry-run` (`ImportDryRunService.RerunAsyn
   only) the `ImportArtifact`/`ImportRawRow` rows.
 - Consistent with Commit: because both Dry Run and Commit call the same
   `ImportRowNormalizer.NormalizeAll`, what the organizer approved in the last Dry Run preview is
-  exactly what Commit will (re-)validate — Commit's own re-check (§4 step 5) exists only to catch
-  drift *since* that last replay (e.g. someone edited the template after the organizer's last
-  look, or someone else committed a conflicting import concurrently), not because Dry Run and
-  Commit disagree on what "valid" means.
+  what Commit will (re-)validate. Each completed Dry Run stores a fingerprint of the mappings
+  used; Commit rejects the batch if the current template fingerprint differs, requiring a new
+  preview before any rows can be written. Commit's remaining defensive re-check (§4 step 5)
+  catches data drift *since* that last replay (e.g. someone else committed a conflicting import),
+  not a mismatch between Dry Run and Commit's normalization rules.
 
 **Provenance keys**, used for attendance dedupe both in Dry Run preview and at commit, are built by
 `ImportProvenanceKeyBuilder.BuildAttendanceProvenanceKey(eventId, email)` — deterministic and
@@ -330,7 +396,9 @@ dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj
 dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj -- --treenode-filter "/*/*/*Import*/*"
 ```
 
-Covered: `ImportRowNormalizer` (header mapping, required-field/email validation, duplicate-email
+Covered: `ImportRowNormalizer` (header mapping, required-field/email validation, duplicate-email,
+approval status mapping, and blank check-in skipping), `ImportCommitService` (pending → approved →
+checked-in lifecycle and repeat-import idempotency),
 flagging), `CsvImportFileParser`/`XlsxImportFileParser`/`ImportFileParserResolver`,
 `ImportDryRunService` (new-batch creation, update classification, invalid-row handling, template
 mismatch, replay, replay-on-committed-batch rejection), `ImportCommitService` (create, update,
@@ -359,8 +427,9 @@ InMemory suite.
    aspire start --isolated
    ```
 2. Open the Aspire Dashboard (<http://localhost:18888>), find the `backend` resource, and note its
-   HTTP port. Open `/scalar` on that port for interactive API docs, or use the port directly with
-   `curl`/Postman.
+   HTTP port. Use the **Seed empty import event** action to create a fresh event without any
+   registrations or attendee profiles for import testing. Open `/scalar` on that port for
+   interactive API docs, or use the port directly with `curl`/Postman.
 3. **Sign in as an Organizer or Admin** first — every `/api/import/*` endpoint requires the
    `RequireOrganizer` policy.
 4. **List templates** to get a `templateId` and confirm the four System templates are seeded:
@@ -409,6 +478,14 @@ InMemory suite.
     `ImportBatchId` shows up in the member's participation history.
 12. **Confirm immutability:** attempt `POST /api/import/batches/$BATCH_ID/dry-run` again — expect
     a `400 Bad Request` ("already been committed and its data is locked").
+
+For a Luma lifecycle check, use a test event and a safe export fixture: run a Registration
+Dry Run and confirm pending/approved/declined totals and matching email updates; commit; then run
+Attendance against the same event and confirm only rows with `checked_in_at` are candidates,
+blank rows are skipped, and a second identical attendance import creates no additional ledger
+entries. Verify the member passport has registration, approval, and attendance milestones. Do not
+import the attached production guest export into a shared database unless the event and personal
+data are explicitly approved for that environment.
 
 ### 9.3 Applying the EF Core migration to a local database
 

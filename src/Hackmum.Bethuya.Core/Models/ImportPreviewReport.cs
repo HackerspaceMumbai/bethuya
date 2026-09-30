@@ -9,6 +9,8 @@ public enum ImportRowDisposition
     WillCreate,
     /// <summary>Row is valid and its email matches an existing Bethuya member/registration; that record will be updated.</summary>
     WillUpdate,
+    /// <summary>Row has no check-in timestamp and will not produce attendance.</summary>
+    Skipped,
     /// <summary>Row failed validation and will block commit until fixed.</summary>
     Error
 }

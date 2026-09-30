@@ -14,15 +14,33 @@ public static class ImportTemplateSeeder
 {
     public static async Task EnsureSeededAsync(BethuyaDbContext db, CancellationToken ct = default)
     {
-        var existingNames = await db.ImportTemplates
+        var existingTemplates = await db.ImportTemplates
+            .Include(t => t.ColumnMappings)
             .Where(t => t.Scope == ImportTemplateScope.System)
-            .Select(t => t.Name)
             .ToListAsync(ct);
-        var existing = existingNames.ToHashSet(StringComparer.Ordinal);
 
-        foreach (var template in BuildSystemTemplates().Where(template => !existing.Contains(template.Name)))
+        foreach (var template in BuildSystemTemplates())
         {
-            db.ImportTemplates.Add(template);
+            var existing = existingTemplates.SingleOrDefault(t => t.Name == template.Name);
+            if (existing is null)
+            {
+                db.ImportTemplates.Add(template);
+            }
+            else if (existing.ColumnMappings.Count != template.ColumnMappings.Count ||
+                 template.ColumnMappings.Any(mapping => !existing.ColumnMappings.Any(current =>
+                     current.SourceColumnName == mapping.SourceColumnName && current.TargetField == mapping.TargetField)))
+            {
+                db.ImportColumnMappings.RemoveRange(existing.ColumnMappings);
+                foreach (var mapping in template.ColumnMappings)
+                {
+                    db.ImportColumnMappings.Add(new ImportColumnMapping
+                    {
+                        ImportTemplateId = existing.Id,
+                        SourceColumnName = mapping.SourceColumnName,
+                        TargetField = mapping.TargetField
+                    });
+                }
+            }
         }
 
         await db.SaveChangesAsync(ct);
@@ -35,9 +53,10 @@ public static class ImportTemplateSeeder
             ImportSourceKind.Luma,
             ImportKind.Registration,
             [
-                ("Name", ImportTargetField.FullName),
-                ("Email", ImportTargetField.Email),
-                ("Registered At", ImportTargetField.OccurredAt),
+                ("name", ImportTargetField.FullName),
+                ("email", ImportTargetField.Email),
+                ("created_at", ImportTargetField.OccurredAt),
+                ("approval_status", ImportTargetField.ApprovalStatus),
             ]);
 
         yield return CreateTemplate(
@@ -45,9 +64,9 @@ public static class ImportTemplateSeeder
             ImportSourceKind.Luma,
             ImportKind.Attendance,
             [
-                ("Name", ImportTargetField.FullName),
-                ("Email", ImportTargetField.Email),
-                ("Check-in Time", ImportTargetField.OccurredAt),
+                ("name", ImportTargetField.FullName),
+                ("email", ImportTargetField.Email),
+                ("checked_in_at", ImportTargetField.CheckedInAt),
             ]);
 
         yield return CreateTemplate(
@@ -68,7 +87,7 @@ public static class ImportTemplateSeeder
             [
                 ("Full Name", ImportTargetField.FullName),
                 ("Email Address", ImportTargetField.Email),
-                ("Checked In At", ImportTargetField.OccurredAt),
+                ("Checked In At", ImportTargetField.CheckedInAt),
             ]);
     }
 

@@ -23,10 +23,8 @@ public sealed class LocalDiskImportArtifactStore : IImportArtifactStore
         Directory.CreateDirectory(_rootDirectory);
     }
 
-    public async Task<string> SaveAsync(byte[] content, string fileName, CancellationToken ct = default)
+    public async Task<string> SaveAsync(ReadOnlyMemory<byte> content, string fileName, CancellationToken ct = default)
     {
-        ArgumentNullException.ThrowIfNull(content);
-
         var safeExtension = Path.GetExtension(fileName);
         if (!AllowedExtensions.Contains(safeExtension))
         {

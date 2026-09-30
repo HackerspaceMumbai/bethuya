@@ -3,6 +3,14 @@ using Hackmum.Bethuya.Core.Models;
 
 namespace Hackmum.Bethuya.Backend.Contracts;
 
+/// <summary>Registration lifecycle counts for one event: registered, awaiting approval, approved (including checked in), and checked in.</summary>
+public sealed record EventRegistrationSummaryResponse(
+    Guid EventId,
+    int Registered,
+    int Pending,
+    int Approved,
+    int CheckedIn);
+
 /// <summary>Response shape for an <see cref="ImportBatch"/>, safe to return to the organizer UI.</summary>
 public sealed record ImportBatchResponse(
     Guid Id,

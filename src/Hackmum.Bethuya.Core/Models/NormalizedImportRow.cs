@@ -1,3 +1,5 @@
+using Hackmum.Bethuya.Core.Enums;
+
 namespace Hackmum.Bethuya.Core.Models;
 
 /// <summary>
@@ -17,6 +19,8 @@ public sealed record NormalizedImportRow
     public string? DietaryRequirements { get; init; }
     public string? AccessibilityNeeds { get; init; }
     public string? ExternalRecordId { get; init; }
+    public RegistrationStatus? ApprovalStatus { get; init; }
+    public bool SkipAttendance { get; init; }
 
     public List<string> ValidationErrors { get; init; } = [];
 

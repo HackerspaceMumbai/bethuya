@@ -3,29 +3,39 @@
 @attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireOrganizer)]
 @using BlazorBlueprint.Components
 @using Microsoft.Extensions.Logging
+@using Microsoft.JSInterop
 @inject IImportApi ImportApi
 @inject IEventApi EventApi
 @inject ILogger<Imports> Logger
 
-<PageTitle>Import attendance — Bethuya</PageTitle>
+<PageTitle>Import registrations and attendance — Bethuya</PageTitle>
 
 <div class="container mx-auto p-4" data-test="import-page">
     <h1 class="text-2xl font-bold mb-2">Import registrations or attendance</h1>
     <p class="text-muted-foreground mb-6">Upload a Luma, MLH, or spreadsheet export. Bethuya validates it first; nothing is changed until you commit the preview.</p>
 
-    @if (_error is not null)
-    {
-        <div data-test="import-error"><BbAlert Variant="AlertVariant.Danger">@_error</BbAlert></div>
-    }
-    @if (_message is not null)
-    {
-        <div data-test="import-success"><BbAlert Variant="AlertVariant.Success">@_message</BbAlert></div>
-    }
+    @* Focusable (tabindex=-1) so failures and commit results can be scrolled into view and announced. *@
+    <div @ref="_statusRegion" tabindex="-1" role="status" aria-live="polite" data-test="import-status">
+        @if (_error is not null)
+        {
+            <div data-test="import-error"><BbAlert Variant="AlertVariant.Danger">@_error</BbAlert></div>
+        }
+        @if (_message is not null)
+        {
+            <div data-test="import-success"><BbAlert Variant="AlertVariant.Success">@_message</BbAlert></div>
+        }
+    </div>
 
     <BbCard Class="p-4 mb-6">
         <BbFormSection Title="1. Choose an export">
+            @if (_staleEventNotice is not null)
+            {
+                <div data-test="import-stale-event">
+                    <BbAlert Variant="AlertVariant.Warning">@_staleEventNotice</BbAlert>
+                </div>
+            }
             <div data-test="import-event-select">
-                <BbFormFieldSelect TValue="string" @bind-Value="_eventIdText" Label="Event" Placeholder="Choose an event">
+                <BbFormFieldSelect TValue="string" @bind-Value="_eventIdText" Label="Event" Placeholder="Choose an event" DisplayTextSelector="GetEventTitle">
                     @foreach (var item in _events)
                     {
                         <BbSelectItem Value="@item.Id.ToString()" Text="@item.Title" />
@@ -33,13 +43,25 @@
                 </BbFormFieldSelect>
             </div>
             <div data-test="import-kind-select">
-                <BbFormFieldSelect TValue="string" @bind-Value="_importKind" @bind-Value:after="LoadTemplatesAsync" Label="Data type">
-                    <BbSelectItem Value="@("Registration")" Text="Registrations" />
+                <BbFormFieldSelect TValue="string" @bind-Value="_importKind" @bind-Value:after="LoadTemplatesAsync" Label="Data type" DisplayTextSelector="GetImportKindTitle">
+                    <BbSelectItem Value="@("Registration")" Text="Registrations and approval updates" />
                     <BbSelectItem Value="@("Attendance")" Text="Attendance" />
                 </BbFormFieldSelect>
             </div>
+            @if (_importKind == "Registration")
+            {
+                <p class="text-sm text-muted-foreground" data-test="registration-import-guidance">
+                    Use this for registration requests and approval decisions. Re-import an updated export, or upload a separate approval file; matching email and event update the same registration. New records without an approval field remain pending.
+                </p>
+            }
+            else
+            {
+                <p class="text-sm text-muted-foreground" data-test="attendance-import-guidance">
+                    Use this only for check-ins. Rows need an actual check-in time; blank check-in times are skipped.
+                </p>
+            }
             <div data-test="import-template-select">
-                <BbFormFieldSelect TValue="string" @bind-Value="_templateIdText" Label="Source template" Placeholder="Choose a template">
+                <BbFormFieldSelect TValue="string" @bind-Value="_templateIdText" Label="Source template" Placeholder="Choose a template" DisplayTextSelector="GetTemplateTitle">
                     @foreach (var template in Templates)
                     {
                         <BbSelectItem Value="@template.Id.ToString()" Text="@template.Name" />
@@ -51,7 +73,6 @@
                 <BbFileUpload FilesChanged="HandleFileSelected"
                               Accept=".csv,.xlsx"
                               MaxFileSize="@(10 * 1024 * 1024)"
-                              MaxFileCount="1"
                               OnValidationError="@(error => _fileError = error.Message)" />
                 @if (_selectedFile is not null)
                 {
@@ -63,40 +84,89 @@
                 }
             </div>
             <div data-test="start-dry-run">
-                <BbButton OnClick="StartDryRunAsync" Disabled="@(_busy || _selectedFile is null)">Run validation</BbButton>
+                <BbButton OnClick="StartDryRunAsync" Disabled="@(_busy || _selectedFile is null)">@(_validating ? "Validating…" : "Run validation")</BbButton>
             </div>
+            @if (_missingInputs is not null)
+            {
+                <div data-test="dry-run-missing-inputs" role="alert">
+                    <BbAlert Variant="AlertVariant.Warning">@_missingInputs</BbAlert>
+                </div>
+            }
+            @if (_validating)
+            {
+                <div data-test="dry-run-in-progress">
+                    <BbAlert Variant="AlertVariant.Info">Validating @_selectedFile?.Name… this can take a few seconds for large exports.</BbAlert>
+                </div>
+            }
         </BbFormSection>
     </BbCard>
 
     @if (_batch is not null)
     {
-        <div data-test="import-preview">
+        @* Focusable (tabindex=-1) so a finished validation scrolls the preview into view. *@
+        <div data-test="import-preview" @ref="_previewRegion" tabindex="-1">
             <BbCard Class="p-4 mb-6">
                 <BbFormSection Title="2. Review preview">
+                @if (_preview is not null)
+                {
+                    <div data-test="dry-run-result">
+                        @if (_preview.ErrorRows == 0 && _batch.Status == ImportBatchStatusDto.Committed)
+                        {
+                            <BbAlert Variant="AlertVariant.Success">This batch has been committed: @_batch.RowsToCreate created, @_batch.RowsToUpdate existing. @(_preview.TotalRows - _preview.ErrorRows - _preview.RowsToCreate - _preview.RowsToUpdate) rows without a check-in were skipped.</BbAlert>
+                        }
+                        else if (_preview.ErrorRows == 0 && _batch.CanCommit)
+                        {
+                            <BbAlert Variant="AlertVariant.Success">
+                                @if (!string.IsNullOrWhiteSpace(_batch?.FileName))
+                                {
+                                    <span data-test="validated-file-name">Validated <strong>@_batch.FileName</strong>. </span>
+                                }
+                                Validation passed: @_preview.RowsToCreate new, @_preview.RowsToUpdate existing, @(_preview.TotalRows - _preview.ErrorRows - _preview.RowsToCreate - _preview.RowsToUpdate) without check-in (skipped). Nothing has been imported yet; review the rows below and commit when ready.
+                            </BbAlert>
+                        }
+                        else if (_preview.ErrorRows == 0)
+                        {
+                            <BbAlert Variant="AlertVariant.Warning">All rows are valid, but this batch can no longer be committed (status: @_batch.Status). Run validation again.</BbAlert>
+                        }
+                        else
+                        {
+                            <BbAlert Variant="AlertVariant.Warning">
+                                Validation found @_preview.ErrorRows of @_preview.TotalRows rows with errors. Sort by Result to see them, fix the source file, and upload it again before committing.
+                            </BbAlert>
+                        }
+                    </div>
+                }
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
                     <span>Total: <strong>@_batch.TotalRows</strong></span>
                     <span>Valid: <strong>@_batch.ValidRows</strong></span>
                     <span>Errors: <strong>@_batch.ErrorRows</strong></span>
                     <span>Creates: <strong>@_batch.RowsToCreate</strong></span>
                     <span>Updates: <strong>@_batch.RowsToUpdate</strong></span>
+                    <span>Skipped: <strong>@(_batch.TotalRows - _batch.ErrorRows - _batch.RowsToCreate - _batch.RowsToUpdate)</strong></span>
                 </div>
+                @if (_batch.CanCommit && _preview is { ErrorRows: 0 })
+                {
+                    <div data-test="commit-import">
+                        <BbButton Variant="ButtonVariant.Default" OnClick="CommitAsync" Disabled="@_busy">@(_committing ? "Committing…" : $"Commit import ({_preview.RowsToCreate + _preview.RowsToUpdate} rows)")</BbButton>
+                    </div>
+                }
                 @if (_preview is not null)
                 {
-                    <div class="overflow-auto max-h-96">
-                        <table class="w-full text-sm">
-                            <thead><tr><th class="text-left">Row</th><th class="text-left">Email</th><th class="text-left">Result</th><th class="text-left">Details</th></tr></thead>
-                            <tbody>
-                            @foreach (var row in _preview.Rows)
-                            {
-                                <tr data-test="import-preview-row">
-                                    <td>@(row.RowIndex + 1)</td>
-                                    <td>@row.Email</td>
-                                    <td>@row.Disposition</td>
-                                    <td>@(_errorSummaries.TryGetValue(row.RowIndex, out var summary) ? summary : string.Empty)</td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
+                    <div data-test="import-preview-table">
+                        <BbDataTable TData="ImportRowPreviewDto" Data="@_preview.Rows"
+                                     InitialPageSize="25" PageSizes="@PreviewPageSizes"
+                                     AriaLabel="Dry run preview rows">
+                            <Columns>
+                                <BbDataTableColumn TData="ImportRowPreviewDto" TValue="int" Header="Row" Property="@(r => r.RowIndex + 1)" Sortable="true" />
+                                <BbDataTableColumn TData="ImportRowPreviewDto" TValue="string" Header="Email" Property="@(r => r.Email ?? string.Empty)" Sortable="true" Filterable="true" />
+                                <BbDataTableColumn TData="ImportRowPreviewDto" TValue="string" Header="Result" Property="@(r => r.Disposition)" Sortable="true" Filterable="true">
+                                    <CellTemplate Context="row">
+                                        <BbBadge Variant="@(row.ValidationErrors.Count > 0 ? BadgeVariant.Destructive : BadgeVariant.Secondary)">@row.Disposition</BbBadge>
+                                    </CellTemplate>
+                                </BbDataTableColumn>
+                                <BbDataTableColumn TData="ImportRowPreviewDto" TValue="string" Header="Details" Property="@(r => _errorSummaries.GetValueOrDefault(r.RowIndex, string.Empty))" Filterable="true" />
+                            </Columns>
+                        </BbDataTable>
                     </div>
                 }
                 else
@@ -106,22 +176,12 @@
                         <BbButton OnClick="RetryPreviewAsync" Disabled="@_busy">Retry preview</BbButton>
                     </div>
                 }
-                @if (_batch.CanCommit && _preview is { ErrorRows: 0 })
-                {
-                    <div data-test="commit-import">
-                        <BbButton Variant="ButtonVariant.Default" OnClick="CommitAsync" Disabled="@_busy">Commit import</BbButton>
-                    </div>
-                }
-                else if (_preview is not null)
-                {
-                    <BbAlert Variant="AlertVariant.Warning">Fix the validation errors in the source file and upload it again before committing.</BbAlert>
-                }
                 </BbFormSection>
             </BbCard>
         </div>
     }
 
-    @if (_busy)
+    @if (_busy && !_validating && !_committing)
     {
         <BbAlert Variant="AlertVariant.Info">Working…</BbAlert>
     }
@@ -139,14 +199,68 @@
     private string? _error;
     private string? _message;
     private string? _fileError;
+    private string? _missingInputs;
+    private string? _staleEventNotice;
     private bool _busy;
+    private bool _validating;
+    private bool _committing;
+    private ElementReference _statusRegion;
+    private ElementReference _previewRegion;
+    private FocusTarget _pendingFocus;
+    private static readonly int[] PreviewPageSizes = [25, 50, 100];
     private readonly Dictionary<int, string> _errorSummaries = [];
+
+    private enum FocusTarget { None, Status, Preview }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var target = _pendingFocus;
+        _pendingFocus = FocusTarget.None;
+        try
+        {
+            // Focusing a tabindex=-1 region scrolls it into view natively — no custom JS needed.
+            if (target == FocusTarget.Preview && _batch is not null)
+            {
+                await _previewRegion.FocusAsync();
+            }
+            else if (target == FocusTarget.Status && (_error is not null || _message is not null))
+            {
+                await _statusRegion.FocusAsync();
+            }
+        }
+        catch (JSException ex)
+        {
+            Logger.LogDebug(ex, "Could not move focus to the import {FocusTarget} region", target);
+        }
+    }
+
+    /// <summary>Optional event to preselect when the wizard is opened from an event context.</summary>
+    [SupplyParameterFromQuery(Name = "eventId")]
+    public Guid? EventId { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             _events.AddRange(await EventApi.GetAllAsync());
+            if (EventId is Guid eventId && _events.Any(e => e.Id == eventId))
+            {
+                _eventIdText = eventId.ToString();
+            }
+            else
+            {
+                if (EventId is not null)
+                {
+                    // Links can outlive their event (e.g. after a reseed); say so instead of silently showing no selection.
+                    _staleEventNotice = "The event in this link no longer exists. Choose an event below.";
+                }
+
+                if (EventId is null && _events.Count == 1)
+                {
+                    _eventIdText = _events[0].Id.ToString();
+                }
+            }
+
             await LoadTemplatesAsync();
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
@@ -161,10 +275,36 @@
         }
     }
 
+    // Compositional BbSelectItem children only register their text once the popover opens,
+    // so a preselected value (e.g. from ?eventId=) needs an explicit lookup to show its title.
+    private string GetEventTitle(string value) =>
+        _events.FirstOrDefault(e => e.Id.ToString() == value)?.Title ?? value;
+
+    private static string? GetImportKindTitle(string? value) => value switch
+    {
+        "Registration" => "Registrations and approval updates",
+        "Attendance" => "Attendance",
+        _ => value
+    };
+
+    // BB select items register their text only once the popover opens, so a preselected template would show its id.
+    private string? GetTemplateTitle(string? value) =>
+        Templates.FirstOrDefault(t => string.Equals(t.Id.ToString(), value, StringComparison.OrdinalIgnoreCase))?.Name ?? value;
+
     private async Task LoadTemplatesAsync()
     {
-        Templates = await ImportApi.ListTemplatesAsync(_importKind);
-        _templateIdText = Templates.FirstOrDefault()?.Id.ToString();
+        try
+        {
+            Templates = await ImportApi.ListTemplatesAsync(_importKind);
+            _templateIdText = Templates.FirstOrDefault()?.Id.ToString();
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogWarning(ex, "Failed to load import templates for {ImportKind}", _importKind);
+            Templates = [];
+            _templateIdText = null;
+            _error = "Unable to load import templates. Please try again.";
+        }
     }
 
     private async Task HandleKindChanged(ChangeEventArgs args)
@@ -176,7 +316,26 @@
     private void HandleFileSelected(IReadOnlyList<FileUploadItem> files)
     {
         _fileError = null;
-        _selectedFile = files.Count > 0 ? files[0].File : null;
+        // BbFileUpload's MaxFileCount counts the file already selected, so a limit of 1 rejects every
+        // replacement. The page leaves the default limit, lets single-file mode replace the file, and
+        // rejects multi-file drops here.
+        if (files.Count > 1)
+        {
+            _fileError = "Choose a single CSV or XLSX file.";
+        }
+
+        var newFile = files.Count == 1 ? files[0].File : null;
+        if (!ReferenceEquals(newFile, _selectedFile) && !_busy)
+        {
+            // A preview belongs to the file it validated; keeping it after a file change misleads organizers.
+            _batch = null;
+            _preview = null;
+            _errorSummaries.Clear();
+            _message = null;
+            _error = null;
+        }
+
+        _selectedFile = newFile;
     }
 
     private async Task StartDryRunAsync()
@@ -184,9 +343,15 @@
         _error = null;
         _message = null;
 
+        _missingInputs = null;
         if (!Guid.TryParse(_eventIdText, out var eventId) || !Guid.TryParse(_templateIdText, out var templateId) || _selectedFile is null)
         {
-            _error = "Choose an event, import template, and file first.";
+            List<string> missing = [];
+            if (!Guid.TryParse(_eventIdText, out _)) missing.Add("an event");
+            if (!Guid.TryParse(_templateIdText, out _)) missing.Add("a source template");
+            if (_selectedFile is null) missing.Add("a file");
+            // Shown beside the button: the status region sits at the top of the page and is easily off-screen.
+            _missingInputs = $"Choose {string.Join(" and ", missing)} before running validation.";
             return;
         }
 
@@ -204,6 +369,7 @@
         _errorSummaries.Clear();
 
         _busy = true;
+        _validating = true;
         ImportBatchDto? newBatch = null;
         try
         {
@@ -242,6 +408,8 @@
         finally
         {
             _busy = false;
+            _validating = false;
+            _pendingFocus = _batch is not null ? FocusTarget.Preview : FocusTarget.Status;
             StateHasChanged();
         }
     }
@@ -286,6 +454,7 @@
         finally
         {
             _busy = false;
+            _pendingFocus = FocusTarget.Preview;
             StateHasChanged();
         }
     }
@@ -294,6 +463,7 @@
     {
         if (_batch is null) return;
         _busy = true;
+        _committing = true;
         _error = null;
         _message = null;
         try
@@ -322,6 +492,8 @@
         finally
         {
             _busy = false;
+            _committing = false;
+            _pendingFocus = FocusTarget.Status;
             StateHasChanged();
         }
     }

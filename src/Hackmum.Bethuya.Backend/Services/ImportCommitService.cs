@@ -47,6 +47,18 @@ public sealed class ImportCommitService(BethuyaDbContext db)
                 .Include(t => t.ColumnMappings)
                 .SingleAsync(t => t.Id == batch.ImportTemplateId, ct);
 
+            if (!string.Equals(
+                    batch.DryRunMappingFingerprint,
+                    ImportMappingFingerprint.Compute(template),
+                    StringComparison.Ordinal))
+            {
+                batch.Status = ImportBatchStatus.Failed;
+                batch.FailureReason =
+                    "Commit was rejected because the template mappings changed after the last Dry Run. Run the Dry Run again before committing.";
+                await db.SaveChangesAsync(ct);
+                return batch;
+            }
+
             var rawRows = batch.RawRows
                 .OrderBy(r => r.RowIndex)
                 .Select(r => (IReadOnlyDictionary<string, string?>)(
@@ -112,15 +124,22 @@ public sealed class ImportCommitService(BethuyaDbContext db)
         IReadOnlyList<NormalizedImportRow> rows,
         CancellationToken ct)
     {
-        var fullNameByEmail = rows.ToDictionary(row => row.Email!, row => row.FullName, StringComparer.Ordinal);
-        await ResolveOrCreateMembersAsync(fullNameByEmail, ct);
-
-        var existingRegistrations = await db.Registrations
-            .Where(r => r.EventId == batch.EventId)
-            .ToListAsync(ct);
+        var importedEmails = rows.Select(row => row.Email!).ToHashSet(StringComparer.Ordinal);
+        var existingRegistrations = await LoadRegistrationsAsync(batch.EventId, importedEmails, ct);
         var existingByEmail = existingRegistrations
             .GroupBy(r => r.Email.Trim().ToLowerInvariant(), StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+        if (rows.Any(row => row.FullName is null && !existingByEmail.ContainsKey(row.Email!)))
+        {
+            throw new InvalidOperationException("A full name is required when an approval import creates a new registration.");
+        }
+
+        var fullNameByEmail = rows.ToDictionary(
+            row => row.Email!,
+            row => row.FullName ?? existingByEmail.GetValueOrDefault(row.Email!)?.FullName,
+            StringComparer.Ordinal);
+        await ResolveOrCreateMembersAsync(fullNameByEmail, ct);
 
         var created = 0;
         var updated = 0;
@@ -130,12 +149,26 @@ public sealed class ImportCommitService(BethuyaDbContext db)
             var email = row.Email!;
             if (existingByEmail.TryGetValue(email, out var registration))
             {
-                registration.FullName = row.FullName!;
+                registration.FullName = row.FullName ?? registration.FullName;
                 registration.Intent = row.Intent ?? registration.Intent;
                 registration.Goals = row.Goals ?? registration.Goals;
                 registration.ExperienceLevel = row.ExperienceLevel ?? registration.ExperienceLevel;
                 registration.DietaryRequirements = row.DietaryRequirements ?? registration.DietaryRequirements;
                 registration.AccessibilityNeeds = row.AccessibilityNeeds ?? registration.AccessibilityNeeds;
+                if (row.ApprovalStatus is { } newStatus)
+                {
+                    // An older export must not undo a later approval or check-in. Explicit
+                    // declines can only replace pending/declined states; review other changes manually.
+                    if (registration.Status == RegistrationStatus.Pending ||
+                        registration.Status == RegistrationStatus.Rejected && newStatus == RegistrationStatus.Accepted)
+                    {
+                        registration.Status = newStatus;
+                    }
+                }
+                if (row.ApprovalStatus == RegistrationStatus.Accepted && registration.ApprovalObservedAt is null)
+                {
+                    registration.ApprovalObservedAt = DateTimeOffset.UtcNow;
+                }
                 registration.UpdatedAt = DateTimeOffset.UtcNow;
                 updated++;
             }
@@ -152,10 +185,9 @@ public sealed class ImportCommitService(BethuyaDbContext db)
                     DietaryRequirements = row.DietaryRequirements,
                     AccessibilityNeeds = row.AccessibilityNeeds,
                     Bio = row.Notes,
-                    // Imported registrations originate from an organizer-managed export of an
-                    // already-completed sign-up flow on the source platform — they do not need to
-                    // re-enter Bethuya's own curation/waitlist review.
-                    Status = RegistrationStatus.Accepted,
+                    // Without an explicit source approval decision, keep imported requests pending.
+                    Status = row.ApprovalStatus ?? RegistrationStatus.Pending,
+                    ApprovalObservedAt = row.ApprovalStatus == RegistrationStatus.Accepted ? DateTimeOffset.UtcNow : null,
                     RegisteredAt = row.OccurredAt ?? DateTimeOffset.UtcNow
                 };
                 db.Registrations.Add(registration);
@@ -174,10 +206,11 @@ public sealed class ImportCommitService(BethuyaDbContext db)
         ParticipationConnectorKind connector,
         CancellationToken ct)
     {
-        var fullNameByEmail = rows.ToDictionary(row => row.Email!, row => row.FullName, StringComparer.Ordinal);
+        var checkedInRows = rows.Where(row => !row.SkipAttendance).ToArray();
+        var fullNameByEmail = checkedInRows.ToDictionary(row => row.Email!, row => row.FullName, StringComparer.Ordinal);
         var memberIdByEmail = await ResolveOrCreateMembersAsync(fullNameByEmail, ct);
 
-        var provenanceKeys = rows
+        var provenanceKeys = checkedInRows
             .Select(row => ImportProvenanceKeyBuilder.BuildAttendanceProvenanceKey(batch.EventId, row.Email!))
             .ToArray();
         var existingKeys = (await db.ParticipationLedgerEntries
@@ -188,10 +221,17 @@ public sealed class ImportCommitService(BethuyaDbContext db)
 
         var created = 0;
         var skipped = 0;
+        var checkedInEmails = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var row in rows)
         {
+            if (row.SkipAttendance)
+            {
+                continue;
+            }
+
             var email = row.Email!;
+            checkedInEmails.Add(email);
             var provenanceKey = ImportProvenanceKeyBuilder.BuildAttendanceProvenanceKey(batch.EventId, email);
             if (!existingKeys.Add(provenanceKey))
             {
@@ -221,8 +261,36 @@ public sealed class ImportCommitService(BethuyaDbContext db)
             created++;
         }
 
+        var registrations = await LoadRegistrationsAsync(batch.EventId, checkedInEmails, ct);
+        foreach (var registration in registrations.Where(r => r.Status != RegistrationStatus.CheckedIn))
+        {
+            registration.Status = RegistrationStatus.CheckedIn;
+            registration.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
         await db.SaveChangesAsync(ct);
         return (created, skipped);
+    }
+
+    private async Task<List<Registration>> LoadRegistrationsAsync(
+        Guid eventId,
+        HashSet<string> normalizedEmails,
+        CancellationToken ct)
+    {
+        var registrationKeys = await db.Registrations
+            .Where(registration => registration.EventId == eventId)
+            .Select(registration => new { registration.Id, registration.Email })
+            .ToListAsync(ct);
+        var matchingIds = registrationKeys
+            .Where(registration => normalizedEmails.Contains(registration.Email.Trim().ToLowerInvariant()))
+            .Select(registration => registration.Id)
+            .ToArray();
+
+        return matchingIds.Length == 0
+            ? []
+            : await db.Registrations
+                .Where(registration => matchingIds.Contains(registration.Id))
+                .ToListAsync(ct);
     }
 
     /// <summary>
@@ -239,11 +307,11 @@ public sealed class ImportCommitService(BethuyaDbContext db)
         try
         {
             var emails = fullNameByEmail.Keys.ToArray();
-#pragma warning disable CA1304, CA1311 // m.Email.ToLower() runs inside an EF LINQ query lambda
+#pragma warning disable CA1304, CA1311 // Npgsql translates ToLower() to lower(), backed by IX_CommunityMembers_NormalizedEmail.
             var existingMembers = emails.Length == 0
                 ? []
                 : await db.CommunityMembers
-                    .Where(m => emails.Contains(m.Email.ToLower()))
+                    .Where(member => emails.Contains(member.Email.ToLower()))
                     .ToListAsync(ct);
 #pragma warning restore CA1304, CA1311
 

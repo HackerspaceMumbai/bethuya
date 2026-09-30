@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
@@ -29,12 +30,10 @@ public sealed partial class ImportDryRunService(
         ImportKind importKind,
         string fileName,
         string contentType,
-        byte[] fileBytes,
+        ReadOnlyMemory<byte> fileBytes,
         string createdByUserId,
         CancellationToken ct = default)
     {
-        ArgumentNullException.ThrowIfNull(fileBytes);
-
         var template = await LoadTemplateAsync(importTemplateId, ct);
         if (template.ImportKind != importKind)
         {
@@ -49,7 +48,17 @@ public sealed partial class ImportDryRunService(
         }
 
         var parser = parserResolver.Resolve(fileName);
-        using var contentStream = new MemoryStream(fileBytes, writable: false);
+        if (!MemoryMarshal.TryGetArray(fileBytes, out var fileSegment))
+        {
+            throw new InvalidOperationException("The uploaded file buffer is not array-backed.");
+        }
+
+        using var contentStream = new MemoryStream(
+            fileSegment.Array!,
+            fileSegment.Offset,
+            fileSegment.Count,
+            writable: false,
+            publiclyVisible: true);
         var parsed = parser.Parse(contentStream);
 
         var storageKey = await artifactStore.SaveAsync(fileBytes, fileName, ct);
@@ -57,7 +66,7 @@ public sealed partial class ImportDryRunService(
 
         try
         {
-            var checksum = Convert.ToHexString(SHA256.HashData(fileBytes)).ToLowerInvariant();
+            var checksum = Convert.ToHexString(SHA256.HashData(fileBytes.Span)).ToLowerInvariant();
 
             var batch = new ImportBatch
             {
@@ -73,7 +82,7 @@ public sealed partial class ImportDryRunService(
                 FileName = fileName,
                 StorageKey = storageKey,
                 ContentType = contentType,
-                SizeBytes = fileBytes.LongLength,
+                SizeBytes = fileBytes.Length,
                 Sha256Checksum = checksum
             };
 
@@ -201,6 +210,7 @@ public sealed partial class ImportDryRunService(
         batch.ErrorRows = preview.ErrorRows;
         batch.RowsToCreate = preview.RowsToCreate;
         batch.RowsToUpdate = preview.RowsToUpdate;
+        batch.DryRunMappingFingerprint = ImportMappingFingerprint.Compute(template);
         batch.Status = ImportBatchStatus.DryRunCompleted;
         batch.DryRunCompletedAt = DateTimeOffset.UtcNow;
         batch.FailureReason = null;
@@ -219,10 +229,11 @@ public sealed partial class ImportDryRunService(
         CancellationToken ct)
     {
         var validEmails = normalizedRows
-            .Where(row => row.IsValid)
+            .Where(row => row.IsValid && !(importKind == ImportKind.Attendance && row.SkipAttendance))
             .Select(row => row.Email!)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        var validEmailSet = validEmails.ToHashSet(StringComparer.Ordinal);
 
         HashSet<string> existingKeys;
         if (importKind == ImportKind.Registration)
@@ -234,7 +245,7 @@ public sealed partial class ImportDryRunService(
                     .Select(r => r.Email)
                     .ToListAsync(ct))
                     .Select(email => email.Trim().ToLowerInvariant())
-                    .Where(email => validEmails.Contains(email))
+                    .Where(validEmailSet.Contains)
                     .ToHashSet(StringComparer.Ordinal);
         }
         else
@@ -263,6 +274,12 @@ public sealed partial class ImportDryRunService(
                 continue;
             }
 
+            if (importKind == ImportKind.Attendance && row.SkipAttendance)
+            {
+                rowPreviews.Add(new ImportRowPreview(row.RowIndex, row.Email, ImportRowDisposition.Skipped, []));
+                continue;
+            }
+
             var matchKey = importKind == ImportKind.Registration
                 ? row.Email!
                 : ImportProvenanceKeyBuilder.BuildAttendanceProvenanceKey(eventId, row.Email!);
@@ -272,6 +289,11 @@ public sealed partial class ImportDryRunService(
                 updateCount++;
                 rowPreviews.Add(new ImportRowPreview(row.RowIndex, row.Email, ImportRowDisposition.WillUpdate, []));
             }
+            else if (importKind == ImportKind.Registration && row.FullName is null)
+            {
+                var errors = new List<string> { "Full name is required for a new registration." };
+                rowPreviews.Add(new ImportRowPreview(row.RowIndex, row.Email, ImportRowDisposition.Error, errors));
+            }
             else
             {
                 createCount++;
@@ -279,7 +301,7 @@ public sealed partial class ImportDryRunService(
             }
         }
 
-        var errorCount = normalizedRows.Count(row => !row.IsValid);
+        var errorCount = rowPreviews.Count(row => row.Disposition == ImportRowDisposition.Error);
         var validCount = normalizedRows.Count - errorCount;
 
         return new ImportPreviewReport(

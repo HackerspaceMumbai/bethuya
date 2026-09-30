@@ -36,9 +36,21 @@ public interface IImportApi
     [Get("/api/import/events/{eventId}/batches")]
     Task<List<ImportBatchDto>> ListBatchesForEventAsync(Guid eventId, CancellationToken ct = default);
 
+    /// <summary>Registration lifecycle counts for each event the organizer can manage.</summary>
+    [Get("/api/import/events/registration-summaries")]
+    Task<List<EventRegistrationSummaryDto>> ListRegistrationSummariesAsync(CancellationToken ct = default);
+
     [Get("/api/import/templates")]
     Task<List<ImportTemplateDto>> ListTemplatesAsync([Query] string? importKind = null, CancellationToken ct = default);
 }
+
+/// <summary>Registration lifecycle counts for one event; <see cref="Approved"/> includes checked-in registrants.</summary>
+public sealed record EventRegistrationSummaryDto(
+    Guid EventId,
+    int Registered,
+    int Pending,
+    int Approved,
+    int CheckedIn);
 
 /// <summary>Import batch status/progress returned from the API.</summary>
 public sealed record ImportBatchDto(

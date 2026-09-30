@@ -22,6 +22,72 @@ public sealed class ImportTemplateSeederTests
         await Assert.That(templates.Any(t => t.SourceKind == ImportSourceKind.Luma && t.ImportKind == ImportKind.Attendance)).IsTrue();
         await Assert.That(templates.Any(t => t.SourceKind == ImportSourceKind.MLH && t.ImportKind == ImportKind.Registration)).IsTrue();
         await Assert.That(templates.Any(t => t.SourceKind == ImportSourceKind.MLH && t.ImportKind == ImportKind.Attendance)).IsTrue();
+
+        var lumaRegistration = templates.Single(t => t.SourceKind == ImportSourceKind.Luma && t.ImportKind == ImportKind.Registration);
+        await Assert.That(lumaRegistration.ColumnMappings.Any(mapping =>
+            mapping.SourceColumnName == "approval_status" && mapping.TargetField == ImportTargetField.ApprovalStatus)).IsTrue();
+        var lumaAttendance = templates.Single(t => t.SourceKind == ImportSourceKind.Luma && t.ImportKind == ImportKind.Attendance);
+        await Assert.That(lumaAttendance.ColumnMappings.Any(mapping =>
+            mapping.SourceColumnName == "checked_in_at" && mapping.TargetField == ImportTargetField.CheckedInAt)).IsTrue();
+        var mlhAttendance = templates.Single(t => t.SourceKind == ImportSourceKind.MLH && t.ImportKind == ImportKind.Attendance);
+        await Assert.That(mlhAttendance.ColumnMappings.Any(mapping =>
+            mapping.SourceColumnName == "Checked In At" && mapping.TargetField == ImportTargetField.CheckedInAt)).IsTrue();
+    }
+
+    [Test]
+    public async Task EnsureSeededAsync_UpgradesExistingLumaSystemTemplatesWithLifecycleFields()
+    {
+        await using var db = CreateDbContext();
+        var template = new Hackmum.Bethuya.Core.Models.ImportTemplate
+        {
+            Name = "Luma Standard Registration Export",
+            Scope = ImportTemplateScope.System,
+            SourceKind = ImportSourceKind.Luma,
+            ImportKind = ImportKind.Registration
+        };
+        template.ColumnMappings.Add(new Hackmum.Bethuya.Core.Models.ImportColumnMapping
+        {
+            ImportTemplateId = template.Id,
+            SourceColumnName = "Name",
+            TargetField = ImportTargetField.FullName
+        });
+        template.ColumnMappings.Add(new Hackmum.Bethuya.Core.Models.ImportColumnMapping
+        {
+            ImportTemplateId = template.Id,
+            SourceColumnName = "Email",
+            TargetField = ImportTargetField.Email
+        });
+        db.ImportTemplates.Add(template);
+        await db.SaveChangesAsync();
+
+        await ImportTemplateSeeder.EnsureSeededAsync(db);
+
+        var upgraded = await db.ImportTemplates.Include(item => item.ColumnMappings)
+            .SingleAsync(item => item.Name == "Luma Standard Registration Export");
+        await Assert.That(upgraded.ColumnMappings.Any(mapping =>
+            mapping.SourceColumnName == "approval_status" && mapping.TargetField == ImportTargetField.ApprovalStatus)).IsTrue();
+        await Assert.That(await db.ImportTemplates.CountAsync(item => item.Scope == ImportTemplateScope.System)).IsEqualTo(4);
+    }
+
+    [Test]
+    public async Task EnsureSeededAsync_UpgradesExistingMlhAttendanceCheckInMapping()
+    {
+        await using var db = CreateDbContext();
+        await ImportTemplateSeeder.EnsureSeededAsync(db);
+        var template = await db.ImportTemplates
+            .Include(item => item.ColumnMappings)
+            .SingleAsync(item => item.Name == "MLH Attendance Export");
+        template.ColumnMappings.Single(mapping => mapping.SourceColumnName == "Checked In At").TargetField =
+            ImportTargetField.OccurredAt;
+        await db.SaveChangesAsync();
+
+        await ImportTemplateSeeder.EnsureSeededAsync(db);
+
+        var upgraded = await db.ImportTemplates
+            .Include(item => item.ColumnMappings)
+            .SingleAsync(item => item.Name == "MLH Attendance Export");
+        await Assert.That(upgraded.ColumnMappings.Any(mapping =>
+            mapping.SourceColumnName == "Checked In At" && mapping.TargetField == ImportTargetField.CheckedInAt)).IsTrue();
     }
 
     [Test]

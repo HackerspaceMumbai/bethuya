@@ -8,7 +8,7 @@ namespace Hackmum.Bethuya.Core.Services;
 public interface IImportArtifactStore
 {
     /// <summary>Persists <paramref name="content"/> and returns an opaque storage key for later retrieval.</summary>
-    Task<string> SaveAsync(byte[] content, string fileName, CancellationToken ct = default);
+    Task<string> SaveAsync(ReadOnlyMemory<byte> content, string fileName, CancellationToken ct = default);
 
     Task<byte[]> ReadAsync(string storageKey, CancellationToken ct = default);
 

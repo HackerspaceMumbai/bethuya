@@ -92,7 +92,8 @@ public static class ImportRowNormalizer
         }
 
         var fullName = TrimToNull(values.GetValueOrDefault(ImportTargetField.FullName));
-        if (importKind == ImportKind.Registration && fullName is null)
+        if (importKind == ImportKind.Registration && fullName is null &&
+            !mappingByHeader.ContainsValue(ImportTargetField.ApprovalStatus))
         {
             errors.Add("Full name is required for registration imports.");
         }
@@ -125,9 +126,21 @@ public static class ImportRowNormalizer
 
         DateTimeOffset? occurredAt = null;
         var occurredAtRaw = TrimToNull(values.GetValueOrDefault(ImportTargetField.OccurredAt));
+        var hasCheckInMapping = importKind == ImportKind.Attendance &&
+            mappingByHeader.ContainsValue(ImportTargetField.CheckedInAt);
+        if (hasCheckInMapping)
+        {
+            if (!rawRow.Keys.Any(header => mappingByHeader.TryGetValue(header.Trim(), out var field) &&
+                field == ImportTargetField.CheckedInAt))
+            {
+                errors.Add("The mapped check-in column is missing from this file.");
+            }
+            occurredAtRaw = TrimToNull(values.GetValueOrDefault(ImportTargetField.CheckedInAt));
+        }
         if (occurredAtRaw is not null)
         {
-            if (DateTimeOffset.TryParse(occurredAtRaw, out var parsed))
+            if (DateTimeOffset.TryParse(occurredAtRaw, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
             {
                 occurredAt = parsed;
             }
@@ -135,6 +148,28 @@ public static class ImportRowNormalizer
             {
                 errors.Add($"'{occurredAtRaw}' is not a valid date/time value.");
             }
+        }
+
+        RegistrationStatus? approvalStatus = null;
+        var approvalRaw = TrimToNull(values.GetValueOrDefault(ImportTargetField.ApprovalStatus));
+        if (importKind == ImportKind.Registration && approvalRaw is not null)
+        {
+            approvalStatus = approvalRaw.ToLowerInvariant() switch
+            {
+                "pending_approval" => RegistrationStatus.Pending,
+                "approved" => RegistrationStatus.Accepted,
+                "declined" => RegistrationStatus.Rejected,
+                _ => null
+            };
+            if (approvalStatus is null)
+            {
+                errors.Add($"Unknown approval status '{approvalRaw}'.");
+            }
+        }
+        else if (importKind == ImportKind.Registration &&
+            mappingByHeader.ContainsValue(ImportTargetField.ApprovalStatus))
+        {
+            errors.Add("Approval status is required for this template.");
         }
 
         return new NormalizedImportRow
@@ -150,6 +185,8 @@ public static class ImportRowNormalizer
             DietaryRequirements = dietaryRequirements,
             AccessibilityNeeds = accessibilityNeeds,
             ExternalRecordId = externalRecordId,
+            ApprovalStatus = approvalStatus,
+            SkipAttendance = hasCheckInMapping && occurredAtRaw is null,
             ValidationErrors = errors
         };
     }

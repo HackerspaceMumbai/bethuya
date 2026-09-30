@@ -15,4 +15,10 @@ public sealed class EventViewModel
     public string? CoverImageUrl { get; set; }
     public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
     public DateOnly EndDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
+
+    /// <summary>Registration lifecycle counts; null when the viewer cannot see them (non-organizers).</summary>
+    public RegistrationCounts? Registrations { get; set; }
 }
+
+/// <summary>Registered → approved → checked-in counts shown on an organizer's event card.</summary>
+public sealed record RegistrationCounts(int Registered, int Pending, int Approved, int CheckedIn);

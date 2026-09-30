@@ -50,6 +50,7 @@ builder.Services.AddScoped<IAgentInvoker, FoundryResponsesInvoker>();
 builder.Services.AddScoped<InclusionSignalsNormalizer>();
 builder.Services.AddScoped<CurationFairnessService>();
 builder.Services.AddScoped<CurationSampleSeeder>();
+builder.Services.AddScoped<EmptyImportEventSeeder>();
 builder.Services.AddScoped<CommunitySimulationSeeder>();
 builder.Services.AddScoped<PlanningCycleService>();
 builder.Services.AddScoped<CommunityPassportService>();

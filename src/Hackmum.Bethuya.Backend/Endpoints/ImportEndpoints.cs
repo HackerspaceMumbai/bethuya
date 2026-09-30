@@ -36,6 +36,7 @@ public static class ImportEndpoints
         group.MapGet("/batches/{importBatchId:guid}/preview", GetPreviewAsync);
         group.MapPost("/batches/{importBatchId:guid}/commit", CommitAsync);
         group.MapGet("/events/{eventId:guid}/batches", ListBatchesForEventAsync);
+        group.MapGet("/events/registration-summaries", ListRegistrationSummariesAsync);
 
         group.MapGet("/templates", ListTemplatesAsync);
         group.MapGet("/templates/{templateId:guid}", GetTemplateAsync);
@@ -98,6 +99,7 @@ public static class ImportEndpoints
 
         using var buffer = new MemoryStream();
         await file.CopyToAsync(buffer, ct);
+        var fileBytes = new ReadOnlyMemory<byte>(buffer.GetBuffer(), 0, checked((int)buffer.Length));
 
         try
         {
@@ -107,7 +109,7 @@ public static class ImportEndpoints
                 importKind,
                 Path.GetFileName(file.FileName),
                 file.ContentType,
-                buffer.ToArray(),
+                fileBytes,
                 subject.UserId,
                 ct);
 
@@ -232,6 +234,38 @@ public static class ImportEndpoints
         return Results.Ok(batches.Select(b => ImportBatchResponse.FromModel(b)).ToList());
     }
 
+    /// <summary>
+    /// Per-event registration lifecycle counts (registered → approved → checked in) for the events the caller
+    /// can manage, so organizer dashboards can show import progress without loading every registration.
+    /// </summary>
+    private static async Task<IResult> ListRegistrationSummariesAsync(
+        ClaimsPrincipal user,
+        BethuyaDbContext db,
+        CancellationToken ct)
+    {
+        var subject = GetSubject(user);
+        if (subject is null)
+        {
+            return Results.Ok(new List<EventRegistrationSummaryResponse>());
+        }
+
+        var isAdmin = user.IsInRole(BethuyaRoleNames.Admin);
+        var summaries = await db.Events
+            .AsNoTracking()
+            .Where(e => isAdmin || e.CreatedBy == subject.UserId)
+            .Select(e => new EventRegistrationSummaryResponse(
+                e.Id,
+                db.Registrations.Count(r => r.EventId == e.Id),
+                db.Registrations.Count(r => r.EventId == e.Id && r.Status == RegistrationStatus.Pending),
+                // Checked-in registrants were approved first, so they count toward the approved milestone.
+                db.Registrations.Count(r => r.EventId == e.Id
+                    && (r.Status == RegistrationStatus.Accepted || r.Status == RegistrationStatus.CheckedIn)),
+                db.Registrations.Count(r => r.EventId == e.Id && r.Status == RegistrationStatus.CheckedIn)))
+            .ToListAsync(ct);
+
+        return Results.Ok(summaries);
+    }
+
     private static async Task<IResult> ListTemplatesAsync(
         ImportKind? importKind,
         ClaimsPrincipal user,
@@ -289,12 +323,14 @@ public static class ImportEndpoints
         ImportTemplateService templateService,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || request.ColumnMappings.Count == 0)
+        if (string.IsNullOrWhiteSpace(request.Name) || request.ColumnMappings is null || request.ColumnMappings.Count == 0)
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 ["name"] = string.IsNullOrWhiteSpace(request.Name) ? ["Name is required."] : [],
-                ["columnMappings"] = request.ColumnMappings.Count == 0 ? ["At least one column mapping is required."] : []
+                ["columnMappings"] = request.ColumnMappings is null || request.ColumnMappings.Count == 0
+                    ? ["At least one column mapping is required."]
+                    : []
             });
         }
 
@@ -304,15 +340,22 @@ public static class ImportEndpoints
             return Results.Unauthorized();
         }
 
-        var template = await templateService.CreateAsync(
-            request.Name,
-            request.SourceKind,
-            request.ImportKind,
-            subject.UserId,
-            request.ColumnMappings.Select(m => new ImportColumnMappingInput(m.SourceColumnName, m.TargetField)).ToList(),
-            ct);
+        try
+        {
+            var template = await templateService.CreateAsync(
+                request.Name,
+                request.SourceKind,
+                request.ImportKind,
+                subject.UserId,
+                request.ColumnMappings.Select(m => new ImportColumnMappingInput(m.SourceColumnName, m.TargetField)).ToList(),
+                ct);
 
-        return Results.Ok(ImportTemplateResponse.FromModel(template));
+            return Results.Ok(ImportTemplateResponse.FromModel(template));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
     }
 
     private static async Task<IResult> CloneTemplateAsync(

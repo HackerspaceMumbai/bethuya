@@ -62,6 +62,7 @@ public sealed class CommunityPassportServiceTests
                 FullName = "Augustine Correa",
                 Email = "aug@example.com",
                 Status = RegistrationStatus.CheckedIn,
+                ApprovalObservedAt = new DateTimeOffset(2026, 6, 25, 12, 0, 0, TimeSpan.Zero),
                 ContributionPreferences = ["Volunteer desk"]
             },
             new Registration
@@ -83,6 +84,8 @@ public sealed class CommunityPassportServiceTests
         await Assert.That(passport.CurrentTier).IsEqualTo("Volunteer Track");
         await Assert.That(passport.Metrics.EventsRegistered).IsEqualTo(2);
         await Assert.That(passport.Metrics.EventsAttended).IsEqualTo(1);
+        await Assert.That(passport.Timeline.Any(entry => entry.Status == "Approved")).IsTrue();
+        await Assert.That(passport.Timeline.Any(entry => entry.Status == "Attended")).IsTrue();
         await Assert.That(passport.Metrics.EventsWaitlisted).IsEqualTo(1);
         await Assert.That(passport.Metrics.VolunteerSignals).IsEqualTo(1);
         await Assert.That(passport.LinkedIdentities.Select(identity => identity.Provider))

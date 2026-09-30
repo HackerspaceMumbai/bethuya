@@ -21,6 +21,7 @@ public sealed class ImportBatch
     public int ErrorRows { get; set; }
     public int RowsToCreate { get; set; }
     public int RowsToUpdate { get; set; }
+    public string? DryRunMappingFingerprint { get; set; }
 
     public string? FailureReason { get; set; }
 

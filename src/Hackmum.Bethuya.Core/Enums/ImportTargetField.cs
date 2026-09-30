@@ -21,5 +21,9 @@ public enum ImportTargetField
     DietaryRequirements,
     AccessibilityNeeds,
     /// <summary>Optional external record identifier from the source platform, used for provenance.</summary>
-    ExternalRecordId
+    ExternalRecordId,
+    /// <summary>Source registration approval decision (for example Luma's approval_status).</summary>
+    ApprovalStatus,
+    /// <summary>Check-in timestamp; blank means no attendance record for this row.</summary>
+    CheckedInAt
 }

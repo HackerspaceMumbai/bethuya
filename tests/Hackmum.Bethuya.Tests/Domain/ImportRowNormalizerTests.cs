@@ -7,6 +7,36 @@ namespace Hackmum.Bethuya.Tests.Domain;
 public sealed class ImportRowNormalizerTests
 {
     [Test]
+    public async Task NormalizeAll_LumaApprovalAndCheckIn_RejectsUnknownStatusAndSkipsBlankCheckIn()
+    {
+        var registrations = CreateTemplate(ImportKind.Registration,
+            ("name", ImportTargetField.FullName),
+            ("email", ImportTargetField.Email),
+            ("approval_status", ImportTargetField.ApprovalStatus));
+        var attendance = CreateTemplate(ImportKind.Attendance,
+            ("email", ImportTargetField.Email),
+            ("checked_in_at", ImportTargetField.CheckedInAt));
+
+        var registrationRows = ImportRowNormalizer.NormalizeAll(
+            new ParsedImportFile(["name", "email", "approval_status"],
+            [
+                new Dictionary<string, string?> { ["name"] = "Ada", ["email"] = "ada@example.com", ["approval_status"] = "pending_approval" },
+                new Dictionary<string, string?> { ["name"] = "Grace", ["email"] = "grace@example.com", ["approval_status"] = "unrecognized" }
+            ]), registrations);
+        var attendanceRows = ImportRowNormalizer.NormalizeAll(
+            new ParsedImportFile(["email", "checked_in_at"],
+            [
+                new Dictionary<string, string?> { ["email"] = "ada@example.com", ["checked_in_at"] = "" },
+                new Dictionary<string, string?> { ["email"] = "grace@example.com", ["checked_in_at"] = "2026-09-28T08:00:00Z" }
+            ]), attendance);
+
+        await Assert.That(registrationRows[0].ApprovalStatus).IsEqualTo(RegistrationStatus.Pending);
+        await Assert.That(registrationRows[1].IsValid).IsFalse();
+        await Assert.That(attendanceRows[0].SkipAttendance).IsTrue();
+        await Assert.That(attendanceRows[1].OccurredAt).IsNotNull();
+    }
+
+    [Test]
     public async Task NormalizeAll_ValidRegistrationRow_MapsFieldsAndLowercasesEmail()
     {
         var template = CreateTemplate(ImportKind.Registration,
