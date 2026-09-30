@@ -697,7 +697,7 @@ public class ImportsRenderTests
         var newFile = Substitute.For<Microsoft.AspNetCore.Components.Forms.IBrowserFile>();
         newFile.Name.Returns("new-file.csv");
         newFile.ContentType.Returns("text/csv");
-        var uploadStream = new MemoryStream("a,b\n1,2"u8.ToArray());
+        using var uploadStream = new MemoryStream("a,b\n1,2"u8.ToArray());
         newFile.OpenReadStream(Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(uploadStream);
         selectedFileField!.SetValue(cut.Instance, newFile);
