@@ -68,10 +68,13 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
     private async Task<CommunityPassportResponse> BuildPassportAsync(CommunityMember member, CancellationToken ct)
     {
         var registrationsQuery = db.Registrations.AsNoTracking();
+        var normalizedMemberEmail = member.Email.Trim().ToLowerInvariant();
         if (db.Database.IsNpgsql())
         {
+#pragma warning disable CA1304, CA1311, CA1862 // Npgsql translates ToLower() to exact SQL lower(); unlike ILIKE, email wildcards remain literal.
             registrationsQuery = registrationsQuery
-                .Where(registration => EF.Functions.ILike(registration.Email, member.Email));
+                .Where(registration => registration.Email.ToLower() == normalizedMemberEmail);
+#pragma warning restore CA1304, CA1311, CA1862
         }
         else
         {
@@ -83,8 +86,16 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
             .OrderByDescending(registration => registration.UpdatedAt)
             .ToListAsync(ct);
 
+        var memberId = member.Id;
+        var importedAttendance = await db.ParticipationLedgerEntries.AsNoTracking()
+            .Where(entry => entry.CommunityMemberId == memberId &&
+                entry.IngestionMethod == ParticipationIngestionMethod.FileImport &&
+                entry.Activity == ParticipationActivityKind.Attended)
+            .ToListAsync(ct);
+
         var eventIds = registrations
             .Select(registration => registration.EventId)
+            .Concat(importedAttendance.Where(entry => entry.EventId.HasValue).Select(entry => entry.EventId!.Value))
             .Distinct()
             .ToList();
 
@@ -96,24 +107,60 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
                 .ToDictionaryAsync(evt => evt.Id, ct);
 
         var volunteerSignals = registrations.Count(HasVolunteerSignal);
-        var attendedCount = registrations.Count(registration => registration.Status == RegistrationStatus.CheckedIn);
+        var attendedCount = registrations
+            .Where(registration => registration.Status == RegistrationStatus.CheckedIn)
+            .Select(registration => registration.EventId)
+            .Concat(importedAttendance.Where(entry => entry.EventId.HasValue).Select(entry => entry.EventId!.Value))
+            .Distinct()
+            .Count();
         var waitlistedCount = registrations.Count(registration => registration.Status == RegistrationStatus.Waitlisted);
         var milestoneCount = CalculateMilestones(member.ExternalIdentities.Count, attendedCount, volunteerSignals);
 
+        var importedAttendanceEventIds = importedAttendance
+            .Where(entry => entry.EventId.HasValue)
+            .Select(entry => entry.EventId!.Value)
+            .ToHashSet();
         var timeline = registrations
+            .Where(registration => registration.Status != RegistrationStatus.CheckedIn ||
+                !importedAttendanceEventIds.Contains(registration.EventId))
             .Select(registration =>
             {
                 var eventTitle = eventsById.TryGetValue(registration.EventId, out var evt)
                     ? evt.Title
                     : "Unknown event";
+                var status = MapRegistrationStatus(registration.Status);
+                var occurredAt = registration.Status switch
+                {
+                    RegistrationStatus.Pending => registration.RegisteredAt,
+                    RegistrationStatus.Accepted => registration.ApprovalObservedAt ?? registration.UpdatedAt,
+                    _ => registration.UpdatedAt
+                };
 
                 return new PassportTimelineEntryResponse(
                     registration.EventId,
                     eventTitle,
-                    MapRegistrationStatus(registration.Status),
-                    registration.UpdatedAt,
-                    $"Registration status recorded as {MapRegistrationStatus(registration.Status)}.");
+                    status,
+                    occurredAt,
+                    $"Registration status recorded as {status}.");
             })
+            .Concat(registrations
+                .Where(registration => registration.ApprovalObservedAt.HasValue &&
+                    registration.Status != RegistrationStatus.Accepted)
+                .Select(registration => new PassportTimelineEntryResponse(
+                    registration.EventId,
+                    eventsById.TryGetValue(registration.EventId, out var evt) ? evt.Title : "Unknown event",
+                    "Approved",
+                    registration.ApprovalObservedAt!.Value,
+                    "Registration approval observed in imported event data.")))
+            .Concat(importedAttendance
+                .Where(entry => entry.EventId.HasValue)
+                .Select(entry => new PassportTimelineEntryResponse(
+                    entry.EventId.GetValueOrDefault(),
+                    eventsById.TryGetValue(entry.EventId.GetValueOrDefault(), out var evt) ? evt.Title : "Unknown event",
+                    "Attended",
+                    entry.OccurredAt,
+                    "Check-in recorded in imported event data.")))
+            .OrderByDescending(entry => entry.OccurredAt)
             .Take(12)
             .ToList();
 
@@ -521,7 +568,7 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
         => status switch
         {
             RegistrationStatus.CheckedIn => "Attended",
-            RegistrationStatus.Accepted => "Accepted",
+            RegistrationStatus.Accepted => "Approved",
             RegistrationStatus.Waitlisted => "Waitlisted",
             RegistrationStatus.Rejected => "Rejected",
             RegistrationStatus.Cancelled => "Cancelled",

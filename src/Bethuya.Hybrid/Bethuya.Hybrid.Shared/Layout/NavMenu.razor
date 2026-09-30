@@ -1,8 +1,13 @@
 
 @using Bethuya.Hybrid.Shared.Auth
+@using Bethuya.Hybrid.Shared.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Logging
 @implements IDisposable
 @inject NavigationManager Navigation
+@inject IServiceProvider ServiceProvider
+@inject ILogger<NavMenu> Logger
 
 <nav class="sidebar-nav" aria-label="Main navigation">
     <div class="brand-row">
@@ -54,6 +59,16 @@
         <AuthorizeView Roles="@OrganizerToolsRoles" Context="privilegedContext">
             <div class="nav-section">
                 <div class="nav-section-label">Organizer Tools</div>
+                <AuthorizeView Roles="@AgentWorkflowRoles">
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="@(_currentEventId is Guid importEventId ? $"imports?eventId={importEventId}" : "imports")" Match="NavLinkMatch.Prefix" data-test="nav-imports-link">
+                            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" />
+                            </svg>
+                            Import data
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
                 @if (_currentEventId is Guid currentEventId)
                 {
                     <AuthorizeView Roles="@AgentWorkflowRoles">
@@ -68,14 +83,25 @@
                     </AuthorizeView>
 
                     <AuthorizeView Roles="@CurationRoles">
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="@($"curation/{currentEventId}")" Match="NavLinkMatch.Prefix" data-test="nav-curation-link">
-                                <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M3 7h18" /><path d="M7 12h10" /><path d="M10 17h4" />
-                                </svg>
-                                Curation
-                            </NavLink>
-                        </div>
+                        @if (ShouldShowCurationLink)
+                        {
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="@($"curation/{currentEventId}")" Match="NavLinkMatch.Prefix" data-test="nav-curation-link">
+                                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 7h18" /><path d="M7 12h10" /><path d="M10 17h4" />
+                                    </svg>
+                                    Curation
+                                </NavLink>
+                            </div>
+                        }
+                        else if (_curationAvailability is { IsOversubscribed: false } availability)
+                        {
+                            <div class="nav-item">
+                                <p class="text-xs text-muted-foreground p-3 italic" data-test="nav-curation-not-needed">
+                                    Curation opens when registrations exceed capacity (@availability.ActiveRegistrations of @availability.Capacity).
+                                </p>
+                            </div>
+                        }
                     </AuthorizeView>
                 }
                 else
@@ -115,43 +141,133 @@
     private const string AgentWorkflowRoles = $"{BethuyaRoles.Admin},{BethuyaRoles.Organizer}";
     private const string CurationRoles = $"{BethuyaRoles.Admin},{BethuyaRoles.Curator}";
 
-    private Guid? _currentEventId;
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
-    protected override void OnInitialized()
+    private Guid? _currentEventId;
+    private bool _isOnCurationRoute;
+    private bool _availabilityResolved;
+    private CurationAvailabilityDto? _curationAvailability;
+
+    // Curation is needed once registrations exceed venue capacity. If the signal cannot be read
+    // (API unavailable or failed), keep the link visible — the curation endpoints still authorize.
+    private bool ShouldShowCurationLink =>
+        _isOnCurationRoute
+        || (_availabilityResolved && (_curationAvailability is null || _curationAvailability.IsOversubscribed));
+
+    protected override Task OnInitializedAsync()
     {
-        _currentEventId = TryGetEventIdFromUri();
+        UpdateEventContext();
         Navigation.LocationChanged += HandleLocationChanged;
+        return LoadCurationAvailabilityAsync();
     }
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _currentEventId = TryGetEventIdFromUri();
-        InvokeAsync(StateHasChanged);
+        var previousEventId = _currentEventId;
+        UpdateEventContext();
+        _ = InvokeAsync(async () =>
+        {
+            if (previousEventId != _currentEventId)
+            {
+                await LoadCurationAvailabilityAsync();
+            }
+
+            StateHasChanged();
+        });
     }
 
-    private Guid? TryGetEventIdFromUri()
+    private void UpdateEventContext()
     {
-        var path = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+        (_currentEventId, _isOnCurationRoute) = TryGetEventContextFromUri();
+    }
+
+    private async Task LoadCurationAvailabilityAsync()
+    {
+        var eventId = _currentEventId;
+        _curationAvailability = null;
+        _availabilityResolved = false;
+
+        if (eventId is not Guid id || !await CanCurateAsync())
+        {
+            return;
+        }
+
+        var curationApi = ServiceProvider.GetService<ICurationApi>();
+        CurationAvailabilityDto? availability = null;
+        if (curationApi is not null)
+        {
+            try
+            {
+                availability = await curationApi.GetAvailabilityAsync(id);
+            }
+            catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+            {
+                Logger.LogWarning(ex, "Unable to read curation availability for event {EventId}", id);
+            }
+        }
+
+        // Ignore a response that arrived after the user navigated to another event.
+        if (_currentEventId == eventId)
+        {
+            _curationAvailability = availability;
+            _availabilityResolved = true;
+        }
+    }
+
+    private async Task<bool> CanCurateAsync()
+    {
+        if (AuthenticationStateTask is null)
+        {
+            return false;
+        }
+
+        var user = (await AuthenticationStateTask).User;
+        return user.IsInRole(BethuyaRoles.Admin) || user.IsInRole(BethuyaRoles.Curator);
+    }
+
+    private (Guid? EventId, bool IsCurationRoute) TryGetEventContextFromUri()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var queryStart = relative.IndexOfAny(['?', '#']);
+        var path = (queryStart >= 0 ? relative[..queryStart] : relative).Trim('/');
         if (string.IsNullOrWhiteSpace(path))
         {
-            return null;
+            return (null, false);
         }
 
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
         if (segments.Length >= 2 &&
-            string.Equals(segments[0], "events", StringComparison.OrdinalIgnoreCase) &&
-            Guid.TryParse(segments[1], out var eventIdFromEventRoute))
+            (string.Equals(segments[0], "events", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(segments[0], "agents", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(segments[0], "curation", StringComparison.OrdinalIgnoreCase)) &&
+            Guid.TryParse(segments[1], out var eventIdFromRoute))
         {
-            return eventIdFromEventRoute;
+            return (eventIdFromRoute, string.Equals(segments[0], "curation", StringComparison.OrdinalIgnoreCase));
         }
 
-        if (segments.Length >= 2 &&
-            (string.Equals(segments[0], "agents", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(segments[0], "curation", StringComparison.OrdinalIgnoreCase)) &&
-            Guid.TryParse(segments[1], out var eventIdFromToolRoute))
+        // The import page carries its event context in the query string (/imports?eventId=...).
+        if (segments.Length == 1 &&
+            string.Equals(segments[0], "imports", StringComparison.OrdinalIgnoreCase) &&
+            queryStart >= 0 &&
+            Guid.TryParse(GetQueryValue(relative[(queryStart + 1)..].Split('#')[0], "eventId"), out var eventIdFromQuery))
         {
-            return eventIdFromToolRoute;
+            return (eventIdFromQuery, false);
+        }
+
+        return (null, false);
+    }
+
+    private static string? GetQueryValue(string query, string key)
+    {
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = pair.IndexOf('=');
+            if (separator > 0 && string.Equals(Uri.UnescapeDataString(pair[..separator]), key, StringComparison.OrdinalIgnoreCase))
+            {
+                return Uri.UnescapeDataString(pair[(separator + 1)..]);
+            }
         }
 
         return null;

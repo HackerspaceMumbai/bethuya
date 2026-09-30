@@ -3,6 +3,7 @@
 @using Bethuya.Hybrid.Shared.Components.Dashboard
 @using Bethuya.Hybrid.Shared.Services
 @inject IEventApi EventApi
+@inject IImportApi ImportApi
 @inject IProfileApi ProfileApi
 @inject ICurrentUserService CurrentUser
 
@@ -160,8 +161,11 @@
 
         try
         {
-            var dtos = await EventApi.GetAllAsync();
+            var eventTask = EventApi.GetAllAsync();
+            var summaryTask = LoadRegistrationSummariesAsync();
+            var dtos = await eventTask;
             events = dtos.Select(MapToViewModel).ToList();
+            ApplyRegistrationCounts(await summaryTask);
         }
         catch (Exception)
         {
@@ -180,6 +184,36 @@
             Navigation.NavigateTo(_redirectRoute, replace: true);
         }
         return Task.CompletedTask;
+    }
+
+    private async Task<List<EventRegistrationSummaryDto>> LoadRegistrationSummariesAsync()
+    {
+        if (!(CurrentUser.IsInRole(BethuyaRoles.Organizer) || CurrentUser.IsInRole(BethuyaRoles.Admin)))
+        {
+            return [];
+        }
+
+        try
+        {
+            return await ImportApi.ListRegistrationSummariesAsync();
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            // Counts are supplementary; the dashboard stays usable without them.
+            return [];
+        }
+    }
+
+    private void ApplyRegistrationCounts(IEnumerable<EventRegistrationSummaryDto> registrationSummaries)
+    {
+        var summaries = registrationSummaries.ToDictionary(summary => summary.EventId);
+        foreach (var evt in events)
+        {
+            // Every event the organizer manages has a summary (zeros included); other events stay count-free.
+            evt.Registrations = summaries.TryGetValue(evt.Id, out var summary)
+                ? new RegistrationCounts(summary.Registered, summary.Pending, summary.Approved, summary.CheckedIn)
+                : null;
+        }
     }
 
     private static EventViewModel MapToViewModel(EventDto dto) => new()

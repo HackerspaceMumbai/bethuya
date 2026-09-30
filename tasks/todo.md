@@ -16,6 +16,32 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-01] Removing false migration failure and updating PR branch
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Reconcile the Homepage v3 branch with current `main`, eliminate the fresh-database `__EFMigrationsHistory` probe that appears as a migration failure in Aspire, and preserve genuine migration error reporting.
+- **Acceptance:** ✅ Fresh isolated PostgreSQL startup completes `migration-service` with exit code 0 and no error-level migration logs. ✅ Provider-specific migration history creation is idempotent and covered by TUnit. ✅ PostgreSQL, backend, and web become healthy. ✅ Command-center Playwright tests pass against the merged Aspire app. ✅ PR #61 is updated from current `main`.
+
+## [2026-09-29] Clarify registration approval import workflow
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Make the import wizard explain that registration artifacts may arrive at request and approval stages, support partial approval-only updates by email, and avoid implicitly approving imports without an approval field.
+- **Acceptance:** Render and service tests cover the organizer guidance, pending default, separate approval artifact update, and no duplicate registrations/members; documentation explains both combined and stage-specific exports. Verified all 393 tests pass; changes remain local for manual verification.
+
+## [2026-09-28] Add empty event curation seed action
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add a separate Development-only backend action, exposed under the Aspire backend resource actions, that creates a fresh event with no registrations or attendees for exercising registration/attendance import.
+- **Acceptance:** Running the action creates exactly one event and no attendee/registration rows; existing curation sandbox seeding remains unchanged; tests and targeted builds pass.
+- **Completion Evidence:** Backend build succeeded with 0 warnings/errors; `EmptyImportEventSeederTests` 1/1 passed and full unit suite 389/389 passed. AppHost build succeeded with 0 warnings/errors; after restarting Aspire, the backend is Running and the enabled `seed-empty-import-event` action is visible in its dashboard resource commands. The action is documented under import manual-testing instructions.
+
+## [2026-09-24] Investigating PR #60 security workflow and review state
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Determine whether the failing `.github/workflows/security-scan.yml` runs are caused by PR #60, pre-existing workflow configuration, or transient infrastructure; inspect and classify current unresolved review feedback; apply only necessary surgical fixes and validate merge readiness.
+- **Acceptance:** Failure classification is evidence-backed from GitHub run metadata and repository files; actionable review threads are fixed/resolved or explicitly classified; PR checks and local targeted validation are recorded.
+- **Completion Evidence:** PR `Security` check, CodeQL, dependency review, vulnerable-package scan, build/test, and Squad CI are green on `e5a76eb`; the failing workflow-path runs are push events with zero jobs/check-runs across repeated commits; all 43 review threads report `isResolved=true`; no code fix was warranted.
+
 ## [2026-09-21] Address Greptile archive ordering and collision findings
 - **Status:** done
 - **Agent/Owner:** Copilot
@@ -788,6 +814,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Completed Tasks
 
+## [2026-09-28] Preserve Luma approval and check-in milestones
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Map Luma approval_status to registration state, import only nonempty checked_in_at as attendance, update seeded Luma templates and passport projections without duplicating members, registrations, or attendance on later exports.
+- **Acceptance:** TUnit covers pending → approved → checked-in replay, declined, blank check-ins, invalid statuses, and idempotent template seeding; document the two-pass organizer workflow. Keep changes local for manual verification.
+- **Completion Evidence:** Full test suite passed (392/392) using isolated output paths to avoid disrupting the running Aspire web resource; `git diff --check` passed. The attached Luma export shape was checked: 540 rows (403 pending approval, 98 approved, 39 declined; 49 approved rows have a check-in timestamp). No production export was imported into a database. Changes remain local and unpushed.
+
 <!-- Move done tasks here -->
 
 ## [2026-05-28] Polish curation profile header
@@ -830,3 +863,27 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Copilot Coding Agent
 - **Description:** Identify and resolve the EF pending-model migration drift that prevents `migration-service`, `backend`, and `web` from becoming healthy, then run Homepage v3 Playwright tests against the actual Aspire Web endpoint.
 - **Acceptance:** ✅ Replaced the undiscoverable hand-written migration with a metadata-complete EF migration and synchronized snapshot. ✅ The migration reconciles both canonical databases without the column and databases created while the historical migration incorrectly included it. ✅ `has-pending-model-changes` reports no drift. ✅ Fresh isolated Aspire startup finishes migration and reports healthy PostgreSQL, backend, and web resources. ✅ Three targeted Playwright tests pass against the Aspire Web HTTPS endpoint, including desktop/mobile screenshots and relocated member-dashboard navigation. ✅ Full solution build passes with 0 warnings and 0 errors.
+
+## [2026-09-21] Organizer Import Wizard UI
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add the organizer-facing `/imports` Blazor wizard for event/source selection, CSV/XLSX upload, Dry Run preview, and commit, backed by typed Refit contracts.
+- **Acceptance:** Full solution builds cleanly; import wizard bUnit render coverage passes; existing test suite remains green.
+
+## [2026-09-21] Fix import authorization findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Enforce batch/event ownership or admin access on import operations and owner/system/admin access on user template reads and clones.
+- **Acceptance:** ✅ Unauthorized users cannot read, replay, preview, list, clone, or commit other users' import data/templates. ✅ Template ownership regression tests pass. ✅ `dotnet build Bethuya.slnx --no-restore -v:minimal` passes with 0 warnings/errors. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-build -v q` passes (371/371).
+
+- [x] Dashboard event cards show registered / pending / approved / checked-in counts for organizers (`GET /api/import/events/registration-summaries`); import template select shows the template name instead of its id.
+
+- [x] Curation nav link appears for Admin/Curator once active registrations exceed capacity (`GET /api/curation/{eventId}/availability`); `/imports?eventId=` now counts as event context.
+
+## 2026-09-30 — Pre-commit import performance review
+
+- [x] Eliminate the redundant full-file upload allocation.
+- [x] Avoid quadratic registration-email matching and unnecessary entity tracking.
+- [x] Preserve case-insensitive registration matching with mixed-case regression coverage.
+- [x] Add an indexed normalized-email lookup for community-member resolution.
+- [x] Parallelize independent dashboard event and registration-summary requests.
