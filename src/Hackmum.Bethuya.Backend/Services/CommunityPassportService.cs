@@ -166,8 +166,8 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
             .Concat(importedAttendance
                 .Where(entry => entry.EventId.HasValue)
                 .Select(entry => new PassportTimelineEntryResponse(
-                    entry.EventId!.Value,
-                    eventsById.TryGetValue(entry.EventId.Value, out var evt) ? evt.Title : "Unknown event",
+                    entry.EventId.GetValueOrDefault(),
+                    eventsById.TryGetValue(entry.EventId.GetValueOrDefault(), out var evt) ? evt.Title : "Unknown event",
                     "Attended",
                     entry.OccurredAt,
                     "Check-in recorded in imported event data.")))

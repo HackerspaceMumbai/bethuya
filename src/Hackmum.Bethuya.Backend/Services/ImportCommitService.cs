@@ -155,15 +155,13 @@ public sealed class ImportCommitService(BethuyaDbContext db)
                 registration.ExperienceLevel = row.ExperienceLevel ?? registration.ExperienceLevel;
                 registration.DietaryRequirements = row.DietaryRequirements ?? registration.DietaryRequirements;
                 registration.AccessibilityNeeds = row.AccessibilityNeeds ?? registration.AccessibilityNeeds;
-                if (row.ApprovalStatus is { } newStatus)
+                if (row.ApprovalStatus is { } newStatus &&
+                    (registration.Status == RegistrationStatus.Pending ||
+                     registration.Status == RegistrationStatus.Rejected && newStatus == RegistrationStatus.Accepted))
                 {
                     // An older export must not undo a later approval or check-in. Explicit
                     // declines can only replace pending/declined states; review other changes manually.
-                    if (registration.Status == RegistrationStatus.Pending ||
-                        registration.Status == RegistrationStatus.Rejected && newStatus == RegistrationStatus.Accepted)
-                    {
-                        registration.Status = newStatus;
-                    }
+                    registration.Status = newStatus;
                 }
                 if (row.ApprovalStatus == RegistrationStatus.Accepted && registration.ApprovalObservedAt is null)
                 {
