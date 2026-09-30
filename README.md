@@ -106,6 +106,8 @@ Bethuya supports member progression throughout the entire community lifecycle:
 
 See [`docs/OBSERVABILITY_FRAMEWORK.md`](docs/OBSERVABILITY_FRAMEWORK.md) for implementation details, guardrails, and rollout phases.
 
+See [`docs/EVENT_ARCHIVE_PUBLICATION.md`](docs/EVENT_ARCHIVE_PUBLICATION.md) for the durable archive-publication workflow, outbox processing, GitHub safety rules, and local validation steps.
+
 Success is not measured by event count alone, but also by
 
 - members retained

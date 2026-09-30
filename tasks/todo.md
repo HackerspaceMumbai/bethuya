@@ -35,6 +35,24 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Acceptance:** Failure classification is evidence-backed from GitHub run metadata and repository files; actionable review threads are fixed/resolved or explicitly classified; PR checks and local targeted validation are recorded.
 - **Completion Evidence:** PR `Security` check, CodeQL, dependency review, vulnerable-package scan, build/test, and Squad CI are green on `e5a76eb`; the failing workflow-path runs are push events with zero jobs/check-runs across repeated commits; all 43 review threads report `isResolved=true`; no code fix was warranted.
 
+## [2026-09-21] Address Greptile archive ordering and collision findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Prevent stale outbox projections and archive path collisions, make duplicate recovery transaction-safe, and preserve Vogen identifiers through the processor.
+- **Acceptance:** Newer projections supersede older eligible work, archive paths include immutable event identity, unique insert races recover safely, build/tests pass, and every Greptile thread is replied to and resolved.
+
+## [2026-09-21] Address archive outbox review findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace raw archive outbox identifiers with Vogen value objects, document public members, and normalize the migration namespace syntax.
+- **Acceptance:** The infrastructure and targeted tests build cleanly with no warnings, and the review findings are resolved without changing archive behavior.
+
+## [2026-09-13] Implementing durable event archive synchronization
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace synchronous GitHub publication with a transactional outbox, deterministic public archive projection, and resilient background processing while preserving existing archive contracts.
+- **Acceptance:** Published event mutations commit without GitHub availability; an outbox message is persisted atomically; a hosted worker processes with durable leasing/backoff; generated projection is public-only and deterministic; targeted tests/build pass.
+
 ## [2026-08-08] Developer Testing Harness — Layer 5: Community Acceptance Test Harness
 - **Status:** done
 - **Completion Evidence:** 
