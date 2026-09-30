@@ -143,11 +143,12 @@
                 _redirectRoute = status.IsProfileComplete switch
                 {
                     false => "/registration/mandatory",
-                    true when !status.IsSocialConnectionsComplete => IsSocialBypassEnabled ? "/registration/aide" : "/registration/social",
+                    true when !status.IsSocialConnectionsComplete =>
+                        IsSocialBypassEnabled ? "/registration/aide" : "/registration/social",
                     _ => null
                 };
             }
-            catch
+            catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
             {
                 // If profile check fails, continue to dashboard
             }
@@ -167,7 +168,7 @@
             events = dtos.Select(MapToViewModel).ToList();
             ApplyRegistrationCounts(await summaryTask);
         }
-        catch (Exception)
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
             errorMessage = "Failed to load events. Please try again.";
         }

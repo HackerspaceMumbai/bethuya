@@ -71,7 +71,15 @@
 </main>
 
 @code {
-    private WorkspaceDefinition Definition => GetDefinition(Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/'));
+    private WorkspaceDefinition Definition
+    {
+        get
+        {
+            var pathOnlyUri = new Uri(Navigation.Uri).GetLeftPart(UriPartial.Path);
+            var route = Navigation.ToBaseRelativePath(pathOnlyUri).Trim('/').ToLowerInvariant();
+            return GetDefinition(route);
+        }
+    }
 
     private static WorkspaceDefinition GetDefinition(string route) => route switch
     {
@@ -83,7 +91,7 @@
             ["Four momentum journeys are visible", "Returning contributors are identified", "Cross-event participation history is represented"],
             ["Relationship exploration", "Collaboration clusters", "Consent-aware connection context"],
             "Review the people gaining momentum",
-            "/#people-momentum"),
+            "/#momentum-heading"),
         "opportunities" => new(
             "Paths to contribute",
             "Opportunity Engine",

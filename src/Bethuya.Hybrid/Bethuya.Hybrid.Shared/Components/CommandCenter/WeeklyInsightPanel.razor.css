@@ -1,5 +1,5 @@
 /* BB cards do not include an editorial narrative layout with explainable signal disclosure. */
-.insight-card {
+::deep .insight-card {
     overflow: hidden;
     background:
         linear-gradient(118deg, rgba(212, 168, 48, 0.12), transparent 42%),
@@ -8,7 +8,7 @@
     border-radius: 0.9rem;
 }
 
-.insight-content {
+::deep .insight-content {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 1rem;

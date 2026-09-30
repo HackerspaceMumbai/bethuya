@@ -25,7 +25,7 @@ public class CommandCenterFlowTests : BethuyaE2ETest
         Directory.CreateDirectory("artifacts");
         await Page.ScreenshotAsync(new()
         {
-            Path = Path.Combine("artifacts", "homepage-command-center-desktop.png"),
+            Path = Path.Join("artifacts", "homepage-command-center-desktop.png"),
             FullPage = true
         });
 
@@ -51,7 +51,7 @@ public class CommandCenterFlowTests : BethuyaE2ETest
         Directory.CreateDirectory("artifacts");
         await Page.ScreenshotAsync(new()
         {
-            Path = Path.Combine("artifacts", "homepage-command-center-mobile.png"),
+            Path = Path.Join("artifacts", "homepage-command-center-mobile.png"),
             FullPage = true
         });
     }

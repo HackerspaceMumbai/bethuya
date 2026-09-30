@@ -1,9 +1,10 @@
 using Bethuya.Hybrid.Shared.Models.CommandCenter;
+using System.Globalization;
 
 namespace Bethuya.Hybrid.Shared.Services;
 
 /// <summary>Supplies stable, rule-driven data until live community intelligence providers are available.</summary>
-public sealed class DeterministicCommunityCommandCenterService : ICommunityCommandCenterService
+public sealed class DeterministicCommunityCommandCenterService(TimeProvider timeProvider) : ICommunityCommandCenterService
 {
     private static readonly IReadOnlyList<SnapshotMetric> Snapshot =
     [
@@ -21,9 +22,8 @@ public sealed class DeterministicCommunityCommandCenterService : ICommunityComma
         new("Akash Kumar", "AK", "Completed a first mentorship milestone.", "Member", "Mentee")
     ];
 
-    private static readonly IReadOnlyList<AttentionItem> Attention =
+    private static readonly IReadOnlyList<AttentionItem> OngoingAttention =
     [
-        new("Event operations", "Hacktoberfest Mumbai", "Volunteer coverage is short by two people with the event 12 days away.", "Assign volunteers", "/volunteers", AttentionSeverity.Critical, 100),
         new("Community health", "Akash has been waitlisted repeatedly", "Three consecutive waitlists are increasing disengagement risk.", "Review journey", "/community-health", AttentionSeverity.Required, 92),
         new("Mentorship", "Mentorship cohort pairing is delayed", "Two additional mentors are required before matching can finish.", "Find mentors", "/mentorship", AttentionSeverity.Required, 88),
         new("Volunteer network", "Returning contributor needs a follow-up", "A contributor returned after six months and has not received outreach.", "Draft outreach", "/volunteers", AttentionSeverity.Advisory, 76)
@@ -35,13 +35,6 @@ public sealed class DeterministicCommunityCommandCenterService : ICommunityComma
         new("Volunteer promotions", 3, "Contributors showing sustained organizer readiness.", "/volunteers"),
         new("Mentor pairings", 2, "Suggested matches based on stated goals and availability.", "/mentorship"),
         new("Outreach drafts", 5, "Re-engagement messages awaiting an organizer edit.", "/intelligence")
-    ];
-
-    private static readonly IReadOnlyList<UpcomingEventItem> UpcomingEvents =
-    [
-        new("Hacktoberfest Mumbai", "17 Oct", "150 confirmed · 18 waitlisted · volunteer gap: 2", "/events", true),
-        new("Platform Engineering Night", "24 Oct", "84 confirmed · volunteer gap: 1", "/events", true),
-        new("AgentCamp Mangaluru", "02 Nov", "Capacity at 95% · speaker lineup ready", "/events", false)
     ];
 
     private static readonly IReadOnlyList<DeadlineItem> Deadlines =
@@ -70,11 +63,29 @@ public sealed class DeterministicCommunityCommandCenterService : ICommunityComma
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        const CommandCenterMode recommendedMode = CommandCenterMode.Event;
-        const string modeReason = "Hacktoberfest Mumbai is 12 days away and volunteer coverage remains incomplete.";
+        var today = DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
+        var hacktoberfestDate = GetNextHacktoberfestDate(today);
+        var daysUntilEvent = hacktoberfestDate.DayNumber - today.DayNumber;
+        var hasEventPressure = daysUntilEvent <= 21;
+        var recommendedMode = hasEventPressure ? CommandCenterMode.Event : CommandCenterMode.Strategic;
+        var modeReason = hasEventPressure
+            ? $"Hacktoberfest Mumbai is {FormatDayDistance(daysUntilEvent)} and volunteer coverage remains incomplete."
+            : $"Hacktoberfest Mumbai is {daysUntilEvent} days away, so strategic community priorities remain in focus.";
         var effectiveMode = modeOverride ?? recommendedMode;
+        AttentionItem[] attention =
+        [
+            new(
+                "Event operations",
+                "Hacktoberfest Mumbai",
+                $"Volunteer coverage is short by two people with the event {FormatDayDistance(daysUntilEvent)}.",
+                "Assign volunteers",
+                "/volunteers",
+                hasEventPressure ? AttentionSeverity.Critical : AttentionSeverity.Advisory,
+                hasEventPressure ? 100 : 70),
+            .. OngoingAttention
+        ];
 
-        var attentionItems = Attention
+        var attentionItems = attention
             .OrderByDescending(item => effectiveMode == CommandCenterMode.Event && item.Category == "Event operations")
             .ThenByDescending(item => GetRolePriority(item, role))
             .ThenByDescending(item => item.Priority)
@@ -106,10 +117,45 @@ public sealed class DeterministicCommunityCommandCenterService : ICommunityComma
             Momentum,
             attentionItems,
             Reviews,
-            UpcomingEvents,
+            CreateUpcomingEvents(hacktoberfestDate),
             Deadlines,
             Workspaces));
     }
+
+    private static DateOnly GetNextHacktoberfestDate(DateOnly today)
+    {
+        var eventDate = new DateOnly(today.Year, 10, 17);
+        return eventDate < today ? eventDate.AddYears(1) : eventDate;
+    }
+
+    private static string FormatDayDistance(int daysUntilEvent) => daysUntilEvent switch
+    {
+        0 => "today",
+        1 => "1 day away",
+        _ => $"{daysUntilEvent} days away"
+    };
+
+    private static IReadOnlyList<UpcomingEventItem> CreateUpcomingEvents(DateOnly hacktoberfestDate) =>
+    [
+        new(
+            "Hacktoberfest Mumbai",
+            hacktoberfestDate.ToString("dd MMM", CultureInfo.InvariantCulture),
+            "150 confirmed · 18 waitlisted · volunteer gap: 2",
+            "/events",
+            true),
+        new(
+            "Platform Engineering Night",
+            hacktoberfestDate.AddDays(7).ToString("dd MMM", CultureInfo.InvariantCulture),
+            "84 confirmed · volunteer gap: 1",
+            "/events",
+            true),
+        new(
+            "AgentCamp Mangaluru",
+            hacktoberfestDate.AddDays(16).ToString("dd MMM", CultureInfo.InvariantCulture),
+            "Capacity at 95% · speaker lineup ready",
+            "/events",
+            false)
+    ];
 
     private static WeeklyInsight CreateInsight(string headline, string opening) => new(
         "Community insight of the week",

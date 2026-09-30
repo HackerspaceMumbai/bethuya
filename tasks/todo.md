@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-01] Addressing Homepage v3 review findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Resolve all actionable PR #61 feedback covering clock-driven mode selection, navigation correctness, BB scoped styling, accessibility semantics, exception handling, and E2E artifact paths; document and resolve inapplicable feedback.
+- **Acceptance:** Every review thread receives a disposition and is resolved; deterministic clock tests, query/fragment routing coverage, full unit tests, build, fresh Aspire migration proof, and targeted Playwright tests pass; changes are committed and pushed.
+
 ## [2026-10-01] Removing false migration failure and updating PR branch
 - **Status:** done
 - **Agent/Owner:** Copilot
