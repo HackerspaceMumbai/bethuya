@@ -2,6 +2,7 @@ using System.Text;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
+using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -158,6 +159,39 @@ public sealed class ImportDryRunServiceTests
         await Assert.That(preview.Rows[0].Disposition).IsEqualTo(ImportRowDisposition.WillCreate);
         await Assert.That(preview.Rows[1].Disposition).IsEqualTo(ImportRowDisposition.Error);
         await Assert.That(preview.CanCommit).IsFalse();
+    }
+
+    [Test]
+    public async Task StartAsync_EmailSharedByMultipleMembers_IsErrorAndBlocksCommit()
+    {
+        await using var db = CreateDbContext();
+        var eventId = await SeedEventAsync(db);
+        var template = await SeedRegistrationTemplateAsync(db);
+
+        foreach (var (userId, email) in new[] { ("user-1", "ada@example.com"), ("user-2", "ADA@example.com") })
+        {
+            db.CommunityMembers.Add(new CommunityMember
+            {
+                Id = CommunityMemberId.From(Guid.CreateVersion7()),
+                UserId = userId,
+                DisplayName = userId,
+                Email = email
+            });
+        }
+
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var csvBytes = Encoding.UTF8.GetBytes("Name,Email\nAda Lovelace,ada@example.com\nAlan Turing,alan@example.com\n");
+
+        var batch = await service.StartAsync(
+            eventId, template.Id, ImportKind.Registration, "luma-export.csv", "text/csv", csvBytes, "organizer-1");
+        var preview = await service.GetPreviewAsync(batch.Id);
+
+        await Assert.That(batch.ErrorRows).IsEqualTo(1);
+        await Assert.That(preview.CanCommit).IsFalse();
+        await Assert.That(preview.Rows.Single(r => r.Email == "ada@example.com").ValidationErrors)
+            .Contains(ImportDryRunService.AmbiguousMemberMessage);
     }
 
     private static ImportDryRunService CreateService(BethuyaDbContext db)

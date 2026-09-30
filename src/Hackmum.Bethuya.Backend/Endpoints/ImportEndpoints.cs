@@ -323,15 +323,10 @@ public static class ImportEndpoints
         ImportTemplateService templateService,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || request.ColumnMappings is null || request.ColumnMappings.Count == 0)
+        var validationErrors = ValidateTemplateRequest(request.Name, request.ColumnMappings);
+        if (validationErrors is not null)
         {
-            return Results.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["name"] = string.IsNullOrWhiteSpace(request.Name) ? ["Name is required."] : [],
-                ["columnMappings"] = request.ColumnMappings is null || request.ColumnMappings.Count == 0
-                    ? ["At least one column mapping is required."]
-                    : []
-            });
+            return Results.ValidationProblem(validationErrors);
         }
 
         var subject = GetSubject(user);
@@ -343,11 +338,11 @@ public static class ImportEndpoints
         try
         {
             var template = await templateService.CreateAsync(
-                request.Name,
+                request.Name!.Trim(),
                 request.SourceKind,
                 request.ImportKind,
                 subject.UserId,
-                request.ColumnMappings.Select(m => new ImportColumnMappingInput(m.SourceColumnName, m.TargetField)).ToList(),
+                request.ColumnMappings!.Select(m => new ImportColumnMappingInput(m.SourceColumnName.Trim(), m.TargetField)).ToList(),
                 ct);
 
             return Results.Ok(ImportTemplateResponse.FromModel(template));
@@ -405,12 +400,10 @@ public static class ImportEndpoints
         }
 
         var isAdmin = user.IsInRole(BethuyaRoleNames.Admin);
-        if (string.IsNullOrWhiteSpace(request.Name) || request.ColumnMappings is null || request.ColumnMappings.Count == 0)
+        var validationErrors = ValidateTemplateRequest(request.Name, request.ColumnMappings);
+        if (validationErrors is not null)
         {
-            return Results.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["template"] = ["A template name and at least one column mapping are required."]
-            });
+            return Results.ValidationProblem(validationErrors);
         }
 
         try
@@ -419,8 +412,8 @@ public static class ImportEndpoints
                 templateId,
                 subject.UserId,
                 isAdmin,
-                request.Name,
-                request.ColumnMappings.Select(m => new ImportColumnMappingInput(m.SourceColumnName, m.TargetField)).ToList(),
+                request.Name!.Trim(),
+                request.ColumnMappings!.Select(m => new ImportColumnMappingInput(m.SourceColumnName.Trim(), m.TargetField)).ToList(),
                 ct);
 
             return Results.Ok(ImportTemplateResponse.FromModel(template));
@@ -436,6 +429,57 @@ public static class ImportEndpoints
     }
 
     private static CommunitySubjectContext? GetSubject(ClaimsPrincipal user) => user.GetSubject();
+
+    /// <summary>Maximum length of a template name or source column name (matches the EF column limits).</summary>
+    public const int MaxTemplateTextLength = 200;
+
+    /// <summary>
+    /// Validates template name and column mappings up front so malformed input returns 400
+    /// instead of failing later in the service or at the database.
+    /// </summary>
+    public static Dictionary<string, string[]>? ValidateTemplateRequest(
+        string? name,
+        IReadOnlyList<ImportColumnMappingResponse>? columnMappings)
+    {
+        var errors = new Dictionary<string, string[]>();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            errors["name"] = ["Name is required."];
+        }
+        else if (name.Trim().Length > MaxTemplateTextLength)
+        {
+            errors["name"] = [$"Name must be {MaxTemplateTextLength} characters or fewer."];
+        }
+
+        if (columnMappings is null || columnMappings.Count == 0)
+        {
+            errors["columnMappings"] = ["At least one column mapping is required."];
+        }
+        else
+        {
+            var mappingErrors = new List<string>();
+            for (var i = 0; i < columnMappings.Count; i++)
+            {
+                var source = columnMappings[i]?.SourceColumnName;
+                if (string.IsNullOrWhiteSpace(source))
+                {
+                    mappingErrors.Add($"Column mapping {i + 1} requires a source column name.");
+                }
+                else if (source.Trim().Length > MaxTemplateTextLength)
+                {
+                    mappingErrors.Add($"Column mapping {i + 1} source column name must be {MaxTemplateTextLength} characters or fewer.");
+                }
+            }
+
+            if (mappingErrors.Count > 0)
+            {
+                errors["columnMappings"] = [.. mappingErrors];
+            }
+        }
+
+        return errors.Count == 0 ? null : errors;
+    }
 
     private static async Task<bool> CanAccessBatchAsync(
         Guid importBatchId,

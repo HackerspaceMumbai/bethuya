@@ -222,6 +222,10 @@ public sealed partial class ImportDryRunService(
     /// Attendance imports — an append-only ledger — "update" instead means an attendance record
     /// already exists for that person and event, so committing this row would be a no-op.
     /// </summary>
+    /// <summary>Row error shown when more than one community member already shares the row's email.</summary>
+    public const string AmbiguousMemberMessage =
+        "Multiple community members already share this email. Resolve the duplicate member records before importing this row.";
+
     private async Task<ImportPreviewReport> ComputePreviewAsync(
         Guid eventId,
         ImportKind importKind,
@@ -262,6 +266,21 @@ public sealed partial class ImportDryRunService(
                     .ToHashSet(StringComparer.Ordinal);
         }
 
+        // Identity safety: never silently pick one of several members that share an email.
+        // Surfacing these rows as errors blocks the commit until an organizer resolves the duplicate.
+#pragma warning disable CA1304, CA1311 // Npgsql translates ToLower() to lower(), backed by IX_CommunityMembers_NormalizedEmail.
+        var ambiguousEmails = validEmails.Length == 0
+            ? []
+            : (await db.CommunityMembers
+                .Where(member => validEmails.Contains(member.Email.ToLower()))
+                .Select(member => member.Email)
+                .ToListAsync(ct))
+                .GroupBy(email => email.Trim().ToLowerInvariant(), StringComparer.Ordinal)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToHashSet(StringComparer.Ordinal);
+#pragma warning restore CA1304, CA1311
+
         var rowPreviews = new List<ImportRowPreview>(normalizedRows.Count);
         var createCount = 0;
         var updateCount = 0;
@@ -277,6 +296,12 @@ public sealed partial class ImportDryRunService(
             if (importKind == ImportKind.Attendance && row.SkipAttendance)
             {
                 rowPreviews.Add(new ImportRowPreview(row.RowIndex, row.Email, ImportRowDisposition.Skipped, []));
+                continue;
+            }
+
+            if (ambiguousEmails.Contains(row.Email!))
+            {
+                rowPreviews.Add(new ImportRowPreview(row.RowIndex, row.Email, ImportRowDisposition.Error, [AmbiguousMemberMessage]));
                 continue;
             }
 

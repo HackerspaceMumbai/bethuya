@@ -86,23 +86,12 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
             .OrderByDescending(registration => registration.UpdatedAt)
             .ToListAsync(ct);
 
-        var attendanceQuery = db.ParticipationLedgerEntries.AsNoTracking()
-            .Where(entry => entry.IngestionMethod == ParticipationIngestionMethod.FileImport &&
-                entry.Activity == ParticipationActivityKind.Attended);
-        if (db.Database.IsNpgsql())
-        {
-#pragma warning disable CA1304, CA1311, CA1862 // Npgsql translates ToLower() to exact SQL lower(); unlike ILIKE, email wildcards remain literal.
-            attendanceQuery = attendanceQuery
-                .Where(entry => entry.ExternalMemberKey.ToLower() == normalizedMemberEmail);
-#pragma warning restore CA1304, CA1311, CA1862
-        }
-        else
-        {
-            attendanceQuery = attendanceQuery
-                .Where(entry => string.Equals(entry.ExternalMemberKey, member.Email, StringComparison.OrdinalIgnoreCase));
-        }
-
-        var importedAttendance = await attendanceQuery.ToListAsync(ct);
+        var memberId = member.Id;
+        var importedAttendance = await db.ParticipationLedgerEntries.AsNoTracking()
+            .Where(entry => entry.CommunityMemberId == memberId &&
+                entry.IngestionMethod == ParticipationIngestionMethod.FileImport &&
+                entry.Activity == ParticipationActivityKind.Attended)
+            .ToListAsync(ct);
 
         var eventIds = registrations
             .Select(registration => registration.EventId)

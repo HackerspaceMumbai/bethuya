@@ -26,12 +26,24 @@ public sealed class CsvImportFileParser : IImportFileParser
                 throw new ImportFileParseException("The CSV file does not contain a header row.");
             }
 
-            var headers = csv.HeaderRecord.ToList();
-            if (headers.Count > ImportFileLimits.MaxColumns)
+            if (csv.HeaderRecord.Length > ImportFileLimits.MaxColumns)
             {
                 throw new ImportFileParseException(
                     $"The CSV file has more than {ImportFileLimits.MaxColumns} columns.");
             }
+
+            // Blank header columns carry no mappable data, mirroring the XLSX parser.
+            var headerColumns = csv.HeaderRecord
+                .Select((header, index) => (Index: index, Header: header.Trim()))
+                .Where(pair => pair.Header.Length > 0)
+                .ToList();
+            if (headerColumns.Count == 0)
+            {
+                throw new ImportFileParseException("The CSV file does not contain a header row.");
+            }
+
+            var headers = headerColumns.Select(pair => pair.Header).ToList();
+            ImportFileLimits.EnsureUniqueHeaders(headers, "CSV");
 
             var rows = new List<IReadOnlyDictionary<string, string?>>();
 
@@ -44,9 +56,9 @@ public sealed class CsvImportFileParser : IImportFileParser
                 }
 
                 var row = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-                foreach (var header in headers)
+                foreach (var (columnIndex, header) in headerColumns)
                 {
-                    var value = csv.GetField(header);
+                    var value = csv.TryGetField<string>(columnIndex, out var field) ? field : null;
                     if (value?.Length > ImportFileLimits.MaxCellLength)
                     {
                         throw new ImportFileParseException(

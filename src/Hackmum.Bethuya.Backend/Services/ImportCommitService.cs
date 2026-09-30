@@ -313,9 +313,20 @@ public sealed class ImportCommitService(BethuyaDbContext db)
                     .ToListAsync(ct);
 #pragma warning restore CA1304, CA1311
 
-            var resolved = existingMembers
+            var groups = existingMembers
                 .GroupBy(m => m.Email.Trim().ToLowerInvariant(), StringComparer.Ordinal)
-                .ToDictionary(group => group.Key, group => group.First().Id, StringComparer.Ordinal);
+                .ToList();
+
+            // The Dry Run flags these rows as errors; this guards against members created between
+            // the Dry Run and the commit so an import never merges into an arbitrary duplicate.
+            var ambiguous = groups.Where(group => group.Count() > 1).Select(group => group.Key).ToList();
+            if (ambiguous.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"{ambiguous.Count} email(s) in this import match more than one community member. Resolve the duplicate member records and run the Dry Run again.");
+            }
+
+            var resolved = groups.ToDictionary(group => group.Key, group => group.Single().Id, StringComparer.Ordinal);
 
             foreach (var email in emails)
             {

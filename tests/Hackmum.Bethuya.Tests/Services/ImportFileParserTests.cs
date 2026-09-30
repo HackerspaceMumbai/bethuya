@@ -166,6 +166,65 @@ public sealed class ImportFileParserTests
     }
 
     [Test]
+    [Arguments("Name,Email,Email\nAda,a@example.com,b@example.com\n")]
+    [Arguments("Name,Email, email \nAda,a@example.com,b@example.com\n")]
+    public async Task CsvImportFileParser_DuplicateHeaders_Throws(string csv)
+    {
+        var parser = new CsvImportFileParser();
+
+        await Assert.That(() => parser.Parse(ToStream(csv))).Throws<ImportFileParseException>();
+    }
+
+    [Test]
+    public async Task CsvImportFileParser_BlankHeader_IsSkipped()
+    {
+        var parser = new CsvImportFileParser();
+
+        var parsed = parser.Parse(ToStream("Name,,Email\nAda,ignored,ada@example.com\n"));
+
+        await Assert.That(parsed.Headers).IsEquivalentTo(["Name", "Email"]);
+        await Assert.That(parsed.Rows[0]["Email"]).IsEqualTo("ada@example.com");
+    }
+
+    [Test]
+    public async Task XlsxImportFileParser_DuplicateHeaders_Throws()
+    {
+        using var stream = new MemoryStream();
+        using (var workbook = new XLWorkbook())
+        {
+            var worksheet = workbook.Worksheets.Add("Sheet1");
+            worksheet.Cell(1, 1).Value = "Email";
+            worksheet.Cell(1, 2).Value = "EMAIL";
+            worksheet.Cell(2, 1).Value = "a@example.com";
+            worksheet.Cell(2, 2).Value = "b@example.com";
+            workbook.SaveAs(stream);
+        }
+
+        stream.Position = 0;
+        var parser = new XlsxImportFileParser();
+
+        await Assert.That(() => parser.Parse(stream)).Throws<ImportFileParseException>();
+    }
+
+    [Test]
+    public async Task XlsxImportFileParser_TooManyZipEntries_Throws()
+    {
+        using var stream = new MemoryStream();
+        using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        {
+            for (var i = 0; i <= ImportFileLimits.MaxZipEntries; i++)
+            {
+                archive.CreateEntry($"part{i}.xml");
+            }
+        }
+
+        stream.Position = 0;
+        var parser = new XlsxImportFileParser();
+
+        await Assert.That(() => parser.Parse(stream)).Throws<ImportFileParseException>();
+    }
+
+    [Test]
     public async Task ImportFileParserResolver_ResolvesByExtension()
     {
         var resolver = new ImportFileParserResolver([new CsvImportFileParser(), new XlsxImportFileParser()]);

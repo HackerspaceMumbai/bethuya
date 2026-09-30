@@ -11,6 +11,33 @@ public static class ImportFileLimits
 
     /// <summary>Maximum number of characters permitted in one source cell.</summary>
     public const int MaxCellLength = 16_384;
+
+    /// <summary>Maximum number of ZIP entries permitted in an XLSX package (zip-bomb guard).</summary>
+    public const int MaxZipEntries = 1_000;
+
+    /// <summary>Maximum total declared uncompressed size of an XLSX package (zip-bomb guard).</summary>
+    public const long MaxUncompressedBytes = 200L * 1024 * 1024;
+
+    /// <summary>
+    /// Rejects header rows containing columns that collide after trimming and case-folding. Rows are
+    /// keyed by header case-insensitively, so such collisions would silently drop source data.
+    /// </summary>
+    /// <param name="headers">Trimmed header names in file order.</param>
+    /// <param name="fileKind">A display label for error messages, e.g. <c>CSV</c>.</param>
+    public static void EnsureUniqueHeaders(IEnumerable<string> headers, string fileKind)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var header in headers)
+        {
+            if (!seen.Add(header))
+            {
+                throw new ImportFileParseException(
+                    $"The {fileKind} file has more than one column named '{header}'. Rename or remove the duplicate column and upload again.");
+            }
+        }
+    }
 }
 
 /// <summary>

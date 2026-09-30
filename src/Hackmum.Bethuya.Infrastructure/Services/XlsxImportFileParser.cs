@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using ClosedXML.Excel;
 using Hackmum.Bethuya.Core.Services;
 
@@ -12,6 +13,17 @@ public sealed class XlsxImportFileParser : IImportFileParser
     {
         try
         {
+            if (!content.CanSeek)
+            {
+                // The package preflight must rewind before ClosedXML reads the stream.
+                var buffered = new MemoryStream();
+                content.CopyTo(buffered);
+                buffered.Position = 0;
+                content = buffered;
+            }
+
+            EnsurePackageWithinLimits(content);
+
             using var workbook = new XLWorkbook(content);
             var worksheet = workbook.Worksheets.FirstOrDefault()
                 ?? throw new ImportFileParseException("The XLSX file does not contain any worksheets.");
@@ -52,6 +64,7 @@ public sealed class XlsxImportFileParser : IImportFileParser
             }
 
             var headers = headerCells.Select(pair => pair.Header).ToList();
+            ImportFileLimits.EnsureUniqueHeaders(headers, "XLSX");
 
             var rows = new List<IReadOnlyDictionary<string, string?>>();
             foreach (var dataRow in rowsUsed.Skip(1))
@@ -89,5 +102,35 @@ public sealed class XlsxImportFileParser : IImportFileParser
         {
             throw new ImportFileParseException("The XLSX file could not be parsed. Please check that it is a valid, well-formed spreadsheet export.", ex);
         }
+    }
+
+    /// <summary>
+    /// Inspects the XLSX ZIP central directory before ClosedXML inflates any part, rejecting
+    /// packages whose entry count or declared uncompressed size could exhaust memory.
+    /// </summary>
+    private static void EnsurePackageWithinLimits(Stream content)
+    {
+        var start = content.Position;
+        using (var archive = new ZipArchive(content, ZipArchiveMode.Read, leaveOpen: true))
+        {
+            if (archive.Entries.Count > ImportFileLimits.MaxZipEntries)
+            {
+                throw new ImportFileParseException(
+                    $"The XLSX file contains more than {ImportFileLimits.MaxZipEntries} internal parts.");
+            }
+
+            long totalUncompressed = 0;
+            foreach (var entry in archive.Entries)
+            {
+                totalUncompressed += entry.Length;
+                if (entry.Length < 0 || totalUncompressed > ImportFileLimits.MaxUncompressedBytes)
+                {
+                    throw new ImportFileParseException(
+                        "The XLSX file expands beyond the permitted size. Export a smaller spreadsheet and try again.");
+                }
+            }
+        }
+
+        content.Position = start;
     }
 }
