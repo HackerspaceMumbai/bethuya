@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -15,7 +14,6 @@ public static class MigrationHistoryBootstrapper
         ArgumentNullException.ThrowIfNull(dbContext);
 
         var historyRepository = dbContext.GetService<IHistoryRepository>();
-        var createScript = historyRepository.GetCreateIfNotExistsScript();
-        return dbContext.Database.ExecuteSqlRawAsync(createScript, cancellationToken);
+        return historyRepository.CreateIfNotExistsAsync(cancellationToken);
     }
 }

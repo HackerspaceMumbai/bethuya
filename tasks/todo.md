@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-01] Addressing migration and E2E review follow-ups
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Use EF Core's provider-aware migration-history creation API and make Event Mode Playwright assertions independent of the system date.
+- **Acceptance:** Migration-history bootstrap remains idempotent and concurrency-safe through the provider API; both command-center E2E tests explicitly select Event Mode; build, TUnit, fresh Aspire migration, and targeted Playwright checks pass; both review threads are replied to and resolved.
+- **Completion Evidence:** Solution build passed with 0 warnings/errors; 438/438 TUnit tests passed; fresh Aspire migration-service finished with no `Failed executing` logs while backend/web became healthy; 2/2 Playwright tests passed after explicitly selecting Event Mode.
+
 ## [2026-10-01] Making command-center modes operational
 - **Status:** done
 - **Agent/Owner:** Copilot

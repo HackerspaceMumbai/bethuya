@@ -10,6 +10,7 @@ public class CommandCenterFlowTests : BethuyaE2ETest
     {
         await GotoWithBudgetAsync("/");
         await CollapseDevPersonaToolbarAsync();
+        await SelectEventModeAsync();
 
         var commandCenter = Page.Locator("[data-test='community-command-center']");
         await Assertions.Expect(commandCenter).ToBeVisibleAsync();
@@ -60,6 +61,7 @@ public class CommandCenterFlowTests : BethuyaE2ETest
         await Page.SetViewportSizeAsync(390, 844);
         await GotoWithBudgetAsync("/");
         await CollapseDevPersonaToolbarAsync();
+        await SelectEventModeAsync();
 
         await Assertions.Expect(Page.Locator("[data-test='community-command-center']")).ToBeVisibleAsync();
         await Assertions.Expect(Page.Locator("[data-test='community-snapshot']")).ToBeVisibleAsync();
@@ -83,5 +85,11 @@ public class CommandCenterFlowTests : BethuyaE2ETest
         {
             await toggle.ClickAsync();
         }
+    }
+
+    private async Task SelectEventModeAsync()
+    {
+        await Page.Locator("[data-test='mode-event'] button").ClickAsync();
+        await Assertions.Expect(Page.Locator("[data-test='mode-layout-event']")).ToBeVisibleAsync();
     }
 }

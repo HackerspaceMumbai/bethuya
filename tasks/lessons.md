@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-01] Prefer provider migration APIs over executing generated SQL directly
+- **What happened:** The history-table bootstrap executed `GetCreateIfNotExistsScript()` through `ExecuteSqlRawAsync`, which was idempotent sequentially but bypassed provider handling for concurrent creation races.
+- **Root cause:** Generated SQL captures database syntax but not all provider-specific exception handling around that operation.
+- **Fix:** Call `IHistoryRepository.CreateIfNotExistsAsync` so the active provider owns both the SQL and its concurrency behavior.
+- **Prevention:** When EF exposes an operation method alongside a generated-script method, prefer the operation method unless the script must be composed into a larger transaction.
+
 ## [2026-10-01] Full solution builds require all Aspire project resources to release assemblies
 - **What happened:** A full solution build still encountered a locked `ServiceDefaults.dll` after the `backend` and `web` resources were stopped.
 - **Root cause:** The independently hosted `planner-hosted` project also references `ServiceDefaults` and remained alive while the broader solution build tried to replace its output.
