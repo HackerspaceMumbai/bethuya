@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-01] Documenting Homepage v3 command-center architecture
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add durable product and architecture documentation under `/docs` covering the Homepage v3 ethos, Strategic/Event mode semantics, deterministic intelligence rationale, stable provider boundary, workspace-routing principle, migration bootstrap decision, and verification expectations; link it from the README.
+- **Acceptance:** A dedicated document explains both current behavior and future integration seams without relying on task logs or PR context, and the README provides a discoverable link.
+- **Completion Evidence:** Added `docs/HOMEPAGE_COMMAND_CENTER.md` and linked it from `README.md`; the document covers the 30-second operating questions, human-review ethos, operational mode hierarchy, module responsibilities, provider contract, future replacement rules, workspace boundaries, migration reliability decision, verification contract, and v3 non-goals.
+
 ## [2026-10-01] Addressing migration and E2E review follow-ups
 - **Status:** done
 - **Agent/Owner:** Copilot
