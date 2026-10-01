@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-01] Refreshing same-event curation availability
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the non-inline PR review finding by refreshing curation availability when navigation remains within the same event context.
+- **Acceptance:** Returning from imports to another route for the same event re-queries availability and updates the Curation link; unrelated navigation does not add API calls; focused tests pass.
+- **Completion Evidence:** Added a same-event imports-to-event regression test; the full TUnit suite passes 439/439.
+
 ## [2026-10-01] Documenting Homepage v3 command-center architecture
 - **Status:** done
 - **Agent/Owner:** Copilot
