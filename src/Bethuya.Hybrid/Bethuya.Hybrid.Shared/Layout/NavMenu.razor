@@ -148,6 +148,7 @@
     private bool _isOnCurationRoute;
     private bool _availabilityResolved;
     private CurationAvailabilityDto? _curationAvailability;
+    private CancellationTokenSource? _availabilityLoadCts;
 
     // Curation is needed once registrations exceed venue capacity. If the signal cannot be read
     // (API unavailable or failed), keep the link visible — the curation endpoints still authorize.
@@ -168,7 +169,7 @@
         UpdateEventContext();
         _ = InvokeAsync(async () =>
         {
-            if (previousEventId != _currentEventId)
+            if (previousEventId != _currentEventId || _currentEventId is not null)
             {
                 await LoadCurationAvailabilityAsync();
             }
@@ -184,6 +185,10 @@
 
     private async Task LoadCurationAvailabilityAsync()
     {
+        _availabilityLoadCts?.Cancel();
+        _availabilityLoadCts?.Dispose();
+        _availabilityLoadCts = new CancellationTokenSource();
+        var loadCts = _availabilityLoadCts;
         var eventId = _currentEventId;
         _curationAvailability = null;
         _availabilityResolved = false;
@@ -199,7 +204,11 @@
         {
             try
             {
-                availability = await curationApi.GetAvailabilityAsync(id);
+                availability = await curationApi.GetAvailabilityAsync(id, loadCts.Token);
+            }
+            catch (OperationCanceledException) when (loadCts.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
             {
@@ -207,8 +216,8 @@
             }
         }
 
-        // Ignore a response that arrived after the user navigated to another event.
-        if (_currentEventId == eventId)
+        // Ignore responses superseded by a newer load, including same-event navigation.
+        if (ReferenceEquals(_availabilityLoadCts, loadCts) && _currentEventId == eventId)
         {
             _curationAvailability = availability;
             _availabilityResolved = true;
@@ -276,5 +285,7 @@
     public void Dispose()
     {
         Navigation.LocationChanged -= HandleLocationChanged;
+        _availabilityLoadCts?.Cancel();
+        _availabilityLoadCts?.Dispose();
     }
 }

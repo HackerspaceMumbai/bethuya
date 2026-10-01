@@ -16,6 +16,18 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-01] Use one callback for mixed asynchronous substitute responses
+- **What happened:** A NSubstitute setup mixed a concrete task with callback delegates in the sequential `Returns` overload and failed to compile.
+- **Root cause:** That overload inferred concrete `Task<T>` values and could not accept delegate-shaped entries.
+- **Fix:** Used one callback with an invocation counter to choose each asynchronous response.
+- **Prevention:** When sequential substitute responses need different asynchronous behavior, use a single callback that returns the appropriate `Task<T>` per invocation.
+
+## [2026-10-01] Use Microsoft Testing Platform filters for TUnit projects
+- **What happened:** A focused `dotnet test` invocation used the VSTest `--filter` option, which the repository's Microsoft Testing Platform/TUnit runner rejected.
+- **Root cause:** The test project runs as a Microsoft Testing Platform executable and supports `--filter-uid` or `--treenode-filter`, not the legacy VSTest filter syntax.
+- **Fix:** Ran the complete TUnit project, which passed all 439 tests.
+- **Prevention:** Use the test application's advertised Microsoft Testing Platform options for focused TUnit runs; do not assume VSTest `--filter` is available.
+
 ## [2026-10-01] Prefer provider migration APIs over executing generated SQL directly
 - **What happened:** The history-table bootstrap executed `GetCreateIfNotExistsScript()` through `ExecuteSqlRawAsync`, which was idempotent sequentially but bypassed provider handling for concurrent creation races.
 - **Root cause:** Generated SQL captures database syntax but not all provider-specific exception handling around that operation.

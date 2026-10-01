@@ -60,6 +60,51 @@ public class NavMenuCurationRenderTests
     }
 
     [Test]
+    public async Task SameEventNavigation_AfterRegistrationsIncrease_RefreshesCurationLink()
+    {
+        var curationApi = Substitute.For<ICurationApi>();
+        var olderResponse = new TaskCompletionSource<CurationAvailabilityDto>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var newerResponse = new TaskCompletionSource<CurationAvailabilityDto>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var olderResponseObserved = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var invocation = 0;
+        curationApi.GetAvailabilityAsync(EventId, Arg.Any<CancellationToken>())
+            .Returns(_ => Interlocked.Increment(ref invocation) switch
+            {
+                1 => Task.FromResult(new CurationAvailabilityDto(EventId, 100, 40, false)),
+                2 => ObserveOlderResponseAsync(),
+                _ => newerResponse.Task
+            });
+        using var ctx = CreateContext(curationApi, BethuyaRoles.Curator);
+        var navigation = ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"imports?eventId={EventId}");
+
+        var cut = ctx.RenderComponent<NavMenu>();
+        cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-not-needed']").Count == 1, TimeSpan.FromSeconds(5));
+
+        navigation.NavigateTo($"events/{EventId}");
+        navigation.NavigateTo($"curation/{EventId}");
+        newerResponse.SetResult(new CurationAvailabilityDto(EventId, 100, 106, true));
+        cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-link']").Count == 1, TimeSpan.FromSeconds(5));
+
+        olderResponse.SetResult(new CurationAvailabilityDto(EventId, 100, 40, false));
+        await olderResponseObserved.Task;
+        await cut.InvokeAsync(() => { });
+
+        await Assert.That(cut.FindAll("[data-test='nav-curation-link']").Count).IsEqualTo(1);
+        await curationApi.Received(3).GetAvailabilityAsync(EventId, Arg.Any<CancellationToken>());
+
+        async Task<CurationAvailabilityDto> ObserveOlderResponseAsync()
+        {
+            var result = await olderResponse.Task;
+            olderResponseObserved.SetResult();
+            return result;
+        }
+    }
+
+    [Test]
     public async Task EventRoute_OrganizerWithoutCuratorRole_DoesNotCheckAvailability()
     {
         var curationApi = CreateApi(capacity: 100, registrations: 106);
