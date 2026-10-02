@@ -87,7 +87,7 @@ public class NavMenuCurationRenderTests
         cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-not-needed']").Count == 1, TimeSpan.FromSeconds(5));
 
         navigation.NavigateTo($"events/{EventId}");
-        navigation.NavigateTo($"curation/{EventId}");
+        navigation.NavigateTo($"agents/{EventId}");
         newerResponse.SetResult(new CurationAvailabilityDto(EventId, 100, 106, true));
         cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-link']").Count == 1, TimeSpan.FromSeconds(5));
 
