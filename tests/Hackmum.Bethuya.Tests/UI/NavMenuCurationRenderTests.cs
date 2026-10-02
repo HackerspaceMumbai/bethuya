@@ -5,9 +5,11 @@ using BlazorBlueprint.Components;
 using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using System.Security.Claims;
 using BunitCtx = Bunit.TestContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
@@ -57,6 +59,84 @@ public class NavMenuCurationRenderTests
         cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-link']").Count == 1, TimeSpan.FromSeconds(5));
 
         await Assert.That(cut.FindAll("[data-test='nav-curation-not-needed']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task SameEventNavigation_AfterRegistrationsIncrease_RefreshesCurationLink()
+    {
+        var curationApi = Substitute.For<ICurationApi>();
+        var olderResponse = new TaskCompletionSource<CurationAvailabilityDto>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var newerResponse = new TaskCompletionSource<CurationAvailabilityDto>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var olderResponseObserved = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var invocation = 0;
+        curationApi.GetAvailabilityAsync(EventId, Arg.Any<CancellationToken>())
+            .Returns(_ => Interlocked.Increment(ref invocation) switch
+            {
+                1 => Task.FromResult(new CurationAvailabilityDto(EventId, 100, 40, false)),
+                2 => ObserveOlderResponseAsync(),
+                _ => newerResponse.Task
+            });
+        using var ctx = CreateContext(curationApi, BethuyaRoles.Curator);
+        var navigation = ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"imports?eventId={EventId}");
+
+        var cut = ctx.RenderComponent<NavMenu>();
+        cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-not-needed']").Count == 1, TimeSpan.FromSeconds(5));
+
+        navigation.NavigateTo($"events/{EventId}");
+        navigation.NavigateTo($"agents/{EventId}");
+        newerResponse.SetResult(new CurationAvailabilityDto(EventId, 100, 106, true));
+        cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-link']").Count == 1, TimeSpan.FromSeconds(5));
+
+        olderResponse.SetResult(new CurationAvailabilityDto(EventId, 100, 40, false));
+        await olderResponseObserved.Task;
+        await cut.InvokeAsync(() => { });
+
+        await Assert.That(cut.FindAll("[data-test='nav-curation-link']").Count).IsEqualTo(1);
+        await curationApi.Received(3).GetAvailabilityAsync(EventId, Arg.Any<CancellationToken>());
+
+        async Task<CurationAvailabilityDto> ObserveOlderResponseAsync()
+        {
+            var result = await olderResponse.Task;
+            olderResponseObserved.SetResult();
+            return result;
+        }
+    }
+
+    [Test]
+    public async Task AuthenticationPending_WhenLoadIsSuperseded_OnlyCurrentLoadQueriesAvailability()
+    {
+        var curationApi = CreateApi(capacity: 100, registrations: 106);
+        using var ctx = new BunitCtx();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddBlazorBlueprintComponents();
+        ctx.Services.AddSingleton(curationApi);
+        ctx.AddTestAuthorization();
+        var authenticationState = new TaskCompletionSource<AuthenticationState>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var navigation = ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"imports?eventId={EventId}");
+
+        var host = ctx.RenderComponent<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
+            .Add(component => component.Value, authenticationState.Task)
+            .AddChildContent<NavMenu>());
+
+        navigation.NavigateTo($"events/{EventId}");
+        await host.InvokeAsync(() => Task.CompletedTask);
+        authenticationState.SetResult(new AuthenticationState(new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [new Claim(ClaimTypes.Name, "Dev User"), new Claim(ClaimTypes.Role, BethuyaRoles.Curator)],
+                "Test"))));
+
+        host.WaitForState(
+            () => curationApi.ReceivedCalls().Count() == 1,
+            TimeSpan.FromSeconds(5));
+        await host.InvokeAsync(() => Task.CompletedTask);
+
+        await curationApi.Received(1).GetAvailabilityAsync(EventId, Arg.Any<CancellationToken>());
     }
 
     [Test]

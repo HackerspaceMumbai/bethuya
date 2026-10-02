@@ -1,0 +1,233 @@
+@page "/member/home"
+@rendermode InteractiveServer
+@using Bethuya.Hybrid.Shared.Components.Dashboard
+@using Bethuya.Hybrid.Shared.Services
+@inject IEventApi EventApi
+@inject IImportApi ImportApi
+@inject IProfileApi ProfileApi
+@inject ICurrentUserService CurrentUser
+
+<PageTitle>My Community — Bethuya</PageTitle>
+
+<a class="skip-link" href="#dashboard-main">Skip to main content</a>
+
+<main id="dashboard-main" aria-label="Dashboard">
+
+    @if (isLoading)
+    {
+        <div data-test="loading-state" class="p-8 text-center">
+            <p>Loading events…</p>
+        </div>
+    }
+    else if (errorMessage is not null)
+    {
+        <div data-test="error-state">
+            <BbAlert Variant="AlertVariant.Danger">
+                <BbAlertDescription>@errorMessage</BbAlertDescription>
+            </BbAlert>
+        </div>
+    }
+    else if (_redirectRoute is not null)
+    {
+        <section class="onboarding-redirect" aria-label="Complete your profile" data-test="onboarding-redirect">
+            <BbCard Class="onboarding-redirect-card">
+                <BbCardHeader>
+                    <BbCardTitle>Finish setup before you explore Bethuya</BbCardTitle>
+                    <BbCardDescription>
+                        We’re taking you to the three-step onboarding flow now so your dashboard, registrations, verified social identities, and accessibility preferences start in the right place.
+                    </BbCardDescription>
+                </BbCardHeader>
+                <BbCardContent Class="onboarding-redirect-card__content">
+                    <ol class="onboarding-redirect-list">
+                        <li>Add your required attendee details.</li>
+                        <li>Verify your GitHub and LinkedIn accounts.</li>
+                        <li>Optionally share accessibility and inclusion context, then return to the dashboard.</li>
+                    </ol>
+                    <BbButton Variant="ButtonVariant.Default" Class="onboarding-redirect-button"
+                              OnClick="@(() => Navigation.NavigateTo(_redirectRoute!))">
+                        Continue setup
+                    </BbButton>
+                </BbCardContent>
+            </BbCard>
+        </section>
+    }
+    else
+    {
+        @* ── AI Insights Banner ── *@
+        @if (featuredEvent is not null && featuredEvent.AgendaStatus is null)
+        {
+            <AiInsightsBanner EventTitle="@featuredEvent.Title"
+                              ReviewUrl="@($"/events/{featuredEvent.Id}")" />
+        }
+
+        @* ── Dashboard grid: stats column + featured event ── *@
+        <div class="dashboard-grid">
+            <div class="stats-column">
+                <div class="stats-grid" data-test="stats-row" aria-label="Event statistics">
+                    <StatCard Label="Total Events" Value="@events.Count" IconName="calendar" />
+                    <StatCard Label="Drafts" Value="@events.Count(e => e.Status == "Draft")" IconName="file-edit" />
+                    <StatCard Label="Upcoming" Value="@UpcomingCount" IconName="calendar-clock" />
+                    <StatCard Label="Completed" Value="@events.Count(e => e.Status == "Completed")" IconName="circle-check" />
+                </div>
+
+                <div class="plan-event-cta" data-test="plan-event-cta">
+                    <BbButton Variant="ButtonVariant.Default" Class="cta-btn"
+                              OnClick="@(() => Navigation.NavigateTo("/events/plan"))">
+                        <LucideIcon Name="plus" Size="16" />
+                        Plan New Event
+                    </BbButton>
+                </div>
+            </div>
+
+            <FeaturedEventCard Event="@featuredEvent"
+                               OnPanelClick="@(() => Navigation.NavigateTo("/agents"))"
+                               OnCurationClick="@(() => Navigation.NavigateTo("/curation"))"
+                               OnEditClick="@(() => { if (featuredEvent is not null) Navigation.NavigateTo($"/events/plan?edit={featuredEvent.Id}"); })" />
+        </div>
+
+        @* ── Events list ── *@
+        <section class="events-section" aria-label="All events">
+            <h2 class="section-title">Events</h2>
+
+            @if (events.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>No events yet.</p>
+                    <p class="empty-hint">Plan your first community event to get started!</p>
+                </div>
+            }
+            else
+            {
+                <div class="events-grid">
+                    @foreach (var evt in events)
+                    {
+                        <EventCard Event="@evt"
+                                   OnDraftClick="@(e => Navigation.NavigateTo(e.Status == "Draft" ? $"/events/plan?edit={e.Id}" : $"/events/{e.Id}"))"
+                                   OnRegistrationsClick="@(e => Navigation.NavigateTo($"/events/{e.Id}/registrations"))" />
+                    }
+                </div>
+            }
+        </section>
+    }
+
+</main>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private List<EventViewModel> events = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? _redirectRoute;
+
+    private int UpcomingCount => events.Count(e =>
+        e.StartDate >= DateOnly.FromDateTime(DateTime.Now) &&
+        e.Status is not ("Completed" or "Cancelled"));
+    private static bool IsSocialBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassSocialConnections"), "true", StringComparison.OrdinalIgnoreCase);
+    private static bool IsMandatoryBypassEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"), "true", StringComparison.OrdinalIgnoreCase);
+
+    private EventViewModel? featuredEvent =>
+        events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled") && e.StartDate >= DateOnly.FromDateTime(DateTime.Now))
+        ?? events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled"));
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check profile completion before loading dashboard data
+        if (CurrentUser.IsAuthenticated && !IsMandatoryBypassEnabled)
+        {
+            try
+            {
+                var status = await ProfileApi.GetCompletionStatusAsync();
+                _redirectRoute = status switch
+                {
+                    { IsProfileComplete: false } => "/registration/mandatory",
+                    { IsSocialConnectionsComplete: false } =>
+                        IsSocialBypassEnabled ? "/registration/aide" : "/registration/social",
+                    _ => null
+                };
+            }
+            catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+            {
+                // If profile check fails, continue to dashboard
+            }
+        }
+
+        if (_redirectRoute is not null)
+        {
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var eventTask = EventApi.GetAllAsync();
+            var summaryTask = LoadRegistrationSummariesAsync();
+            var dtos = await eventTask;
+            events = dtos.Select(MapToViewModel).ToList();
+            ApplyRegistrationCounts(await summaryTask);
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            errorMessage = "Failed to load events. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _redirectRoute is not null)
+        {
+            Navigation.NavigateTo(_redirectRoute, replace: true);
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task<List<EventRegistrationSummaryDto>> LoadRegistrationSummariesAsync()
+    {
+        if (!(CurrentUser.IsInRole(BethuyaRoles.Organizer) || CurrentUser.IsInRole(BethuyaRoles.Admin)))
+        {
+            return [];
+        }
+
+        try
+        {
+            return await ImportApi.ListRegistrationSummariesAsync();
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            // Counts are supplementary; the dashboard stays usable without them.
+            return [];
+        }
+    }
+
+    private void ApplyRegistrationCounts(IEnumerable<EventRegistrationSummaryDto> registrationSummaries)
+    {
+        var summaries = registrationSummaries.ToDictionary(summary => summary.EventId);
+        foreach (var evt in events)
+        {
+            // Every event the organizer manages has a summary (zeros included); other events stay count-free.
+            evt.Registrations = summaries.TryGetValue(evt.Id, out var summary)
+                ? new RegistrationCounts(summary.Registered, summary.Pending, summary.Approved, summary.CheckedIn)
+                : null;
+        }
+    }
+
+    private static EventViewModel MapToViewModel(EventDto dto) => new()
+    {
+        Id = dto.Id,
+        Title = dto.Title,
+        Description = dto.Description,
+        Type = dto.Type,
+        Status = dto.Status,
+        Capacity = dto.Capacity,
+        Location = dto.Location,
+        CoverImageUrl = dto.CoverImageUrl,
+        StartDate = DateOnly.FromDateTime(dto.StartDate.DateTime),
+        EndDate = DateOnly.FromDateTime(dto.EndDate.DateTime)
+    };
+}

@@ -1,0 +1,29 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="snapshot-section" aria-labelledby="snapshot-heading" data-test="community-snapshot">
+    <div class="section-heading">
+        <p>@(EventMode ? "Live operating picture" : "At a glance")</p>
+        <h2 id="snapshot-heading">@(EventMode ? "Event operations snapshot" : "Community snapshot")</h2>
+    </div>
+    <div class="snapshot-grid">
+        @foreach (var metric in Metrics)
+        {
+            <article class="snapshot-metric">
+                <div class="snapshot-metric__top">
+                    <span>@metric.Label</span>
+                    <span class="trend @(metric.IsPositive ? "trend--positive" : "trend--attention")">@metric.Trend</span>
+                </div>
+                <strong>@metric.Value</strong>
+                <p>@metric.Detail</p>
+                <svg class="sparkline" viewBox="0 0 120 24" role="img" aria-label="@($"{metric.Label} trend")">
+                    <path d="M2 20 C18 18, 24 9, 39 13 S60 20, 74 10 S96 13, 118 3" />
+                </svg>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<SnapshotMetric> Metrics { get; set; } = [];
+    [Parameter] public bool EventMode { get; set; }
+}
