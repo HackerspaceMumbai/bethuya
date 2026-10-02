@@ -42,7 +42,9 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
     [
         new("Community health", "Akash has been waitlisted repeatedly", "Three consecutive waitlists are increasing disengagement risk.", "Review journey", "/community-health", AttentionSeverity.Required, 92),
         new("Mentorship", "Mentorship cohort pairing is delayed", "Two additional mentors are required before matching can finish.", "Find mentors", "/mentorship", AttentionSeverity.Required, 88),
-        new("Volunteer network", "Returning contributor needs a follow-up", "A contributor returned after six months and has not received outreach.", "Draft outreach", "/volunteers", AttentionSeverity.Advisory, 76)
+        new("Volunteer network", "Returning contributor needs a follow-up", "A contributor returned after six months and has not received outreach.", "Draft outreach", "/volunteers", AttentionSeverity.Advisory, 76),
+        new("Member journey", "Choose your next community step", "Two welcoming opportunities match recent attendee interests and availability.", "Explore opportunities", "/opportunities", AttentionSeverity.Advisory, 74),
+        new("Contributor opportunity", "Your session contribution has momentum", "A submitted session idea is ready for the next human-reviewed community step.", "Review opportunity", "/opportunities", AttentionSeverity.Advisory, 78)
     ];
 
     private static readonly IReadOnlyList<ReviewItem> Reviews =
@@ -123,7 +125,7 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
             modeReason,
             isEventMode ? EventSnapshot : StrategicSnapshot,
             insight,
-            isEventMode ? EventMomentum : StrategicMomentum,
+            CreateMomentum(role, isEventMode),
             attentionItems,
             isEventMode ? EventReviews : Reviews,
             CreateUpcomingEvents(hacktoberfestDate),
@@ -211,6 +213,12 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
             CommunityRole.MentorshipLead => (
                 "Mentorship demand is outpacing supply",
                 "Participation is growing steadily, but two mentor seats are blocking new pairings."),
+            CommunityRole.CommunityMember => (
+                "A consistent next step matters more than a crowded calendar",
+                "Two welcoming opportunities match recent interests without requiring an existing leadership role."),
+            CommunityRole.EmergingContributor => (
+                "Your contribution is opening a leadership path",
+                "A recent session proposal creates a clear route from participation into visible community ownership."),
             _ => (
                 "Community momentum is becoming leadership",
                 "Volunteer participation continues to accelerate while previously inactive members re-engage.")
@@ -236,6 +244,12 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
             CommunityRole.CommunityAdministrator => (
                 "Event execution risk is concentrated, not systemic",
                 "Capacity is healthy; volunteer coverage and waitlist decisions need intervention."),
+            CommunityRole.CommunityMember => (
+                "Your clearest event contribution is attendee support",
+                "A lightweight welcome-desk opportunity fits your current community journey."),
+            CommunityRole.EmergingContributor => (
+                "Your session can unlock event momentum",
+                "Confirming the proposed format would close a program gap and create a first facilitation opportunity."),
             _ => (
                 "Event execution is recoverable with two decisions",
                 "Volunteer ownership and waitlist approvals are the remaining critical path.")
@@ -248,6 +262,21 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
             ["Registration velocity", "Waitlist history", "Volunteer shifts", "Session readiness", "Attendee support requests"]);
     }
 
+    private static IReadOnlyList<MomentumPerson> CreateMomentum(CommunityRole role, bool isEventMode)
+    {
+        var people = isEventMode ? EventMomentum : StrategicMomentum;
+        var priorityName = role switch
+        {
+            CommunityRole.EventOrganizer => "Jordan Blake",
+            CommunityRole.VolunteerLead => "Priya Menon",
+            CommunityRole.MentorshipLead or CommunityRole.CommunityMember => "Akash Kumar",
+            CommunityRole.EmergingContributor => "Rina Shah",
+            _ => "Jordan Blake"
+        };
+
+        return [.. people.OrderByDescending(person => person.Name == priorityName)];
+    }
+
     private static int GetRolePriority(AttentionItem item, CommunityRole role)
     {
         var preferredCategory = role switch
@@ -255,6 +284,8 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
             CommunityRole.EventOrganizer => "Event operations",
             CommunityRole.VolunteerLead => "Volunteer network",
             CommunityRole.MentorshipLead => "Mentorship",
+            CommunityRole.CommunityMember => "Member journey",
+            CommunityRole.EmergingContributor => "Contributor opportunity",
             _ => "Community health"
         };
 

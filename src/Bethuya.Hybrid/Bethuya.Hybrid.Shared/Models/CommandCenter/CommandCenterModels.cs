@@ -5,7 +5,9 @@ public enum CommunityRole
     CommunityAdministrator,
     EventOrganizer,
     VolunteerLead,
-    MentorshipLead
+    MentorshipLead,
+    CommunityMember,
+    EmergingContributor
 }
 
 public enum CommandCenterMode
@@ -62,6 +64,13 @@ public sealed record UpcomingEventItem(
 public sealed record DeadlineItem(string Label, string DueLabel, string Route);
 
 public sealed record WorkspaceLink(string Label, string Route, string Icon);
+
+/// <summary>Display context derived from an authenticated principal without granting authorization.</summary>
+public sealed record CommandCenterAudience(
+    CommunityRole Role,
+    string DisplayName,
+    string ExperienceLabel,
+    string ExperienceSummary);
 
 public sealed record CommunityCommandCenter(
     CommunityRole Role,

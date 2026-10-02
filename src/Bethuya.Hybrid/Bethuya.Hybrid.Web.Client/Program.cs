@@ -10,6 +10,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
+builder.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCenterAudienceResolver>();
 
 // Auth state from server-persisted claims
 builder.Services.AddAuthorizationCore();

@@ -63,7 +63,7 @@
 }
 
 .command-kicker,
-.control-label {
+.command-audience__label {
     margin: 0 0 0.55rem;
     color: var(--hs-gold);
     font-size: 0.7rem;
@@ -93,18 +93,21 @@
     color: var(--command-muted);
 }
 
+.command-audience {
+    margin-top: 1rem;
+}
+
+.command-audience__label {
+    display: inline-block;
+    margin-bottom: 0.2rem;
+}
+
 .command-controls {
     display: flex;
     align-items: flex-end;
     gap: 0.75rem;
 }
 
-.control-group {
-    display: grid;
-    gap: 0.35rem;
-}
-
-.role-switcher,
 .mode-actions {
     display: flex;
     flex-wrap: wrap;

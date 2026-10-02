@@ -1,9 +1,13 @@
+using Bethuya.Hybrid.Shared.Auth;
 using Bethuya.Hybrid.Shared.Models.CommandCenter;
 using Bethuya.Hybrid.Shared.Pages;
 using Bethuya.Hybrid.Shared.Services;
 using BlazorBlueprint.Components;
 using Bunit;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using System.Security.Claims;
 
 using BunitCtx = Bunit.TestContext;
 
@@ -64,7 +68,7 @@ public sealed class CommunityCommandCenterTests
 
         await Assert.That(strategic.Snapshot[0].Label).IsEqualTo("Community health");
         await Assert.That(strategic.Insight.Headline).Contains("Community");
-        await Assert.That(strategic.Momentum[0].JourneyTo).IsEqualTo("Volunteer");
+        await Assert.That(strategic.Momentum[0].JourneyTo).IsEqualTo("Organizer candidate");
 
         await Assert.That(eventOperations.Snapshot[0].Label).IsEqualTo("Event readiness");
         await Assert.That(eventOperations.Insight.Headline).Contains("execution");
@@ -82,6 +86,8 @@ public sealed class CommunityCommandCenterTests
     [Arguments(CommunityRole.EventOrganizer, "Event operations")]
     [Arguments(CommunityRole.VolunteerLead, "Volunteer network")]
     [Arguments(CommunityRole.MentorshipLead, "Mentorship")]
+    [Arguments(CommunityRole.CommunityMember, "Member journey")]
+    [Arguments(CommunityRole.EmergingContributor, "Contributor opportunity")]
     public async Task DeterministicProvider_PrioritizesSelectedRole(CommunityRole role, string expectedCategory)
     {
         var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
@@ -92,49 +98,100 @@ public sealed class CommunityCommandCenterTests
     }
 
     [Test]
-    public async Task Home_RendersCommandCenterAndSupportsRoleSelection()
+    [Arguments("dev-persona-anish", "Anish", CommunityRole.CommunityMember, "Member journey", "Member journey")]
+    [Arguments("dev-persona-priya", "Priya", CommunityRole.VolunteerLead, "Volunteer lead", "Volunteer network")]
+    [Arguments("dev-persona-rohan", "Rohan", CommunityRole.EventOrganizer, "Event organizer", "Event operations")]
+    [Arguments("dev-persona-maya", "Maya", CommunityRole.MentorshipLead, "Mentorship lead", "Mentorship")]
+    [Arguments("dev-persona-farah", "Farah", CommunityRole.EmergingContributor, "Emerging contributor", "Contributor opportunity")]
+    [Arguments("dev-persona-vikram", "Vikram", CommunityRole.CommunityAdministrator, "Community administrator", "Community health")]
+    public async Task Home_RendersClaimsDrivenPersonaExperience(
+        string subject,
+        string name,
+        CommunityRole expectedRole,
+        string expectedLabel,
+        string expectedPriority)
     {
-        using var ctx = new BunitCtx();
-        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddBlazorBlueprintComponents();
-        ctx.Services.AddSingleton(EventPressureClock);
-        ctx.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
+        using var ctx = CreateCommandCenterContext();
+        var principal = CreatePrincipal(subject, name, BethuyaRoles.Attendee);
 
-        var cut = ctx.RenderComponent<Home>();
+        var cut = RenderHome(ctx, principal);
+        cut.WaitForElement("[data-test='command-center-audience']");
+        await cut.Find("[data-test='mode-strategic'] button").ClickAsync(new());
+        cut.WaitForElement("[data-test='mode-layout-strategic']");
 
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("community-command-center", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("Command center did not render.");
-            }
-        });
+        await Assert.That(cut.Find("[data-test='command-center-audience']").GetAttribute("data-audience"))
+            .IsEqualTo(expectedRole.ToString());
+        await Assert.That(cut.Find("[data-test='command-center-audience']").TextContent).Contains(expectedLabel);
+        await Assert.That(cut.Find("[data-test='attention-queue'] [data-test='attention-item']").TextContent)
+            .Contains(expectedPriority);
+        await Assert.That(cut.FindAll("[data-test^='role-']").Count).IsEqualTo(0);
+    }
 
-        await Assert.That(cut.Find("[data-test='role-community-administrator'] button").GetAttribute("aria-pressed"))
-            .IsEqualTo("true");
-        await cut.Find("[data-test='role-volunteer-lead'] button").ClickAsync(new());
+    [Test]
+    public async Task Home_UnauthenticatedPrincipal_DoesNotExposeCommandCenterProjection()
+    {
+        using var ctx = CreateCommandCenterContext();
 
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Volunteer network", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("Volunteer priorities did not render.");
-            }
-        });
-        await Assert.That(cut.Find("[data-test='role-volunteer-lead'] button").GetAttribute("aria-pressed"))
-            .IsEqualTo("true");
+        var cut = RenderHome(ctx, new ClaimsPrincipal());
+        cut.WaitForElement("[data-test='command-center-auth-required']");
+
+        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='quick-navigation']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Home_AuthenticationStateBecomesAnonymous_ClearsExistingProjection()
+    {
+        using var ctx = CreateCommandCenterContext();
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='community-snapshot']");
+
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(component => component.Value, Task.FromResult(new AuthenticationState(new ClaimsPrincipal())))
+            .AddChildContent<Home>());
+        cut.WaitForElement("[data-test='command-center-auth-required']");
+
+        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='command-center-audience']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task AudienceResolver_DoesNotTrustDevelopmentSubjectFromProductionScheme()
+    {
+        var resolver = new ClaimsCommandCenterAudienceResolver();
+        var principal = CreatePrincipal(
+            "dev-persona-vikram",
+            "Collision",
+            BethuyaRoles.Attendee,
+            authenticationType: "oidc");
+
+        var audience = resolver.Resolve(principal);
+
+        await Assert.That(audience.Role).IsEqualTo(CommunityRole.CommunityMember);
+    }
+
+    [Test]
+    [Arguments(BethuyaRoles.Admin, CommunityRole.CommunityAdministrator)]
+    [Arguments(BethuyaRoles.Organizer, CommunityRole.EventOrganizer)]
+    [Arguments(BethuyaRoles.Curator, CommunityRole.CommunityMember)]
+    [Arguments(BethuyaRoles.Attendee, CommunityRole.CommunityMember)]
+    public async Task AudienceResolver_UsesSafeRoleFallback(string role, CommunityRole expectedRole)
+    {
+        var resolver = new ClaimsCommandCenterAudienceResolver();
+        var principal = CreatePrincipal("production-user", "Production User", role, "oidc");
+
+        var audience = resolver.Resolve(principal);
+
+        await Assert.That(audience.Role).IsEqualTo(expectedRole);
     }
 
     [Test]
     public async Task Home_ModeSwitchReordersPrimaryWork()
     {
-        using var ctx = new BunitCtx();
-        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddBlazorBlueprintComponents();
-        ctx.Services.AddSingleton(EventPressureClock);
-        ctx.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
-
-        var cut = ctx.RenderComponent<Home>();
+        using var ctx = CreateCommandCenterContext();
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
         cut.WaitForElement("[data-test='mode-layout-event']");
 
         AssertAppearsBefore(cut.Markup, "attention-queue", "pending-event-approvals");
@@ -183,6 +240,48 @@ public sealed class CommunityCommandCenterTests
 
         await Assert.That(cut.Markup).Contains("Volunteers");
         await Assert.That(cut.Markup).Contains("Contribution network");
+    }
+
+    private static BunitCtx CreateCommandCenterContext()
+    {
+        var ctx = new BunitCtx();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddBlazorBlueprintComponents();
+        ctx.Services.AddSingleton(EventPressureClock);
+        ctx.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
+        ctx.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCenterAudienceResolver>();
+        return ctx;
+    }
+
+    private static IRenderedComponent<CascadingValue<Task<AuthenticationState>>> RenderHome(
+        BunitCtx ctx,
+        ClaimsPrincipal principal) =>
+        ctx.RenderComponent<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
+            .Add(component => component.Value, Task.FromResult(new AuthenticationState(principal)))
+            .AddChildContent<Home>());
+
+    private static ClaimsPrincipal CreatePrincipal(
+        string subject,
+        string name,
+        string role,
+        string authenticationType = "Development")
+    {
+        List<Claim> claims =
+        [
+            new("sub", subject),
+            new("name", name),
+            new("role", role)
+        ];
+        if (authenticationType == "Development")
+        {
+            claims.Add(new Claim(
+                "bethuya:development-persona",
+                name,
+                ClaimValueTypes.String,
+                "Bethuya.Development"));
+        }
+
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType, "name", "role"));
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider

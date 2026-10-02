@@ -9,6 +9,7 @@ public class CommandCenterFlowTests : BethuyaE2ETest
     public async Task Home_ShouldAdaptRoleModeAndResolveWorkspaceNavigation()
     {
         await GotoWithBudgetAsync("/");
+        await SelectPersonaAsync("rohan", "Event organizer");
         await CollapseDevPersonaToolbarAsync();
         await SelectEventModeAsync();
 
@@ -31,7 +32,9 @@ public class CommandCenterFlowTests : BethuyaE2ETest
             FullPage = true
         });
 
-        await Page.Locator("[data-test='role-volunteer-lead'] button").ClickAsync();
+        await GotoWithBudgetAsync("/");
+        await SelectPersonaAsync("priya", "Volunteer lead");
+        await CollapseDevPersonaToolbarAsync();
         await Page.Locator("[data-test='mode-strategic'] button").ClickAsync();
         await Assertions.Expect(Page.Locator("[data-test='mode-explanation']")).ToContainTextAsync("Strategic Mode");
         await Assertions.Expect(Page.Locator("[data-test='mode-layout-strategic']")).ToBeVisibleAsync();
@@ -56,6 +59,33 @@ public class CommandCenterFlowTests : BethuyaE2ETest
     }
 
     [TestMethod]
+    public async Task Home_ShouldResolveAllSixPersonaExperiencesFromAuthenticatedClaims()
+    {
+        (string Key, string Name, string Experience)[] personas =
+        [
+            ("anish", "Anish", "Member journey"),
+            ("priya", "Priya", "Volunteer lead"),
+            ("rohan", "Rohan", "Event organizer"),
+            ("maya", "Maya", "Mentorship lead"),
+            ("farah", "Farah", "Emerging contributor"),
+            ("vikram", "Vikram", "Community administrator")
+        ];
+
+        await GotoWithBudgetAsync("/");
+        foreach (var persona in personas)
+        {
+            await SelectPersonaAsync(persona.Key, persona.Experience);
+            await Assertions.Expect(Page.Locator("[data-test='active-persona']")).ToContainTextAsync(persona.Name);
+            await Assertions.Expect(Page.Locator("[data-test='command-center-audience']")).ToContainTextAsync(persona.Experience);
+            await Assertions.Expect(Page.Locator("[data-test^='role-']")).ToHaveCountAsync(0);
+        }
+
+        await SelectPersonaAsync("farah", "Emerging contributor");
+        await Page.ReloadAsync(new() { WaitUntil = WaitUntilState.Load });
+        await Assertions.Expect(Page.Locator("[data-test='command-center-audience']")).ToContainTextAsync("Emerging contributor");
+    }
+
+    [TestMethod]
     public async Task Home_ShouldRemainLegibleAtMobileWidth()
     {
         await Page.SetViewportSizeAsync(390, 844);
@@ -75,6 +105,19 @@ public class CommandCenterFlowTests : BethuyaE2ETest
             Path = Path.Join("artifacts", "homepage-command-center-mobile.png"),
             FullPage = true
         });
+    }
+
+    private async Task SelectPersonaAsync(string key, string expectedExperience)
+    {
+        var personaButton = Page.Locator($"[data-test='persona-{key}']");
+        if (!await personaButton.IsVisibleAsync())
+        {
+            Assert.Inconclusive("Dev persona toolbar is unavailable; run with Development and Authentication:Provider=None.");
+        }
+
+        await ClickAndNavigateWithBudgetAsync(personaButton);
+        await Assertions.Expect(Page.Locator("[data-test='command-center-audience']"))
+            .ToContainTextAsync(expectedExperience);
     }
 
     private async Task CollapseDevPersonaToolbarAsync()

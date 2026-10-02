@@ -139,6 +139,9 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
         await Assert.That(principal.FindFirst("sub")?.Value).IsEqualTo("dev-persona-anish");
         await Assert.That(principal.FindFirst("email")?.Value).IsEqualTo("anish@bethuya.dev");
         await Assert.That(principal.FindFirst("name")?.Value).IsEqualTo("Anish");
+        var personaClaim = principal.FindFirst(DevelopmentAuthenticationDefaults.PersonaClaimType);
+        await Assert.That(personaClaim?.Value).IsEqualTo("Anish");
+        await Assert.That(personaClaim?.Issuer).IsEqualTo(DevelopmentAuthenticationDefaults.PersonaClaimIssuer);
         await Assert.That(principal.IsInRole(BethuyaRoleNames.Attendee)).IsTrue();
         await Assert.That(principal.IsInRole(BethuyaRoleNames.Admin)).IsFalse();
         await Assert.That(principal.Identity?.IsAuthenticated).IsTrue();
@@ -165,6 +168,7 @@ public class DevelopmentPersonaSwitchingTests : IAsyncDisposable
 
         await Assert.That(principal.Identity?.IsAuthenticated).IsTrue();
         await Assert.That(principal.Identity?.AuthenticationType).IsEqualTo(DevelopmentAuthenticationDefaults.SchemeName);
+        await Assert.That(principal.FindFirst(DevelopmentAuthenticationDefaults.PersonaClaimType)).IsNull();
         // Must NOT be the fixed dev admin — fail-closed, not fail-open.
         await Assert.That(principal.FindFirst("sub")?.Value).IsNotEqualTo("dev-user-001");
         // Zero role claims.

@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-02] Making Homepage personas claims-driven
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Remove the manual Homepage role impersonation control, resolve a stable command-center audience from the authenticated claims principal, provide distinct deterministic experiences for Anish, Priya, Rohan, Maya, Farah, and Vikram, and preserve Strategic/Event mode behavior.
+- **Acceptance:** All six personas have distinct documented user stories and visible homepage priorities; unknown identities use a safe role-derived fallback; TUnit/bUnit and Playwright verify the claims-driven experiences end to end; build, Aspire, and mandatory reviews pass.
+- **Completion Evidence:** Added an issuer-bound development persona claim and claims-to-audience resolver without changing authorization roles; removed “View As”; implemented six distinct priorities and narratives; documented all six user stories and trust boundaries; 454/454 TUnit/bUnit tests, solution build, migration-service exit 0, and 3/3 targeted Playwright tests pass; security, code, and performance reviews completed with final review clean.
+
 ## [2026-10-02] Fixing curation-load cancellation disposal race
 - **Status:** done
 - **Agent/Owner:** Copilot

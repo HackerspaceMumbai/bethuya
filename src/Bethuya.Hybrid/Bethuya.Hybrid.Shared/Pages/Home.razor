@@ -3,6 +3,7 @@
 @using Bethuya.Hybrid.Shared.Components.CommandCenter
 @using Bethuya.Hybrid.Shared.Models.CommandCenter
 @inject ICommunityCommandCenterService CommandCenterService
+@inject ICommandCenterAudienceResolver AudienceResolver
 
 <PageTitle>Community Command Center — Bethuya</PageTitle>
 
@@ -15,29 +16,18 @@
     <header class="command-header">
         <div class="command-header__copy">
             <p class="command-kicker">Community operations · This week</p>
-            <h1>Welcome back.</h1>
+            <h1>Welcome back@(audience is null ? "." : $", {audience.DisplayName}.")</h1>
             <p class="command-subtitle">Events are moments. Communities are journeys.</p>
-            <p class="command-summary">Here’s how your community is moving this week.</p>
+            @if (audience is not null)
+            {
+                <div class="command-audience" data-test="command-center-audience" data-audience="@audience.Role">
+                    <span class="command-audience__label">@audience.ExperienceLabel</span>
+                    <p class="command-summary">@audience.ExperienceSummary</p>
+                </div>
+            }
         </div>
 
         <div class="command-controls" aria-label="Command center controls">
-            <div class="control-group">
-                <span class="control-label">View as</span>
-                <div class="role-switcher" role="group" aria-label="Select organizer role">
-                    @foreach (var role in Enum.GetValues<CommunityRole>())
-                    {
-                        <div data-test="@($"role-{GetRoleSlug(role)}")">
-                            <button type="button"
-                                    class="@($"control-button {(selectedRole == role ? "control-button--active" : "")}")"
-                                    aria-pressed="@(selectedRole == role ? "true" : "false")"
-                                    @onclick="@(() => SelectRoleAsync(role))">
-                                @GetRoleLabel(role)
-                            </button>
-                        </div>
-                    }
-                </div>
-            </div>
-
             <a class="notification-link" href="#human-review" data-test="notification-center" aria-label="Open human review queue">
                 <LucideIcon Name="bell" Size="17" />
                 <span>@(model?.Reviews.Sum(review => review.Count) ?? 0)</span>
@@ -45,7 +35,16 @@
         </div>
     </header>
 
-    @if (isLoading)
+    @if (requiresAuthentication)
+    {
+        <div data-test="command-center-auth-required">
+            <BbAlert>
+                <BbAlertTitle>Sign in to open your command center</BbAlertTitle>
+                <BbAlertDescription>Your community priorities are resolved from your authenticated identity.</BbAlertDescription>
+            </BbAlert>
+        </div>
+    }
+    else if (isLoading)
     {
         <div class="command-loading" data-test="loading-state" role="status">Reading community signals…</div>
     }
@@ -132,17 +131,41 @@
 </main>
 
 @code {
-    private CommunityRole selectedRole = CommunityRole.CommunityAdministrator;
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private Task<AuthenticationState>? processedAuthenticationStateTask;
+    private CommandCenterAudience? audience;
     private CommandCenterMode? modeOverride;
     private CommunityCommandCenter? model;
     private bool isLoading = true;
+    private bool requiresAuthentication;
     private string? errorMessage;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
-
-    private async Task SelectRoleAsync(CommunityRole role)
+    protected override async Task OnParametersSetAsync()
     {
-        selectedRole = role;
+        if (ReferenceEquals(AuthenticationStateTask, processedAuthenticationStateTask))
+        {
+            return;
+        }
+
+        processedAuthenticationStateTask = AuthenticationStateTask;
+        var principal = AuthenticationStateTask is null
+            ? new System.Security.Claims.ClaimsPrincipal()
+            : (await AuthenticationStateTask).User;
+        if (principal.Identity?.IsAuthenticated != true)
+        {
+            audience = null;
+            model = null;
+            modeOverride = null;
+            errorMessage = null;
+            requiresAuthentication = true;
+            isLoading = false;
+            return;
+        }
+
+        requiresAuthentication = false;
+        audience = AudienceResolver.Resolve(principal);
         modeOverride = null;
         await LoadAsync();
     }
@@ -160,7 +183,9 @@
 
         try
         {
-            model = await CommandCenterService.GetAsync(selectedRole, modeOverride);
+            model = await CommandCenterService.GetAsync(
+                audience?.Role ?? CommunityRole.CommunityMember,
+                modeOverride);
         }
         catch (Exception)
         {
@@ -171,24 +196,6 @@
             isLoading = false;
         }
     }
-
-    private static string GetRoleLabel(CommunityRole role) => role switch
-    {
-        CommunityRole.CommunityAdministrator => "Community Admin",
-        CommunityRole.EventOrganizer => "Event Organizer",
-        CommunityRole.VolunteerLead => "Volunteer Lead",
-        CommunityRole.MentorshipLead => "Mentorship Lead",
-        _ => role.ToString()
-    };
-
-    private static string GetRoleSlug(CommunityRole role) => role switch
-    {
-        CommunityRole.CommunityAdministrator => "community-administrator",
-        CommunityRole.EventOrganizer => "event-organizer",
-        CommunityRole.VolunteerLead => "volunteer-lead",
-        CommunityRole.MentorshipLead => "mentorship-lead",
-        _ => role.ToString().ToLowerInvariant()
-    };
 
     private static string GetModeSlug(CommandCenterMode? mode) => mode switch
     {

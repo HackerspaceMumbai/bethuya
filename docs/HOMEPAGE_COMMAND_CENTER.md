@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Homepage v3 is Bethuya's organizer-facing **Community Operations Command Center**. It is the place where an organizer should understand, within 30 seconds:
+Homepage v3 is Bethuya's claims-aware **Community Operations Command Center**. It is the place where a community member or organizer should understand, within 30 seconds:
 
 1. **What changed?**
 2. **What needs attention?**
@@ -112,6 +112,11 @@ The homepage depends on:
 ```text
 Home.razor
     |
+    +-- authenticated ClaimsPrincipal
+    |       |
+    |       v
+    |   ICommandCenterAudienceResolver
+    |
     v
 ICommunityCommandCenterService
     |
@@ -130,6 +135,8 @@ CommunityCommandCenter
 
 The current implementation is:
 
+- `ICommandCenterAudienceResolver` — claims-to-display-audience boundary that never grants authorization;
+- `ClaimsCommandCenterAudienceResolver` — deterministic development-persona mapping with safe production role fallback;
 - `ICommunityCommandCenterService` — stable provider boundary;
 - `DeterministicCommunityCommandCenterService` — rule-based v3 provider;
 - `CommunityCommandCenter` and its child records — immutable, display-ready projection;
@@ -143,16 +150,26 @@ A single projection keeps prioritization coherent. Snapshot measures, insight, m
 
 It also prevents the UI from becoming coupled to future graph schemas, scoring algorithms, agent protocols, or service-specific transport contracts.
 
-### Role-aware prioritization
+### Claims-driven audience resolution
 
-The projection supports these organizer perspectives:
+The homepage does not contain a “View As” control. It reads the authenticated `ClaimsPrincipal` and resolves a display-only audience before requesting the projection. This prevents client UI state, query strings, or form values from selecting an operational perspective.
 
-- Community Administrator;
-- Event Organizer;
-- Volunteer Lead;
-- Mentorship Lead.
+Development personas are recognized only through the allowlisted `bethuya:development-persona` claim emitted by local authentication with the `Bethuya.Development` issuer. A production identity with a colliding subject therefore cannot acquire a development persona experience. Unknown production identities fall back conservatively: Admin becomes Community Administrator, Organizer becomes Event Organizer, and every other identity receives the Community Member experience.
 
-Roles influence insight framing and attention ordering. They do not create separate homepages or hide community-critical work.
+Audience is deliberately separate from authorization. It influences deterministic narrative, ordering, and navigation but never creates role claims, satisfies a policy, or grants access to a protected endpoint. Live providers must continue to enforce authorization independently. If no authenticated principal is available, Home renders only a sign-in-required state and does not request or expose the command-center projection; this keeps the shared MAUI route safe even before its authentication bridge supplies a Blazor authentication cascade.
+
+### Six persona user stories
+
+| Persona | Homepage audience | User story |
+| --- | --- | --- |
+| Anish | Member journey | As a newer community member, I want one welcoming next step matched to my participation rhythm so I can contribute without needing an existing leadership role. |
+| Priya | Volunteer Lead | As a volunteer lead, I want coverage gaps and emerging volunteer owners prioritized so I can close event needs while growing community leadership. |
+| Rohan | Event Organizer | As an event organizer, I want readiness, approvals, capacity, and execution risks surfaced first so I can keep the event moving. |
+| Maya | Mentorship Lead | As a mentorship lead, I want mentor supply, delayed pairings, and promising mentee journeys highlighted so I can make thoughtful matches. |
+| Farah | Community Member · Emerging Contributor | As a member whose session contribution is gaining momentum, I want the next human-reviewed opportunity made visible so I can grow into facilitation and leadership. |
+| Vikram | Community Administrator | As a community administrator, I want community health and cross-workspace decisions synthesized so I can balance long-term growth with operational risk. |
+
+These are six perspectives over one component hierarchy, not six separate homepages. Strategic/Event mode remains available within every perspective, and community-critical warnings remain visible.
 
 ## Deterministic provider rationale
 
