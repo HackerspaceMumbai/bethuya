@@ -189,11 +189,12 @@
         _availabilityLoadCts?.Dispose();
         _availabilityLoadCts = new CancellationTokenSource();
         var loadCts = _availabilityLoadCts;
+        var cancellationToken = loadCts.Token;
         var eventId = _currentEventId;
         _curationAvailability = null;
         _availabilityResolved = false;
 
-        if (eventId is not Guid id || !await CanCurateAsync())
+        if (eventId is not Guid id || !await CanCurateAsync(cancellationToken))
         {
             return;
         }
@@ -204,7 +205,7 @@
         {
             try
             {
-                availability = await curationApi.GetAvailabilityAsync(id, loadCts.Token);
+                availability = await curationApi.GetAvailabilityAsync(id, cancellationToken);
             }
             catch (OperationCanceledException) when (loadCts.IsCancellationRequested)
             {
@@ -224,14 +225,24 @@
         }
     }
 
-    private async Task<bool> CanCurateAsync()
+    private async Task<bool> CanCurateAsync(CancellationToken cancellationToken)
     {
         if (AuthenticationStateTask is null)
         {
             return false;
         }
 
-        var user = (await AuthenticationStateTask).User;
+        AuthenticationState authenticationState;
+        try
+        {
+            authenticationState = await AuthenticationStateTask.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        var user = authenticationState.User;
         return user.IsInRole(BethuyaRoles.Admin) || user.IsInRole(BethuyaRoles.Curator);
     }
 

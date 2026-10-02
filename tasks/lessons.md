@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-02] Explicit auth cascades still need authorization services in bUnit
+- **What happened:** A bUnit test supplied a custom cascading `Task<AuthenticationState>` but rendering `AuthorizeView` failed because authorization policy services were absent.
+- **Root cause:** The cascading authentication state replaces only the state value; `AuthorizeView` still resolves `IAuthorizationPolicyProvider` and related services from dependency injection.
+- **Fix:** Registered bUnit's test authorization services before supplying the custom pending authentication-state cascade.
+- **Prevention:** Call `AddTestAuthorization()` whenever a rendered component tree contains `AuthorizeView`, even when the test controls `AuthenticationState` through an explicit cascade.
+
 ## [2026-10-01] Use one callback for mixed asynchronous substitute responses
 - **What happened:** A NSubstitute setup mixed a concrete task with callback delegates in the sequential `Returns` overload and failed to compile.
 - **Root cause:** That overload inferred concrete `Task<T>` values and could not accept delegate-shaped entries.

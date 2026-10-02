@@ -5,9 +5,11 @@ using BlazorBlueprint.Components;
 using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using System.Security.Claims;
 using BunitCtx = Bunit.TestContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
@@ -102,6 +104,39 @@ public class NavMenuCurationRenderTests
             olderResponseObserved.SetResult();
             return result;
         }
+    }
+
+    [Test]
+    public async Task AuthenticationPending_WhenLoadIsSuperseded_OnlyCurrentLoadQueriesAvailability()
+    {
+        var curationApi = CreateApi(capacity: 100, registrations: 106);
+        using var ctx = new BunitCtx();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddBlazorBlueprintComponents();
+        ctx.Services.AddSingleton(curationApi);
+        ctx.AddTestAuthorization();
+        var authenticationState = new TaskCompletionSource<AuthenticationState>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var navigation = ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"imports?eventId={EventId}");
+
+        var host = ctx.RenderComponent<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
+            .Add(component => component.Value, authenticationState.Task)
+            .AddChildContent<NavMenu>());
+
+        navigation.NavigateTo($"events/{EventId}");
+        await host.InvokeAsync(() => Task.CompletedTask);
+        authenticationState.SetResult(new AuthenticationState(new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [new Claim(ClaimTypes.Name, "Dev User"), new Claim(ClaimTypes.Role, BethuyaRoles.Curator)],
+                "Test"))));
+
+        host.WaitForState(
+            () => curationApi.ReceivedCalls().Count() == 1,
+            TimeSpan.FromSeconds(5));
+        await host.InvokeAsync(() => Task.CompletedTask);
+
+        await curationApi.Received(1).GetAvailabilityAsync(EventId, Arg.Any<CancellationToken>());
     }
 
     [Test]

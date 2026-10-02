@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-02] Fixing curation-load cancellation disposal race
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Capture the curation availability cancellation token before awaiting authentication so superseded or disposed loads cannot access a disposed token source.
+- **Acceptance:** Superseding a load while authentication is pending does not throw, only the current load queries availability, focused/full TUnit tests pass, and the review thread is resolved.
+- **Completion Evidence:** Added a pending-authentication regression test and captured the token before the await; the full TUnit suite passes 440/440.
+
 ## [2026-10-01] Refreshing same-event curation availability
 - **Status:** done
 - **Agent/Owner:** Copilot
