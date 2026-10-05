@@ -5,9 +5,11 @@
 @using Bethuya.Hybrid.Shared.Components.Participation
 @using Bethuya.Hybrid.Shared.Models.CommandCenter
 @using Bethuya.Hybrid.Shared.Models.Participation
+@using Microsoft.Extensions.Logging
 @inject ICommunityCommandCenterService CommandCenterService
 @inject ICommunityParticipationService ParticipationService
 @inject ICommandCenterAudienceResolver AudienceResolver
+@inject ILogger<Home> Logger
 
 <PageTitle>@(audience?.Surface == CommandCenterSurface.Participation ? "My community journey — Bethuya" : "Community Command Center — Bethuya")</PageTitle>
 
@@ -213,7 +215,7 @@ else if (model is not null && audience is not null)
     {
         CancelCurrentLoad();
         var generation = loadGeneration;
-        var cancellation = new CancellationTokenSource();
+        using var cancellation = new CancellationTokenSource();
         loadCancellation = cancellation;
         var cancellationToken = cancellation.Token;
         var currentAudience = audience;
@@ -258,10 +260,15 @@ else if (model is not null && audience is not null)
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             if (generation == loadGeneration)
             {
+                Logger.LogError(
+                    ex,
+                    "Unexpected error loading the Homepage projection for surface {Surface} and role {Role}",
+                    currentAudience?.Surface,
+                    role);
                 errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
             }
         }
@@ -271,7 +278,6 @@ else if (model is not null && audience is not null)
             {
                 loadCancellation = null;
                 isLoading = false;
-                cancellation.Dispose();
             }
         }
     }

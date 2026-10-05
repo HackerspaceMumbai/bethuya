@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-05] Addressing Homepage load review findings
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Address PR #61 feedback by logging unexpected Homepage projection failures and expressing cancellation-source ownership with a using declaration.
+- **Acceptance:** The Homepage preserves its user-facing error state, records the underlying exception, disposes each cancellation source on every exit path, relevant tests pass, and both review threads are replied to and resolved.
+- **Evidence:** Added structured error logging and a using declaration for each load's cancellation source; 461/461 TUnit+bUnit tests pass; code and performance reviews are clean.
+
 ## [2026-10-05] Constraining readiness status pills
 - **Status:** done
 - **Agent/Owner:** Copilot Coding Agent
