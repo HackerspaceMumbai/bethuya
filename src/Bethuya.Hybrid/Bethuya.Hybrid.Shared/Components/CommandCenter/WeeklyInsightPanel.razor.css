@@ -1,0 +1,92 @@
+/* BB cards do not include an editorial narrative layout with explainable signal disclosure. */
+::deep .insight-card {
+    overflow: hidden;
+    background:
+        linear-gradient(118deg, rgba(212, 168, 48, 0.12), transparent 42%),
+        rgba(24, 18, 16, 0.88);
+    border: 1px solid rgba(212, 168, 48, 0.28);
+    border-radius: 0.9rem;
+}
+
+::deep .insight-content {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.insight-mark {
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    color: #100d0a;
+    background: var(--hs-gold);
+    border-radius: 50%;
+}
+
+.insight-eyebrow {
+    margin: 0 0 0.45rem !important;
+    color: var(--hs-gold) !important;
+    font-size: 0.68rem !important;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.insight-copy h2 {
+    max-width: 42rem;
+    margin: 0 0 0.8rem;
+    color: #f4eee3;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.65rem, 3vw, 2.4rem);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+}
+
+.insight-copy > p {
+    max-width: 46rem;
+    margin: 0.2rem 0;
+    color: #a99b88;
+    line-height: 1.55;
+}
+
+.signal-details {
+    margin-top: 1rem;
+    color: var(--hs-gold);
+    font-size: 0.78rem;
+}
+
+.signal-details summary {
+    width: max-content;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.signal-details div {
+    margin-top: 0.8rem;
+    padding: 0.8rem;
+    color: #a99b88;
+    background: rgba(0, 0, 0, 0.16);
+    border-radius: 0.55rem;
+}
+
+.signal-details ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0.55rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.signal-details li {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--hs-border);
+    border-radius: 999px;
+}
+
+@media (max-width: 560px) {
+    .insight-content { grid-template-columns: 1fr; }
+}

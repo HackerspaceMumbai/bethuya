@@ -15,6 +15,82 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+
+## [2026-10-05] Addressing Homepage load review findings
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Address PR #61 feedback by logging unexpected Homepage projection failures and expressing cancellation-source ownership with a using declaration.
+- **Acceptance:** The Homepage preserves its user-facing error state, records the underlying exception, disposes each cancellation source on every exit path, relevant tests pass, and both review threads are replied to and resolved.
+- **Evidence:** Added structured error logging and a using declaration for each load's cancellation source; 461/461 TUnit+bUnit tests pass; code and performance reviews are clean.
+
+## [2026-10-05] Constraining readiness status pills
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Prevent touchpoint readiness status pills from overflowing narrow event-mode cards while preserving legibility and risk emphasis.
+- **Acceptance:** Every readiness pill remains within its card at desktop and mobile widths; targeted bUnit/TUnit and Playwright checks pass.
+- **Evidence:** Live browser geometry confirms all six pills remain within their card bounds; 461/461 TUnit+bUnit tests pass; targeted Playwright event-mode test passes.
+
+## [2026-10-02] Making Homepage personas claims-driven
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Remove the manual Homepage role impersonation control, resolve a stable command-center audience from the authenticated claims principal, provide distinct deterministic experiences for Anish, Priya, Rohan, Maya, Farah, and Vikram, and preserve Strategic/Event mode behavior.
+- **Acceptance:** All six personas have distinct documented user stories and visible homepage priorities; unknown identities use a safe role-derived fallback; TUnit/bUnit and Playwright verify the claims-driven experiences end to end; build, Aspire, and mandatory reviews pass.
+- **Completion Evidence:** Added an issuer-bound development persona claim and claims-to-audience resolver without changing authorization roles; removed “View As”; implemented six distinct priorities and narratives; documented all six user stories and trust boundaries; 454/454 TUnit/bUnit tests, solution build, migration-service exit 0, and 3/3 targeted Playwright tests pass; security, code, and performance reviews completed with final review clean.
+
+## [2026-10-02] Fixing curation-load cancellation disposal race
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Capture the curation availability cancellation token before awaiting authentication so superseded or disposed loads cannot access a disposed token source.
+- **Acceptance:** Superseding a load while authentication is pending does not throw, only the current load queries availability, focused/full TUnit tests pass, and the review thread is resolved.
+- **Completion Evidence:** Added a pending-authentication regression test and captured the token before the await; the full TUnit suite passes 440/440.
+
+## [2026-10-01] Refreshing same-event curation availability
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the non-inline PR review finding by refreshing curation availability when navigation remains within the same event context.
+- **Acceptance:** Returning from imports to another route for the same event re-queries availability and updates the Curation link; unrelated navigation does not add API calls; focused tests pass.
+- **Completion Evidence:** Added a same-event imports-to-event regression test that ends on a non-curation route so link visibility depends on the latest availability response; the full TUnit suite passes.
+
+## [2026-10-01] Documenting Homepage v3 command-center architecture
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add durable product and architecture documentation under `/docs` covering the Homepage v3 ethos, Strategic/Event mode semantics, deterministic intelligence rationale, stable provider boundary, workspace-routing principle, migration bootstrap decision, and verification expectations; link it from the README.
+- **Acceptance:** A dedicated document explains both current behavior and future integration seams without relying on task logs or PR context, and the README provides a discoverable link.
+- **Completion Evidence:** Added `docs/HOMEPAGE_COMMAND_CENTER.md` and linked it from `README.md`; the document covers the 30-second operating questions, human-review ethos, operational mode hierarchy, module responsibilities, provider contract, future replacement rules, workspace boundaries, migration reliability decision, verification contract, and v3 non-goals.
+
+## [2026-10-01] Addressing migration and E2E review follow-ups
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Use EF Core's provider-aware migration-history creation API and make Event Mode Playwright assertions independent of the system date.
+- **Acceptance:** Migration-history bootstrap remains idempotent and concurrency-safe through the provider API; both command-center E2E tests explicitly select Event Mode; build, TUnit, fresh Aspire migration, and targeted Playwright checks pass; both review threads are replied to and resolved.
+- **Completion Evidence:** Solution build passed with 0 warnings/errors; 438/438 TUnit tests passed; fresh Aspire migration-service finished with no `Failed executing` logs while backend/web became healthy; 2/2 Playwright tests passed after explicitly selecting Event Mode.
+
+## [2026-10-01] Making command-center modes operational
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Make Strategic and Event modes materially change homepage hierarchy, deterministic content, operational metrics, approvals, event readiness detail, insight framing, and contributor prioritization.
+- **Acceptance:** Event Mode promotes the attention queue and approvals, uses event-specific snapshot metrics, expands event readiness intelligence, and adapts insight/momentum content; Strategic Mode keeps insight and momentum primary; TUnit, build, Aspire, targeted Playwright, and visual screenshots verify both modes.
+- **Completion Evidence:** Solution build passed with 0 warnings/errors; 438/438 TUnit tests passed; 2/2 targeted Playwright tests passed against fresh Aspire URL `https://localhost:52899`; migration-service finished successfully while backend/web became healthy; desktop Event/Strategic and mobile visual captures confirm the hierarchy shift. Pre-commit review findings for metric-label contrast, duplicate approval-rail coverage, and render-time enum allocations were resolved.
+
+## [2026-10-01] Removing redundant profile switch condition
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace the exhaustive boolean switch arm flagged by PR #61 code quality review with direct profile property patterns.
+- **Acceptance:** The profile redirect behavior remains unchanged, the relevant tests pass, and the review thread is replied to and resolved.
+- **Completion Evidence:** The profile redirect switch now uses property patterns and the full TUnit suite passes 436/436.
+
+## [2026-10-01] Addressing Homepage v3 review findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Resolve all actionable PR #61 feedback covering clock-driven mode selection, navigation correctness, BB scoped styling, accessibility semantics, exception handling, and E2E artifact paths; document and resolve inapplicable feedback.
+- **Acceptance:** Every review thread receives a disposition and is resolved; deterministic clock tests, query/fragment routing coverage, full unit tests, build, fresh Aspire migration proof, and targeted Playwright tests pass; changes are committed and pushed.
+
+## [2026-10-01] Removing false migration failure and updating PR branch
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Reconcile the Homepage v3 branch with current `main`, eliminate the fresh-database `__EFMigrationsHistory` probe that appears as a migration failure in Aspire, and preserve genuine migration error reporting.
+- **Acceptance:** ✅ Fresh isolated PostgreSQL startup completes `migration-service` with exit code 0 and no error-level migration logs. ✅ Provider-specific migration history creation is idempotent and covered by TUnit. ✅ PostgreSQL, backend, and web become healthy. ✅ Command-center Playwright tests pass against the merged Aspire app. ✅ PR #61 is updated from current `main`.
+
 ## [2026-09-29] Clarify registration approval import workflow
 - **Status:** done
 - **Agent/Owner:** Copilot
@@ -846,6 +922,17 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Copilot CLI
 - **Description:** Place Core chips on the first row and Diversity + Cohort Health chips on the second row, keeping full chip names visible and renaming Underrep to Access Equity.
 - **Acceptance:** Core renders as row 1, Diversity and Cohort Health render as row 2, chip labels are not ellipsized (except long term replaced by Access Equity), and tests/live UI checks pass.
+## [2026-09-30] Build Homepage v3 Community Command Center
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Replace the event-centric root dashboard with a role-aware organizer command center backed by deterministic rule-based intelligence behind stable shared interfaces. Preserve the current member dashboard at `/member/home`, add meaningful top-level workspace destinations, and keep the UX ready for future live intelligence providers.
+- **Acceptance:** ✅ `/` answers what changed, what needs attention, and what to do next for Community Administrator, Event Organizer, Volunteer Lead, and Mentorship Lead variants. ✅ Strategic/Event mode is explainable and manually overridable without hiding critical warnings. ✅ Current dashboard remains at `/member/home`. ✅ Every exposed workspace link resolves. ✅ TUnit/bUnit, targeted Playwright, responsive visual proof, and builds pass. ⚠️ Aspire live health is blocked by a pre-existing EF pending-model migration failure; backend and migration logs were captured, and the backend-independent UI was verified through the standalone Web host.
+## [2026-10-01] Fix migration startup and validate Homepage v3 through Aspire
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Identify and resolve the EF pending-model migration drift that prevents `migration-service`, `backend`, and `web` from becoming healthy, then run Homepage v3 Playwright tests against the actual Aspire Web endpoint.
+- **Acceptance:** ✅ Replaced the undiscoverable hand-written migration with a metadata-complete EF migration and synchronized snapshot. ✅ The migration reconciles both canonical databases without the column and databases created while the historical migration incorrectly included it. ✅ `has-pending-model-changes` reports no drift. ✅ Fresh isolated Aspire startup finishes migration and reports healthy PostgreSQL, backend, and web resources. ✅ Three targeted Playwright tests pass against the Aspire Web HTTPS endpoint, including desktop/mobile screenshots and relocated member-dashboard navigation. ✅ Full solution build passes with 0 warnings and 0 errors.
+
 ## [2026-09-21] Organizer Import Wizard UI
 - **Status:** done
 - **Agent/Owner:** Copilot
@@ -869,3 +956,10 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [x] Preserve case-insensitive registration matching with mixed-case regression coverage.
 - [x] Add an indexed normalized-email lookup for community-member resolution.
 - [x] Parallelize independent dashboard event and registration-summary requests.
+
+## [2026-10-02] Homepage v3 architectural refinement — Operations vs Participation
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Split the homepage into two surfaces resolved from persona claims: one shared Community Operations Command Center (Admin / Organizer / Volunteer Lead / Mentorship Lead — identical layout, role-aware content) and a Community Participation homepage (visitor onboarding and member journey). Add the People To Watch module between Community Insight and the Attention Queue, generalize Upcoming Events into Upcoming Touchpoints, add Quick Actions to the rail, and make Strategic vs Event hierarchy unmistakable.
+- **Acceptance:** Operations personas share one layout with genuinely role-specific attention sets; participation personas never render snapshot, attention, review, approval, or deadline modules; People To Watch renders between insight and attention; Event mode reorders hierarchy and promotes deadlines; docs updated; bUnit/TUnit + Playwright pass; solution builds clean.
+- **Evidence:** 461/461 TUnit+bUnit tests pass; solution build succeeds with 0 warnings and 0 errors; migration-service, backend, and web reached healthy state; final targeted Playwright suite passes 4/4; security and performance reviews found no actionable issues; final code-review findings were fixed and regression-tested.

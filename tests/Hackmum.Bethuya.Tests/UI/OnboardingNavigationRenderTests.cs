@@ -33,7 +33,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.AddSingleton<ICurrentUserService>(new StubCurrentUserService(isAuthenticated: true));
 
-        var cut = ctx.RenderComponent<Home>();
+        var cut = ctx.RenderComponent<MemberHome>();
         await Assert.That(cut.Markup).Contains("Finish setup before you explore Bethuya");
 
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
@@ -60,7 +60,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.AddSingleton<ICurrentUserService>(new StubCurrentUserService(isAuthenticated: true));
 
-        var cut = ctx.RenderComponent<Home>();
+        var cut = ctx.RenderComponent<MemberHome>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
 
         cut.WaitForState(() => navigation.Uri.EndsWith("/registration/social", StringComparison.Ordinal), TimeSpan.FromSeconds(5));
@@ -878,7 +878,7 @@ public class OnboardingNavigationRenderTests
         await Assert.That(main).IsNotNull();
         await Assert.That(primaryAction.GetAttribute("type")).IsEqualTo("submit");
         await Assert.That(primaryAction.TextContent).Contains("Save & Finish");
-        await Assert.That(skipLink.GetAttribute("href")).IsEqualTo("/");
+        await Assert.That(skipLink.GetAttribute("href")).IsEqualTo("/member/home");
         await Assert.That(skipLink.TextContent).Contains("Skip for now");
     }
 
@@ -950,8 +950,8 @@ public class OnboardingNavigationRenderTests
             Arg.Any<CancellationToken>());
 
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
-        cut.WaitForState(() => navigation.Uri.EndsWith('/'), TimeSpan.FromSeconds(5));
-        await Assert.That(navigation.Uri).EndsWith("/");
+        cut.WaitForState(() => navigation.Uri.EndsWith("/member/home", StringComparison.Ordinal), TimeSpan.FromSeconds(5));
+        await Assert.That(navigation.Uri).EndsWith("/member/home");
     }
 
     [Test]

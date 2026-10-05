@@ -1,0 +1,121 @@
+/* BB alerts do not support a ranked cross-domain action queue with severity rails. */
+.command-section {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.section-heading p {
+    margin: 0 0 0.2rem;
+    color: var(--hs-gold);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: #f4eee3;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.45rem;
+    font-weight: 500;
+}
+
+.section-heading > span {
+    display: block;
+    margin-top: 0.35rem;
+    color: #ad9d89;
+    font-size: 0.76rem;
+}
+
+.command-section--primary .section-heading h2 {
+    font-size: clamp(1.8rem, 3.5vw, 2.7rem);
+    letter-spacing: -0.03em;
+}
+
+.command-section--primary .section-heading p {
+    color: #f06f4f;
+}
+
+.command-section--primary .attention-list {
+    border-color: rgba(240, 111, 79, 0.24);
+}
+
+.command-section--primary .attention-item:first-child {
+    min-height: 7rem;
+    background: linear-gradient(90deg, rgba(240, 111, 79, 0.13), transparent 58%);
+}
+
+.command-section--primary .attention-item:first-child .attention-icon {
+    color: #1a0f0c;
+    background: #f06f4f;
+}
+
+.command-section--primary .attention-item:first-child h3 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.attention-list {
+    overflow: hidden;
+    background: rgba(24, 18, 16, 0.72);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.85rem;
+}
+
+.attention-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.9rem;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--hs-border);
+}
+
+.attention-item:last-child { border-bottom: 0; }
+.attention-item--critical { background: linear-gradient(90deg, rgba(226, 109, 90, 0.07), transparent 35%); }
+.attention-item--required { background: linear-gradient(90deg, rgba(224, 173, 66, 0.055), transparent 35%); }
+.attention-item--advisory { background: linear-gradient(90deg, rgba(98, 138, 119, 0.045), transparent 35%); }
+
+.attention-icon {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    color: #e0ad42;
+    background: rgba(224, 173, 66, 0.09);
+    border-radius: 50%;
+}
+
+.attention-copy > span {
+    color: #7f7261;
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.attention-copy h3 {
+    margin: 0.15rem 0;
+    color: #f4eee3;
+    font-size: 0.9rem;
+}
+
+.attention-copy p {
+    margin: 0;
+    color: #938572;
+    font-size: 0.76rem;
+}
+
+.attention-item > a {
+    color: var(--hs-gold);
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .attention-item { grid-template-columns: auto 1fr; }
+    .attention-item > a { grid-column: 2; }
+}

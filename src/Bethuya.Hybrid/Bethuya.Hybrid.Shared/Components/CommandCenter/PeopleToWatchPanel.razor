@@ -1,0 +1,34 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+@* Awareness-only module: never renders an approval or task action. *@
+<section class="command-section" aria-labelledby="people-to-watch-heading" data-test="people-to-watch">
+    <div class="section-heading section-heading--row">
+        <div>
+            <p>Journey signals · awareness only</p>
+            <h2 id="people-to-watch-heading">People to watch</h2>
+        </div>
+        <a href="/community-graph">Explore community graph <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="momentum-grid">
+        @foreach (var person in People)
+        {
+            <article class="person-card" data-test="person-to-watch">
+                <div class="person-avatar" aria-hidden="true">@person.Initials</div>
+                <div>
+                    <h3>@person.Name</h3>
+                    <p>@person.Signal</p>
+                    <div class="journey">
+                        <span>@person.JourneyFrom</span>
+                        <LucideIcon Name="arrow-right" Size="14" />
+                        <strong>@person.JourneyTo</strong>
+                    </div>
+                    <p class="watch-reason">@person.WatchReason</p>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PersonToWatch> People { get; set; } = [];
+}

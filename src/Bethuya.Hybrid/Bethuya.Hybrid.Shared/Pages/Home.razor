@@ -1,232 +1,302 @@
 @page "/"
 @rendermode InteractiveServer
-@using Bethuya.Hybrid.Shared.Components.Dashboard
-@using Bethuya.Hybrid.Shared.Services
-@inject IEventApi EventApi
-@inject IImportApi ImportApi
-@inject IProfileApi ProfileApi
-@inject ICurrentUserService CurrentUser
+@implements IDisposable
+@using Bethuya.Hybrid.Shared.Components.CommandCenter
+@using Bethuya.Hybrid.Shared.Components.Participation
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+@using Bethuya.Hybrid.Shared.Models.Participation
+@using Microsoft.Extensions.Logging
+@inject ICommunityCommandCenterService CommandCenterService
+@inject ICommunityParticipationService ParticipationService
+@inject ICommandCenterAudienceResolver AudienceResolver
+@inject ILogger<Home> Logger
 
-<PageTitle>Dashboard — Bethuya</PageTitle>
+<PageTitle>@(audience?.Surface == CommandCenterSurface.Participation ? "My community journey — Bethuya" : "Community Command Center — Bethuya")</PageTitle>
 
-<a class="skip-link" href="#dashboard-main">Skip to main content</a>
+<a class="skip-link" href="#home-main">Skip to main content</a>
 
-<main id="dashboard-main" aria-label="Dashboard">
-
-    @if (isLoading)
-    {
-        <div data-test="loading-state" class="p-8 text-center">
-            <p>Loading events…</p>
+@if (requiresAuthentication)
+{
+    <main id="home-main" class="command-center command-center--loading">
+        <div data-test="command-center-auth-required">
+            <BbAlert>
+                <BbAlertTitle>Sign in to open Bethuya</BbAlertTitle>
+                <BbAlertDescription>Your community experience is resolved from your authenticated identity.</BbAlertDescription>
+            </BbAlert>
         </div>
-    }
-    else if (errorMessage is not null)
-    {
+    </main>
+}
+else if (isLoading)
+{
+    <main id="home-main" class="command-center command-center--loading">
+        <div class="command-loading" data-test="loading-state" role="status">Reading community signals…</div>
+    </main>
+}
+else if (errorMessage is not null)
+{
+    <main id="home-main" class="command-center command-center--loading">
         <div data-test="error-state">
             <BbAlert Variant="AlertVariant.Danger">
+                <BbAlertTitle>Home unavailable</BbAlertTitle>
                 <BbAlertDescription>@errorMessage</BbAlertDescription>
             </BbAlert>
         </div>
-    }
-    else if (_redirectRoute is not null)
-    {
-        <section class="onboarding-redirect" aria-label="Complete your profile" data-test="onboarding-redirect">
-            <BbCard Class="onboarding-redirect-card">
-                <BbCardHeader>
-                    <BbCardTitle>Finish setup before you explore Bethuya</BbCardTitle>
-                    <BbCardDescription>
-                        We’re taking you to the three-step onboarding flow now so your dashboard, registrations, verified social identities, and accessibility preferences start in the right place.
-                    </BbCardDescription>
-                </BbCardHeader>
-                <BbCardContent Class="onboarding-redirect-card__content">
-                    <ol class="onboarding-redirect-list">
-                        <li>Add your required attendee details.</li>
-                        <li>Verify your GitHub and LinkedIn accounts.</li>
-                        <li>Optionally share accessibility and inclusion context, then return to the dashboard.</li>
-                    </ol>
-                    <BbButton Variant="ButtonVariant.Default" Class="onboarding-redirect-button"
-                              OnClick="@(() => Navigation.NavigateTo(_redirectRoute!))">
-                        Continue setup
-                    </BbButton>
-                </BbCardContent>
-            </BbCard>
-        </section>
-    }
-    else
-    {
-        @* ── AI Insights Banner ── *@
-        @if (featuredEvent is not null && featuredEvent.AgendaStatus is null)
-        {
-            <AiInsightsBanner EventTitle="@featuredEvent.Title"
-                              ReviewUrl="@($"/events/{featuredEvent.Id}")" />
-        }
-
-        @* ── Dashboard grid: stats column + featured event ── *@
-        <div class="dashboard-grid">
-            <div class="stats-column">
-                <div class="stats-grid" data-test="stats-row" aria-label="Event statistics">
-                    <StatCard Label="Total Events" Value="@events.Count" IconName="calendar" />
-                    <StatCard Label="Drafts" Value="@events.Count(e => e.Status == "Draft")" IconName="file-edit" />
-                    <StatCard Label="Upcoming" Value="@UpcomingCount" IconName="calendar-clock" />
-                    <StatCard Label="Completed" Value="@events.Count(e => e.Status == "Completed")" IconName="circle-check" />
-                </div>
-
-                <div class="plan-event-cta" data-test="plan-event-cta">
-                    <BbButton Variant="ButtonVariant.Default" Class="cta-btn"
-                              OnClick="@(() => Navigation.NavigateTo("/events/plan"))">
-                        <LucideIcon Name="plus" Size="16" />
-                        Plan New Event
-                    </BbButton>
+    </main>
+}
+else if (audience?.Surface == CommandCenterSurface.Participation && participation is not null)
+{
+    <main id="home-main" class="participation-shell" aria-label="Community participation home">
+        <ParticipationSurface Model="@participation"
+                              AudienceLabel="@audience.ExperienceLabel"
+                              AudienceRole="@audience.Role.ToString()" />
+    </main>
+}
+else if (model is not null && audience is not null)
+{
+    <main id="home-main"
+          class="@($"command-center command-center--{GetModeSlug(model.EffectiveMode)}")"
+          aria-label="Community operations command center"
+          data-test="community-command-center">
+        <header class="command-header">
+            <div class="command-header__copy">
+                <p class="command-kicker">Community operations · This week</p>
+                <h1>Welcome back, @audience.DisplayName.</h1>
+                <p class="command-subtitle">Events are moments. Communities are journeys.</p>
+                <div class="command-audience" data-test="command-center-audience" data-audience="@audience.Role">
+                    <span class="command-audience__label">@audience.ExperienceLabel</span>
+                    <p class="command-summary">@audience.ExperienceSummary</p>
                 </div>
             </div>
 
-            <FeaturedEventCard Event="@featuredEvent"
-                               OnPanelClick="@(() => Navigation.NavigateTo("/agents"))"
-                               OnCurationClick="@(() => Navigation.NavigateTo("/curation"))"
-                               OnEditClick="@(() => { if (featuredEvent is not null) Navigation.NavigateTo($"/events/plan?edit={featuredEvent.Id}"); })" />
-        </div>
+            <div class="command-controls" aria-label="Command center controls">
+                <a class="notification-link" href="#human-review" data-test="notification-center" aria-label="Open human review queue">
+                    <LucideIcon Name="bell" Size="17" />
+                    <span>@model.Reviews.Sum(review => review.Count)</span>
+                </a>
+            </div>
+        </header>
 
-        @* ── Events list ── *@
-        <section class="events-section" aria-label="All events">
-            <h2 class="section-title">Events</h2>
-
-            @if (events.Count == 0)
-            {
-                <div class="empty-state">
-                    <p>No events yet.</p>
-                    <p class="empty-hint">Plan your first community event to get started!</p>
+        <section class="mode-bar" aria-label="Active command center mode" data-test="mode-explanation">
+            <div class="mode-status">
+                <span class="mode-pulse" aria-hidden="true"></span>
+                <div>
+                    <strong>Currently in @model.EffectiveMode Mode</strong>
+                    <p class="mode-question" data-test="mode-question">@model.ModeQuestion</p>
+                    <p>@model.ModeReason</p>
                 </div>
-            }
-            else
-            {
-                <div class="events-grid">
-                    @foreach (var evt in events)
-                    {
-                        <EventCard Event="@evt"
-                                   OnDraftClick="@(e => Navigation.NavigateTo(e.Status == "Draft" ? $"/events/plan?edit={e.Id}" : $"/events/{e.Id}"))"
-                                   OnRegistrationsClick="@(e => Navigation.NavigateTo($"/events/{e.Id}/registrations"))" />
-                    }
+            </div>
+            <div class="mode-actions" role="group" aria-label="Select command center mode">
+                <div data-test="mode-strategic">
+                    <button type="button"
+                            class="@($"control-button {(model.EffectiveMode == CommandCenterMode.Strategic ? "control-button--active" : "")}")"
+                            aria-pressed="@(model.EffectiveMode == CommandCenterMode.Strategic ? "true" : "false")"
+                            @onclick="@(() => SelectModeAsync(CommandCenterMode.Strategic))">
+                        Strategic
+                    </button>
                 </div>
-            }
+                <div data-test="mode-event">
+                    <button type="button"
+                            class="@($"control-button {(model.EffectiveMode == CommandCenterMode.Event ? "control-button--active" : "")}")"
+                            aria-pressed="@(model.EffectiveMode == CommandCenterMode.Event ? "true" : "false")"
+                            @onclick="@(() => SelectModeAsync(CommandCenterMode.Event))">
+                        Event · Hacktoberfest
+                    </button>
+                </div>
+                <details class="mode-reasoning">
+                    <summary>View reasoning</summary>
+                    <p>Event mode is recommended when an approaching event has unresolved capacity, waitlist, volunteer, or speaker-readiness signals.</p>
+                </details>
+            </div>
         </section>
-    }
 
-</main>
+        <SnapshotStrip Metrics="@model.Snapshot"
+                       EventMode="@(model.EffectiveMode == CommandCenterMode.Event)" />
+
+        <div class="@($"command-layout command-layout--{GetModeSlug(model.EffectiveMode)}")"
+             data-test="@($"mode-layout-{GetModeSlug(model.EffectiveMode)}")">
+            <div class="command-main">
+                @if (model.EffectiveMode == CommandCenterMode.Event)
+                {
+                    <div class="mode-priority mode-priority--event" data-test="event-primary-work">
+                        <AttentionQueue Items="@model.AttentionItems" Primary="true" />
+                    </div>
+                    <ReviewQueue Items="@model.Reviews"
+                                 EventMode="true"
+                                 DataTest="pending-event-approvals" />
+                    <UpcomingTouchpointsPanel Touchpoints="@model.Touchpoints" Expanded="true" />
+                    <WeeklyInsightPanel Insight="@model.Insight" />
+                    <PeopleToWatchPanel People="@model.PeopleToWatch" />
+                }
+                else
+                {
+                    <div class="mode-priority mode-priority--strategic" data-test="strategic-primary-work">
+                        <WeeklyInsightPanel Insight="@model.Insight" />
+                        <PeopleToWatchPanel People="@model.PeopleToWatch" />
+                    </div>
+                    <AttentionQueue Items="@model.AttentionItems" />
+                    <ReviewQueue Items="@model.Reviews" />
+                    <UpcomingTouchpointsPanel Touchpoints="@model.Touchpoints" Expanded="false" />
+                }
+            </div>
+            <CommandCenterRail Reviews="@model.Reviews"
+                               Deadlines="@model.Deadlines"
+                               QuickActions="@model.QuickActions"
+                               Workspaces="@model.Workspaces"
+                               ShowApprovals="@(model.EffectiveMode != CommandCenterMode.Event)"
+                               EventMode="@(model.EffectiveMode == CommandCenterMode.Event)" />
+        </div>
+    </main>
+}
 
 @code {
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
-    private List<EventViewModel> events = [];
+    private Task<AuthenticationState>? processedAuthenticationStateTask;
+    private bool hasProcessedAuthenticationState;
+    private CancellationTokenSource? loadCancellation;
+    private int loadGeneration;
+    private CommandCenterAudience? audience;
+    private CommandCenterMode? modeOverride;
+    private CommunityCommandCenter? model;
+    private CommunityParticipationHome? participation;
     private bool isLoading = true;
+    private bool requiresAuthentication;
     private string? errorMessage;
-    private string? _redirectRoute;
 
-    private int UpcomingCount => events.Count(e =>
-        e.StartDate >= DateOnly.FromDateTime(DateTime.Now) &&
-        e.Status is not ("Completed" or "Cancelled"));
-    private static bool IsSocialBypassEnabled =>
-        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassSocialConnections"), "true", StringComparison.OrdinalIgnoreCase);
-    private static bool IsMandatoryBypassEnabled =>
-        string.Equals(Environment.GetEnvironmentVariable("Onboarding__BypassMandatoryProfile"), "true", StringComparison.OrdinalIgnoreCase);
-
-    private EventViewModel? featuredEvent =>
-        events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled") && e.StartDate >= DateOnly.FromDateTime(DateTime.Now))
-        ?? events.FirstOrDefault(e => e.Status is not ("Completed" or "Cancelled"));
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        // Check profile completion before loading dashboard data
-        if (CurrentUser.IsAuthenticated && !IsMandatoryBypassEnabled)
+        if (hasProcessedAuthenticationState &&
+            ReferenceEquals(AuthenticationStateTask, processedAuthenticationStateTask))
         {
-            try
-            {
-                var status = await ProfileApi.GetCompletionStatusAsync();
-                _redirectRoute = status.IsProfileComplete switch
-                {
-                    false => "/registration/mandatory",
-                    true when !status.IsSocialConnectionsComplete => IsSocialBypassEnabled ? "/registration/aide" : "/registration/social",
-                    _ => null
-                };
-            }
-            catch
-            {
-                // If profile check fails, continue to dashboard
-            }
+            return;
         }
 
-        if (_redirectRoute is not null)
+        var authenticationStateTask = AuthenticationStateTask;
+        processedAuthenticationStateTask = authenticationStateTask;
+        hasProcessedAuthenticationState = true;
+        CancelCurrentLoad();
+        audience = null;
+        model = null;
+        participation = null;
+        modeOverride = null;
+        errorMessage = null;
+        requiresAuthentication = false;
+        isLoading = true;
+
+        var principal = authenticationStateTask is null
+            ? new System.Security.Claims.ClaimsPrincipal()
+            : (await authenticationStateTask).User;
+        if (!ReferenceEquals(authenticationStateTask, AuthenticationStateTask))
         {
+            return;
+        }
+
+        if (principal.Identity?.IsAuthenticated != true)
+        {
+            requiresAuthentication = true;
             isLoading = false;
             return;
         }
 
+        requiresAuthentication = false;
+        audience = AudienceResolver.Resolve(principal);
+        modeOverride = null;
+        await LoadAsync();
+    }
+
+    private async Task SelectModeAsync(CommandCenterMode mode)
+    {
+        modeOverride = mode;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        CancelCurrentLoad();
+        var generation = loadGeneration;
+        using var cancellation = new CancellationTokenSource();
+        loadCancellation = cancellation;
+        var cancellationToken = cancellation.Token;
+        var currentAudience = audience;
+        var currentModeOverride = modeOverride;
+
+        isLoading = true;
+        errorMessage = null;
+
+        var role = currentAudience?.Role ?? CommunityRole.CommunityMember;
+
         try
         {
-            var eventTask = EventApi.GetAllAsync();
-            var summaryTask = LoadRegistrationSummariesAsync();
-            var dtos = await eventTask;
-            events = dtos.Select(MapToViewModel).ToList();
-            ApplyRegistrationCounts(await summaryTask);
+            if (currentAudience?.Surface == CommandCenterSurface.Participation)
+            {
+                var loadedParticipation = await ParticipationService.GetAsync(
+                    role,
+                    currentAudience.DisplayName,
+                    cancellationToken);
+                if (generation != loadGeneration)
+                {
+                    return;
+                }
+
+                model = null;
+                participation = loadedParticipation;
+            }
+            else
+            {
+                var loadedModel = await CommandCenterService.GetAsync(
+                    role,
+                    currentModeOverride,
+                    cancellationToken);
+                if (generation != loadGeneration)
+                {
+                    return;
+                }
+
+                participation = null;
+                model = loadedModel;
+            }
         }
-        catch (Exception)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            errorMessage = "Failed to load events. Please try again.";
+        }
+        catch (Exception ex)
+        {
+            if (generation == loadGeneration)
+            {
+                Logger.LogError(
+                    ex,
+                    "Unexpected error loading the Homepage projection for surface {Surface} and role {Role}",
+                    currentAudience?.Surface,
+                    role);
+                errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
+            }
         }
         finally
         {
-            isLoading = false;
+            if (generation == loadGeneration)
+            {
+                loadCancellation = null;
+                isLoading = false;
+            }
         }
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    private void CancelCurrentLoad()
     {
-        if (firstRender && _redirectRoute is not null)
-        {
-            Navigation.NavigateTo(_redirectRoute, replace: true);
-        }
-        return Task.CompletedTask;
+        loadGeneration++;
+        loadCancellation?.Cancel();
+        loadCancellation?.Dispose();
+        loadCancellation = null;
     }
 
-    private async Task<List<EventRegistrationSummaryDto>> LoadRegistrationSummariesAsync()
-    {
-        if (!(CurrentUser.IsInRole(BethuyaRoles.Organizer) || CurrentUser.IsInRole(BethuyaRoles.Admin)))
-        {
-            return [];
-        }
+    /// <inheritdoc />
+    public void Dispose() => CancelCurrentLoad();
 
-        try
-        {
-            return await ImportApi.ListRegistrationSummariesAsync();
-        }
-        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
-        {
-            // Counts are supplementary; the dashboard stays usable without them.
-            return [];
-        }
-    }
-
-    private void ApplyRegistrationCounts(IEnumerable<EventRegistrationSummaryDto> registrationSummaries)
+    private static string GetModeSlug(CommandCenterMode? mode) => mode switch
     {
-        var summaries = registrationSummaries.ToDictionary(s => s.EventId);
-        foreach (var evt in events)
-        {
-            // Every event the organizer manages has a summary (zeros included); other events stay count-free.
-            evt.Registrations = summaries.TryGetValue(evt.Id, out var s)
-                ? new RegistrationCounts(s.Registered, s.Pending, s.Approved, s.CheckedIn)
-                : null;
-        }
-    }
-
-    private static EventViewModel MapToViewModel(EventDto dto) => new()
-    {
-        Id = dto.Id,
-        Title = dto.Title,
-        Description = dto.Description,
-        Type = dto.Type,
-        Status = dto.Status,
-        Capacity = dto.Capacity,
-        Location = dto.Location,
-        CoverImageUrl = dto.CoverImageUrl,
-        StartDate = DateOnly.FromDateTime(dto.StartDate.DateTime),
-        EndDate = DateOnly.FromDateTime(dto.EndDate.DateTime)
+        CommandCenterMode.Strategic => "strategic",
+        CommandCenterMode.Event => "event",
+        _ => "loading"
     };
 }

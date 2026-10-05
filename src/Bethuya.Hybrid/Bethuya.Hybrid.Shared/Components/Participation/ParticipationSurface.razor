@@ -1,0 +1,153 @@
+@using Bethuya.Hybrid.Shared.Models.Participation
+
+@* Journey-oriented homepage. Deliberately renders no operational modules. *@
+<div class="participation" data-test="community-participation" data-participation-mode="@(Model.IsOnboarding ? "onboarding" : "journey")">
+    <header class="participation-header">
+        <p class="participation-audience" data-test="participation-audience" data-audience="@AudienceRole">
+            @AudienceLabel<span class="participation-audience-sep">&#183;</span>@(Model.IsOnboarding ? "Getting started" : "My journey")
+        </p>
+        <h1>@Model.Headline</h1>
+        <p class="participation-subhead">@Model.Subhead</p>
+    </header>
+
+    <section class="passport" aria-labelledby="passport-heading" data-test="community-passport">
+        <div class="passport-heading">
+            <p>@Model.Passport.Headline</p>
+            <h2 id="passport-heading">@Model.Passport.StageLabel</h2>
+        </div>
+        <p class="passport-detail">@Model.Passport.StageDetail</p>
+        <div class="passport-progress" role="img"
+             aria-label="@($"{Model.Passport.ProgressPercent}% toward {Model.Passport.NextStageLabel}")">
+            <span style="width:@(Model.Passport.ProgressPercent)%"></span>
+        </div>
+        <p class="passport-next">Next: <strong>@Model.Passport.NextStageLabel</strong></p>
+        <ul class="passport-badges">
+            @foreach (var badge in Model.Passport.Badges)
+            {
+                <li>@badge</li>
+            }
+        </ul>
+    </section>
+
+    @if (Model.OnboardingSteps.Count > 0)
+    {
+        <section class="participation-section" aria-labelledby="getting-started-heading" data-test="getting-started">
+            <h2 id="getting-started-heading">Getting started</h2>
+            <ol class="step-list">
+                @foreach (var step in Model.OnboardingSteps)
+                {
+                    <li class="@($"step {(step.IsComplete ? "step--done" : "")}")" data-test="onboarding-step">
+                        <LucideIcon Name="@(step.IsComplete ? "circle-check" : "circle")" Size="16" />
+                        <div>
+                            <strong>@step.Label</strong>
+                            <small>@step.Detail</small>
+                        </div>
+                        <a href="@step.Route">@step.ActionLabel</a>
+                    </li>
+                }
+            </ol>
+        </section>
+    }
+
+    @if (Model.UpcomingActivities.Count > 0)
+    {
+        <section class="participation-section" aria-labelledby="activities-heading" data-test="upcoming-activities">
+            <h2 id="activities-heading">@(Model.IsOnboarding ? "Your upcoming event" : "Upcoming activities")</h2>
+            <div class="activity-list">
+                @foreach (var activity in Model.UpcomingActivities)
+                {
+                    <a class="activity" href="@activity.Route" data-test="participation-activity">
+                        <time>@activity.DateLabel</time>
+                        <span>
+                            <strong>@activity.Title</strong>
+                            <small>@activity.Detail</small>
+                        </span>
+                        <LucideIcon Name="chevron-right" Size="16" />
+                    </a>
+                }
+            </div>
+        </section>
+    }
+
+    @if (Model.Contributions.Count > 0)
+    {
+        <section class="participation-section" aria-labelledby="contributions-heading" data-test="contribution-history">
+            <h2 id="contributions-heading">Contribution history</h2>
+            <div class="contribution-grid">
+                @foreach (var contribution in Model.Contributions)
+                {
+                    <article class="contribution">
+                        <strong>@contribution.Value</strong>
+                        <span>@contribution.Label</span>
+                        <small>@contribution.Detail</small>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+
+    @if (Model.Timeline.Count > 0)
+    {
+        <section class="participation-section" aria-labelledby="timeline-heading" data-test="participation-timeline">
+            <h2 id="timeline-heading">Participation timeline</h2>
+            <ol class="timeline">
+                @foreach (var moment in Model.Timeline)
+                {
+                    <li>
+                        <time>@moment.DateLabel</time>
+                        <div>
+                            <strong>@moment.Title</strong>
+                            <small>@moment.Detail</small>
+                        </div>
+                    </li>
+                }
+            </ol>
+        </section>
+    }
+
+    <section class="participation-section" aria-labelledby="opportunities-heading" data-test="recommended-opportunities">
+        <h2 id="opportunities-heading">@(Model.IsOnboarding ? "Discover opportunities" : "Recommended opportunities")</h2>
+        <div class="opportunity-grid">
+            @foreach (var opportunity in Model.Opportunities)
+            {
+                <article class="opportunity" data-test="participation-opportunity">
+                    <h3>@opportunity.Title</h3>
+                    <p>@opportunity.Summary</p>
+                    <p class="match-reason">@opportunity.MatchReason</p>
+                    <a href="@opportunity.Route">@opportunity.ActionLabel <span aria-hidden="true">→</span></a>
+                </article>
+            }
+        </div>
+    </section>
+
+    @foreach (var section in Model.EarnedSections)
+    {
+        <section class="participation-section" data-test="@section.DataTest" aria-label="@section.Title">
+            <h2>@section.Title</h2>
+            <p class="section-summary">@section.Summary</p>
+            <div class="activity-list">
+                @foreach (var item in section.Items)
+                {
+                    <a class="activity" href="@item.Route">
+                        <time>@item.DateLabel</time>
+                        <span>
+                            <strong>@item.Title</strong>
+                            <small>@item.Detail</small>
+                        </span>
+                        <LucideIcon Name="chevron-right" Size="16" />
+                    </a>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public CommunityParticipationHome Model { get; set; } = default!;
+
+    /// <summary>Display-only label for the resolved participation audience.</summary>
+    [Parameter] public string AudienceLabel { get; set; } = string.Empty;
+
+    /// <summary>Display-only role slug for the resolved participation audience.</summary>
+    [Parameter] public string AudienceRole { get; set; } = string.Empty;
+}
