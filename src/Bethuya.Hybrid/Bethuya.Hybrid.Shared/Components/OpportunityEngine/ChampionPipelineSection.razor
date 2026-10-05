@@ -1,0 +1,65 @@
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+
+<section id="section-champion-pipeline"
+         class="oe-section"
+         aria-labelledby="champion-heading"
+         data-test="champion-pipeline-section">
+    <div class="oe-section__header">
+        <div>
+            <div class="oe-section__title-row">
+                <LucideIcon Name="award" Size="18" />
+                <h2 id="champion-heading">Champion Pipeline</h2>
+            </div>
+            <p>Identify members who consistently contribute and are ready for recognition.</p>
+        </div>
+        <div class="oe-champion-counts" data-test="champion-counts">
+            <span>@Pipeline.CandidateCount Candidates</span>
+            <span>@Pipeline.UnderReviewCount Under Review</span>
+            <span>@Pipeline.ReadyForNominationCount Ready For Nomination</span>
+            <span>@Pipeline.RecognitionPendingCount Recognition Pending</span>
+            <a href="#section-champion-pipeline" data-test="view-all-champions">View All Candidates</a>
+        </div>
+    </div>
+
+    <div class="oe-champion-list">
+        @foreach (var candidate in Pipeline.Candidates)
+        {
+            <article class="oe-champion-card" data-test="champion-candidate-card">
+                <div class="oe-champion-card__identity">
+                    <span class="oe-avatar" aria-hidden="true">@candidate.MemberInitials</span>
+                    <div>
+                        <h3>
+                            @candidate.MemberName
+                            <span class="oe-pill">@(candidate.NominationApproved ? "Nomination Approved" : candidate.StatusLabel)</span>
+                        </h3>
+                        <p>
+                            <strong>Evidence:</strong>
+                            @string.Join(" • ", candidate.Evidence)
+                        </p>
+                    </div>
+                </div>
+                <div class="oe-champion-card__actions">
+                    <div data-test="champion-inspect">
+                        <BbButton Variant="ButtonVariant.Outline"
+                                  OnClick="() => OnInspect.InvokeAsync(candidate.CandidateId)">
+                            Inspect &amp; Review
+                        </BbButton>
+                    </div>
+                    <div data-test="champion-approve">
+                        <BbButton Variant="ButtonVariant.Default"
+                                  Disabled="candidate.NominationApproved"
+                                  OnClick="() => OnApproveNomination.InvokeAsync(candidate.CandidateId)">
+                            Approve Nomination
+                        </BbButton>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ChampionPipeline Pipeline { get; set; } = new(0, 0, 0, 0, []);
+    [Parameter] public EventCallback<string> OnInspect { get; set; }
+    [Parameter] public EventCallback<string> OnApproveNomination { get; set; }
+}

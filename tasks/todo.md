@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-05] Opportunity Engine MVP operational workspace
+- **Status:** done
+- **Agent/Owner:** Cursor Agent
+- **Description:** Replace the `/opportunities` foundation stub with a full operational Opportunity Engine workspace. Wireframe guides IA and workflows; Bethuya Hackerspace/Command Center visual language; deterministic mock provider with client-side human-review actions (no new backend opportunity APIs).
+- **Acceptance:** `/opportunities` renders Community Needs (default), Member Opportunities with detail panel, Risks & Interventions, Champion Pipeline, and Progression Pathways; governance badges visible; Approve only in sticky panel; TUnit/bUnit + targeted Playwright proof pass; NavMenu links to the workspace.
+- **Evidence:** 466/466 TUnit tests pass including OpportunityEngineTests; Playwright OpportunityEngineFlowTests passes against Aspire `https://localhost:64278`; screenshot `artifacts/opportunity-engine-workspace.png`.
+
 ## [2026-10-05] Addressing Homepage load review findings
 - **Status:** done
 - **Agent/Owner:** Copilot Coding Agent

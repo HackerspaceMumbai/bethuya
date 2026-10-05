@@ -1,0 +1,35 @@
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+
+<section id="section-progression-pathways"
+         class="oe-section"
+         aria-labelledby="pathways-heading"
+         data-test="progression-pathways-section">
+    <div class="oe-section__header">
+        <div>
+            <div class="oe-section__title-row">
+                <LucideIcon Name="route" Size="18" />
+                <h2 id="pathways-heading">Community Progression Pathways</h2>
+            </div>
+            <p>Validate progression outcomes created by opportunities—without turning into Community Intelligence.</p>
+        </div>
+    </div>
+
+    <div class="oe-pathway-grid">
+        @foreach (var pathway in Pathways)
+        {
+            <article class="oe-pathway-card" data-test="progression-pathway-card">
+                <h3>@pathway.FromRole → @pathway.ToRole</h3>
+                <dl class="oe-detail-dl">
+                    <div><dt>Identified</dt><dd>@pathway.Identified</dd></div>
+                    <div><dt>Approved</dt><dd>@pathway.Approved</dd></div>
+                    <div><dt>Accepted</dt><dd>@pathway.Accepted</dd></div>
+                    <div><dt>Active</dt><dd>@pathway.Active @pathway.ToRole@(pathway.Active == 1 ? "" : "s")</dd></div>
+                </dl>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ProgressionPathway> Pathways { get; set; } = [];
+}

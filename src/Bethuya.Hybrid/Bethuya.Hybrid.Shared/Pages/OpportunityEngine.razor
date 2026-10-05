@@ -1,0 +1,222 @@
+@page "/opportunities"
+@rendermode InteractiveServer
+@using Bethuya.Hybrid.Shared.Components.OpportunityEngine
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+@using Bethuya.Hybrid.Shared.Services
+@inject IOpportunityEngineService OpportunityEngineService
+
+<PageTitle>Opportunity Engine — Bethuya</PageTitle>
+
+<main class="opportunity-engine" data-test="opportunity-engine">
+    <a class="oe-back" href="/"><LucideIcon Name="arrow-left" Size="15" /> Back to command center</a>
+
+    <OpportunityEngineHeader />
+
+    <WorkspaceTabs ActiveTab="_activeTab"
+                   OpportunityCount="_opportunities.Count"
+                   ChampionCount="_champions.CandidateCount"
+                   RiskCount="_risks.Count"
+                   OnTabSelected="SelectTabAsync" />
+
+    <GovernanceBanner />
+
+    @if (_kpis.Count > 0)
+    {
+        <OpportunityKpiStrip Kpis="_kpis" />
+    }
+
+    <div class="oe-workspace-grid">
+        <div class="oe-workspace-main">
+            <CommunityNeedsSection Events="_events"
+                                   SelectedEventId="_selectedEventId"
+                                   OnEventSelected="SelectEventAsync"
+                                   OnViewMatches="SelectOpportunityAsync" />
+
+            <MemberOpportunityQueue Opportunities="_opportunities"
+                                    ActiveFilter="_activeFilter"
+                                    SelectedOpportunityId="_selectedOpportunityId"
+                                    OnFilterChanged="SetFilterAsync"
+                                    OnInspect="SelectOpportunityAsync" />
+
+            <RisksInterventionsSection Risks="_risks"
+                                       OnAssignSupport="AssignSupportAsync"
+                                       OnScheduleCheckIn="ScheduleCheckInAsync"
+                                       OnDefer="DeferRiskAsync" />
+
+            <ChampionPipelineSection Pipeline="_champions"
+                                     OnInspect="InspectChampionAsync"
+                                     OnApproveNomination="ApproveNominationAsync" />
+
+            <ProgressionPathwaysSection Pathways="_pathways" />
+        </div>
+
+        <SelectedOpportunityPanel Opportunity="_selectedOpportunity"
+                                  ActionMessage="@_actionMessage"
+                                  OnDefer="DeferOpportunityAsync"
+                                  OnMessage="MessageMemberAsync"
+                                  OnApprove="ApproveOpportunityAsync" />
+    </div>
+</main>
+
+@code {
+    private OpportunityWorkspaceTab _activeTab = OpportunityWorkspaceTab.CommunityNeeds;
+    private OpportunityCategory _activeFilter = OpportunityCategory.All;
+    private IReadOnlyList<OpportunityKpi> _kpis = [];
+    private IReadOnlyList<FeaturedEventNeeds> _events = [];
+    private List<MemberOpportunity> _opportunities = [];
+    private List<RiskIntervention> _risks = [];
+    private ChampionPipeline _champions = new(0, 0, 0, 0, []);
+    private IReadOnlyList<ProgressionPathway> _pathways = [];
+    private string _selectedEventId = "";
+    private string? _selectedOpportunityId;
+    private string? _actionMessage;
+
+    private MemberOpportunity? _selectedOpportunity =>
+        _opportunities.FirstOrDefault(o => o.OpportunityId == _selectedOpportunityId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var workspace = await OpportunityEngineService.GetWorkspaceAsync();
+        _kpis = workspace.Kpis;
+        _events = workspace.Events;
+        _opportunities = [.. workspace.Opportunities];
+        _risks = [.. workspace.Risks];
+        _champions = workspace.Champions with { Candidates = [.. workspace.Champions.Candidates] };
+        _pathways = workspace.Pathways;
+        _selectedEventId = _events.FirstOrDefault()?.EventId ?? "";
+        _selectedOpportunityId = _opportunities.FirstOrDefault()?.OpportunityId;
+    }
+
+    private Task SelectTabAsync(OpportunityWorkspaceTab tab)
+    {
+        _activeTab = tab;
+        return Task.CompletedTask;
+    }
+
+    private Task SelectEventAsync(string eventId)
+    {
+        _selectedEventId = eventId;
+        return Task.CompletedTask;
+    }
+
+    private Task SetFilterAsync(OpportunityCategory filter)
+    {
+        _activeFilter = filter;
+        return Task.CompletedTask;
+    }
+
+    private Task SelectOpportunityAsync(string opportunityId)
+    {
+        _selectedOpportunityId = opportunityId;
+        _activeTab = OpportunityWorkspaceTab.MemberOpportunities;
+        _actionMessage = null;
+        return Task.CompletedTask;
+    }
+
+    private Task DeferOpportunityAsync()
+    {
+        UpdateSelectedStatus(OpportunityWorkflowStatus.Dismissed, "Opportunity deferred. No invitation was sent.");
+        return Task.CompletedTask;
+    }
+
+    private Task MessageMemberAsync()
+    {
+        if (_selectedOpportunity is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        _actionMessage = $"Message draft prepared for {_selectedOpportunity.MemberName}. Human review still required before send.";
+        return Task.CompletedTask;
+    }
+
+    private Task ApproveOpportunityAsync()
+    {
+        UpdateSelectedStatus(OpportunityWorkflowStatus.Offered, "Approved and invite prepared. Offer sent for member response.");
+        return Task.CompletedTask;
+    }
+
+    private void UpdateSelectedStatus(OpportunityWorkflowStatus status, string message)
+    {
+        if (_selectedOpportunityId is null)
+        {
+            return;
+        }
+
+        var index = _opportunities.FindIndex(o => o.OpportunityId == _selectedOpportunityId);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var current = _opportunities[index];
+        _opportunities[index] = current with
+        {
+            Status = status,
+            StatusDetail = status switch
+            {
+                OpportunityWorkflowStatus.Offered => "Offered • Awaiting member response",
+                OpportunityWorkflowStatus.Dismissed => "Deferred by organizer",
+                _ => current.StatusDetail
+            }
+        };
+        _actionMessage = message;
+    }
+
+    private Task AssignSupportAsync(string riskId)
+    {
+        UpdateRisk(riskId, careOwner: "Support volunteers assigned", deferred: false);
+        return Task.CompletedTask;
+    }
+
+    private Task ScheduleCheckInAsync(string riskId)
+    {
+        UpdateRisk(riskId, careOwner: "Check-in scheduled", deferred: false);
+        return Task.CompletedTask;
+    }
+
+    private Task DeferRiskAsync(string riskId)
+    {
+        UpdateRisk(riskId, careOwner: "Deferred", deferred: true);
+        return Task.CompletedTask;
+    }
+
+    private void UpdateRisk(string riskId, string careOwner, bool deferred)
+    {
+        var index = _risks.FindIndex(r => r.RiskId == riskId);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var current = _risks[index];
+        _risks[index] = current with { CareOwner = careOwner, IsDeferred = deferred };
+    }
+
+    private Task InspectChampionAsync(string candidateId)
+    {
+        _activeTab = OpportunityWorkspaceTab.ChampionPipeline;
+        _actionMessage = $"Champion candidate {candidateId} opened for review. Nomination still requires human approval.";
+        return Task.CompletedTask;
+    }
+
+    private Task ApproveNominationAsync(string candidateId)
+    {
+        var candidates = _champions.Candidates.ToList();
+        var index = candidates.FindIndex(c => c.CandidateId == candidateId);
+        if (index < 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        candidates[index] = candidates[index] with { NominationApproved = true, StatusLabel = "Nomination Approved" };
+        _champions = _champions with
+        {
+            Candidates = candidates,
+            ReadyForNominationCount = Math.Max(0, _champions.ReadyForNominationCount - 1),
+            RecognitionPendingCount = _champions.RecognitionPendingCount + 1
+        };
+        _actionMessage = "Champion nomination approved. Recognition remains pending human publication.";
+        return Task.CompletedTask;
+    }
+}
