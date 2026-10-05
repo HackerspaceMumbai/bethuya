@@ -4,6 +4,9 @@ namespace Bethuya.Hybrid.Shared.Services;
 
 public interface ICurationApi
 {
+    [Get("/api/curation/{eventId}/availability")]
+    Task<CurationAvailabilityDto> GetAvailabilityAsync(Guid eventId, CancellationToken ct = default);
+
     [Get("/api/curation/{eventId}")]
     Task<CurationDashboardDto> GetDashboardAsync(Guid eventId, CancellationToken ct = default);
 
@@ -19,6 +22,9 @@ public interface ICurationApi
 }
 
 public sealed record GenerateCurationProposalDto(string? RequestedBy = null);
+
+/// <summary>Whether an event has more active registrations than venue capacity, so curation is needed.</summary>
+public sealed record CurationAvailabilityDto(Guid EventId, int Capacity, int ActiveRegistrations, bool IsOversubscribed);
 
 public sealed record CurationDashboardDto(
     Guid EventId,

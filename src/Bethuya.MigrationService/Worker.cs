@@ -30,7 +30,9 @@ public sealed partial class MigrationWorker(
     private async Task EnsureSchemaAsync(BethuyaDbContext dbContext, CancellationToken cancellationToken)
     {
         LogApplyingMigrations();
+        await dbContext.EnsureMigrationHistoryTableAsync(cancellationToken);
         await dbContext.Database.MigrateAsync(cancellationToken);
+        await ImportTemplateSeeder.EnsureSeededAsync(dbContext, cancellationToken);
         LogSchemaReady();
     }
 

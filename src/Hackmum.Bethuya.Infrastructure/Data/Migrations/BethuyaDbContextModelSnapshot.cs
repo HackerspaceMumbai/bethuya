@@ -529,6 +529,10 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ArchiveFolderPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTimeOffset?>("ArchivedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -621,6 +625,71 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .HasFilter("\"SessionizeEventId\" IS NOT NULL");
 
                     b.ToTable("Events");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.EventArchiveOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("AvailableAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ClaimToken")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Destination")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FolderPath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MetadataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReadmeMarkdown")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessedAt", "AvailableAt");
+
+                    b.HasIndex("EventId", "Destination", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("EventArchiveOutboxMessages");
                 });
 
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.EventReport", b =>
@@ -747,6 +816,212 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.ToTable("FairnessBudgets");
                 });
 
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportArtifact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<Guid>("ImportBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Sha256Checksum")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImportBatchId")
+                        .IsUnique();
+
+                    b.ToTable("ImportArtifacts");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CommittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("DryRunCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DryRunMappingFingerprint")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ErrorRows")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ImportKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("ImportTemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RowsToCreate")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RowsToUpdate")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("TotalRows")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ValidRows")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImportTemplateId");
+
+                    b.HasIndex("EventId", "CreatedAt");
+
+                    b.ToTable("ImportBatches");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportColumnMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ImportTemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceColumnName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TargetField")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImportTemplateId");
+
+                    b.ToTable("ImportColumnMappings");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportRawRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ImportBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RawDataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RowIndex")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImportBatchId", "RowIndex")
+                        .IsUnique();
+
+                    b.ToTable("ImportRawRows");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClonedFromTemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImportKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OwnerUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("SourceKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Scope", "OwnerUserId");
+
+                    b.ToTable("ImportTemplates");
+                });
+
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.MentorProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -832,8 +1107,16 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("ImportBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("IngestedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IngestionMethod")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("timestamp with time zone");
@@ -850,6 +1133,8 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EventId");
+
+                    b.HasIndex("ImportBatchId");
 
                     b.HasIndex("CommunityMemberId", "OccurredAt");
 
@@ -1124,6 +1409,9 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<DateTimeOffset?>("ApprovalObservedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("AttendanceLikelihood")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
@@ -1319,6 +1607,58 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.Navigation("Event");
                 });
 
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportArtifact", b =>
+                {
+                    b.HasOne("Hackmum.Bethuya.Core.Models.ImportBatch", "ImportBatch")
+                        .WithOne("ImportArtifact")
+                        .HasForeignKey("Hackmum.Bethuya.Core.Models.ImportArtifact", "ImportBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImportBatch");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportBatch", b =>
+                {
+                    b.HasOne("Hackmum.Bethuya.Core.Models.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hackmum.Bethuya.Core.Models.ImportTemplate", "ImportTemplate")
+                        .WithMany()
+                        .HasForeignKey("ImportTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("ImportTemplate");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportColumnMapping", b =>
+                {
+                    b.HasOne("Hackmum.Bethuya.Core.Models.ImportTemplate", "ImportTemplate")
+                        .WithMany("ColumnMappings")
+                        .HasForeignKey("ImportTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImportTemplate");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportRawRow", b =>
+                {
+                    b.HasOne("Hackmum.Bethuya.Core.Models.ImportBatch", "ImportBatch")
+                        .WithMany("RawRows")
+                        .HasForeignKey("ImportBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImportBatch");
+                });
+
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.MentorProfile", b =>
                 {
                     b.HasOne("Hackmum.Bethuya.Core.Models.CommunityMember", "Member")
@@ -1341,6 +1681,11 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.HasOne("Hackmum.Bethuya.Core.Models.Event", null)
                         .WithMany()
                         .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Hackmum.Bethuya.Core.Models.ImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("ImportBatchId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("CommunityMember");
@@ -1425,6 +1770,18 @@ namespace Hackmum.Bethuya.Infrastructure.Data.Migrations
                     b.Navigation("Agenda");
 
                     b.Navigation("Registrations");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportBatch", b =>
+                {
+                    b.Navigation("ImportArtifact");
+
+                    b.Navigation("RawRows");
+                });
+
+            modelBuilder.Entity("Hackmum.Bethuya.Core.Models.ImportTemplate", b =>
+                {
+                    b.Navigation("ColumnMappings");
                 });
 
             modelBuilder.Entity("Hackmum.Bethuya.Core.Models.PlanningCycle", b =>

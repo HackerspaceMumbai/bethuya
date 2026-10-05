@@ -5,6 +5,9 @@ using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Repositories;
+using Hackmum.Bethuya.Infrastructure.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ServiceDefaults.Auth;
 using System.Security.Claims;
 
@@ -17,6 +20,33 @@ public static class CurationEndpoints
         var group = app.MapGroup("/api/curation")
             .WithTags("Curation")
             .RequireAuthorization(BethuyaPolicyNames.RequireOrganizerOrCurator);
+
+        group.MapGet("/{eventId:guid}/availability", async (
+            Guid eventId,
+            [FromServices] BethuyaDbContext db,
+            CancellationToken ct) =>
+        {
+            var availability = await db.Events
+                .AsNoTracking()
+                .Where(e => e.Id == eventId)
+                .Select(e => new
+                {
+                    e.Capacity,
+                    ActiveRegistrations = db.Registrations.Count(r =>
+                        r.EventId == e.Id &&
+                        r.Status != RegistrationStatus.Rejected &&
+                        r.Status != RegistrationStatus.Cancelled)
+                })
+                .SingleOrDefaultAsync(ct);
+
+            return availability is null
+                ? Results.NotFound("Event not found")
+                : Results.Ok(new CurationAvailabilityResponse(
+                    eventId,
+                    availability.Capacity,
+                    availability.ActiveRegistrations,
+                    availability.ActiveRegistrations > availability.Capacity));
+        });
 
         group.MapGet("/{eventId:guid}", async (
             Guid eventId,
@@ -131,6 +161,10 @@ public static class CurationEndpoints
             };
 
             registration.Status = status;
+            if (status == RegistrationStatus.Accepted && registration.ApprovalObservedAt is null)
+            {
+                registration.ApprovalObservedAt = DateTimeOffset.UtcNow;
+            }
             await registrationRepo.UpdateAsync(registration, ct);
 
             var decidedBy = user.FindFirst("email")?.Value

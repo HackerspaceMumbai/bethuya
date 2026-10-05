@@ -22,6 +22,10 @@ internal sealed class ParticipationLedgerEntryConfiguration : IEntityTypeConfigu
             .HasConversion<string>()
             .HasMaxLength(50);
 
+        builder.Property(entry => entry.IngestionMethod)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
         builder.Property(entry => entry.ExternalMemberKey)
             .IsRequired()
             .HasMaxLength(200);
@@ -62,6 +66,11 @@ internal sealed class ParticipationLedgerEntryConfiguration : IEntityTypeConfigu
         builder.HasOne<Event>()
             .WithMany()
             .HasForeignKey(entry => entry.EventId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<ImportBatch>()
+            .WithMany()
+            .HasForeignKey(entry => entry.ImportBatchId)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

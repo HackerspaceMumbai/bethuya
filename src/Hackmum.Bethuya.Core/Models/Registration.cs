@@ -29,6 +29,8 @@ public sealed class Registration
     public DateTimeOffset? GovernmentIdUploadedAt { get; set; }
     public InclusionSignals InclusionSignals { get; set; } = new();
     public RegistrationStatus Status { get; set; } = RegistrationStatus.Pending;
+    /// <summary>When approval was first observed by Bethuya; the Luma export does not supply an approval timestamp.</summary>
+    public DateTimeOffset? ApprovalObservedAt { get; set; }
     public DateTimeOffset RegisteredAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 

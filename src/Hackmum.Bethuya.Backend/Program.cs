@@ -10,6 +10,7 @@ using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Extensions;
 using Hackmum.Bethuya.Infrastructure.Repositories;
+using Hackmum.Bethuya.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -49,6 +50,7 @@ builder.Services.AddScoped<IAgentInvoker, FoundryResponsesInvoker>();
 builder.Services.AddScoped<InclusionSignalsNormalizer>();
 builder.Services.AddScoped<CurationFairnessService>();
 builder.Services.AddScoped<CurationSampleSeeder>();
+builder.Services.AddScoped<EmptyImportEventSeeder>();
 builder.Services.AddScoped<CommunitySimulationSeeder>();
 builder.Services.AddScoped<PlanningCycleService>();
 builder.Services.AddScoped<CommunityPassportService>();
@@ -59,6 +61,21 @@ builder.Services.AddScoped<ISessionIngestionService, SessionIngestionService>();
 builder.Services.AddScoped<IEventLifecycleOrchestrator, EventLifecycleOrchestrator>();
 builder.Services.AddScoped<IMentorProfileRepository, MentorProfileRepository>();
 builder.Services.AddScoped<MentorshipService>();
+builder.Services.AddSingleton<IImportFileParser, CsvImportFileParser>();
+builder.Services.AddSingleton<IImportFileParser, XlsxImportFileParser>();
+builder.Services.AddSingleton<ImportFileParserResolver>();
+var importArtifactRoot = builder.Configuration["ImportArtifacts:RootDirectory"];
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(importArtifactRoot))
+{
+    throw new InvalidOperationException(
+        "ImportArtifacts:RootDirectory must reference durable shared storage outside Development.");
+}
+
+builder.Services.AddSingleton<IImportArtifactStore>(
+    new LocalDiskImportArtifactStore(importArtifactRoot));
+builder.Services.AddScoped<ImportDryRunService>();
+builder.Services.AddScoped<ImportCommitService>();
+builder.Services.AddScoped<ImportTemplateService>();
 
 var app = builder.Build();
 
@@ -96,6 +113,7 @@ app.MapProfileEndpoints();
 app.MapCommunityPassportEndpoints();
 app.MapPlanningCycleEndpoints();
 app.MapMentorshipEndpoints();
+app.MapImportEndpoints();
 
 app.MapDefaultEndpoints();
 

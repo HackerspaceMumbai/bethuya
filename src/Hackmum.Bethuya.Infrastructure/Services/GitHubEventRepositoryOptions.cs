@@ -6,7 +6,11 @@ public sealed class GitHubEventRepositoryOptions
 
     public string Owner { get; set; } = "HackerspaceMumbai";
 
-    public string Repository { get; set; } = "bethuya";
+    /// <summary>
+    /// Gets or sets the GitHub archive repository that receives event snapshots.
+    /// This defaults to the public <c>events</c> repository.
+    /// </summary>
+    public string Repository { get; set; } = "events";
 
     public string Branch { get; set; } = "main";
 
