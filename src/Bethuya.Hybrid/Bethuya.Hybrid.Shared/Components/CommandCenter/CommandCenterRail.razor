@@ -1,6 +1,11 @@
 @using Bethuya.Hybrid.Shared.Models.CommandCenter
 
 <aside class="command-rail" aria-label="Organizational workload">
+    @if (EventMode)
+    {
+        @RenderDeadlines
+    }
+
     @if (ShowApprovals)
     {
         <section class="rail-panel" data-test="pending-approvals">
@@ -15,13 +20,18 @@
         </section>
     }
 
-    <section class="rail-panel" data-test="upcoming-deadlines">
-        <div class="rail-heading"><span>Upcoming deadlines</span></div>
-        @foreach (var deadline in Deadlines)
+    @if (!EventMode)
+    {
+        @RenderDeadlines
+    }
+
+    <section class="rail-panel" data-test="quick-actions">
+        <div class="rail-heading"><span>Quick actions</span></div>
+        @foreach (var action in QuickActions)
         {
-            <a href="@deadline.Route" class="deadline-link">
-                <span>@deadline.Label</span>
-                <small>@deadline.DueLabel</small>
+            <a href="@action.Route" data-test="quick-action">
+                <LucideIcon Name="@action.Icon" Size="15" />
+                <span>@action.Label</span>
             </a>
         }
     </section>
@@ -42,6 +52,21 @@
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<ReviewItem> Reviews { get; set; } = [];
     [Parameter, EditorRequired] public IReadOnlyList<DeadlineItem> Deadlines { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<QuickAction> QuickActions { get; set; } = [];
     [Parameter, EditorRequired] public IReadOnlyList<WorkspaceLink> Workspaces { get; set; } = [];
     [Parameter] public bool ShowApprovals { get; set; } = true;
+
+    /// <summary>In Event mode deadlines lead the rail because they gate event execution.</summary>
+    [Parameter] public bool EventMode { get; set; }
+
+    private RenderFragment RenderDeadlines => @<section class="@($"rail-panel {(EventMode ? "rail-panel--priority" : "")}")" data-test="upcoming-deadlines">
+        <div class="rail-heading"><span>Upcoming deadlines</span></div>
+        @foreach (var deadline in Deadlines)
+        {
+            <a href="@deadline.Route" class="deadline-link">
+                <span>@deadline.Label</span>
+                <small>@deadline.DueLabel</small>
+            </a>
+        }
+    </section>;
 }

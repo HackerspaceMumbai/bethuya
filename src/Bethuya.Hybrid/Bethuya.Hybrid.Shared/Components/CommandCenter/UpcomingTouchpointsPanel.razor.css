@@ -85,10 +85,14 @@
 }
 
 .readiness-card__header {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.8rem;
+    gap: 0.55rem;
+}
+
+.readiness-card__header > div {
+    min-width: 0;
 }
 
 .readiness-card time {
@@ -109,7 +113,8 @@
 }
 
 .readiness-state {
-    flex: 0 0 auto;
+    justify-self: start;
+    max-width: 100%;
     padding: 0.25rem 0.45rem;
     color: #9ed9b9;
     background: rgba(114, 198, 154, 0.1);
@@ -117,6 +122,8 @@
     border-radius: 999px;
     font-size: 0.58rem;
     font-weight: 800;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 .readiness-state--risk {
@@ -182,4 +189,18 @@
 
 @media (max-width: 900px) {
     .readiness-grid { grid-template-columns: 1fr; }
+}
+
+/* BB has no inline touchpoint-kind chip for mixed-type readiness cards. */
+.touchpoint-kind {
+    display: inline-block;
+    margin-top: 0.3rem;
+    padding: 0.1rem 0.4rem;
+    color: #b8aa96;
+    background: rgba(212, 168, 48, 0.08);
+    border-radius: 0.3rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }

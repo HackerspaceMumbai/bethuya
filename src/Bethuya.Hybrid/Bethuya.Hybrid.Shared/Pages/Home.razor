@@ -1,69 +1,85 @@
 @page "/"
 @rendermode InteractiveServer
+@implements IDisposable
 @using Bethuya.Hybrid.Shared.Components.CommandCenter
+@using Bethuya.Hybrid.Shared.Components.Participation
 @using Bethuya.Hybrid.Shared.Models.CommandCenter
+@using Bethuya.Hybrid.Shared.Models.Participation
 @inject ICommunityCommandCenterService CommandCenterService
+@inject ICommunityParticipationService ParticipationService
 @inject ICommandCenterAudienceResolver AudienceResolver
 
-<PageTitle>Community Command Center — Bethuya</PageTitle>
+<PageTitle>@(audience?.Surface == CommandCenterSurface.Participation ? "My community journey — Bethuya" : "Community Command Center — Bethuya")</PageTitle>
 
-<a class="skip-link" href="#command-center-main">Skip to community priorities</a>
+<a class="skip-link" href="#home-main">Skip to main content</a>
 
-<main id="command-center-main"
-      class="@($"command-center command-center--{GetModeSlug(model?.EffectiveMode)}")"
-      aria-label="Community operations command center"
-      data-test="community-command-center">
-    <header class="command-header">
-        <div class="command-header__copy">
-            <p class="command-kicker">Community operations · This week</p>
-            <h1>Welcome back@(audience is null ? "." : $", {audience.DisplayName}.")</h1>
-            <p class="command-subtitle">Events are moments. Communities are journeys.</p>
-            @if (audience is not null)
-            {
+@if (requiresAuthentication)
+{
+    <main id="home-main" class="command-center command-center--loading">
+        <div data-test="command-center-auth-required">
+            <BbAlert>
+                <BbAlertTitle>Sign in to open Bethuya</BbAlertTitle>
+                <BbAlertDescription>Your community experience is resolved from your authenticated identity.</BbAlertDescription>
+            </BbAlert>
+        </div>
+    </main>
+}
+else if (isLoading)
+{
+    <main id="home-main" class="command-center command-center--loading">
+        <div class="command-loading" data-test="loading-state" role="status">Reading community signals…</div>
+    </main>
+}
+else if (errorMessage is not null)
+{
+    <main id="home-main" class="command-center command-center--loading">
+        <div data-test="error-state">
+            <BbAlert Variant="AlertVariant.Danger">
+                <BbAlertTitle>Home unavailable</BbAlertTitle>
+                <BbAlertDescription>@errorMessage</BbAlertDescription>
+            </BbAlert>
+        </div>
+    </main>
+}
+else if (audience?.Surface == CommandCenterSurface.Participation && participation is not null)
+{
+    <main id="home-main" class="participation-shell" aria-label="Community participation home">
+        <ParticipationSurface Model="@participation"
+                              AudienceLabel="@audience.ExperienceLabel"
+                              AudienceRole="@audience.Role.ToString()" />
+    </main>
+}
+else if (model is not null && audience is not null)
+{
+    <main id="home-main"
+          class="@($"command-center command-center--{GetModeSlug(model.EffectiveMode)}")"
+          aria-label="Community operations command center"
+          data-test="community-command-center">
+        <header class="command-header">
+            <div class="command-header__copy">
+                <p class="command-kicker">Community operations · This week</p>
+                <h1>Welcome back, @audience.DisplayName.</h1>
+                <p class="command-subtitle">Events are moments. Communities are journeys.</p>
                 <div class="command-audience" data-test="command-center-audience" data-audience="@audience.Role">
                     <span class="command-audience__label">@audience.ExperienceLabel</span>
                     <p class="command-summary">@audience.ExperienceSummary</p>
                 </div>
-            }
-        </div>
+            </div>
 
-        <div class="command-controls" aria-label="Command center controls">
-            <a class="notification-link" href="#human-review" data-test="notification-center" aria-label="Open human review queue">
-                <LucideIcon Name="bell" Size="17" />
-                <span>@(model?.Reviews.Sum(review => review.Count) ?? 0)</span>
-            </a>
-        </div>
-    </header>
+            <div class="command-controls" aria-label="Command center controls">
+                <a class="notification-link" href="#human-review" data-test="notification-center" aria-label="Open human review queue">
+                    <LucideIcon Name="bell" Size="17" />
+                    <span>@model.Reviews.Sum(review => review.Count)</span>
+                </a>
+            </div>
+        </header>
 
-    @if (requiresAuthentication)
-    {
-        <div data-test="command-center-auth-required">
-            <BbAlert>
-                <BbAlertTitle>Sign in to open your command center</BbAlertTitle>
-                <BbAlertDescription>Your community priorities are resolved from your authenticated identity.</BbAlertDescription>
-            </BbAlert>
-        </div>
-    }
-    else if (isLoading)
-    {
-        <div class="command-loading" data-test="loading-state" role="status">Reading community signals…</div>
-    }
-    else if (errorMessage is not null)
-    {
-        <div data-test="error-state">
-            <BbAlert Variant="AlertVariant.Danger">
-                <BbAlertTitle>Command center unavailable</BbAlertTitle>
-                <BbAlertDescription>@errorMessage</BbAlertDescription>
-            </BbAlert>
-        </div>
-    }
-    else if (model is not null)
-    {
         <section class="mode-bar" aria-label="Active command center mode" data-test="mode-explanation">
             <div class="mode-status">
                 <span class="mode-pulse" aria-hidden="true"></span>
                 <div>
                     <strong>Currently in @model.EffectiveMode Mode</strong>
+                    <p class="mode-question" data-test="mode-question">@model.ModeQuestion</p>
                     <p>@model.ModeReason</p>
                 </div>
             </div>
@@ -105,60 +121,77 @@
                     <ReviewQueue Items="@model.Reviews"
                                  EventMode="true"
                                  DataTest="pending-event-approvals" />
-                    <UpcomingEventsPanel Events="@model.UpcomingEvents" Expanded="true" />
-                    <div class="event-support-grid">
-                        <WeeklyInsightPanel Insight="@model.Insight" />
-                        <MomentumPanel People="@model.Momentum" />
-                    </div>
+                    <UpcomingTouchpointsPanel Touchpoints="@model.Touchpoints" Expanded="true" />
+                    <WeeklyInsightPanel Insight="@model.Insight" />
+                    <PeopleToWatchPanel People="@model.PeopleToWatch" />
                 }
                 else
                 {
                     <div class="mode-priority mode-priority--strategic" data-test="strategic-primary-work">
                         <WeeklyInsightPanel Insight="@model.Insight" />
-                        <MomentumPanel People="@model.Momentum" />
+                        <PeopleToWatchPanel People="@model.PeopleToWatch" />
                     </div>
                     <AttentionQueue Items="@model.AttentionItems" />
                     <ReviewQueue Items="@model.Reviews" />
-                    <UpcomingEventsPanel Events="@model.UpcomingEvents" Expanded="false" />
+                    <UpcomingTouchpointsPanel Touchpoints="@model.Touchpoints" Expanded="false" />
                 }
             </div>
             <CommandCenterRail Reviews="@model.Reviews"
                                Deadlines="@model.Deadlines"
+                               QuickActions="@model.QuickActions"
                                Workspaces="@model.Workspaces"
-                               ShowApprovals="@(model.EffectiveMode != CommandCenterMode.Event)" />
+                               ShowApprovals="@(model.EffectiveMode != CommandCenterMode.Event)"
+                               EventMode="@(model.EffectiveMode == CommandCenterMode.Event)" />
         </div>
-    }
-</main>
+    </main>
+}
 
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
     private Task<AuthenticationState>? processedAuthenticationStateTask;
+    private bool hasProcessedAuthenticationState;
+    private CancellationTokenSource? loadCancellation;
+    private int loadGeneration;
     private CommandCenterAudience? audience;
     private CommandCenterMode? modeOverride;
     private CommunityCommandCenter? model;
+    private CommunityParticipationHome? participation;
     private bool isLoading = true;
     private bool requiresAuthentication;
     private string? errorMessage;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ReferenceEquals(AuthenticationStateTask, processedAuthenticationStateTask))
+        if (hasProcessedAuthenticationState &&
+            ReferenceEquals(AuthenticationStateTask, processedAuthenticationStateTask))
         {
             return;
         }
 
-        processedAuthenticationStateTask = AuthenticationStateTask;
-        var principal = AuthenticationStateTask is null
+        var authenticationStateTask = AuthenticationStateTask;
+        processedAuthenticationStateTask = authenticationStateTask;
+        hasProcessedAuthenticationState = true;
+        CancelCurrentLoad();
+        audience = null;
+        model = null;
+        participation = null;
+        modeOverride = null;
+        errorMessage = null;
+        requiresAuthentication = false;
+        isLoading = true;
+
+        var principal = authenticationStateTask is null
             ? new System.Security.Claims.ClaimsPrincipal()
-            : (await AuthenticationStateTask).User;
+            : (await authenticationStateTask).User;
+        if (!ReferenceEquals(authenticationStateTask, AuthenticationStateTask))
+        {
+            return;
+        }
+
         if (principal.Identity?.IsAuthenticated != true)
         {
-            audience = null;
-            model = null;
-            modeOverride = null;
-            errorMessage = null;
             requiresAuthentication = true;
             isLoading = false;
             return;
@@ -178,24 +211,81 @@
 
     private async Task LoadAsync()
     {
+        CancelCurrentLoad();
+        var generation = loadGeneration;
+        var cancellation = new CancellationTokenSource();
+        loadCancellation = cancellation;
+        var cancellationToken = cancellation.Token;
+        var currentAudience = audience;
+        var currentModeOverride = modeOverride;
+
         isLoading = true;
         errorMessage = null;
 
+        var role = currentAudience?.Role ?? CommunityRole.CommunityMember;
+
         try
         {
-            model = await CommandCenterService.GetAsync(
-                audience?.Role ?? CommunityRole.CommunityMember,
-                modeOverride);
+            if (currentAudience?.Surface == CommandCenterSurface.Participation)
+            {
+                var loadedParticipation = await ParticipationService.GetAsync(
+                    role,
+                    currentAudience.DisplayName,
+                    cancellationToken);
+                if (generation != loadGeneration)
+                {
+                    return;
+                }
+
+                model = null;
+                participation = loadedParticipation;
+            }
+            else
+            {
+                var loadedModel = await CommandCenterService.GetAsync(
+                    role,
+                    currentModeOverride,
+                    cancellationToken);
+                if (generation != loadGeneration)
+                {
+                    return;
+                }
+
+                participation = null;
+                model = loadedModel;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception)
         {
-            errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
+            if (generation == loadGeneration)
+            {
+                errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
+            }
         }
         finally
         {
-            isLoading = false;
+            if (generation == loadGeneration)
+            {
+                loadCancellation = null;
+                isLoading = false;
+                cancellation.Dispose();
+            }
         }
     }
+
+    private void CancelCurrentLoad()
+    {
+        loadGeneration++;
+        loadCancellation?.Cancel();
+        loadCancellation?.Dispose();
+        loadCancellation = null;
+    }
+
+    /// <inheritdoc />
+    public void Dispose() => CancelCurrentLoad();
 
     private static string GetModeSlug(CommandCenterMode? mode) => mode switch
     {

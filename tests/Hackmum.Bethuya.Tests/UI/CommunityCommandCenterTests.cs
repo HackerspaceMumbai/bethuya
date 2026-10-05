@@ -1,5 +1,6 @@
 using Bethuya.Hybrid.Shared.Auth;
 using Bethuya.Hybrid.Shared.Models.CommandCenter;
+using Bethuya.Hybrid.Shared.Models.Participation;
 using Bethuya.Hybrid.Shared.Pages;
 using Bethuya.Hybrid.Shared.Services;
 using BlazorBlueprint.Components;
@@ -7,6 +8,7 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using System.Security.Claims;
 
 using BunitCtx = Bunit.TestContext;
@@ -28,7 +30,7 @@ public sealed class CommunityCommandCenterTests
         await Assert.That(result.RecommendedMode).IsEqualTo(CommandCenterMode.Event);
         await Assert.That(result.ModeReason).Contains("16 days away");
         await Assert.That(result.AttentionItems[0].Category).IsEqualTo("Event operations");
-        await Assert.That(result.UpcomingEvents[0].DateLabel).IsEqualTo("17 Oct");
+        await Assert.That(result.Touchpoints[0].DateLabel).IsEqualTo("17 Oct");
     }
 
     [Test]
@@ -67,30 +69,93 @@ public sealed class CommunityCommandCenterTests
             CommandCenterMode.Event);
 
         await Assert.That(strategic.Snapshot[0].Label).IsEqualTo("Community health");
+        await Assert.That(strategic.ModeQuestion).IsEqualTo("How is the community evolving?");
         await Assert.That(strategic.Insight.Headline).Contains("Community");
-        await Assert.That(strategic.Momentum[0].JourneyTo).IsEqualTo("Organizer candidate");
+        await Assert.That(strategic.PeopleToWatch[0].JourneyTo).IsEqualTo("Organizer candidate");
 
         await Assert.That(eventOperations.Snapshot[0].Label).IsEqualTo("Event readiness");
+        await Assert.That(eventOperations.ModeQuestion).IsEqualTo("Can this event succeed?");
         await Assert.That(eventOperations.Insight.Headline).Contains("execution");
-        await Assert.That(eventOperations.Momentum[0].JourneyTo).IsEqualTo("Event lead");
+        await Assert.That(eventOperations.PeopleToWatch[0].JourneyTo).IsEqualTo("Event lead");
         await Assert.That(eventOperations.Reviews[0].Label).IsEqualTo("Waitlist decisions");
-        await Assert.That(eventOperations.UpcomingEvents[0].ReadinessLabel).IsEqualTo("82% ready");
-        await Assert.That(eventOperations.UpcomingEvents[0].CapacityLabel).IsEqualTo("150 / 160");
-        await Assert.That(eventOperations.UpcomingEvents[0].WaitlistLabel).IsEqualTo("18 waiting");
-        await Assert.That(eventOperations.UpcomingEvents[0].VolunteerCoverageLabel).IsEqualTo("12 / 14");
-        await Assert.That(eventOperations.UpcomingEvents[0].RiskLabel).IsEqualTo("Volunteer gap");
+        await Assert.That(eventOperations.Touchpoints[0].ReadinessLabel).IsEqualTo("82% ready");
+        await Assert.That(eventOperations.Touchpoints[0].Metrics.Single(metric => metric.Label == "Capacity").Value)
+            .IsEqualTo("150 / 160");
+        await Assert.That(eventOperations.Touchpoints[0].Metrics.Single(metric => metric.Label == "Waitlist").Value)
+            .IsEqualTo("18 waiting");
+        await Assert.That(eventOperations.Touchpoints[0].Metrics.Single(metric => metric.Label == "Volunteers").Value)
+            .IsEqualTo("12 / 14");
+        await Assert.That(eventOperations.Touchpoints[0].RiskLabel).IsEqualTo("Volunteer gap");
     }
 
     [Test]
-    [Arguments(CommunityRole.CommunityAdministrator, "Community health")]
-    [Arguments(CommunityRole.EventOrganizer, "Event operations")]
-    [Arguments(CommunityRole.VolunteerLead, "Volunteer network")]
-    [Arguments(CommunityRole.MentorshipLead, "Mentorship")]
-    [Arguments(CommunityRole.CommunityMember, "Member journey")]
-    [Arguments(CommunityRole.EmergingContributor, "Contributor opportunity")]
-    public async Task DeterministicProvider_PrioritizesSelectedRole(CommunityRole role, string expectedCategory)
+    public async Task DeterministicProvider_TouchpointsSpanMoreThanEvents()
     {
         var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
+
+        var result = await service.GetAsync(CommunityRole.EventOrganizer);
+
+        await Assert.That(result.Touchpoints.Any(touchpoint => touchpoint.Kind != TouchpointKind.Event)).IsTrue();
+        var mentorship = result.Touchpoints.Single(touchpoint => touchpoint.Kind == TouchpointKind.MentorshipSession);
+        await Assert.That(mentorship.Metrics.Select(metric => metric.Label))
+            .IsEquivalentTo(["Pairings", "Mentees waiting", "Mentors"]);
+        await Assert.That(mentorship.Metrics.Single(metric => metric.Label == "Pairings").Value)
+            .IsEqualTo("6 / 8");
+        await Assert.That(mentorship.Metrics.Single(metric => metric.Label == "Mentees waiting").Value)
+            .IsEqualTo("2");
+        await Assert.That(mentorship.Metrics.Single(metric => metric.Label == "Mentors").Value)
+            .IsEqualTo("6 / 8");
+        await Assert.That(mentorship.Metrics.Any(metric => metric.Label == "Volunteers")).IsFalse();
+    }
+
+    [Test]
+    public async Task ParticipationProvider_RollsUpcomingActivitiesIntoNextYear()
+    {
+        var service = new DeterministicCommunityParticipationService(
+            new FixedTimeProvider(new DateTimeOffset(2026, 11, 1, 12, 0, 0, TimeSpan.Zero)));
+
+        var result = await service.GetAsync(CommunityRole.EventParticipant, "Anish");
+
+        await Assert.That(result.UpcomingActivities).IsNotEmpty();
+        await Assert.That(result.UpcomingActivities.All(activity => activity.DateLabel.Contains("2027", StringComparison.Ordinal)))
+            .IsTrue();
+        await Assert.That(result.OnboardingSteps[0].Detail).Contains("17 Oct 2027");
+    }
+
+    [Test]
+    [Arguments(16)]
+    [Arguments(17)]
+    public async Task ParticipationProvider_DoesNotShowPastWelcomeCallAsUpcoming(int day)
+    {
+        var service = new DeterministicCommunityParticipationService(
+            new FixedTimeProvider(new DateTimeOffset(2026, 10, day, 12, 0, 0, TimeSpan.Zero)));
+
+        var result = await service.GetAsync(CommunityRole.EventParticipant, "Anish");
+
+        await Assert.That(result.UpcomingActivities.Select(activity => activity.Title))
+            .IsEquivalentTo(["Hacktoberfest Mumbai"]);
+    }
+
+    [Test]
+    public async Task DeterministicProvider_PeopleToWatchStayAwarenessOnly()
+    {
+        var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
+
+        var result = await service.GetAsync(CommunityRole.CommunityAdministrator);
+
+        await Assert.That(result.PeopleToWatch).IsNotEmpty();
+        await Assert.That(result.PeopleToWatch.All(person => !string.IsNullOrWhiteSpace(person.WatchReason))).IsTrue();
+    }
+
+    [Test]
+    [Arguments(CommunityRole.CommunityAdministrator, "Retention risk")]
+    [Arguments(CommunityRole.EventOrganizer, "Capacity risk")]
+    [Arguments(CommunityRole.VolunteerLead, "Coverage gap")]
+    [Arguments(CommunityRole.MentorshipLead, "Mentor supply")]
+    public async Task DeterministicProvider_EmphasisesOperatingRole(CommunityRole role, string expectedCategory)
+    {
+        var service = new DeterministicCommunityCommandCenterService(
+            new FixedTimeProvider(new DateTimeOffset(2026, 7, 1, 12, 0, 0, TimeSpan.Zero)));
 
         var result = await service.GetAsync(role, CommandCenterMode.Strategic);
 
@@ -98,18 +163,16 @@ public sealed class CommunityCommandCenterTests
     }
 
     [Test]
-    [Arguments("dev-persona-anish", "Anish", CommunityRole.CommunityMember, "Member journey", "Member journey")]
-    [Arguments("dev-persona-priya", "Priya", CommunityRole.VolunteerLead, "Volunteer lead", "Volunteer network")]
-    [Arguments("dev-persona-rohan", "Rohan", CommunityRole.EventOrganizer, "Event organizer", "Event operations")]
-    [Arguments("dev-persona-maya", "Maya", CommunityRole.MentorshipLead, "Mentorship lead", "Mentorship")]
-    [Arguments("dev-persona-farah", "Farah", CommunityRole.EmergingContributor, "Emerging contributor", "Contributor opportunity")]
-    [Arguments("dev-persona-vikram", "Vikram", CommunityRole.CommunityAdministrator, "Community administrator", "Community health")]
-    public async Task Home_RendersClaimsDrivenPersonaExperience(
+    [Arguments("dev-persona-priya", "Priya", CommunityRole.VolunteerLead, "Volunteer lead", "Coverage gap")]
+    [Arguments("dev-persona-rohan", "Rohan", CommunityRole.EventOrganizer, "Event organizer", "Capacity risk")]
+    [Arguments("dev-persona-maya", "Maya", CommunityRole.MentorshipLead, "Mentorship lead", "Mentor supply")]
+    [Arguments("dev-persona-vikram", "Vikram", CommunityRole.CommunityAdministrator, "Community administrator", "Retention risk")]
+    public async Task Home_OperatingPersonasShareOneCommandCenterWithRoleAwareContent(
         string subject,
         string name,
         CommunityRole expectedRole,
         string expectedLabel,
-        string expectedPriority)
+        string expectedEmphasis)
     {
         using var ctx = CreateCommandCenterContext();
         var principal = CreatePrincipal(subject, name, BethuyaRoles.Attendee);
@@ -122,9 +185,61 @@ public sealed class CommunityCommandCenterTests
         await Assert.That(cut.Find("[data-test='command-center-audience']").GetAttribute("data-audience"))
             .IsEqualTo(expectedRole.ToString());
         await Assert.That(cut.Find("[data-test='command-center-audience']").TextContent).Contains(expectedLabel);
-        await Assert.That(cut.Find("[data-test='attention-queue'] [data-test='attention-item']").TextContent)
-            .Contains(expectedPriority);
+        await Assert.That(cut.Find("[data-test='attention-queue']").TextContent).Contains(expectedEmphasis);
+
+        // One shared command center: every operating persona renders the identical module set.
+        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='weekly-insight']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='people-to-watch']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='human-review-queue']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='upcoming-touchpoints']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='quick-actions']").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("[data-test^='role-']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    [Arguments("dev-persona-anish", "Anish", CommunityRole.EventParticipant, "Event participant", "onboarding")]
+    [Arguments("dev-persona-farah", "Farah", CommunityRole.EmergingContributor, "Emerging contributor", "journey")]
+    public async Task Home_ParticipationPersonasRenderJourneySurfaceWithoutOperations(
+        string subject,
+        string name,
+        CommunityRole expectedRole,
+        string expectedLabel,
+        string expectedMode)
+    {
+        using var ctx = CreateCommandCenterContext();
+
+        var cut = RenderHome(ctx, CreatePrincipal(subject, name, BethuyaRoles.Attendee));
+        cut.WaitForElement("[data-test='community-participation']");
+
+        await Assert.That(ClaimsCommandCenterAudienceResolver.GetSurface(expectedRole))
+            .IsEqualTo(CommandCenterSurface.Participation);
+        await Assert.That(cut.Find("[data-test='community-participation']").GetAttribute("data-participation-mode"))
+            .IsEqualTo(expectedMode);
+        await Assert.That(cut.Markup).Contains(expectedLabel);
+
+        // Participation never surfaces operations modules.
+        await Assert.That(cut.FindAll("[data-test='community-command-center']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='human-review-queue']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='pending-approvals']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='upcoming-deadlines']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Home_EmergingContributorSeesEarnedParticipationSections()
+    {
+        using var ctx = CreateCommandCenterContext();
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-farah", "Farah", BethuyaRoles.Attendee));
+        cut.WaitForElement("[data-test='community-participation']");
+
+        await Assert.That(cut.FindAll("[data-test='community-passport']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='participation-timeline']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='contribution-history']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='recommended-opportunities']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='earned-volunteer']").Count).IsEqualTo(1);
     }
 
     [Test]
@@ -138,6 +253,18 @@ public sealed class CommunityCommandCenterTests
         await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("[data-test='quick-navigation']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Home_WithoutAuthenticationCascade_ShowsSignInRequiredState()
+    {
+        using var ctx = CreateCommandCenterContext();
+
+        var cut = ctx.RenderComponent<Home>();
+        cut.WaitForElement("[data-test='command-center-auth-required']");
+
+        await Assert.That(cut.FindAll("[data-test='loading-state']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
     }
 
     [Test]
@@ -155,6 +282,67 @@ public sealed class CommunityCommandCenterTests
         await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("[data-test='command-center-audience']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Home_AuthenticationStatePending_ClearsExistingProjectionBeforeResolution()
+    {
+        using var ctx = CreateCommandCenterContext();
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='community-snapshot']");
+        var pendingState = new TaskCompletionSource<AuthenticationState>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(component => component.Value, pendingState.Task)
+            .AddChildContent<Home>());
+
+        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='command-center-audience']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='loading-state']").Count).IsEqualTo(1);
+
+        pendingState.SetResult(new AuthenticationState(new ClaimsPrincipal()));
+        cut.WaitForElement("[data-test='command-center-auth-required']");
+    }
+
+    [Test]
+    public async Task Home_OlderParticipationLoadCannotOverwriteNewOperationsPrincipal()
+    {
+        using var ctx = CreateCommandCenterContext();
+        var staleParticipation = await new DeterministicCommunityParticipationService(EventPressureClock)
+            .GetAsync(CommunityRole.EmergingContributor, "Farah");
+        var delayedParticipation = new TaskCompletionSource<CommunityParticipationHome>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var participationService = Substitute.For<ICommunityParticipationService>();
+        participationService.GetAsync(
+                Arg.Any<CommunityRole>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(delayedParticipation.Task);
+        ctx.Services.AddSingleton(participationService);
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-farah", "Farah", BethuyaRoles.Attendee));
+        cut.WaitForElement("[data-test='loading-state']");
+
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(
+                component => component.Value,
+                Task.FromResult(new AuthenticationState(
+                    CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin))))
+            .AddChildContent<Home>());
+        cut.WaitForElement("[data-test='community-snapshot']");
+
+        delayedParticipation.SetResult(staleParticipation);
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-test='community-participation']").Count != 0)
+            {
+                throw new InvalidOperationException("The stale participation load replaced the current operations surface.");
+            }
+        });
+        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-test='command-center-audience']").TextContent).Contains("Community administrator");
     }
 
     [Test]
@@ -195,18 +383,18 @@ public sealed class CommunityCommandCenterTests
         cut.WaitForElement("[data-test='mode-layout-event']");
 
         AssertAppearsBefore(cut.Markup, "attention-queue", "pending-event-approvals");
-        AssertAppearsBefore(cut.Markup, "pending-event-approvals", "upcoming-events");
-        AssertAppearsBefore(cut.Markup, "upcoming-events", "weekly-insight");
-        await Assert.That(cut.Find("[data-test='upcoming-events']").GetAttribute("data-expanded"))
+        AssertAppearsBefore(cut.Markup, "pending-event-approvals", "upcoming-touchpoints");
+        AssertAppearsBefore(cut.Markup, "upcoming-touchpoints", "weekly-insight");
+        await Assert.That(cut.Find("[data-test='upcoming-touchpoints']").GetAttribute("data-expanded"))
             .IsEqualTo("true");
         await Assert.That(cut.FindAll("[data-test='pending-approvals']").Count).IsEqualTo(0);
 
         await cut.Find("[data-test='mode-strategic'] button").ClickAsync(new());
         cut.WaitForElement("[data-test='mode-layout-strategic']");
 
-        AssertAppearsBefore(cut.Markup, "weekly-insight", "people-momentum");
-        AssertAppearsBefore(cut.Markup, "people-momentum", "attention-queue");
-        await Assert.That(cut.Find("[data-test='upcoming-events']").GetAttribute("data-expanded"))
+        AssertAppearsBefore(cut.Markup, "weekly-insight", "people-to-watch");
+        AssertAppearsBefore(cut.Markup, "people-to-watch", "attention-queue");
+        await Assert.That(cut.Find("[data-test='upcoming-touchpoints']").GetAttribute("data-expanded"))
             .IsEqualTo("false");
         await Assert.That(cut.FindAll("[data-test='pending-approvals']").Count).IsEqualTo(1);
     }
@@ -249,6 +437,7 @@ public sealed class CommunityCommandCenterTests
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.Services.AddSingleton(EventPressureClock);
         ctx.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
+        ctx.Services.AddSingleton<ICommunityParticipationService, DeterministicCommunityParticipationService>();
         ctx.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCenterAudienceResolver>();
         return ctx;
     }

@@ -2,11 +2,19 @@
 
 ## Purpose
 
-Homepage v3 is Bethuya's claims-aware **Community Operations Command Center**. It is the place where a community member or organizer should understand, within 30 seconds:
+Homepage v3 is Bethuya's claims-aware homepage. It resolves the signed-in person into one of two surfaces — a **Community Operations Command Center** for operating roles, and a **Community Participation** journey home for participants — so that each person understands their situation within 30 seconds.
+
+For operators, that means:
 
 1. **What changed?**
 2. **What needs attention?**
 3. **What should I do next?**
+
+For participants, it means:
+
+1. **Where am I in my journey?**
+2. **What can I do next?**
+3. **How can I participate more deeply?**
 
 The homepage is not a smaller copy of every Bethuya workspace. It synthesizes community signals, prioritizes human attention, and routes organizers into the dedicated workspace where deeper analysis or action belongs.
 
@@ -15,6 +23,23 @@ This design follows Bethuya's core ethos:
 > AI recommends. Humans decide. Communities thrive.
 
 Recommendations remain explainable and reviewable. The command center never converts an intelligence signal directly into an irreversible community decision.
+
+## Two homepage surfaces
+
+Homepage v3 resolves one of two surfaces from the authenticated principal. There is no surface picker and no "View As" control.
+
+| Surface | Audiences | Validation questions |
+| --- | --- | --- |
+| **Community Operations** | Community Administrator, Event Organizer, Volunteer Lead, Mentorship Lead | What changed? What needs attention? What should I do next? |
+| **Community Participation** | Event Participant, Emerging Contributor, Community Member | Where am I in my journey? What can I do next? How can I participate more deeply? |
+
+**One command center, role-aware content.** Every operating role sees the *same* module layout and the same component hierarchy. Only module *content* adapts: a volunteer lead leads with coverage gaps, a mentorship lead with mentor supply, an organizer with capacity risk, an administrator with retention risk. Bethuya deliberately avoids four divergent operator homepages, because divergence fragments the operating model and multiplies the surface area that future intelligence providers must satisfy.
+
+**Participation is not a reduced command center.** The participation surface never renders a community snapshot, capacity planning, volunteer coverage metrics, waitlist management, an attention queue, review queues, or operational deadlines. Operational pressure is not a participant's burden. The participation surface instead renders a community passport, onboarding or journey timeline, upcoming activities, contribution history, earned sections, and recommended opportunities.
+
+### Why split the surfaces
+
+Operators and participants ask structurally different questions. Showing an attention queue to an attendee creates anxiety without agency, and showing a journey timeline to an organizer buries operational risk. A single page that tries to serve both degrades into conditional clutter. Splitting at the surface boundary — while keeping a shared resolver, shared models, and shared provider seams — keeps each experience honest and each contract replaceable.
 
 ## Product principles
 
@@ -51,7 +76,7 @@ Strategic Mode keeps long-term community development primary.
 The leading experience is:
 
 - Community Insight of the Week
-- People Gaining Momentum
+- People To Watch
 
 It emphasizes:
 
@@ -62,7 +87,7 @@ It emphasizes:
 - emerging contributors;
 - community health over time.
 
-Attention items, review work, and events remain visible, but they support the longer-term community perspective.
+Attention items, review work, and touchpoints remain visible, but they support the longer-term community perspective. The primary-work order is Insight → People To Watch → Attention Queue → Human Review Queue, and the mode question reads "How is the community evolving?"
 
 ### Event Mode
 
@@ -72,7 +97,7 @@ The leading experience is:
 
 - Community Attention Queue;
 - Pending Approvals;
-- expanded Upcoming Events readiness.
+- expanded Upcoming Touchpoints readiness.
 
 Generic community snapshot metrics are replaced by event-operational metrics:
 
@@ -81,7 +106,9 @@ Generic community snapshot metrics are replaced by event-operational metrics:
 - waitlist pressure;
 - volunteer coverage.
 
-Upcoming Events expands to expose readiness, capacity, waitlist, volunteer coverage, and risk indicators. Community Insight becomes an event intelligence brief, and People Gaining Momentum prioritizes people who can directly improve event outcomes.
+Upcoming Touchpoints expands to expose readiness, capacity, waitlist, volunteer coverage, and risk indicators. Community Insight becomes an event intelligence brief, and People To Watch prioritizes people who can directly improve event outcomes. In the rail, Upcoming Deadlines is promoted above approvals because approvals have already moved into the main column. The mode question reads "Can this event succeed?"
+
+The transition must be unmistakable: hierarchy, metric vocabulary, module emphasis, and the mode question all change. A mode indicator alone is not a mode.
 
 ### Recommendation and override behavior
 
@@ -93,17 +120,40 @@ Critical attention is never hidden by a manual override.
 
 ## Command-center modules
 
+Operations information architecture, in render order:
+
+Header → Community Snapshot → Community Insight → People To Watch → Community Attention Queue → Human Review Queue → Upcoming Touchpoints → Rail (Pending Approvals, Upcoming Deadlines, Quick Actions).
+
 | Module | Question answered | Command-center responsibility |
 | --- | --- | --- |
 | Community Snapshot | What changed at a glance? | Show a small set of mode-specific health or readiness measures. |
 | Community Insight | What pattern matters this week? | Explain the most useful strategic or event-execution pattern and its source signals. |
-| People Gaining Momentum | Who may be ready for an opportunity? | Surface journey changes without turning them into rankings or automatic promotions. |
+| People To Watch | Who is moving, and why does it matter? | Surface journey transitions with an explicit watch reason. Awareness only — never a task, ranking, or approval. |
 | Community Attention Queue | What needs intervention? | Prioritize explainable risks and opportunities, then route to the owning workspace. |
 | Human Review Queue | What requires a decision? | Make pending human approvals visible and actionable. |
-| Upcoming Events | What is approaching? | Provide compact strategic context or expanded operational readiness, depending on mode. |
+| Upcoming Touchpoints | What is approaching? | Cover events, mentorship sessions, volunteer orientations, and working groups — compact in Strategic Mode, expanded to readiness, capacity, waitlist, volunteer coverage, and risk in Event Mode. |
 | Pending Approvals | What is blocking progress? | Move event-critical approvals higher in Event Mode. |
 | Upcoming Deadlines | What is time-sensitive? | Surface the next meaningful deadlines without reproducing a full calendar. |
+| Quick Actions | What can I start right now? | Offer a small set of role-appropriate entry points into the owning workspace. |
 | Workspace navigation | Where do I investigate or act? | Route to the dedicated Bethuya workspace. |
+
+### Why Upcoming Touchpoints, not Upcoming Events
+
+Communities are continuous; events are punctuation. Naming the module "Events" quietly told organizers that mentorship sessions, volunteer orientations, and working groups were second-class. Touchpoints restores the journey framing while keeping event readiness as the richest case.
+
+### Why People To Watch is awareness-only
+
+Converting momentum into a task invites mechanical promotion. The module names the journey transition and the reason it is worth noticing, then stops. A human decides whether, when, and how to act.
+
+## Participation modules
+
+| Module | Question answered | Responsibility |
+| --- | --- | --- |
+| Community Passport | Where am I? | Name the journey stage and show progress toward the next one. |
+| Getting Started / Journey Timeline | What have I done, and what is next? | Onboarding steps for new participants; a contribution timeline for established ones. |
+| Upcoming Activities | What is coming up for me? | Show only the participant's own touchpoints. |
+| Earned Sections | What have I unlocked? | Reveal volunteering, mentorship, working groups, and recognition as participation deepens. |
+| Recommended Opportunities | How can I participate more deeply? | Offer one clear, human-reviewable next step. |
 
 ## Architecture
 
@@ -115,34 +165,48 @@ Home.razor
     +-- authenticated ClaimsPrincipal
     |       |
     |       v
-    |   ICommandCenterAudienceResolver
+    |   ICommandCenterAudienceResolver  --> CommandCenterAudience (Role + Surface)
     |
-    v
-ICommunityCommandCenterService
+    +-- Surface == Operations ------> ICommunityCommandCenterService
+    |                                       |
+    |                                       v
+    |                                 CommunityCommandCenter
+    |                                       +-- ModeQuestion
+    |                                       +-- Snapshot
+    |                                       +-- Insight
+    |                                       +-- PeopleToWatch
+    |                                       +-- AttentionItems
+    |                                       +-- Reviews
+    |                                       +-- Touchpoints
+    |                                       +-- Approvals / Deadlines
+    |                                       +-- QuickActions
+    |                                       +-- Workspaces
     |
-    v
-CommunityCommandCenter
-    |
-    +-- Snapshot
-    +-- Insight
-    +-- Momentum
-    +-- AttentionItems
-    +-- Reviews
-    +-- UpcomingEvents
-    +-- Deadlines
-    +-- Workspaces
+    +-- Surface == Participation ---> ICommunityParticipationService
+                                            |
+                                            v
+                                      CommunityParticipationHome
+                                            +-- Passport
+                                            +-- OnboardingSteps / Timeline
+                                            +-- Activities
+                                            +-- EarnedSections
+                                            +-- Opportunities
 ```
 
 The current implementation is:
 
-- `ICommandCenterAudienceResolver` — claims-to-display-audience boundary that never grants authorization;
+- `ICommandCenterAudienceResolver` — claims-to-display-audience boundary that never grants authorization, and that also selects the surface;
 - `ClaimsCommandCenterAudienceResolver` — deterministic development-persona mapping with safe production role fallback;
-- `ICommunityCommandCenterService` — stable provider boundary;
-- `DeterministicCommunityCommandCenterService` — rule-based v3 provider;
-- `CommunityCommandCenter` and its child records — immutable, display-ready projection;
-- `Home.razor` and command-center components — mode-aware presentation hierarchy.
+- `ICommunityCommandCenterService` — stable operations provider boundary;
+- `DeterministicCommunityCommandCenterService` — rule-based v3 operations provider;
+- `ICommunityParticipationService` — stable participation provider boundary;
+- `DeterministicCommunityParticipationService` — rule-based v3 participation provider;
+- `CommunityCommandCenter`, `CommunityParticipationHome` and their child records — immutable, display-ready projections;
+- `Home.razor`, command-center components, and `ParticipationSurface` — surface- and mode-aware presentation hierarchy.
 
-The provider returns one cohesive projection for a selected organizer role and optional mode override. Components do not calculate intelligence or fetch subsystem-specific data independently.
+Two provider boundaries rather than one keeps the seams honest: a future Community Intelligence service can replace the operations provider without touching participation, and a future member-journey service can replace participation without destabilizing operations.
+
+The provider returns one cohesive projection for a selected role and optional mode override. Components do not calculate intelligence or fetch subsystem-specific data independently.
 
 ### Why a display-ready projection?
 
@@ -160,16 +224,16 @@ Audience is deliberately separate from authorization. It influences deterministi
 
 ### Six persona user stories
 
-| Persona | Homepage audience | User story |
+| Persona | Surface · audience | User story |
 | --- | --- | --- |
-| Anish | Member journey | As a newer community member, I want one welcoming next step matched to my participation rhythm so I can contribute without needing an existing leadership role. |
-| Priya | Volunteer Lead | As a volunteer lead, I want coverage gaps and emerging volunteer owners prioritized so I can close event needs while growing community leadership. |
-| Rohan | Event Organizer | As an event organizer, I want readiness, approvals, capacity, and execution risks surfaced first so I can keep the event moving. |
-| Maya | Mentorship Lead | As a mentorship lead, I want mentor supply, delayed pairings, and promising mentee journeys highlighted so I can make thoughtful matches. |
-| Farah | Community Member · Emerging Contributor | As a member whose session contribution is gaining momentum, I want the next human-reviewed opportunity made visible so I can grow into facilitation and leadership. |
-| Vikram | Community Administrator | As a community administrator, I want community health and cross-workspace decisions synthesized so I can balance long-term growth with operational risk. |
+| Anish | Participation · Event participant | As a newer event participant, I want one welcoming next step matched to my participation rhythm so I can contribute without needing an existing leadership role. |
+| Priya | Operations · Volunteer Lead | As a volunteer lead, I want coverage gaps and emerging volunteer owners prioritized so I can close event needs while growing community leadership. |
+| Rohan | Operations · Event Organizer | As an event organizer, I want readiness, approvals, capacity, and execution risks surfaced first so I can keep the event moving. |
+| Maya | Operations · Mentorship Lead | As a mentorship lead, I want mentor supply, delayed pairings, and promising mentee journeys highlighted so I can make thoughtful matches. |
+| Farah | Participation · Emerging contributor | As a member whose session contribution is gaining momentum, I want earned sections and the next human-reviewed opportunity made visible so I can grow into facilitation and leadership. |
+| Vikram | Operations · Community Administrator | As a community administrator, I want community health and cross-workspace decisions synthesized so I can balance long-term growth with operational risk. |
 
-These are six perspectives over one component hierarchy, not six separate homepages. Strategic/Event mode remains available within every perspective, and community-critical warnings remain visible.
+The four operating personas share one command center and one component hierarchy; only module content differs. The two participation personas share one journey surface, differentiated by onboarding versus journey mode and by which sections have been earned. Strategic/Event mode remains available within every operating perspective, and community-critical warnings remain visible.
 
 ## Deterministic provider rationale
 
@@ -188,21 +252,22 @@ The current data is intentionally scenario-based and rule-driven. It must not be
 
 ## Future provider replacement
 
-Live services should be integrated incrementally behind `ICommunityCommandCenterService`.
+Live services should be integrated incrementally behind `ICommunityCommandCenterService` and `ICommunityParticipationService`.
 
 Expected replacements include:
 
 | Current deterministic area | Future source |
 | --- | --- |
 | Community Snapshot and Insight | Community Intelligence service |
-| People Gaining Momentum and relationship signals | Community Graph |
+| People To Watch and relationship signals | Community Graph |
 | Opportunities and contributor next steps | Opportunity Engine |
-| Event readiness and approvals | Event Operations services |
+| Touchpoint readiness and approvals | Event Operations services |
+| Participation passport, timeline, and earned sections | Member journey services |
 | Cross-workspace prioritization | Explainable orchestration rules or agents |
 
 Integration rules:
 
-1. Preserve the `CommunityCommandCenter` projection until a demonstrated product need requires contract evolution.
+1. Preserve the `CommunityCommandCenter` and `CommunityParticipationHome` projections until a demonstrated product need requires contract evolution.
 2. Keep provider-specific DTOs and scoring details behind the service boundary.
 3. Preserve `RecommendedMode`, `EffectiveMode`, and human-readable reasoning.
 4. Never turn a recommendation into automatic acceptance, rejection, promotion, outreach, or publication.
@@ -251,7 +316,7 @@ Homepage changes should preserve:
 
 - TUnit coverage for deterministic rules, fixed-clock mode recommendation, role prioritization, and projection contents;
 - bUnit coverage for Blazor Blueprint parameter safety and mode-specific render order;
-- Playwright coverage for explicit mode selection, hierarchy changes, navigation, responsive layout, and visual evidence;
+- Playwright coverage for explicit mode selection, hierarchy changes, surface resolution per persona, navigation, responsive layout, and visual evidence;
 - fresh Aspire validation showing `migration-service` completes and Backend/Web become healthy;
 - stable `data-test` selectors on native HTML wrappers;
 - accessible mode controls, reasoning, loading, and error states.

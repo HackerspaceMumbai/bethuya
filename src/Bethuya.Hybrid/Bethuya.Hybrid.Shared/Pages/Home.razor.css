@@ -283,11 +283,18 @@
     letter-spacing: 0.12em;
 }
 
-.event-support-grid {
+/* The participation surface is journey-oriented and intentionally rail-free. */
+.participation-shell {
     display: grid;
-    gap: 1.5rem;
-    padding-top: 0.25rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 1.5rem 0 3rem;
+}
+
+/* BB has no mode-question treatment; this is the mode's one-line framing question. */
+.mode-question {
+    margin: 0.25rem 0 0 !important;
+    color: var(--hs-gold) !important;
+    font-size: 0.86rem !important;
+    font-weight: 700 !important;
 }
 
 .command-center--event .command-main {
@@ -314,10 +321,6 @@
         align-items: center;
     }
 
-    .control-group {
-        flex: 1;
-    }
-
     .command-layout {
         grid-template-columns: 1fr;
     }
@@ -330,12 +333,6 @@
 
     .command-header h1 {
         font-size: 2.4rem;
-    }
-
-    .role-switcher {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        padding-bottom: 0.35rem;
     }
 
     .mode-bar {

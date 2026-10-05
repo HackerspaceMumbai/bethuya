@@ -16,6 +16,30 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-05] Compact card headers need an explicit narrow-width composition
+- **What happened:** Readiness status pills overflowed cards when a long title and fixed-width pill shared a 191px card header row.
+- **Root cause:** The flex header kept both elements on one line, and the title's intrinsic width left insufficient inline space for the status pill.
+- **Fix:** Stacked the status pill beneath the title block, constrained it to the card width, and added a Playwright bounding-box assertion.
+- **Prevention:** For dense cards below 240px, design header metadata as a vertical composition or verify every inline badge against the narrowest supported width.
+
+## [2026-10-05] Treat an absent authentication cascade as an explicit state
+- **What happened:** The homepage's initial null authentication task matched its null processed-task sentinel, so hosts without an authentication cascade remained on the loading state forever.
+- **Root cause:** Reference equality alone could not distinguish “never processed” from “processed an absent cascade.”
+- **Fix:** Added an explicit processed-state flag and a bUnit regression test that renders Home without an authentication cascade.
+- **Prevention:** When null is a valid input, pair cached-value comparisons with a separate initialization marker rather than using null as both value and sentinel.
+
+## [2026-10-05] Upcoming labels must filter relative activities independently
+- **What happened:** A welcome call derived as two days before an upcoming event appeared in the past when the event was only one day away.
+- **Root cause:** Selecting a future anchor event did not guarantee every relative activity derived from that event was also future-dated.
+- **Fix:** Excluded the welcome call after its date passes and added boundary tests for the final two days before the event.
+- **Prevention:** Validate every derived item against the current clock before placing it in an “upcoming” collection.
+
+## [2026-10-05] Invalidate both identity resolution and projection loads
+- **What happened:** The homepage cleared data while a replacement authentication state was pending, but an older asynchronous provider call could still complete afterward and commit the previous persona's projection.
+- **Root cause:** Authentication-task freshness and projection-load freshness were treated as one lifecycle boundary even though each has its own await and race window.
+- **Fix:** Added cancellation and generation checks around projection loads, captured the audience locally, and added overlapping authentication/provider regression coverage.
+- **Prevention:** Any claims-driven UI that awaits downstream data must invalidate both the authentication await and every data await before allowing results to mutate rendered state.
+
 ## [2026-10-02] Explicit auth cascades still need authorization services in bUnit
 - **What happened:** A bUnit test supplied a custom cascading `Task<AuthenticationState>` but rendering `AuthorizeView` failed because authorization policy services were absent.
 - **Root cause:** The cascading authentication state replaces only the state value; `AuthorizeView` still resolves `IAuthorizationPolicyProvider` and related services from dependency injection.

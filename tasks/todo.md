@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-05] Constraining readiness status pills
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Prevent touchpoint readiness status pills from overflowing narrow event-mode cards while preserving legibility and risk emphasis.
+- **Acceptance:** Every readiness pill remains within its card at desktop and mobile widths; targeted bUnit/TUnit and Playwright checks pass.
+- **Evidence:** Live browser geometry confirms all six pills remain within their card bounds; 461/461 TUnit+bUnit tests pass; targeted Playwright event-mode test passes.
+
 ## [2026-10-02] Making Homepage personas claims-driven
 - **Status:** done
 - **Agent/Owner:** Copilot
@@ -942,3 +949,10 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [x] Preserve case-insensitive registration matching with mixed-case regression coverage.
 - [x] Add an indexed normalized-email lookup for community-member resolution.
 - [x] Parallelize independent dashboard event and registration-summary requests.
+
+## [2026-10-02] Homepage v3 architectural refinement — Operations vs Participation
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Split the homepage into two surfaces resolved from persona claims: one shared Community Operations Command Center (Admin / Organizer / Volunteer Lead / Mentorship Lead — identical layout, role-aware content) and a Community Participation homepage (visitor onboarding and member journey). Add the People To Watch module between Community Insight and the Attention Queue, generalize Upcoming Events into Upcoming Touchpoints, add Quick Actions to the rail, and make Strategic vs Event hierarchy unmistakable.
+- **Acceptance:** Operations personas share one layout with genuinely role-specific attention sets; participation personas never render snapshot, attention, review, approval, or deadline modules; People To Watch renders between insight and attention; Event mode reorders hierarchy and promotes deadlines; docs updated; bUnit/TUnit + Playwright pass; solution builds clean.
+- **Evidence:** 461/461 TUnit+bUnit tests pass; solution build succeeds with 0 warnings and 0 errors; migration-service, backend, and web reached healthy state; final targeted Playwright suite passes 4/4; security and performance reviews found no actionable issues; final code-review findings were fixed and regression-tested.

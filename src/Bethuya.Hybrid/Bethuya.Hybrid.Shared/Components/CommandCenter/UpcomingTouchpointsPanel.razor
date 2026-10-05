@@ -2,28 +2,29 @@
 
 <section class="@($"command-section {(Expanded ? "command-section--expanded" : "")}")"
          aria-labelledby="upcoming-heading"
-         data-test="upcoming-events"
-data-expanded="@(Expanded ? "true" : "false")">
+         data-test="upcoming-touchpoints"
+         data-expanded="@(Expanded ? "true" : "false")">
     <div class="section-heading section-heading--row">
         <div>
             <p>@(Expanded ? "Readiness command board" : "Next touchpoints")</p>
-            <h2 id="upcoming-heading">@(Expanded ? "Upcoming event operations" : "Upcoming events")</h2>
+            <h2 id="upcoming-heading">@(Expanded ? "Upcoming touchpoint operations" : "Upcoming touchpoints")</h2>
         </div>
-        <a href="/events">View all events <span aria-hidden="true">→</span></a>
     </div>
     @if (Expanded)
     {
         <div class="readiness-grid">
-            @foreach (var item in Events)
+            @foreach (var item in Touchpoints)
             {
                 <article class="@($"readiness-card {(item.IsAtRisk ? "readiness-card--risk" : "")}")"
-                         data-test="event-readiness-card">
+                         data-test="touchpoint-readiness-card">
                     <div class="readiness-card__header">
                         <div>
                             <time>@item.DateLabel</time>
                             <h3>@item.Title</h3>
+                            <span class="touchpoint-kind">@item.KindLabel</span>
                         </div>
-                        <span class="@($"readiness-state {(item.IsAtRisk ? "readiness-state--risk" : "")}")">
+                        <span class="@($"readiness-state {(item.IsAtRisk ? "readiness-state--risk" : "")}")"
+                              data-test="touchpoint-readiness-state">
                             @item.RiskLabel
                         </span>
                     </div>
@@ -32,11 +33,12 @@ data-expanded="@(Expanded ? "true" : "false")">
                         <span>@item.OperationalSummary</span>
                     </div>
                     <dl class="readiness-metrics">
-                        <div><dt>Capacity</dt><dd>@item.CapacityLabel</dd></div>
-                        <div><dt>Waitlist</dt><dd>@item.WaitlistLabel</dd></div>
-                        <div><dt>Volunteers</dt><dd>@item.VolunteerCoverageLabel</dd></div>
+                        @foreach (var metric in item.Metrics)
+                        {
+                            <div><dt>@metric.Label</dt><dd>@metric.Value</dd></div>
+                        }
                     </dl>
-                    <a href="@item.Route">Open event workspace <span aria-hidden="true">→</span></a>
+                    <a href="@item.Route">Open workspace <span aria-hidden="true">→</span></a>
                 </article>
             }
         </div>
@@ -44,13 +46,13 @@ data-expanded="@(Expanded ? "true" : "false")">
     else
     {
         <div class="upcoming-list">
-            @foreach (var item in Events)
+            @foreach (var item in Touchpoints)
             {
-                <a class="upcoming-item" href="@item.Route">
+                <a class="upcoming-item" href="@item.Route" data-test="touchpoint-item">
                     <time>@item.DateLabel</time>
                     <span>
                         <strong>@item.Title</strong>
-                        <small>@item.OperationalSummary</small>
+                        <small>@item.KindLabel · @item.OperationalSummary</small>
                     </span>
                     @if (item.IsAtRisk)
                     {
@@ -64,6 +66,6 @@ data-expanded="@(Expanded ? "true" : "false")">
 </section>
 
 @code {
-    [Parameter, EditorRequired] public IReadOnlyList<UpcomingEventItem> Events { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<TouchpointItem> Touchpoints { get; set; } = [];
     [Parameter] public bool Expanded { get; set; }
 }

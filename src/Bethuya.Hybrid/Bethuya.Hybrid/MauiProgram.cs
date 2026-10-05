@@ -21,6 +21,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IFormFactor, FormFactor>();
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
+        builder.Services.AddSingleton<ICommunityParticipationService, DeterministicCommunityParticipationService>();
         builder.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCenterAudienceResolver>();
 
         builder.Services.AddMauiBlazorWebView();

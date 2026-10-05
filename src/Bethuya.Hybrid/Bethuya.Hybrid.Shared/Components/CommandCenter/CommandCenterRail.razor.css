@@ -48,6 +48,12 @@
 .rail-panel > a:hover { color: #f4eee3; background: rgba(212, 168, 48, 0.05); }
 .rail-panel > a strong { color: var(--hs-gold); }
 
+/* Event mode promotes deadlines; BB has no equivalent priority-emphasis panel variant. */
+.rail-panel--priority {
+    border-color: rgba(224, 173, 66, 0.55);
+    box-shadow: 0 0 0 1px rgba(224, 173, 66, 0.18);
+}
+
 .deadline-link {
     align-items: flex-start !important;
     flex-direction: column;

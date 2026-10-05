@@ -91,3 +91,11 @@
     .momentum-grid { grid-template-columns: 1fr; }
     .section-heading--row { align-items: flex-start; flex-direction: column; }
 }
+
+/* BB cards have no awareness-reason footnote slot. */
+.watch-reason {
+    margin-top: 0.4rem;
+    color: #8f826f;
+    font-size: 0.7rem;
+    font-style: italic;
+}
