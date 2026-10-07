@@ -22,6 +22,9 @@ public sealed class DeterministicOpportunityEngineService : IOpportunityEngineSe
         var anish = BuildAnishOpportunity();
         var david = BuildDavidOpportunity();
         var connect = BuildConnectOpportunity();
+        var priyaKeynote = BuildPriyaSummitKeynoteOpportunity();
+        var rohanVolunteerLead = BuildRohanSummitVolunteerLeadOpportunity();
+        var mayaMentorshipHost = BuildMayaSummitMentorshipHostOpportunity();
 
         return new OpportunityEngineWorkspace(
             Kpis:
@@ -99,10 +102,28 @@ public sealed class DeterministicOpportunityEngineService : IOpportunityEngineSe
                             BestMatchDetail: "Staff Eng • Strong facilitation evidence",
                             BestMatchInitials: "PM",
                             MatchCount: 2,
-                            LinkedOpportunityId: priyaLead.OpportunityId)
+                            LinkedOpportunityId: priyaKeynote.OpportunityId),
+                        new StaffingNeed(
+                            NeedId: "need-ai-volunteer-lead",
+                            Role: "Volunteer Lead",
+                            BestMatchMemberId: "mem-rohan",
+                            BestMatchName: "Rohan Mehta",
+                            BestMatchDetail: "Frequent Event Volunteer • Shift coverage",
+                            BestMatchInitials: "RM",
+                            MatchCount: 2,
+                            LinkedOpportunityId: rohanVolunteerLead.OpportunityId),
+                        new StaffingNeed(
+                            NeedId: "need-ai-mentorship-host",
+                            Role: "Mentorship Host",
+                            BestMatchMemberId: "mem-maya",
+                            BestMatchName: "Maya Fernandes",
+                            BestMatchDetail: "Session lead • Mentorship interest",
+                            BestMatchInitials: "MF",
+                            MatchCount: 2,
+                            LinkedOpportunityId: mayaMentorshipHost.OpportunityId)
                     ])
             ],
-            Opportunities: [maya, priyaLead, anish, david, connect],
+            Opportunities: [maya, priyaLead, anish, david, connect, priyaKeynote, rohanVolunteerLead, mayaMentorshipHost],
             Risks:
             [
                 new RiskIntervention(
@@ -339,4 +360,105 @@ public sealed class DeterministicOpportunityEngineService : IOpportunityEngineSe
             EvidenceSources: ["Participation Ledger", "Community Passport", "Community Graph"],
             Graph: new CommunityGraphSnapshot(16, 4, 3, "Backend"),
             StatusDetail: "Ready • 1:1 Intro Match");
+
+    private static MemberOpportunity BuildPriyaSummitKeynoteOpportunity() =>
+        new(
+            OpportunityId: "opp-priya-summit-keynote",
+            MemberId: "mem-priya",
+            MemberName: "Priya Menon",
+            MemberInitials: "PM",
+            OpportunityTitle: "Keynote Facilitator",
+            Category: OpportunityCategory.Lead,
+            EvidenceStrength: EvidenceStrength.Strong,
+            Receipts: ["Facilitated 3 community panels", "18 month tenure", "Positive attendee feedback"],
+            CurrentPathway: "Volunteer → Mentor → Facilitator",
+            PathwayJourney:
+            [
+                "Joined Community",
+                "Attended Events",
+                "Volunteered",
+                "Mentored Members",
+                "Recommended Facilitator"
+            ],
+            Status: OpportunityWorkflowStatus.Suggested,
+            NeedContext: new CommunityNeedContext(
+                EventTitle: "AI Open Source Summit",
+                Role: "Keynote Facilitator",
+                RequiredBy: "Nov 12, 2026"),
+            WhyExists:
+            [
+                "Prior panel facilitation receipts",
+                "Strong mentorship track record",
+                "Availability aligned to summit date"
+            ],
+            EvidenceSources: ["Participation Ledger", "Community Passport", "Community Graph"],
+            Graph: new CommunityGraphSnapshot(34, 15, 11, "AI / Open Source"),
+            StatusDetail: "Suggested • Summit facilitation track");
+
+    private static MemberOpportunity BuildRohanSummitVolunteerLeadOpportunity() =>
+        new(
+            OpportunityId: "opp-rohan-summit-volunteer",
+            MemberId: "mem-rohan",
+            MemberName: "Rohan Mehta",
+            MemberInitials: "RM",
+            OpportunityTitle: "Volunteer Lead",
+            Category: OpportunityCategory.Contribute,
+            EvidenceStrength: EvidenceStrength.Moderate,
+            Receipts: ["Four recent volunteer shifts", "Reliable day-of coverage", "Operations interest"],
+            CurrentPathway: "Member → Volunteer → Volunteer Lead",
+            PathwayJourney:
+            [
+                "Joined Community",
+                "Attended Events",
+                "Volunteered",
+                "Recommended Volunteer Lead"
+            ],
+            Status: OpportunityWorkflowStatus.Suggested,
+            NeedContext: new CommunityNeedContext(
+                EventTitle: "AI Open Source Summit",
+                Role: "Volunteer Lead",
+                RequiredBy: "Nov 12, 2026"),
+            WhyExists:
+            [
+                "Repeated volunteer shift receipts",
+                "Organizer feedback on reliability",
+                "Self-reported interest in leading crew"
+            ],
+            EvidenceSources: ["Participation Ledger", "Community Passport", "Community Graph"],
+            Graph: new CommunityGraphSnapshot(21, 7, 12, "Event Operations"),
+            StatusDetail: "Suggested • Summit volunteer track");
+
+    private static MemberOpportunity BuildMayaSummitMentorshipHostOpportunity() =>
+        new(
+            OpportunityId: "opp-maya-summit-mentorship",
+            MemberId: "mem-maya",
+            MemberName: "Maya Fernandes",
+            MemberInitials: "MF",
+            OpportunityTitle: "Mentorship Host",
+            Category: OpportunityCategory.Share,
+            EvidenceStrength: EvidenceStrength.Strong,
+            Receipts: ["Led 2 sessions", "Mentored first-time attendees", "Strong session ratings"],
+            CurrentPathway: "Volunteer → Speaker → Mentorship Host",
+            PathwayJourney:
+            [
+                "Joined Community",
+                "Attended Events",
+                "Volunteered",
+                "Led Session",
+                "Recommended Mentorship Host"
+            ],
+            Status: OpportunityWorkflowStatus.Suggested,
+            NeedContext: new CommunityNeedContext(
+                EventTitle: "AI Open Source Summit",
+                Role: "Mentorship Host",
+                RequiredBy: "Nov 12, 2026"),
+            WhyExists:
+            [
+                "Session leadership receipts",
+                "Mentorship interest in passport",
+                "Community Graph support for newcomers"
+            ],
+            EvidenceSources: ["Participation Ledger", "Community Passport", "Community Graph"],
+            Graph: new CommunityGraphSnapshot(28, 12, 8, "AI / Open Source"),
+            StatusDetail: "Suggested • Summit mentorship track");
 }

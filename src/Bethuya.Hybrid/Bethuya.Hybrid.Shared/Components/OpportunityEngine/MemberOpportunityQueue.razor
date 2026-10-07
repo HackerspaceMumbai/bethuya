@@ -17,6 +17,7 @@
             <button type="button"
                     class="@($"oe-filter{(ActiveFilter == filter.Category ? " oe-filter--active" : "")}")"
                     data-test="@($"filter-{filter.Category.ToString().ToLowerInvariant()}")"
+                    aria-pressed="@(ActiveFilter == filter.Category ? "true" : "false")"
                     @onclick="() => OnFilterChanged.InvokeAsync(filter.Category)">
                 @filter.Label
                 <span>@filter.Count</span>

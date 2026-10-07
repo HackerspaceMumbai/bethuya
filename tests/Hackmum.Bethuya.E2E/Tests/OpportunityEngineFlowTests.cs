@@ -16,9 +16,10 @@ public class OpportunityEngineFlowTests : BethuyaE2ETest
 
         await Assertions.Expect(Page.Locator("[data-test='opportunity-engine']")).ToBeVisibleAsync();
         await Assertions.Expect(Page.Locator("[data-test='governance-banner']"))
-            .ToContainTextAsync("Participation Ledger");
+            .ToContainTextAsync("demonstration data");
         await Assertions.Expect(Page.Locator("[data-test='badge-human-in-the-loop']")).ToBeVisibleAsync();
         await Assertions.Expect(Page.Locator("[data-test='badge-zero-synthetic-weights']")).ToBeVisibleAsync();
+        await Assertions.Expect(Page.Locator("[data-test='badge-demo-data']")).ToBeVisibleAsync();
         await Assertions.Expect(Page.Locator("[data-test='community-needs-section']")).ToBeVisibleAsync();
         await Assertions.Expect(Page.Locator("[data-test='member-opportunities-section']")).ToBeVisibleAsync();
         await Assertions.Expect(Page.Locator("[data-test='risks-interventions-section']")).ToBeVisibleAsync();
@@ -32,12 +33,11 @@ public class OpportunityEngineFlowTests : BethuyaE2ETest
         await Assertions.Expect(Page.Locator("[data-test='selected-opportunity-status']"))
             .ToContainTextAsync("Needs Review");
 
-        await Page.Locator("[data-test='action-approve'] button")
-            .ClickAsync(new LocatorClickOptions { Force = true });
+        await Page.Locator("[data-test='action-approve'] button").ClickAsync();
         await Assertions.Expect(Page.Locator("[data-test='opportunity-action-message']"))
-            .ToContainTextAsync("Approved and invite prepared");
+            .ToContainTextAsync("Approved locally for this demo session");
         await Assertions.Expect(Page.Locator("[data-test='selected-opportunity-status']"))
-            .ToContainTextAsync("Offered");
+            .ToContainTextAsync("Approved");
 
         Directory.CreateDirectory("artifacts");
         await Page.ScreenshotAsync(new()

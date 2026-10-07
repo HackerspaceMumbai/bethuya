@@ -107,13 +107,17 @@
 
         <footer class="oe-detail-footer" data-test="opportunity-action-footer">
             <div data-test="action-defer">
-                <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => OnDefer.InvokeAsync())">Defer</BbButton>
+                <BbButton Variant="ButtonVariant.Ghost"
+                          Disabled="@(!ActionsEnabled)"
+                          OnClick="@(() => OnDefer.InvokeAsync())">Defer</BbButton>
             </div>
             <div data-test="action-message">
                 <BbButton Variant="ButtonVariant.Outline" OnClick="@(() => OnMessage.InvokeAsync())">Message Member</BbButton>
             </div>
             <div data-test="action-approve">
-                <BbButton Variant="ButtonVariant.Default" OnClick="@(() => OnApprove.InvokeAsync())">Approve &amp; Invite</BbButton>
+                <BbButton Variant="ButtonVariant.Default"
+                          Disabled="@(!ActionsEnabled)"
+                          OnClick="@(() => OnApprove.InvokeAsync())">Approve &amp; Invite</BbButton>
             </div>
         </footer>
     }
@@ -139,6 +143,7 @@
 
     [Parameter] public MemberOpportunity? Opportunity { get; set; }
     [Parameter] public string? ActionMessage { get; set; }
+    [Parameter] public bool ActionsEnabled { get; set; } = true;
     [Parameter] public EventCallback OnDefer { get; set; }
     [Parameter] public EventCallback OnMessage { get; set; }
     [Parameter] public EventCallback OnApprove { get; set; }

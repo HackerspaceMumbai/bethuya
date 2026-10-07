@@ -6,7 +6,7 @@
         <button type="button"
                 class="@GetTabClass(tab.Id)"
                 data-test="@($"workspace-tab-{GetSlug(tab.Id)}")"
-                aria-current="@(ActiveTab == tab.Id ? "page" : null)"
+                aria-pressed="@(ActiveTab == tab.Id ? "true" : "false")"
                 @onclick="() => OnTabSelected.InvokeAsync(tab.Id)">
             <LucideIcon Name="@tab.Icon" Size="15" />
             <span>@tab.Label</span>

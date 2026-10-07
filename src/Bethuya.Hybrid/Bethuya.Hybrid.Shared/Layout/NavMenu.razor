@@ -51,12 +51,6 @@
                     My Community
                 </NavLink>
             </div>
-            <div class="nav-item">
-                <NavLink class="nav-link" href="opportunities" Match="NavLinkMatch.Prefix" data-test="nav-opportunity-engine-link">
-                    <LucideIcon Name="sparkles" Size="18" Class="nav-icon" />
-                    Opportunity Engine
-                </NavLink>
-            </div>
         </div>
 
         @* Privileged links: These are landing pages that guide users to select an event first.
@@ -65,6 +59,12 @@
         <AuthorizeView Roles="@OrganizerToolsRoles" Context="privilegedContext">
             <div class="nav-section">
                 <div class="nav-section-label">Organizer Tools</div>
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="opportunities" Match="NavLinkMatch.Prefix" data-test="nav-opportunity-engine-link">
+                        <LucideIcon Name="sparkles" Size="18" Class="nav-icon" />
+                        Opportunity Engine
+                    </NavLink>
+                </div>
                 <AuthorizeView Roles="@AgentWorkflowRoles">
                     <div class="nav-item">
                         <NavLink class="nav-link" href="@(_currentEventId is Guid importEventId ? $"imports?eventId={importEventId}" : "imports")" Match="NavLinkMatch.Prefix" data-test="nav-imports-link">

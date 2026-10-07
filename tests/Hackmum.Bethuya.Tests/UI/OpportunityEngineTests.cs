@@ -1,8 +1,10 @@
+using Bethuya.Hybrid.Shared.Auth;
 using Bethuya.Hybrid.Shared.Models.OpportunityEngine;
 using Bethuya.Hybrid.Shared.Pages;
 using Bethuya.Hybrid.Shared.Services;
 using BlazorBlueprint.Components;
 using Bunit;
+using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
 
 using BunitCtx = Bunit.TestContext;
@@ -32,6 +34,27 @@ public sealed class OpportunityEngineTests
     }
 
     [Test]
+    public async Task DeterministicProvider_SummitNeeds_AreEventSpecificAndComplete()
+    {
+        var service = new DeterministicOpportunityEngineService();
+
+        var workspace = await service.GetWorkspaceAsync();
+        var summit = workspace.Events.Single(e => e.EventId == "evt-aioss-2026");
+
+        await Assert.That(summit.OpenRoleCount).IsEqualTo(3);
+        await Assert.That(summit.Needs).Count().IsEqualTo(3);
+        await Assert.That(summit.NeedsSummary).Count().IsEqualTo(3);
+
+        foreach (var need in summit.Needs)
+        {
+            var linked = workspace.Opportunities.Single(o => o.OpportunityId == need.LinkedOpportunityId);
+            await Assert.That(linked.NeedContext.EventTitle).IsEqualTo("AI Open Source Summit");
+            await Assert.That(linked.NeedContext.Role).IsEqualTo(need.Role);
+            await Assert.That(linked.OpportunityTitle).IsEqualTo(need.Role);
+        }
+    }
+
+    [Test]
     public async Task OpportunityEnginePage_RendersGovernanceAndCommunityNeedsByDefault()
     {
         using var ctx = CreateContext();
@@ -43,8 +66,11 @@ public sealed class OpportunityEngineTests
         await Assert.That(cut.Find("[data-test='badge-human-in-the-loop']").TextContent).Contains("Human-in-the-Loop");
         await Assert.That(cut.Find("[data-test='badge-zero-synthetic-weights']").TextContent)
             .Contains("Zero Synthetic Weights");
-        await Assert.That(cut.Find("[data-test='workspace-tab-community-needs']").GetAttribute("aria-current"))
-            .IsEqualTo("page");
+        await Assert.That(cut.Find("[data-test='badge-demo-data']").TextContent).Contains("Demo Data");
+        await Assert.That(cut.Find("[data-test='demo-data-banner']").TextContent)
+            .Contains("Demonstration data only");
+        await Assert.That(cut.Find("[data-test='workspace-tab-community-needs']").GetAttribute("aria-pressed"))
+            .IsEqualTo("true");
         await Assert.That(cut.Find("[data-test='community-needs-section']")).IsNotNull();
         await Assert.That(cut.FindAll("[data-test='staffing-need-card']").Count).IsGreaterThanOrEqualTo(4);
     }
@@ -78,9 +104,11 @@ public sealed class OpportunityEngineTests
 
         cut.Find("[data-test='action-approve'] button").Click();
 
-        await Assert.That(cut.Markup).Contains("Approved and invite prepared");
+        await Assert.That(cut.Markup).Contains("Approved locally for this demo session");
         await Assert.That(cut.Find("[data-test='selected-opportunity-status']").TextContent)
-            .Contains("Offered");
+            .Contains("Approved");
+        await Assert.That(cut.Find("[data-test='selected-opportunity-status']").TextContent)
+            .DoesNotContain("Offered");
     }
 
     [Test]
@@ -99,12 +127,46 @@ public sealed class OpportunityEngineTests
             .Contains("Recommended Speaker");
     }
 
+    [Test]
+    public async Task OpportunityEnginePage_ChampionInspect_SelectsMatchingMemberOpportunity()
+    {
+        using var ctx = CreateContext();
+        var cut = ctx.RenderComponent<OpportunityEngine>();
+
+        cut.Find("[data-test='champion-inspect'] button").Click();
+
+        await Assert.That(cut.Find("[data-test='selected-opportunity-panel']").TextContent)
+            .Contains("Priya Menon");
+        await Assert.That(cut.Find("[data-test='opportunity-action-message']").TextContent)
+            .Contains("Champion review");
+        await Assert.That(cut.Find("[data-test='selected-opportunity-panel']").TextContent)
+            .DoesNotContain("Maya Fernandes");
+    }
+
+    [Test]
+    public async Task OpportunityEnginePage_WorkspaceTab_InvokesScrollHelper()
+    {
+        using var ctx = CreateContext();
+        var cut = ctx.RenderComponent<OpportunityEngine>();
+
+        cut.Find("[data-test='workspace-tab-risks-interventions']").Click();
+
+        var scrollCalls = ctx.JSInterop.Invocations
+            .Where(i => i.Identifier == "bethuyaOpportunityEngine.scrollToSection")
+            .ToList();
+        await Assert.That(scrollCalls.Count).IsGreaterThan(0);
+        await Assert.That(scrollCalls[^1].Arguments[0] as string).IsEqualTo("section-risks-interventions");
+        await Assert.That(cut.Find("[data-test='workspace-tab-risks-interventions']").GetAttribute("aria-pressed"))
+            .IsEqualTo("true");
+    }
+
     private static BunitCtx CreateContext()
     {
         var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.Services.AddSingleton<IOpportunityEngineService, DeterministicOpportunityEngineService>();
+        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer, BethuyaRoles.Admin);
         return ctx;
     }
 }

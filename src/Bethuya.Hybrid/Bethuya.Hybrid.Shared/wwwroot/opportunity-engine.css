@@ -1,4 +1,5 @@
 /* BB does not provide the multi-section operational workspace grid, sticky detail panel, or pathway/workflow steppers. */
+/* Atmosphere + page shell: BB has no Hackerspace Command Center page composition or radial brand wash. */
 .opportunity-engine {
     --oe-surface: rgba(24, 18, 16, 0.78);
     --oe-surface-raised: rgba(31, 24, 20, 0.92);
@@ -29,6 +30,7 @@
     filter: blur(12px);
 }
 
+/* BB NavLink / BbButton lack the compact gold text back-link used across organizer workspaces. */
 .oe-back {
     display: inline-flex;
     width: fit-content;
@@ -44,6 +46,7 @@
     color: #E8BE48;
 }
 
+/* BB has no header + philosophy strip layout matching Command Center hero typography. */
 .oe-header {
     display: flex;
     flex-wrap: wrap;
@@ -113,6 +116,7 @@
     line-height: 1.4;
 }
 
+/* BB Tabs lack the 4-up workspace jump strip with risk-accent + count badges. */
 .oe-tabs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -176,6 +180,7 @@
     border-radius: 999px;
 }
 
+/* BB Alert lacks the icon + multi-badge governance banner used for HITL / demo labels. */
 .oe-governance {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -215,6 +220,7 @@
     grid-column: 2;
 }
 
+/* BB Badge/Chip variants do not cover success/warning operational status pills on dark surfaces. */
 .oe-governance__badges span,
 .oe-detail-badges span,
 .oe-pill {
@@ -242,6 +248,7 @@
     background: rgba(224, 173, 66, 0.12);
 }
 
+/* BB has no responsive 5-up KPI strip with priority inset accent for awaiting-review. */
 .oe-kpi-strip {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -303,6 +310,7 @@
     font-size: 0.68rem;
 }
 
+/* BB layout primitives lack sticky-right detail panel + multi-section main column grid. */
 .oe-workspace-grid {
     display: grid;
     gap: 1.25rem;
@@ -320,6 +328,7 @@
     gap: 1.25rem;
 }
 
+/* BB Card/Section lack primary/risk bordered workspace section shells with icon title rows. */
 .oe-section {
     display: grid;
     gap: 1rem;
@@ -397,6 +406,7 @@
     text-decoration: none;
 }
 
+/* BB ToggleGroup / ChipSet lack event + category filter chips with meta count badges. */
 .oe-event-tabs,
 .oe-filters {
     display: flex;
@@ -469,6 +479,7 @@
     gap: 0.75rem;
 }
 
+/* BB Card lacks dense staffing/opportunity/risk/champion/pathway cards with avatar + action rows. */
 .oe-staffing-card,
 .oe-opportunity-card,
 .oe-risk-card,
@@ -612,6 +623,7 @@
     gap: 0.4rem;
 }
 
+/* BB Drawer/Aside lack sticky scrollable review panel with pinned 3-action footer. */
 .oe-detail-panel {
     position: sticky;
     top: 1rem;
@@ -694,6 +706,7 @@
     text-transform: uppercase;
 }
 
+/* BB Stepper lacks compact pathway/workflow lists with gold markers on dark surfaces. */
 .oe-detail-block ul,
 .oe-pathway,
 .oe-workflow {

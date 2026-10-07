@@ -28,6 +28,7 @@
             <button type="button"
                     class="@($"oe-event-tab{(evt.EventId == SelectedEventId ? " oe-event-tab--active" : "")}")"
                     data-test="event-tab"
+                    aria-pressed="@(evt.EventId == SelectedEventId ? "true" : "false")"
                     @onclick="() => OnEventSelected.InvokeAsync(evt.EventId)">
                 <LucideIcon Name="calendar" Size="14" />
                 <span>@evt.Title • @evt.DateLabel</span>
