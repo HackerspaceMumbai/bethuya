@@ -329,12 +329,10 @@ public sealed partial class CommunitySimulationSeeder(
                 var matchingRegistrations = existingRegistrationsByEmail[persona.Email].ToArray();
                 if (matchingRegistrations.Length > 0)
                 {
-                    foreach (var existingRegistration in matchingRegistrations)
+                    foreach (var existingRegistration in matchingRegistrations.Where(existingRegistration =>
+                        existingRegistration.CommunityMemberId != memberByPersonaKey[persona.Key].Id))
                     {
-                        if (existingRegistration.CommunityMemberId != memberByPersonaKey[persona.Key].Id)
-                        {
-                            existingRegistration.CommunityMemberId = memberByPersonaKey[persona.Key].Id;
-                        }
+                        existingRegistration.CommunityMemberId = memberByPersonaKey[persona.Key].Id;
                     }
                     registrationsAlreadyExisted += matchingRegistrations.Length;
                     continue;

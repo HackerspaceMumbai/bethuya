@@ -80,6 +80,7 @@
 
     private async Task<bool> SavePortfolioAsync(PortfolioEditRequest request)
     {
+        var saved = false;
         try
         {
             _ = request.Id is Guid id
@@ -87,13 +88,14 @@
                 : await CommunityPassportApi.CreatePortfolioEntryAsync(request.Entry);
             StatusMessage = "Portfolio entry saved.";
             await LoadAsync();
-            return true;
+            saved = true;
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
             _errorMessage = "We couldn’t save that portfolio entry.";
-            return false;
         }
+        await InvokeAsync(StateHasChanged);
+        return saved;
     }
 
     private async Task DeletePortfolioAsync(Guid entryId)

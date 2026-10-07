@@ -91,14 +91,15 @@
 
     private void OpenPortfolioDialog(PortfolioEntryDto? entry)
     {
+        var entryLinks = entry?.Links ?? [];
         _editingPortfolioId = entry?.Id;
         _portfolioTitle = entry?.Title ?? string.Empty;
         _portfolioDescription = entry?.Description ?? string.Empty;
-        _portfolioLink = entry is null ? string.Empty : entry.Links.FirstOrDefault()?.Url ?? string.Empty;
+        _portfolioLink = entryLinks.FirstOrDefault()?.Url ?? string.Empty;
         _portfolioFeatured = entry?.IsFeatured ?? false;
         _portfolioDisplayOrder = entry?.DisplayOrder
             ?? (Model.Portfolio.Entries.Count == 0 ? 0 : Model.Portfolio.Entries.Max(item => item.DisplayOrder) + 1);
-        _portfolioOriginalLinks = entry?.Links ?? [];
+        _portfolioOriginalLinks = entryLinks;
         _portfolioEvidenceEntryIds = entry?.EvidenceEntryIds ?? [];
         _portfolioDialogOpen = true;
     }
