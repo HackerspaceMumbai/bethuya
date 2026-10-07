@@ -15,6 +15,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+## [2026-10-07] Prevent stale organizer Passport actions
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the latest CodeRabbit review by preventing a previously loaded organizer Passport from exposing Champion actions after the route changes to a different member.
+- **Acceptance:** Changing `MemberId` immediately disassociates the previous Passport and closes its action dialogs; stale or overlapping loads cannot overwrite the current member state; Champion mutations target only the successfully loaded matching member; focused render regression, affected tests, and solution build pass; the review thread is replied to and resolved.
+- **Completion Evidence:** Organizer Passport loads now clear stale member state, cancel superseded reads, ignore out-of-order completions, and expose Champion actions only for a successfully loaded matching member. Award/revoke continuations are member-and-generation guarded so old requests cannot update or reload a newly selected member. Focused regressions cover navigation during both reads and mutations; all 489 TUnit/bUnit tests and the solution build pass.
+
 ## [2026-10-07] Normalize registration email ownership
 - **Status:** done
 - **Agent/Owner:** Copilot

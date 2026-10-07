@@ -1,6 +1,7 @@
 @page "/community/passports/{MemberId:guid}"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireOrganizer)]
+@implements IDisposable
 @using Bethuya.Hybrid.Shared.Components.Passport
 @using Bethuya.Hybrid.Shared.Services
 @inject ICommunityPassportApi CommunityPassportApi
@@ -13,7 +14,7 @@
         <div data-test="passport-directory-back-btn">
             <BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => Navigation.NavigateTo("/community/passports"))">← Passport directory</BbButton>
         </div>
-        @if (_passport is not null)
+        @if (HasLoadedCurrentPassport)
         {
             <div class="champion-actions">
                 @if (HasChampion)
@@ -36,17 +37,17 @@
     {
         <div class="page-message" data-test="organizer-passport-loading"><BbAlert Variant="AlertVariant.Info">Opening member passport…</BbAlert></div>
     }
-    else if (_passport is not null)
+    else if (_passport is { } passport && _loadedMemberId == MemberId)
     {
         @if (_actionError is not null)
         {
             <div class="page-message" data-test="organizer-passport-action-error"><BbAlert Variant="AlertVariant.Danger">@_actionError</BbAlert></div>
         }
-        @if (_passport.Viewer.IsParticipationRedacted)
+        @if (passport.Viewer.IsParticipationRedacted)
         {
             <div class="page-message" data-test="organizer-passport-redacted"><BbAlert Variant="AlertVariant.Warning">This member has not shared participation evidence with organizers. Identity fields remain visible according to their passport settings.</BbAlert></div>
         }
-        <PassportExperienceView Model="_passport" StatusMessage="@StatusMessage" />
+        <PassportExperienceView Model="passport" StatusMessage="@StatusMessage" />
     }
 </main>
 
@@ -112,32 +113,76 @@
     private string _championRationale = string.Empty;
     private string _revocationReason = string.Empty;
     private readonly HashSet<Guid> _selectedEvidence = [];
+    private bool _disposed;
     private bool _loading = true;
     private bool _saving;
     private bool _awardDialogOpen;
+    private CancellationTokenSource? _loadCancellationTokenSource;
+    private Guid? _loadedMemberId;
+    private long _actionGeneration;
+    private long _loadGeneration;
     private IReadOnlyList<PassportContributionDto> ChampionEvidence =>
         _passport?.Contributions.Where(item => item.IsLedgerEvidence).Take(8).ToArray() ?? [];
     private bool _revokeDialogOpen;
 
     private bool HasChampion => _passport?.Signals.Any(signal => signal.Kind == "Champion" && signal.IsOrganizerAwarded) is true;
+    private bool HasLoadedCurrentPassport => _passport is not null && _loadedMemberId == MemberId;
 
     protected override Task OnParametersSetAsync() => LoadAsync();
 
     private async Task LoadAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var requestedMemberId = MemberId;
+        var loadGeneration = ++_loadGeneration;
+        _actionGeneration++;
+        _loadCancellationTokenSource?.Cancel();
+        _loadCancellationTokenSource?.Dispose();
+        _loadCancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = _loadCancellationTokenSource.Token;
         _loading = true;
+        _saving = false;
         _loadError = null;
+        _actionError = null;
+        if (_loadedMemberId != requestedMemberId)
+        {
+            StatusMessage = null;
+        }
+        _passport = null;
+        _loadedMemberId = null;
+        _awardDialogOpen = false;
+        _revokeDialogOpen = false;
+        _championRationale = string.Empty;
+        _revocationReason = string.Empty;
+        _selectedEvidence.Clear();
         try
         {
-            _passport = await CommunityPassportApi.GetMemberExperienceAsync(MemberId);
+            var passport = await CommunityPassportApi.GetMemberExperienceAsync(requestedMemberId, cancellationToken);
+            if (_disposed || loadGeneration != _loadGeneration || requestedMemberId != MemberId)
+            {
+                return;
+            }
+
+            _passport = passport;
+            _loadedMemberId = requestedMemberId;
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
-            _loadError = "We couldn’t open this member passport. It may be private or unavailable.";
+            if (!_disposed && loadGeneration == _loadGeneration && requestedMemberId == MemberId)
+            {
+                _loadError = "We couldn’t open this member passport. It may be private or unavailable.";
+            }
         }
         finally
         {
-            _loading = false;
+            if (!_disposed && loadGeneration == _loadGeneration)
+            {
+                _loading = false;
+            }
         }
     }
 
@@ -155,48 +200,104 @@
 
     private async Task AwardChampionAsync()
     {
+        if (_loadedMemberId is not { } memberId || memberId != MemberId)
+        {
+            return;
+        }
+
+        var actionGeneration = ++_actionGeneration;
         _saving = true;
         _actionError = null;
         try
         {
             _ = await CommunityPassportApi.AwardChampionAsync(
-                MemberId,
+                memberId,
                 new AwardChampionSignalDto(_championRationale.Trim(), _selectedEvidence.ToArray()));
+            if (!IsCurrentAction(memberId, actionGeneration))
+            {
+                return;
+            }
+
             _awardDialogOpen = false;
             _championRationale = string.Empty;
             _selectedEvidence.Clear();
-            StatusMessage = "Champion recognition awarded with an auditable rationale.";
             await LoadAsync();
+            if (_loadedMemberId == memberId && memberId == MemberId)
+            {
+                StatusMessage = "Champion recognition awarded with an auditable rationale.";
+            }
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
-            _actionError = "We couldn’t award Champion recognition. Check the rationale and evidence, then try again.";
+            if (IsCurrentAction(memberId, actionGeneration))
+            {
+                _actionError = "We couldn’t award Champion recognition. Check the rationale and evidence, then try again.";
+            }
         }
         finally
         {
-            _saving = false;
+            if (IsCurrentAction(memberId, actionGeneration))
+            {
+                _saving = false;
+            }
         }
     }
 
     private async Task RevokeChampionAsync()
     {
+        if (_loadedMemberId is not { } memberId || memberId != MemberId)
+        {
+            return;
+        }
+
+        var actionGeneration = ++_actionGeneration;
         _saving = true;
         _actionError = null;
         try
         {
-            await CommunityPassportApi.RevokeChampionAsync(MemberId, new RevokeChampionSignalDto(_revocationReason.Trim()));
+            await CommunityPassportApi.RevokeChampionAsync(memberId, new RevokeChampionSignalDto(_revocationReason.Trim()));
+            if (!IsCurrentAction(memberId, actionGeneration))
+            {
+                return;
+            }
+
             _revokeDialogOpen = false;
             _revocationReason = string.Empty;
-            StatusMessage = "Champion recognition revoked. The award history remains auditable.";
             await LoadAsync();
+            if (_loadedMemberId == memberId && memberId == MemberId)
+            {
+                StatusMessage = "Champion recognition revoked. The award history remains auditable.";
+            }
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
-            _actionError = "We couldn’t revoke Champion recognition. Check the reason and try again.";
+            if (IsCurrentAction(memberId, actionGeneration))
+            {
+                _actionError = "We couldn’t revoke Champion recognition. Check the reason and try again.";
+            }
         }
         finally
         {
-            _saving = false;
+            if (IsCurrentAction(memberId, actionGeneration))
+            {
+                _saving = false;
+            }
         }
+    }
+
+    private bool IsCurrentAction(Guid memberId, long actionGeneration)
+        => !_disposed
+            && actionGeneration == _actionGeneration
+            && _loadedMemberId == memberId
+            && MemberId == memberId;
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _loadGeneration++;
+        _actionGeneration++;
+        _loadCancellationTokenSource?.Cancel();
+        _loadCancellationTokenSource?.Dispose();
+        _loadCancellationTokenSource = null;
     }
 }

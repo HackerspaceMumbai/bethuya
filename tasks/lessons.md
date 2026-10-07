@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-07] Guard asynchronous mutations across route changes
+- **What happened:** Clearing a stale Passport during navigation hid the old member's actions, but an already-running Champion mutation could still complete later and update or reload the newly selected member's UI.
+- **Root cause:** The mutation validated its member before the API await but did not associate the continuation with the member and action generation that initiated it.
+- **Fix:** Added member-and-generation checks after mutation awaits, invalidated actions on route loads, cleared member-specific state on member changes, and cancelled superseded Passport reads.
+- **Prevention:** For parameter-driven components, bind both reads and writes to a captured identity/generation and reject every post-await state mutation when that context is stale.
+
 ## [2026-10-07] Normalize identity inputs before comparison and persistence
 - **What happened:** A registration email with surrounding whitespace was accepted but failed the immutable member-link comparison, leaving valid attendance absent from the member's Passport.
 - **Root cause:** The endpoint compared the raw submitted email with the normalized provisioned-member email and persisted the raw value.

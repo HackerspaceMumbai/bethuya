@@ -4,6 +4,7 @@ using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using System.Reflection;
 
 using BunitCtx = Bunit.TestContext;
 
@@ -146,6 +147,84 @@ public sealed class CommunityPassportRenderTests
         {
             throw new InvalidOperationException("Organizer view must link to source registration records.");
         }
+    }
+
+    [Test]
+    public async Task OrganizerPassport_HidesPreviousMemberActionsWhileNextMemberLoads()
+    {
+        using var ctx = CreateContext(out var api);
+        var firstMemberId = Guid.NewGuid();
+        var secondMemberId = Guid.NewGuid();
+        var secondLoad = new TaskCompletionSource<CommunityPassportExperienceDto>();
+        api.GetMemberExperienceAsync(firstMemberId, Arg.Any<CancellationToken>())
+            .Returns(BuildExperience(isOrganizer: true, firstMemberId));
+        api.GetMemberExperienceAsync(secondMemberId, Arg.Any<CancellationToken>())
+            .Returns(secondLoad.Task);
+
+        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.OrganizerCommunityPassport>(
+            parameters => parameters.Add(page => page.MemberId, firstMemberId));
+
+        cut.WaitForElement("[data-test='passport-award-champion-btn']");
+
+        cut.SetParametersAndRender(parameters => parameters.Add(page => page.MemberId, secondMemberId));
+
+        cut.Find("[data-test='organizer-passport-loading']");
+        if (cut.FindAll("[data-test='passport-award-champion-btn']").Count > 0
+            || cut.FindAll("[data-test='passport-revoke-champion-btn']").Count > 0)
+        {
+            throw new InvalidOperationException("Champion actions must not remain visible while another member's Passport loads.");
+        }
+
+        secondLoad.SetResult(BuildExperience(isOrganizer: true, secondMemberId));
+        cut.WaitForElement("[data-test='passport-award-champion-btn']");
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task OrganizerPassport_IgnoresPreviousMemberActionCompletionAfterNavigation()
+    {
+        using var ctx = CreateContext(out var api);
+        var firstMemberId = Guid.NewGuid();
+        var secondMemberId = Guid.NewGuid();
+        var awardCompletion = new TaskCompletionSource<CommunitySignalDto>();
+        api.GetMemberExperienceAsync(firstMemberId, Arg.Any<CancellationToken>())
+            .Returns(BuildExperience(isOrganizer: true, firstMemberId));
+        api.GetMemberExperienceAsync(secondMemberId, Arg.Any<CancellationToken>())
+            .Returns(BuildExperience(isOrganizer: true, secondMemberId));
+        api.AwardChampionAsync(firstMemberId, Arg.Any<AwardChampionSignalDto>(), Arg.Any<CancellationToken>())
+            .Returns(awardCompletion.Task);
+
+        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.OrganizerCommunityPassport>(
+            parameters => parameters.Add(page => page.MemberId, firstMemberId));
+
+        cut.WaitForElement("[data-test='passport-award-champion-btn']");
+        var componentType = cut.Instance.GetType();
+        componentType.GetField("_championRationale", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(cut.Instance, "Sustained contribution");
+        var awardMethod = componentType.GetMethod("AwardChampionAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Task? awardTask = null;
+        await cut.InvokeAsync((Action)(() => awardTask = (Task)awardMethod.Invoke(cut.Instance, null)!));
+
+        cut.SetParametersAndRender(parameters => parameters.Add(page => page.MemberId, secondMemberId));
+        cut.WaitForElement("[data-test='passport-award-champion-btn']");
+
+        awardCompletion.SetResult(new CommunitySignalDto(
+            "Champion",
+            "Champion",
+            true,
+            "Organizer-awarded recognition.",
+            ["Sustained contribution"]));
+        await awardTask!;
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.Markup.Contains("Champion recognition awarded", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("A previous member's completed action must not update the current member's Passport.");
+            }
+        });
+
+        await api.Received(1).GetMemberExperienceAsync(secondMemberId, Arg.Any<CancellationToken>());
     }
 
     private static BunitCtx CreateContext(out ICommunityPassportApi api)
