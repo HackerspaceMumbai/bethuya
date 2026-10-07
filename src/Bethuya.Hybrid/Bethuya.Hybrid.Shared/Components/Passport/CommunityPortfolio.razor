@@ -39,8 +39,8 @@
                 @if (CanEdit)
                 {
                     <div class="card-actions">
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick="@(() => OnEdit.InvokeAsync(entry))">Edit</BbButton>
-                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick="@(() => OnDelete.InvokeAsync(entry.Id))">Remove</BbButton>
+                        <div data-test="passport-edit-portfolio-btn"><BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick="@(() => OnEdit.InvokeAsync(entry))">Edit</BbButton></div>
+                        <div data-test="passport-remove-portfolio-btn"><BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick="@(() => OnDelete.InvokeAsync(entry.Id))">Remove</BbButton></div>
                     </div>
                 }
             </article>
