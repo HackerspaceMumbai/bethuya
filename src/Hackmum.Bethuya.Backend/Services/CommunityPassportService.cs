@@ -55,6 +55,11 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
         member.Visibility = request.Visibility;
         member.ShareParticipationWithOrganizers = request.ShareParticipationWithOrganizers;
         member.IsDiscoverableToCommunity = request.IsDiscoverableToCommunity;
+        member.AppearInMentorshipRecommendations = request.IsDiscoverableToCommunity;
+        member.AppearInOpportunityRecommendations = request.IsDiscoverableToCommunity;
+        member.AppearInCollaboratorDiscovery = request.IsDiscoverableToCommunity;
+        member.AppearInSpeakerRecommendations = request.IsDiscoverableToCommunity;
+        member.AppearInVolunteerLeadershipRecommendations = request.IsDiscoverableToCommunity;
         member.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);
@@ -67,22 +72,8 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
 
     private async Task<CommunityPassportResponse> BuildPassportAsync(CommunityMember member, CancellationToken ct)
     {
-        var registrationsQuery = db.Registrations.AsNoTracking();
-        var normalizedMemberEmail = member.Email.Trim().ToLowerInvariant();
-        if (db.Database.IsNpgsql())
-        {
-#pragma warning disable CA1304, CA1311, CA1862 // Npgsql translates ToLower() to exact SQL lower(); unlike ILIKE, email wildcards remain literal.
-            registrationsQuery = registrationsQuery
-                .Where(registration => registration.Email.ToLower() == normalizedMemberEmail);
-#pragma warning restore CA1304, CA1311, CA1862
-        }
-        else
-        {
-            registrationsQuery = registrationsQuery
-                .Where(registration => string.Equals(registration.Email, member.Email, StringComparison.OrdinalIgnoreCase));
-        }
-
-        var registrations = await registrationsQuery
+        var registrations = await db.Registrations.AsNoTracking()
+            .Where(registration => registration.CommunityMemberId == member.Id)
             .OrderByDescending(registration => registration.UpdatedAt)
             .ToListAsync(ct);
 

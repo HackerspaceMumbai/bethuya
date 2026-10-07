@@ -6,6 +6,10 @@ namespace Hackmum.Bethuya.Core.Enums;
 public enum ProfileVisibilityScope
 {
     /// <summary>
+    /// Visible only to the owning member.
+    /// </summary>
+    Private,
+    /// <summary>
     /// Visible to everyone.
     /// </summary>
     Public,

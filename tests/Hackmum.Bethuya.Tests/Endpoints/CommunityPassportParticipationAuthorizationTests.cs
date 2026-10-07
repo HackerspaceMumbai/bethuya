@@ -91,7 +91,15 @@ public sealed class CommunityPassportParticipationAuthorizationTests
                 .UseInMemoryDatabase($"community-passport-auth-tests-{Guid.NewGuid():N}")
                 .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
         builder.Services.AddScoped<CommunityPassportService>();
+        builder.Services.AddScoped<CommunityPassportAccessPolicy>();
+        builder.Services.AddScoped<ICommunityStoryGenerator, DeterministicCommunityStoryGenerator>();
+        builder.Services.AddScoped<CommunityPassportReadModelService>();
+        builder.Services.AddScoped<CommunityPortfolioService>();
+        builder.Services.AddScoped<CommunitySignalAwardService>();
+        builder.Services.AddScoped<CommunityPassportExportService>();
         builder.Services.AddScoped<ParticipationLedgerService>();
+        builder.Services.AddScoped<CommunityJourneyReadModelService>();
+        builder.Services.AddScoped<CommunityRecommendationService>();
 
         var app = builder.Build();
         app.UseAuthentication();

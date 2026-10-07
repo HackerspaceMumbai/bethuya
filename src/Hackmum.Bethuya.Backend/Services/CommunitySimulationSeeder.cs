@@ -317,19 +317,21 @@ public sealed partial class CommunitySimulationSeeder(
             // translated to SQL by Npgsql (lower()); ToLowerInvariant() is not translatable and
             // would throw at runtime. Culture-sensitivity is moot server-side (Postgres applies
             // its own collation), so the invariant-culture guidance does not apply here.
-            var existingRegistrationEmails = await dbContext.Registrations
-                .AsNoTracking()
+            var existingRegistrations = await dbContext.Registrations
                 .Where(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email.ToLower()))
-                .Select(r => r.Email)
                 .ToListAsync(ct);
 #pragma warning restore CA1304, CA1311
-            var existingRegistrationEmailSet = existingRegistrationEmails
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var existingRegistrationByEmail = existingRegistrations
+                .ToDictionary(registration => registration.Email, StringComparer.OrdinalIgnoreCase);
 
             foreach (var persona in personas)
             {
-                if (existingRegistrationEmailSet.Contains(persona.Email))
+                if (existingRegistrationByEmail.TryGetValue(persona.Email, out var existingRegistration))
                 {
+                    if (existingRegistration.CommunityMemberId != memberByPersonaKey[persona.Key].Id)
+                    {
+                        existingRegistration.CommunityMemberId = memberByPersonaKey[persona.Key].Id;
+                    }
                     registrationsAlreadyExisted++;
                     continue;
                 }
@@ -344,6 +346,7 @@ public sealed partial class CommunitySimulationSeeder(
                 dbContext.Registrations.Add(new Registration
                 {
                     EventId = fixtureEventId,
+                    CommunityMemberId = memberByPersonaKey[persona.Key].Id,
                     FullName = persona.DisplayName,
                     Email = persona.Email,
                     Status = status,
@@ -351,10 +354,9 @@ public sealed partial class CommunitySimulationSeeder(
                     UpdatedAt = now.AddDays(-3)
                 });
                 registrationsCreated++;
-                existingRegistrationEmailSet.Add(persona.Email);
             }
 
-            if (registrationsCreated > 0)
+            if (registrationsCreated > 0 || dbContext.ChangeTracker.HasChanges())
             {
                 try
                 {

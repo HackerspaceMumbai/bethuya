@@ -1,0 +1,34 @@
+@using Bethuya.Hybrid.Shared.Services
+
+<div class="activity-graph" role="img" aria-label="Contribution activity over the last 26 weeks" data-test="passport-activity-graph">
+    @for (var offset = 0; offset < 182; offset++)
+    {
+        var date = _start.AddDays(offset);
+        _lookup.TryGetValue(date, out var day);
+        var count = day?.Count ?? 0;
+        var label = $"{date:dd MMM yyyy}: {count} verified activit{(count == 1 ? "y" : "ies")}";
+        <span class="activity-cell activity-cell--@Math.Min(count, 4)"
+              title="@label"
+              aria-label="@label"></span>
+    }
+</div>
+<div class="activity-legend" aria-hidden="true">
+    <span>Quiet</span>
+    @for (var level = 0; level <= 4; level++)
+    {
+        <i class="activity-cell activity-cell--@level"></i>
+    }
+    <span>Active</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ActivityDayDto> Activity { get; set; } = [];
+
+    private readonly DateOnly _start = DateOnly.FromDateTime(DateTime.Today.AddDays(-181));
+    private Dictionary<DateOnly, ActivityDayDto> _lookup = [];
+
+    protected override void OnParametersSet()
+    {
+        _lookup = Activity.ToDictionary(day => day.Date);
+    }
+}

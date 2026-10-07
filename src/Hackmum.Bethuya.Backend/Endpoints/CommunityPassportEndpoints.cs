@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
+using Hackmum.Bethuya.Core.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 using ServiceDefaults.Auth;
 
@@ -60,6 +61,278 @@ public static class CommunityPassportEndpoints
             var updatedPrivacy = await service.UpdatePrivacyAsync(subject, request, ct);
             return Results.Ok(updatedPrivacy);
         });
+
+        group.MapGet("/experience", async (
+            ClaimsPrincipal user,
+            CommunityPassportReadModelService service,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            return Results.Ok(await service.GetMineAsync(subject, ct));
+        });
+
+        group.MapPut("/experience/privacy", async (
+            UpdatePassportPrivacyPreferencesRequest request,
+            ClaimsPrincipal user,
+            CommunityPassportReadModelService service,
+            CancellationToken ct) =>
+        {
+            if (!Enum.IsDefined(request.Visibility))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["visibility"] = ["Visibility must be a valid ProfileVisibilityScope value."]
+                });
+            }
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+            return Results.Ok(await service.UpdatePrivacyAsync(subject, request, ct));
+        });
+
+        group.MapPost("/portfolio", async (
+            UpsertPortfolioEntryRequest request,
+            ClaimsPrincipal user,
+            CommunityPortfolioService service,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+            try
+            {
+                return Results.Ok(await service.UpsertAsync(subject, null, request, ct));
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["portfolio"] = [ex.Message]
+                });
+            }
+        });
+
+        group.MapPut("/portfolio/{entryId:guid}", async (
+            Guid entryId,
+            UpsertPortfolioEntryRequest request,
+            ClaimsPrincipal user,
+            CommunityPortfolioService service,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+            try
+            {
+                return Results.Ok(await service.UpsertAsync(
+                    subject,
+                    CommunityPortfolioEntryId.From(entryId),
+                    request,
+                    ct));
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Results.NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["portfolio"] = [ex.Message]
+                });
+            }
+        });
+
+        group.MapDelete("/portfolio/{entryId:guid}", async (
+            Guid entryId,
+            ClaimsPrincipal user,
+            CommunityPortfolioService service,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+            try
+            {
+                await service.DeleteAsync(subject, CommunityPortfolioEntryId.From(entryId), ct);
+                return Results.NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
+        });
+
+        group.MapPut("/portfolio/order", async (
+            ReorderPortfolioEntriesRequest request,
+            ClaimsPrincipal user,
+            CommunityPortfolioService service,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+            try
+            {
+                await service.ReorderAsync(subject, request, ct);
+                return Results.NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["entryIds"] = [ex.Message]
+                });
+            }
+        });
+
+        group.MapGet("/export", async (
+            ClaimsPrincipal user,
+            CommunityPassportReadModelService readModelService,
+            CommunityPassportExportService exportService,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+            var passport = await readModelService.GetMineAsync(subject, ct);
+            return Results.File(
+                exportService.BuildArchive(passport),
+                "application/zip",
+                "passport-export.zip");
+        });
+
+        group.MapGet("/members", async (
+            string? search,
+            bool? participationShared,
+            int? skip,
+            int? take,
+            CommunityPassportReadModelService service,
+            CancellationToken ct) =>
+        {
+            if (skip is < 0 || take is <= 0 or > 100 || search?.Length > 100)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["query"] = ["Search must be at most 100 characters; skip must be non-negative; take must be between 1 and 100."]
+                });
+            }
+            return Results.Ok(await service.GetDirectoryAsync(
+                search,
+                participationShared,
+                skip ?? 0,
+                take ?? 25,
+                ct));
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapGet("/members/{memberId:guid}", async (
+            Guid memberId,
+            CommunityPassportReadModelService service,
+            CancellationToken ct) =>
+        {
+            var passport = await service.GetForOrganizerAsync(CommunityMemberId.From(memberId), ct);
+            return passport is null ? Results.NotFound() : Results.Ok(passport);
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapPost("/members/{memberId:guid}/signals/champion", async (
+            Guid memberId,
+            AwardChampionSignalRequest request,
+            ClaimsPrincipal user,
+            CommunitySignalAwardService service,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+            try
+            {
+                return Results.Ok(await service.AwardChampionAsync(
+                    CommunityMemberId.From(memberId),
+                    request,
+                    subject.Email ?? subject.DisplayName ?? subject.UserId,
+                    ct));
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Results.NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["champion"] = [ex.Message]
+                });
+            }
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapDelete("/members/{memberId:guid}/signals/champion", async (
+            Guid memberId,
+            [FromBody] RevokeChampionSignalRequest request,
+            ClaimsPrincipal user,
+            CommunitySignalAwardService service,
+            CancellationToken ct) =>
+        {
+            var subject = GetSubject(user);
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+            try
+            {
+                await service.RevokeChampionAsync(
+                    CommunityMemberId.From(memberId),
+                    request,
+                    subject.Email ?? subject.DisplayName ?? subject.UserId,
+                    ct);
+                return Results.NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Results.NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["champion"] = [ex.Message]
+                });
+            }
+        })
+        .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/participation", async (
             UpsertParticipationEntriesRequest request,

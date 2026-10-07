@@ -40,6 +40,7 @@ public static class RegistrationEndpoints
             CreateRegistrationRequest request,
             IRegistrationRepository repo,
             IAttendeeProfileRepository profileRepo,
+            CommunityPassportService passportService,
             InclusionSignalsNormalizer inclusionSignalsNormalizer,
             ClaimsPrincipal user,
             CancellationToken ct) =>
@@ -54,10 +55,15 @@ public static class RegistrationEndpoints
             var inclusionSignals = profileInclusionSource is not null
                 ? inclusionSignalsNormalizer.FromSource(profileInclusionSource)
                 : new InclusionSignals();
+            var subject = user.GetSubject();
+            var memberId = subject is null
+                ? (Hackmum.Bethuya.Core.ValueObjects.CommunityMemberId?)null
+                : (await passportService.EnsureMemberProvisionedAsync(subject, ct)).Id;
 
             var reg = new Registration
             {
                 EventId = request.EventId,
+                CommunityMemberId = memberId,
                 FullName = request.FullName,
                 Email = request.Email,
                 Bio = request.Bio,

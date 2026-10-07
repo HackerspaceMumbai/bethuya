@@ -7,6 +7,70 @@ namespace Bethuya.Hybrid.Shared.Services;
 /// </summary>
 public interface ICommunityPassportApi
 {
+    /// <summary>Gets the versioned unified passport experience.</summary>
+    [Get("/api/community/passport/experience")]
+    Task<CommunityPassportExperienceDto> GetExperienceAsync(CancellationToken ct = default);
+
+    /// <summary>Updates complete passport privacy and discovery preferences.</summary>
+    [Put("/api/community/passport/experience/privacy")]
+    Task<PassportPrivacyPreferencesDto> SavePrivacyPreferencesAsync(
+        [Body] UpdatePassportPrivacyPreferencesDto request,
+        CancellationToken ct = default);
+
+    /// <summary>Creates a member-curated portfolio entry.</summary>
+    [Post("/api/community/passport/portfolio")]
+    Task<PortfolioEntryDto> CreatePortfolioEntryAsync(
+        [Body] UpsertPortfolioEntryDto request,
+        CancellationToken ct = default);
+
+    /// <summary>Updates a member-curated portfolio entry.</summary>
+    [Put("/api/community/passport/portfolio/{entryId}")]
+    Task<PortfolioEntryDto> UpdatePortfolioEntryAsync(
+        Guid entryId,
+        [Body] UpsertPortfolioEntryDto request,
+        CancellationToken ct = default);
+
+    /// <summary>Deletes a member-curated portfolio entry.</summary>
+    [Delete("/api/community/passport/portfolio/{entryId}")]
+    Task DeletePortfolioEntryAsync(Guid entryId, CancellationToken ct = default);
+
+    /// <summary>Reorders member-curated portfolio entries.</summary>
+    [Put("/api/community/passport/portfolio/order")]
+    Task ReorderPortfolioEntriesAsync(
+        [Body] ReorderPortfolioEntriesDto request,
+        CancellationToken ct = default);
+
+    /// <summary>Downloads the canonical passport portability archive.</summary>
+    [Get("/api/community/passport/export")]
+    Task<HttpResponseMessage> ExportPassportAsync(CancellationToken ct = default);
+
+    /// <summary>Reads the organizer-scoped member directory.</summary>
+    [Get("/api/community/passport/members")]
+    Task<CommunityPassportDirectoryDto> GetDirectoryAsync(
+        [AliasAs("search")] string? search = null,
+        [AliasAs("participationShared")] bool? participationShared = null,
+        [AliasAs("skip")] int skip = 0,
+        [AliasAs("take")] int take = 25,
+        CancellationToken ct = default);
+
+    /// <summary>Reads one permission-filtered passport for an organizer.</summary>
+    [Get("/api/community/passport/members/{memberId}")]
+    Task<CommunityPassportExperienceDto> GetMemberExperienceAsync(Guid memberId, CancellationToken ct = default);
+
+    /// <summary>Awards Champion recognition to a member.</summary>
+    [Post("/api/community/passport/members/{memberId}/signals/champion")]
+    Task<CommunitySignalDto> AwardChampionAsync(
+        Guid memberId,
+        [Body] AwardChampionSignalDto request,
+        CancellationToken ct = default);
+
+    /// <summary>Revokes Champion recognition from a member.</summary>
+    [Delete("/api/community/passport/members/{memberId}/signals/champion")]
+    Task RevokeChampionAsync(
+        Guid memberId,
+        [Body] RevokeChampionSignalDto request,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Gets the current user's Community Passport projection.
     /// </summary>
@@ -404,3 +468,169 @@ public sealed record RecommendationDraftDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset? ApprovedAt,
     RecommendationAuditMetadataDto Audit);
+
+/// <summary>Versioned aggregate for the unified Community Passport UI.</summary>
+public sealed record CommunityPassportExperienceDto(
+    string SchemaVersion,
+    PassportViewerDto Viewer,
+    PassportIdentitySummaryDto Identity,
+    CommunityStoryDto CommunityStory,
+    IReadOnlyList<CommunitySignalDto> Signals,
+    IReadOnlyList<GrowthPathwayDto> Journey,
+    IReadOnlyList<PassportContributionDto> Contributions,
+    IReadOnlyList<ActivityDayDto> Activity,
+    PassportPortfolioDto Portfolio,
+    IReadOnlyList<PassportConnectionDto> Connections,
+    IReadOnlyList<PassportOpportunityDto> Opportunities,
+    PassportPrivacyPreferencesDto Privacy,
+    PassportResidencyDto Residency);
+
+/// <summary>Current viewer capabilities.</summary>
+public sealed record PassportViewerDto(bool IsOwner, bool IsOrganizer, bool CanEdit, bool IsParticipationRedacted);
+
+/// <summary>Passport hero identity.</summary>
+public sealed record PassportIdentitySummaryDto(
+    Guid MemberId,
+    string DisplayName,
+    string Email,
+    string Initials,
+    string CommunityName,
+    DateTimeOffset MemberSince,
+    string? OccupationStatus,
+    string? Affiliation);
+
+/// <summary>Evidence-backed member story.</summary>
+public sealed record CommunityStoryDto(string Narrative, IReadOnlyList<string> Evidence);
+
+/// <summary>Explainable community participation signal.</summary>
+public sealed record CommunitySignalDto(
+    string Kind,
+    string Label,
+    bool IsOrganizerAwarded,
+    string Explanation,
+    IReadOnlyList<string> Evidence);
+
+/// <summary>Evidence-based journey pathway.</summary>
+public sealed record GrowthPathwayDto(
+    string Name,
+    string CurrentStage,
+    IReadOnlyList<GrowthMilestoneDto> Milestones);
+
+/// <summary>One journey milestone.</summary>
+public sealed record GrowthMilestoneDto(string Name, string State, string Explanation);
+
+/// <summary>Normalized contribution entry.</summary>
+public sealed record PassportContributionDto(
+    Guid Id,
+    string Type,
+    string Title,
+    string Description,
+    string Community,
+    string ImpactArea,
+    DateTimeOffset OccurredAt,
+    bool IsVerified,
+    bool IsLedgerEvidence,
+    Guid? EventId = null);
+
+/// <summary>Daily contribution activity.</summary>
+public sealed record ActivityDayDto(DateOnly Date, int Count, IReadOnlyList<string> Activities);
+
+/// <summary>Verified and curated portfolio projection.</summary>
+public sealed record PassportPortfolioDto(
+    IReadOnlyList<VerifiedPortfolioHighlightDto> VerifiedHighlights,
+    IReadOnlyList<PortfolioEntryDto> Entries);
+
+/// <summary>Verified ledger-backed portfolio highlight.</summary>
+public sealed record VerifiedPortfolioHighlightDto(string Title, string Description, string Evidence);
+
+/// <summary>Member-curated portfolio entry.</summary>
+public sealed record PortfolioEntryDto(
+    Guid Id,
+    string Title,
+    string Description,
+    bool IsFeatured,
+    int DisplayOrder,
+    IReadOnlyList<PortfolioLinkDto> Links,
+    IReadOnlyList<Guid> EvidenceEntryIds);
+
+/// <summary>Typed external portfolio link.</summary>
+public sealed record PortfolioLinkDto(string Kind, string Url, string? Label);
+
+/// <summary>Portfolio create/update payload.</summary>
+public sealed record UpsertPortfolioEntryDto(
+    string Title,
+    string Description,
+    bool IsFeatured,
+    int DisplayOrder,
+    IReadOnlyList<PortfolioLinkDto> Links,
+    IReadOnlyList<Guid> EvidenceEntryIds);
+
+/// <summary>Portfolio reorder payload.</summary>
+public sealed record ReorderPortfolioEntriesDto(IReadOnlyList<Guid> EntryIds);
+
+/// <summary>Contextual member relationship.</summary>
+public sealed record PassportConnectionDto(
+    Guid MemberId,
+    string DisplayName,
+    string Kind,
+    string Context,
+    string Explanation);
+
+/// <summary>Member opportunity history.</summary>
+public sealed record PassportOpportunityDto(
+    Guid Id,
+    string Kind,
+    string Title,
+    string Description,
+    string CurrentStatus,
+    string? Outcome,
+    DateTimeOffset OfferedAt,
+    IReadOnlyList<OpportunityLifecycleEventDto> Lifecycle);
+
+/// <summary>One opportunity lifecycle event.</summary>
+public sealed record OpportunityLifecycleEventDto(string Status, DateTimeOffset OccurredAt, string Explanation);
+
+/// <summary>Complete privacy and discovery preferences.</summary>
+public sealed record PassportPrivacyPreferencesDto(
+    string Visibility,
+    bool ShareParticipationWithOrganizers,
+    bool AppearInMentorshipRecommendations,
+    bool AppearInOpportunityRecommendations,
+    bool AppearInCollaboratorDiscovery,
+    bool AppearInSpeakerRecommendations,
+    bool AppearInVolunteerLeadershipRecommendations,
+    bool EnableRelationshipInsights,
+    bool ReceiveOpportunityRecommendations);
+
+/// <summary>Privacy and discovery update payload.</summary>
+public sealed record UpdatePassportPrivacyPreferencesDto(
+    string Visibility,
+    bool ShareParticipationWithOrganizers,
+    bool AppearInMentorshipRecommendations,
+    bool AppearInOpportunityRecommendations,
+    bool AppearInCollaboratorDiscovery,
+    bool AppearInSpeakerRecommendations,
+    bool AppearInVolunteerLeadershipRecommendations,
+    bool EnableRelationshipInsights,
+    bool ReceiveOpportunityRecommendations);
+
+/// <summary>Organizer directory result.</summary>
+public sealed record CommunityPassportDirectoryDto(
+    int TotalCount,
+    IReadOnlyList<CommunityPassportDirectoryEntryDto> Entries);
+
+/// <summary>One organizer directory entry.</summary>
+public sealed record CommunityPassportDirectoryEntryDto(
+    Guid MemberId,
+    string DisplayName,
+    string Community,
+    string? OccupationStatus,
+    IReadOnlyList<string> Signals,
+    DateTimeOffset MemberSince,
+    bool IsParticipationShared);
+
+/// <summary>Champion award payload.</summary>
+public sealed record AwardChampionSignalDto(string Rationale, IReadOnlyList<Guid> EvidenceEntryIds);
+
+/// <summary>Champion revocation payload.</summary>
+public sealed record RevokeChampionSignalDto(string Reason);

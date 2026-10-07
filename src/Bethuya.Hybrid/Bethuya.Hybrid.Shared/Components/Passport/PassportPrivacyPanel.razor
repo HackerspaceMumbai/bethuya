@@ -1,0 +1,85 @@
+@using Bethuya.Hybrid.Shared.Services
+
+<section class="privacy-layout" data-test="community-passport-privacy">
+    <div class="privacy-control-heading">
+        <div>
+            <p>Granular consent controls</p>
+            <h3>Privacy, sharing &amp; discovery</h3>
+            <small>These controls change how Bethuya uses the member-owned record; they never change the underlying participation history.</small>
+        </div>
+    </div>
+    <BbCard>
+        <BbCardHeader><BbCardTitle>Profile visibility</BbCardTitle><BbCardDescription>Choose who may open your Community Passport.</BbCardDescription></BbCardHeader>
+        <BbCardContent>
+            <div data-test="passport-visibility-select">
+                <BbFormFieldSelect TValue="string" @bind-Value="_visibility" Label="Visibility">
+                    <BbSelectItem Value="@("Private")" Text="Private — only me" />
+                    <BbSelectItem Value="@("OrganizerOnly")" Text="Organizer only" />
+                    <BbSelectItem Value="@("CommunityOnly")" Text="Community only" />
+                    <BbSelectItem Value="@("Public")" Text="Public" />
+                </BbFormFieldSelect>
+            </div>
+        </BbCardContent>
+    </BbCard>
+    <BbCard>
+        <BbCardHeader><BbCardTitle>Participation &amp; relationship intelligence</BbCardTitle><BbCardDescription>Control how verified activity and relationship context may be used.</BbCardDescription></BbCardHeader>
+        <BbCardContent Class="privacy-switches">
+            <div class="switch-row" data-test="passport-share-participation-toggle"><div><strong>Share participation signals with organizers</strong><small>Supports human review and member growth decisions.</small></div><BbSwitch @bind-Checked="_shareParticipation" AriaLabel="Share participation signals with organizers" /></div>
+            <div class="switch-row" data-test="passport-relationship-insights-toggle"><div><strong>Enable relationship insights</strong><small>Builds contextual collaboration and mentor summaries.</small></div><BbSwitch @bind-Checked="_relationshipInsights" AriaLabel="Enable relationship insights" /></div>
+            <div class="switch-row" data-test="passport-receive-opportunities-toggle"><div><strong>Receive opportunity recommendations</strong><small>Allows proactive matching to pathways and roles.</small></div><BbSwitch @bind-Checked="_receiveOpportunities" AriaLabel="Receive opportunity recommendations" /></div>
+        </BbCardContent>
+    </BbCard>
+    <BbCard>
+        <BbCardHeader><BbCardTitle>Discovery controls</BbCardTitle><BbCardDescription>Turning these off never prevents participation; it only stops recommendation visibility.</BbCardDescription></BbCardHeader>
+        <BbCardContent Class="privacy-switches">
+            <div class="switch-row" data-test="passport-mentorship-discovery-toggle"><strong>Mentorship recommendations</strong><BbSwitch @bind-Checked="_mentorshipDiscovery" AriaLabel="Mentorship recommendations" /></div>
+            <div class="switch-row" data-test="passport-opportunity-discovery-toggle"><strong>Opportunity recommendations</strong><BbSwitch @bind-Checked="_opportunityDiscovery" AriaLabel="Opportunity recommendations" /></div>
+            <div class="switch-row" data-test="passport-collaborator-discovery-toggle"><strong>Collaborator discovery</strong><BbSwitch @bind-Checked="_collaboratorDiscovery" AriaLabel="Collaborator discovery" /></div>
+            <div class="switch-row" data-test="passport-speaker-discovery-toggle"><strong>Speaker recommendations</strong><BbSwitch @bind-Checked="_speakerDiscovery" AriaLabel="Speaker recommendations" /></div>
+            <div class="switch-row" data-test="passport-volunteer-discovery-toggle"><strong>Volunteer leadership recommendations</strong><BbSwitch @bind-Checked="_volunteerDiscovery" AriaLabel="Volunteer leadership recommendations" /></div>
+        </BbCardContent>
+    </BbCard>
+    <div data-test="passport-save-privacy-btn">
+        <BbButton OnClick="SaveAsync">Save privacy preferences</BbButton>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public PassportPrivacyPreferencesDto Privacy { get; set; } = default!;
+    [Parameter] public EventCallback<UpdatePassportPrivacyPreferencesDto> OnSave { get; set; }
+
+    private string _visibility = "CommunityOnly";
+    private bool _shareParticipation;
+    private bool _mentorshipDiscovery;
+    private bool _opportunityDiscovery;
+    private bool _collaboratorDiscovery;
+    private bool _speakerDiscovery;
+    private bool _volunteerDiscovery;
+    private bool _relationshipInsights;
+    private bool _receiveOpportunities;
+
+    protected override void OnParametersSet()
+    {
+        _visibility = Privacy.Visibility;
+        _shareParticipation = Privacy.ShareParticipationWithOrganizers;
+        _mentorshipDiscovery = Privacy.AppearInMentorshipRecommendations;
+        _opportunityDiscovery = Privacy.AppearInOpportunityRecommendations;
+        _collaboratorDiscovery = Privacy.AppearInCollaboratorDiscovery;
+        _speakerDiscovery = Privacy.AppearInSpeakerRecommendations;
+        _volunteerDiscovery = Privacy.AppearInVolunteerLeadershipRecommendations;
+        _relationshipInsights = Privacy.EnableRelationshipInsights;
+        _receiveOpportunities = Privacy.ReceiveOpportunityRecommendations;
+    }
+
+    private Task SaveAsync()
+        => OnSave.InvokeAsync(new UpdatePassportPrivacyPreferencesDto(
+            _visibility,
+            _shareParticipation,
+            _mentorshipDiscovery,
+            _opportunityDiscovery,
+            _collaboratorDiscovery,
+            _speakerDiscovery,
+            _volunteerDiscovery,
+            _relationshipInsights,
+            _receiveOpportunities));
+}

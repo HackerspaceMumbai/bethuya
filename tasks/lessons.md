@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-06] TUnit filters belong to Microsoft.Testing.Platform
+- **What happened:** A targeted `dotnet test` invocation passed `--filter` after the test-application separator and ran zero tests.
+- **Root cause:** This repository uses TUnit on Microsoft.Testing.Platform, whose executable accepts `--treenode-filter` or `--filter-uid`, not the VSTest `--filter` option.
+- **Fix:** Ran the small 444-test project suite directly, then completed the full solution build.
+- **Prevention:** Use `--treenode-filter`/`--filter-uid` for targeted TUnit runs, or run the bounded project suite when it completes quickly.
+
 ## [2026-09-29] Compositional select values may display enum keys instead of item labels
 - **What happened:** The import-kind combobox rendered the bound internal value (`Registration`) instead of its longer organizer-facing option text.
 - **Root cause:** The compositional `BbSelectItem` children register their display text when the popover opens, so a closed, already-selected field cannot always resolve the option label on initial render.
@@ -733,3 +739,22 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 
 
 - **Guard messages must render next to the action that triggers them.** An early-return validation guard in the import wizard wrote to a status region at the top of the page, so clicking 'Run validation' appeared to do nothing. Also, stale query IDs (e.g. `?eventId=` after a reseed) must show a visible notice instead of silently leaving the selection empty.
+
+## [2026-10-01] Generated EF migrations can misclassify snapshot drift as a new column
+
+- **What happened:** The Community Passport migration attempted to add `EventArchiveOutboxMessages.ClaimToken`, and the live Aspire database rejected it because the column already existed.
+- **Root cause:** The table-creation migration already contained `ClaimToken`, but the model snapshot did not. EF therefore generated an `AddColumn` operation when the model later constrained the property to 32 characters.
+- **Fix:** Replaced the invalid add/drop operations with reversible `AlterColumn` operations from `text` to `character varying(32)`, then verified the migration against the live Postgres resource.
+- **Prevention:** Before accepting a generated migration, compare every unrelated operation against earlier migrations and run it through the real Aspire database; snapshot drift can compile cleanly while producing invalid DDL.
+
+## [2026-10-01] Build and test gates must not share output files concurrently
+
+- **What happened:** Running the full solution build and TUnit suite in parallel produced compiler file-lock failures and enough resource contention to trigger unrelated bUnit timeouts.
+- **Root cause:** Both commands wrote the same project `obj` and `bin` outputs while the tests were loading those assemblies.
+- **Fix:** Re-ran the TUnit suite and solution build sequentially; both completed cleanly.
+- **Prevention:** Run build and test gates sequentially when they share project outputs. Parallelize only read-only validation such as diff checks.
+# Security-sensitive read models must share the same identity boundary
+
+- Replacing an insecure ownership join in the primary Passport read model is insufficient when alternate projections, such as Community Journey, independently query the same registrations.
+- Member-specific participation reads must use the immutable `Registration.CommunityMemberId` link everywhere; mutable profile email remains display/contact data and must never grant ownership.
+- After security remediation, search all sibling read models and endpoints for the original join key, then rerun the security review against the complete attack surface.

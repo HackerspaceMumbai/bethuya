@@ -1,0 +1,168 @@
+@page "/community/passports"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = BethuyaAuthorizationPolicies.RequireOrganizer)]
+@using Bethuya.Hybrid.Shared.Services
+@inject ICommunityPassportApi CommunityPassportApi
+@inject NavigationManager Navigation
+
+<PageTitle>Community Passport directory — Bethuya</PageTitle>
+
+<main class="directory-shell" data-test="community-passport-directory">
+    <header>
+        <p class="eyebrow">Organizer workspace</p>
+        <h1>Community Passport directory</h1>
+        <p>Find members by name, occupation, or affiliation, then open the permission-filtered evidence behind their community journey.</p>
+    </header>
+
+    <BbCard>
+        <BbCardContent Class="directory-controls">
+            <div data-test="passport-directory-search">
+                <BbFormFieldInput TValue="string"
+                                  @bind-Value="_search"
+                                  Label="Search members"
+                                  Placeholder="Name, occupation, or affiliation" />
+            </div>
+            <div data-test="passport-directory-sharing-filter">
+                <BbFormFieldSelect TValue="string" @bind-Value="_sharingFilter" Label="Participation visibility">
+                    <BbSelectItem Value="@("all")" Text="All visible passports" />
+                    <BbSelectItem Value="@("shared")" Text="Participation shared" />
+                    <BbSelectItem Value="@("redacted")" Text="Identity only" />
+                </BbFormFieldSelect>
+            </div>
+            <div data-test="passport-directory-search-btn">
+                <BbButton OnClick="SearchAsync" Disabled="_loading">Search directory</BbButton>
+            </div>
+        </BbCardContent>
+    </BbCard>
+
+    @if (_error is not null)
+    {
+        <div data-test="passport-directory-error"><BbAlert Variant="AlertVariant.Danger">@_error</BbAlert></div>
+    }
+    else if (_loading)
+    {
+        <div data-test="passport-directory-loading"><BbAlert Variant="AlertVariant.Info">Loading member passports…</BbAlert></div>
+    }
+    else if (VisibleEntries.Count == 0)
+    {
+        <BbCard>
+            <BbCardContent Class="empty-directory">
+                <strong>No passports found</strong>
+                <span>Try a broader search or participation visibility filter.</span>
+            </BbCardContent>
+        </BbCard>
+    }
+    else
+    {
+        <div class="directory-summary" aria-live="polite">
+            <strong>@_directory!.TotalCount</strong> visible member passport@(_directory.TotalCount == 1 ? null : "s")
+        </div>
+        <div class="directory-grid">
+            @foreach (var entry in VisibleEntries)
+            {
+                <article class="member-card" data-test="passport-directory-entry">
+                    <div class="member-card__identity">
+                        <span class="member-avatar" aria-hidden="true">@Initials(entry.DisplayName)</span>
+                        <div>
+                            <h2>@entry.DisplayName</h2>
+                            <p>@(entry.OccupationStatus ?? "Community member") · joined @entry.MemberSince.ToString("MMM yyyy")</p>
+                        </div>
+                    </div>
+                    <div class="member-card__signals">
+                        @if (entry.IsParticipationShared)
+                        {
+                            @foreach (var signal in entry.Signals)
+                            {
+                                <BbBadge Variant="BadgeVariant.Secondary">@signal</BbBadge>
+                            }
+                            @if (entry.Signals.Count == 0)
+                            {
+                                <span>Participation is shared; signals will emerge from verified activity.</span>
+                            }
+                        }
+                        else
+                        {
+                            <BbBadge Variant="BadgeVariant.Outline">Participation private</BbBadge>
+                        }
+                    </div>
+                    <div data-test="passport-directory-open-btn">
+                        <BbButton Variant="ButtonVariant.Outline" OnClick="@(() => OpenPassport(entry.MemberId))">View passport</BbButton>
+                    </div>
+                </article>
+            }
+        </div>
+        <nav class="pagination" aria-label="Passport directory pages">
+            <BbButton Variant="ButtonVariant.Outline" Disabled="@(_skip == 0 || _loading)" OnClick="PreviousPageAsync">Previous</BbButton>
+            <span>Showing @(_skip + 1)–@Math.Min(_skip + PageSize, _directory.TotalCount)</span>
+            <BbButton Variant="ButtonVariant.Outline" Disabled="@(_skip + PageSize >= _directory.TotalCount || _loading)" OnClick="NextPageAsync">Next</BbButton>
+        </nav>
+    }
+</main>
+
+@code {
+    private const int PageSize = 24;
+    private CommunityPassportDirectoryDto? _directory;
+    private string? _search;
+    private string _sharingFilter = "all";
+    private string? _error;
+    private int _skip;
+    private bool _loading = true;
+
+    private IReadOnlyList<CommunityPassportDirectoryEntryDto> VisibleEntries
+        => _directory?.Entries ?? [];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private bool? ParticipationSharedFilter
+        => _sharingFilter switch
+        {
+            "shared" => true,
+            "redacted" => false,
+            _ => null
+        };
+
+    private async Task SearchAsync()
+    {
+        _skip = 0;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        _skip = Math.Max(0, _skip - PageSize);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        _skip += PageSize;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _directory = await CommunityPassportApi.GetDirectoryAsync(
+                string.IsNullOrWhiteSpace(_search) ? null : _search.Trim(),
+                ParticipationSharedFilter,
+                _skip,
+                PageSize);
+        }
+        catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "We couldn’t load the passport directory. Try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenPassport(Guid memberId) => Navigation.NavigateTo($"/community/passports/{memberId}");
+
+    private static string Initials(string name)
+        => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
+}

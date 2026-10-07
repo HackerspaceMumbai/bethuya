@@ -1,0 +1,23 @@
+@{
+    var verifiedCount = Model.Contributions.Count(item => item.IsVerified);
+}
+
+<section class="passport-section participation-summary" aria-labelledby="community-story-heading" data-test="passport-community-story">
+    <header class="summary-heading">
+        <div class="section-icon" aria-hidden="true"><LucideIcon Name="circle-check-big" Size="17" /></div>
+        <div>
+            <p class="section-eyebrow">Human-attested community record</p>
+            <h2 id="community-story-heading">Verified Participation Summary</h2>
+        </div>
+        <span>Attested through @verifiedCount verified record@(verifiedCount == 1 ? "" : "s")</span>
+    </header>
+    <blockquote>“@Model.CommunityStory.Narrative”</blockquote>
+    <footer>
+        <span><LucideIcon Name="shield-check" Size="13" /> Human-readable evidence across Bethuya communities</span>
+        <span>Visible evidence · Human attestation</span>
+    </footer>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public CommunityPassportExperienceDto Model { get; set; } = default!;
+}

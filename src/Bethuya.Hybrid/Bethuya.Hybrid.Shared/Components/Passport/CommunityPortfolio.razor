@@ -1,0 +1,60 @@
+<section class="passport-section portfolio-section" aria-labelledby="portfolio-heading" data-test="passport-portfolio">
+    <div class="section-heading">
+        <div>
+            <p class="section-eyebrow">Verified outcomes</p>
+            <h2 id="portfolio-heading"><LucideIcon Name="hammer" Size="20" /> What This Member Helped Build</h2>
+            <p>Concrete initiatives, programs, and repositories with visible provenance.</p>
+        </div>
+        @if (CanEdit)
+        {
+            <div data-test="passport-add-portfolio-btn">
+                <BbButton Size="ButtonSize.Small" OnClick="@(() => OnEdit.InvokeAsync(null))">
+                    <LucideIcon Name="plus" Size="14" /> Add Initiative
+                </BbButton>
+            </div>
+        }
+    </div>
+    <div class="portfolio-grid">
+        @foreach (var highlight in Portfolio.VerifiedHighlights)
+        {
+            <article class="portfolio-card portfolio-card--verified">
+                <span class="verified-label"><LucideIcon Name="badge-check" Size="13" /> Attested record</span>
+                <h3>@highlight.Title</h3>
+                <p>@highlight.Description</p>
+                <small><LucideIcon Name="shield-check" Size="12" /> @PassportPresentation.HumanizeProvenance(highlight.Evidence)</small>
+            </article>
+        }
+        @foreach (var entry in Portfolio.Entries)
+        {
+            <article class="portfolio-card @(entry.IsFeatured ? "portfolio-card--featured" : null)" data-test="passport-portfolio-entry">
+                <span class="verified-label">@(entry.IsFeatured ? "Featured initiative" : "Member-curated initiative")</span>
+                <h3>@entry.Title</h3>
+                <p>@entry.Description</p>
+                <div class="portfolio-links">
+                    @foreach (var link in entry.Links)
+                    {
+                        <a href="@link.Url" target="_blank" rel="noopener noreferrer">@(!string.IsNullOrWhiteSpace(link.Label) ? link.Label : link.Kind)</a>
+                    }
+                </div>
+                @if (CanEdit)
+                {
+                    <div class="card-actions">
+                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick="@(() => OnEdit.InvokeAsync(entry))">Edit</BbButton>
+                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick="@(() => OnDelete.InvokeAsync(entry.Id))">Remove</BbButton>
+                    </div>
+                }
+            </article>
+        }
+        @if (Portfolio.VerifiedHighlights.Count == 0 && Portfolio.Entries.Count == 0)
+        {
+            <p class="empty-copy">Verified initiatives and member-curated work will appear here.</p>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public PassportPortfolioDto Portfolio { get; set; } = default!;
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public EventCallback<PortfolioEntryDto?> OnEdit { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+}
