@@ -159,6 +159,20 @@ public class OnboardingNavigationRenderTests
         await Assert.That(cut.Markup).Contains("Organizer Tools");
         await Assert.That(cut.Markup).Contains("agent workflows");
         await Assert.That(cut.Markup).Contains("curation");
+        await Assert.That(cut.FindAll("[data-test='nav-opportunity-engine-link']")).IsEmpty();
+        await Assert.That(cut.FindAll("[data-test='nav-imports-link']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task NavMenu_OrganizerRole_ShowsOpportunityEngineLink()
+    {
+        using var ctx = CreateContext();
+        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+
+        var cut = ctx.RenderComponent<NavMenu>();
+
+        await Assert.That(cut.Find("[data-test='nav-opportunity-engine-link']").GetAttribute("href"))
+            .IsEqualTo("opportunities");
     }
 
     [Test]
