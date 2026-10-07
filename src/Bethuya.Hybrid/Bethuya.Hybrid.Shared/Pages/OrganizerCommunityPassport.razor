@@ -28,9 +28,9 @@
         }
     </div>
 
-    @if (_error is not null)
+    @if (_loadError is not null)
     {
-        <div class="page-message" data-test="organizer-passport-error"><BbAlert Variant="AlertVariant.Danger">@_error</BbAlert></div>
+        <div class="page-message" data-test="organizer-passport-error"><BbAlert Variant="AlertVariant.Danger">@_loadError</BbAlert></div>
     }
     else if (_loading)
     {
@@ -38,6 +38,10 @@
     }
     else if (_passport is not null)
     {
+        @if (_actionError is not null)
+        {
+            <div class="page-message" data-test="organizer-passport-action-error"><BbAlert Variant="AlertVariant.Danger">@_actionError</BbAlert></div>
+        }
         @if (_passport.Viewer.IsParticipationRedacted)
         {
             <div class="page-message" data-test="organizer-passport-redacted"><BbAlert Variant="AlertVariant.Warning">This member has not shared participation evidence with organizers. Identity fields remain visible according to their passport settings.</BbAlert></div>
@@ -102,7 +106,8 @@
     [Parameter] public Guid MemberId { get; set; }
 
     private CommunityPassportExperienceDto? _passport;
-    private string? _error;
+    private string? _loadError;
+    private string? _actionError;
     private string? StatusMessage { get; set; }
     private string _championRationale = string.Empty;
     private string _revocationReason = string.Empty;
@@ -121,14 +126,14 @@
     private async Task LoadAsync()
     {
         _loading = true;
-        _error = null;
+        _loadError = null;
         try
         {
             _passport = await CommunityPassportApi.GetMemberExperienceAsync(MemberId);
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
-            _error = "We couldn’t open this member passport. It may be private or unavailable.";
+            _loadError = "We couldn’t open this member passport. It may be private or unavailable.";
         }
         finally
         {
@@ -151,7 +156,7 @@
     private async Task AwardChampionAsync()
     {
         _saving = true;
-        _error = null;
+        _actionError = null;
         try
         {
             _ = await CommunityPassportApi.AwardChampionAsync(
@@ -165,7 +170,7 @@
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
-            _error = "We couldn’t award Champion recognition. Check the rationale and evidence, then try again.";
+            _actionError = "We couldn’t award Champion recognition. Check the rationale and evidence, then try again.";
         }
         finally
         {
@@ -176,7 +181,7 @@
     private async Task RevokeChampionAsync()
     {
         _saving = true;
-        _error = null;
+        _actionError = null;
         try
         {
             await CommunityPassportApi.RevokeChampionAsync(MemberId, new RevokeChampionSignalDto(_revocationReason.Trim()));
@@ -187,7 +192,7 @@
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
-            _error = "We couldn’t revoke Champion recognition. Check the reason and try again.";
+            _actionError = "We couldn’t revoke Champion recognition. Check the reason and try again.";
         }
         finally
         {

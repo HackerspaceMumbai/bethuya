@@ -56,9 +56,13 @@ public static class RegistrationEndpoints
                 ? inclusionSignalsNormalizer.FromSource(profileInclusionSource)
                 : new InclusionSignals();
             var subject = user.GetSubject();
-            var memberId = subject is null
-                ? (Hackmum.Bethuya.Core.ValueObjects.CommunityMemberId?)null
-                : (await passportService.EnsureMemberProvisionedAsync(subject, ct)).Id;
+            var member = subject is null
+                ? null
+                : await passportService.EnsureMemberProvisionedAsync(subject, ct);
+            var memberId = member is not null
+                && string.Equals(request.Email, member.Email, StringComparison.OrdinalIgnoreCase)
+                    ? member.Id
+                    : (Hackmum.Bethuya.Core.ValueObjects.CommunityMemberId?)null;
 
             var reg = new Registration
             {

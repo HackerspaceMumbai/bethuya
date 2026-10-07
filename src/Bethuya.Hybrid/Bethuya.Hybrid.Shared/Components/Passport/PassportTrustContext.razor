@@ -26,7 +26,7 @@
             <dd>@(recognition.Count == 0 ? "No organizer-awarded recognition yet" : string.Join(", ", recognition.Select(item => item.Label)))</dd>
         </div>
     </dl>
-    <div class="attestation-list">
+    <div class="attestation-list" aria-label="Evidence sources and attestations">
         @foreach (var attestation in attestations)
         {
             <span><LucideIcon Name="badge-check" Size="12" /> @attestation</span>

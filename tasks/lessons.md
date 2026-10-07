@@ -821,11 +821,11 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 - **Root cause:** Both commands wrote the same project `obj` and `bin` outputs while the tests were loading those assemblies.
 - **Fix:** Re-ran the TUnit suite and solution build sequentially; both completed cleanly.
 - **Prevention:** Run build and test gates sequentially when they share project outputs. Parallelize only read-only validation such as diff checks.
-# Security-sensitive read models must share the same identity boundary
-
-- Replacing an insecure ownership join in the primary Passport read model is insufficient when alternate projections, such as Community Journey, independently query the same registrations.
-- Member-specific participation reads must use the immutable `Registration.CommunityMemberId` link everywhere; mutable profile email remains display/contact data and must never grant ownership.
-- After security remediation, search all sibling read models and endpoints for the original join key, then rerun the security review against the complete attack surface.
+## [2026-10-07] Security-sensitive read models must share the same identity boundary
+- **What happened:** Replacing an insecure ownership join in the primary Passport read model left an alternate Community Journey projection independently querying registrations by mutable email.
+- **Root cause:** Sibling read models implemented the same ownership concept separately and did not share the immutable member-identity boundary.
+- **Fix:** Member-specific participation reads now use `Registration.CommunityMemberId` throughout Passport and Journey projections; profile email remains display and contact data only.
+- **Prevention:** After security remediation, search all sibling read models and endpoints for the original join key, then rerun the security review against the complete attack surface.
 
 ## [2026-10-01] Fresh-database EF history probes can look like migration failures
 - **What happened:** Aspire displayed an error-level `SELECT` against `__EFMigrationsHistory` even though EF caught the missing-table exception, applied every migration, and exited successfully.

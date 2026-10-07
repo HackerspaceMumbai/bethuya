@@ -83,6 +83,7 @@ public sealed class CommunityPassportReadModelService(
         var totalCount = await query.CountAsync(ct);
         var members = await query
             .OrderBy(member => member.DisplayName)
+            .ThenBy(member => member.Id)
             .Skip(Math.Max(0, skip))
             .Take(Math.Clamp(take, 1, 100))
             .ToListAsync(ct);
@@ -357,6 +358,11 @@ public sealed class CommunityPassportReadModelService(
             .ToHashSet();
         foreach (var registration in registrations)
         {
+            if (registration.Status is RegistrationStatus.Rejected or RegistrationStatus.Cancelled)
+            {
+                continue;
+            }
+
             var activity = registration.Status switch
             {
                 RegistrationStatus.CheckedIn => ParticipationActivityKind.Attended,

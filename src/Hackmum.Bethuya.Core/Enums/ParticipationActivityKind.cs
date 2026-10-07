@@ -10,6 +10,9 @@ public enum ParticipationActivityKind
     Attended,
     Volunteered,
     SubmittedSession,
+    JoinedCommunity,
+    MessageEngaged,
+    Other,
     Mentored,
     Spoke,
     Organized,
@@ -17,8 +20,5 @@ public enum ParticipationActivityKind
     ContentCreated,
     Maintained,
     Moderated,
-    LedProgram,
-    JoinedCommunity,
-    MessageEngaged,
-    Other
+    LedProgram
 }
