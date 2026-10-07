@@ -8,6 +8,12 @@ public static class DevelopmentAuthenticationDefaults
     /// <summary>The authentication scheme used for local development.</summary>
     public const string SchemeName = "Development";
 
+    /// <summary>Claim emitted only for allowlisted development personas.</summary>
+    public const string PersonaClaimType = "bethuya:development-persona";
+
+    /// <summary>Issuer used to distinguish the local development persona claim from external claims.</summary>
+    public const string PersonaClaimIssuer = "Bethuya.Development";
+
     /// <summary>
     /// Creates the legacy fixed development principal (all four roles).
     /// Used when no persona is selected (backward-compatible default — case 1 of the
@@ -42,6 +48,7 @@ public static class DevelopmentAuthenticationDefaults
             new("sub", persona.Subject),
             new("name", persona.DisplayName),
             new("email", persona.Email),
+            new(PersonaClaimType, persona.Key, ClaimValueTypes.String, PersonaClaimIssuer),
         };
 
         foreach (var role in persona.Roles)

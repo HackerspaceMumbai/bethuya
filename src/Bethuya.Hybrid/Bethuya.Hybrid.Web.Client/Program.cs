@@ -8,6 +8,10 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 // Add device-specific services used by the Bethuya.Hybrid.Shared project
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
+builder.Services.AddSingleton<ICommunityParticipationService, DeterministicCommunityParticipationService>();
+builder.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCenterAudienceResolver>();
 
 // Auth state from server-persisted claims
 builder.Services.AddAuthorizationCore();

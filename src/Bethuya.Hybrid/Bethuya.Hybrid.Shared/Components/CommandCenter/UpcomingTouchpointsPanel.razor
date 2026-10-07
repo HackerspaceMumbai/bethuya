@@ -1,0 +1,71 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="@($"command-section {(Expanded ? "command-section--expanded" : "")}")"
+         aria-labelledby="upcoming-heading"
+         data-test="upcoming-touchpoints"
+         data-expanded="@(Expanded ? "true" : "false")">
+    <div class="section-heading section-heading--row">
+        <div>
+            <p>@(Expanded ? "Readiness command board" : "Next touchpoints")</p>
+            <h2 id="upcoming-heading">@(Expanded ? "Upcoming touchpoint operations" : "Upcoming touchpoints")</h2>
+        </div>
+    </div>
+    @if (Expanded)
+    {
+        <div class="readiness-grid">
+            @foreach (var item in Touchpoints)
+            {
+                <article class="@($"readiness-card {(item.IsAtRisk ? "readiness-card--risk" : "")}")"
+                         data-test="touchpoint-readiness-card">
+                    <div class="readiness-card__header">
+                        <div>
+                            <time>@item.DateLabel</time>
+                            <h3>@item.Title</h3>
+                            <span class="touchpoint-kind">@item.KindLabel</span>
+                        </div>
+                        <span class="@($"readiness-state {(item.IsAtRisk ? "readiness-state--risk" : "")}")"
+                              data-test="touchpoint-readiness-state">
+                            @item.RiskLabel
+                        </span>
+                    </div>
+                    <div class="readiness-score">
+                        <strong>@item.ReadinessLabel</strong>
+                        <span>@item.OperationalSummary</span>
+                    </div>
+                    <dl class="readiness-metrics">
+                        @foreach (var metric in item.Metrics)
+                        {
+                            <div><dt>@metric.Label</dt><dd>@metric.Value</dd></div>
+                        }
+                    </dl>
+                    <a href="@item.Route">Open workspace <span aria-hidden="true">→</span></a>
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="upcoming-list">
+            @foreach (var item in Touchpoints)
+            {
+                <a class="upcoming-item" href="@item.Route" data-test="touchpoint-item">
+                    <time>@item.DateLabel</time>
+                    <span>
+                        <strong>@item.Title</strong>
+                        <small>@item.KindLabel · @item.OperationalSummary</small>
+                    </span>
+                    @if (item.IsAtRisk)
+                    {
+                        <span class="risk-dot" role="img" aria-label="Needs attention"></span>
+                    }
+                    <LucideIcon Name="chevron-right" Size="16" />
+                </a>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TouchpointItem> Touchpoints { get; set; } = [];
+    [Parameter] public bool Expanded { get; set; }
+}
