@@ -57,9 +57,16 @@
     private bool _volunteerDiscovery;
     private bool _relationshipInsights;
     private bool _receiveOpportunities;
+    private PassportPrivacyPreferencesDto? _loadedPrivacy;
 
     protected override void OnParametersSet()
     {
+        if (Equals(_loadedPrivacy, Privacy))
+        {
+            return;
+        }
+
+        _loadedPrivacy = Privacy;
         _visibility = Privacy.Visibility;
         _shareParticipation = Privacy.ShareParticipationWithOrganizers;
         _mentorshipDiscovery = Privacy.AppearInMentorshipRecommendations;

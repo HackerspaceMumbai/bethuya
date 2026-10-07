@@ -1,6 +1,6 @@
 @using Bethuya.Hybrid.Shared.Services
 
-<div class="activity-graph" role="img" aria-label="Contribution activity over the last 26 weeks" data-test="passport-activity-graph">
+<div class="activity-graph" role="list" aria-label="Contribution activity over the last 26 weeks" data-test="passport-activity-graph">
     @for (var offset = 0; offset < 182; offset++)
     {
         var date = _start.AddDays(offset);
@@ -8,6 +8,7 @@
         var count = day?.Count ?? 0;
         var label = $"{date:dd MMM yyyy}: {count} verified activit{(count == 1 ? "y" : "ies")}";
         <span class="activity-cell activity-cell--@Math.Min(count, 4)"
+              role="listitem"
               title="@label"
               aria-label="@label"></span>
     }

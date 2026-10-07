@@ -240,7 +240,8 @@ public sealed record CommunitySignalResponse(
 public sealed record GrowthPathwayResponse(
     string Name,
     string CurrentStage,
-    IReadOnlyList<GrowthMilestoneResponse> Milestones);
+    IReadOnlyList<GrowthMilestoneResponse> Milestones,
+    string Attestation = "Progress derived from verified participation evidence");
 
 /// <summary>
 /// One pathway milestone.
@@ -263,7 +264,8 @@ public sealed record PassportContributionResponse(
     DateTimeOffset OccurredAt,
     bool IsVerified,
     bool IsLedgerEvidence,
-    Guid? EventId = null);
+    Guid? EventId = null,
+    string Attestation = "Recorded participation evidence");
 
 /// <summary>
 /// Daily contribution count used by the accessible activity graph.

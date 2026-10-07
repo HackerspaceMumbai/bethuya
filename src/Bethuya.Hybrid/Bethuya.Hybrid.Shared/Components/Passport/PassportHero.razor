@@ -77,11 +77,6 @@
                     </BbButton>
                 </div>
             }
-            <div data-test="passport-share-btn">
-                <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick="OnShare">
-                    <LucideIcon Name="share-2" Size="14" /> Share Passport
-                </BbButton>
-            </div>
         </div>
     </aside>
 </header>
@@ -89,5 +84,4 @@
 @code {
     [Parameter, EditorRequired] public CommunityPassportExperienceDto Model { get; set; } = default!;
     [Parameter] public EventCallback OnExport { get; set; }
-    [Parameter] public EventCallback OnShare { get; set; }
 }

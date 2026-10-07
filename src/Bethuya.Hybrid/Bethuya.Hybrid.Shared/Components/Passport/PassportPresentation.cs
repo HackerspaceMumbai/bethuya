@@ -36,15 +36,6 @@ internal static class PassportPresentation
             : name.Contains("Builder", StringComparison.OrdinalIgnoreCase) ? "blocks"
             : "route";
 
-    internal static string JourneyAttestation(string name)
-        => name.Contains("Mentor", StringComparison.OrdinalIgnoreCase)
-            ? "Verified by Mentorship Circle"
-            : name.Contains("Volunteer", StringComparison.OrdinalIgnoreCase)
-                ? "Verified by Event Organizer"
-                : name.Contains("Builder", StringComparison.OrdinalIgnoreCase)
-                    ? "Verified by Repository Maintainer"
-                    : "Attested by Chapter Lead";
-
     internal static IEnumerable<string> EligibilityReasons(PassportOpportunityDto opportunity)
     {
         var reasons = opportunity.Lifecycle
@@ -58,10 +49,10 @@ internal static class PassportPresentation
     }
 
     internal static string ContributionProvenance(PassportContributionDto contribution)
-        => $"{VerifierFor(contribution.Type)} · {contribution.Community}";
+        => $"{contribution.Attestation} · {contribution.Community}";
 
     internal static string HumanizeProvenance(string evidence)
-        => $"{VerifierFor(evidence)} · {evidence}";
+        => $"Verified participation record · {evidence}";
 
     internal static string Initials(string name)
         => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
@@ -71,21 +62,12 @@ internal static class PassportPresentation
 
     internal static int ActiveWeeks(IReadOnlyList<ActivityDayDto> activity)
         => activity
-            .Where(day => day.Count > 0)
-            .Select(day => ISOWeek.GetWeekOfYear(day.Date.ToDateTime(TimeOnly.MinValue)))
+            .Where(day => day.Count > 0 && day.Date >= DateOnly.FromDateTime(DateTime.Today.AddDays(-181)))
+            .Select(day =>
+            {
+                var date = day.Date.ToDateTime(TimeOnly.MinValue);
+                return (ISOWeek.GetYear(date), ISOWeek.GetWeekOfYear(date));
+            })
             .Distinct()
             .Count();
-
-    private static string VerifierFor(string evidence)
-        => evidence.Contains("mentor", StringComparison.OrdinalIgnoreCase)
-            ? "Verified by Mentorship Circle"
-            : evidence.Contains("project", StringComparison.OrdinalIgnoreCase)
-                || evidence.Contains("repository", StringComparison.OrdinalIgnoreCase)
-                || evidence.Contains("build", StringComparison.OrdinalIgnoreCase)
-                ? "Verified by Repository Maintainer"
-                : evidence.Contains("attend", StringComparison.OrdinalIgnoreCase)
-                    || evidence.Contains("volunteer", StringComparison.OrdinalIgnoreCase)
-                    || evidence.Contains("event", StringComparison.OrdinalIgnoreCase)
-                    ? "Verified by Event Organizer"
-                    : "Attested by Chapter Lead";
 }

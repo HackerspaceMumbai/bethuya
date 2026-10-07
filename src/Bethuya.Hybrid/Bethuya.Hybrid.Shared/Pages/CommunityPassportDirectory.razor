@@ -92,9 +92,9 @@
             }
         </div>
         <nav class="pagination" aria-label="Passport directory pages">
-            <BbButton Variant="ButtonVariant.Outline" Disabled="@(_skip == 0 || _loading)" OnClick="PreviousPageAsync">Previous</BbButton>
+            <div data-test="passport-directory-previous-btn"><BbButton Variant="ButtonVariant.Outline" Disabled="@(_skip == 0 || _loading)" OnClick="PreviousPageAsync">Previous</BbButton></div>
             <span>Showing @(_skip + 1)–@Math.Min(_skip + PageSize, _directory.TotalCount)</span>
-            <BbButton Variant="ButtonVariant.Outline" Disabled="@(_skip + PageSize >= _directory.TotalCount || _loading)" OnClick="NextPageAsync">Next</BbButton>
+            <div data-test="passport-directory-next-btn"><BbButton Variant="ButtonVariant.Outline" Disabled="@(_skip + PageSize >= _directory.TotalCount || _loading)" OnClick="NextPageAsync">Next</BbButton></div>
         </nav>
     }
 </main>

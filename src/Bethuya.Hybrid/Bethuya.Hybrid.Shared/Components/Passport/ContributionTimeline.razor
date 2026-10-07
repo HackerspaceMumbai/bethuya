@@ -8,19 +8,18 @@
 <section class="passport-section contributions-section" aria-labelledby="contributions-heading" data-test="passport-contributions">
     <div class="section-heading">
         <div>
-            <p class="section-eyebrow">Verified contribution record</p>
+            <p class="section-eyebrow">Participation record</p>
             <h2 id="contributions-heading"><LucideIcon Name="scroll-text" Size="20" /> Contribution Timeline</h2>
-            <p>Chronological participation with human-readable provenance and attestation.</p>
+            <p>Chronological verified contributions and recorded participation status.</p>
         </div>
-        <div class="filter-field">
-            <label for="contribution-filter">Filter records</label>
-            <select id="contribution-filter" name="contribution-filter" autocomplete="off" @bind="_filter" data-test="passport-contribution-filter">
-                <option value="">All contributions</option>
+        <div class="filter-field" data-test="passport-contribution-filter">
+            <BbFormFieldSelect TValue="string" @bind-Value="_filter" Label="Filter records">
+                <BbSelectItem Value="@string.Empty" Text="All contributions" />
                 @foreach (var type in contributionTypes)
                 {
-                    <option value="@type">@type</option>
+                    <BbSelectItem Value="@type" Text="@type" />
                 }
-            </select>
+            </BbFormFieldSelect>
         </div>
     </div>
     <div class="ledger-list">
@@ -51,7 +50,7 @@
                                 }
                             </div>
                         }
-                        <strong><i></i> Attested record</strong>
+                        <strong><i></i> @(contribution.IsVerified ? "Verified record" : "Recorded status")</strong>
                     </footer>
                 </div>
             </article>

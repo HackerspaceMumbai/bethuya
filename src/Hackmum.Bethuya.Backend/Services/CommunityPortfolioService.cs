@@ -25,7 +25,7 @@ public sealed class CommunityPortfolioService(
         await ValidateEvidenceAsync(member.Id, request.EvidenceEntryIds, ct);
 
         CommunityPortfolioEntry entry;
-        if (entryId is null)
+        if (entryId is not { } existingEntryId)
         {
             entry = new CommunityPortfolioEntry
             {
@@ -39,7 +39,7 @@ public sealed class CommunityPortfolioService(
         {
             entry = await db.CommunityPortfolioEntries
                 .SingleOrDefaultAsync(candidate =>
-                    candidate.Id == entryId.Value && candidate.CommunityMemberId == member.Id, ct)
+                    candidate.Id == existingEntryId && candidate.CommunityMemberId == member.Id, ct)
                 ?? throw new KeyNotFoundException("Portfolio entry not found.");
             entry.Title = request.Title.Trim();
             entry.Description = request.Description.Trim();

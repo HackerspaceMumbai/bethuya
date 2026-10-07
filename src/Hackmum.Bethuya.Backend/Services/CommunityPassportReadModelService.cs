@@ -53,10 +53,10 @@ public sealed class CommunityPassportReadModelService(
         var query = db.CommunityMembers.AsNoTracking()
             .Where(member => member.Visibility != ProfileVisibilityScope.Private);
 
-        if (participationShared.HasValue)
+        if (participationShared is { } shared)
         {
             query = query.Where(member =>
-                member.ShareParticipationWithOrganizers == participationShared.Value);
+                member.ShareParticipationWithOrganizers == shared);
         }
 
         if (!string.IsNullOrWhiteSpace(normalizedSearch))
@@ -91,14 +91,9 @@ public sealed class CommunityPassportReadModelService(
             .Where(member => member.ShareParticipationWithOrganizers)
             .Select(member => member.Id)
             .ToArray();
-        List<DirectoryRegistrationSignal> directoryRegistrations;
-        if (sharedMemberIds.Length == 0)
-        {
-            directoryRegistrations = [];
-        }
-        else
-        {
-            directoryRegistrations = await db.Registrations.AsNoTracking()
+        var directoryRegistrations = sharedMemberIds.Length == 0
+            ? []
+            : await db.Registrations.AsNoTracking()
                 .Where(registration => registration.CommunityMemberId.HasValue
                     && sharedMemberIds.Contains(registration.CommunityMemberId.Value))
                 .Select(registration => new DirectoryRegistrationSignal(
@@ -107,7 +102,6 @@ public sealed class CommunityPassportReadModelService(
                     registration.Goals,
                     registration.ContributionPreferences))
                 .ToListAsync(ct);
-        }
         var registrationsByMember = directoryRegistrations.ToLookup(registration => registration.MemberId);
         var ledgerActivities = memberIds.Length == 0
             ? []
@@ -269,6 +263,7 @@ public sealed class CommunityPassportReadModelService(
                 .ToListAsync(ct);
         var eventsById = await LoadEventsAsync(registrations, ledgerEntries, ct);
         var contributions = redacted ? [] : BuildContributions(registrations, ledgerEntries, eventsById);
+        var verifiedContributions = contributions.Where(contribution => contribution.IsVerified).ToArray();
         var opportunities = redacted ? [] : BuildOpportunities(member.Opportunities);
         var relationshipCount = redacted
             ? 0
@@ -283,7 +278,7 @@ public sealed class CommunityPassportReadModelService(
                 member.DisplayName,
                 member.CreatedAt.Year,
                 signals,
-                contributions,
+                verifiedContributions,
                 opportunities));
 
         return new CommunityPassportExperienceResponse(
@@ -302,7 +297,7 @@ public sealed class CommunityPassportReadModelService(
             signals,
             redacted ? [] : BuildPathways(ledgerEntries, registrations),
             contributions,
-            redacted ? [] : BuildActivity(contributions),
+            redacted ? [] : BuildActivity(verifiedContributions),
             redacted ? new PassportPortfolioResponse([], []) : BuildPortfolio(member, contributions),
             redacted || !member.EnableRelationshipInsights
                 ? []
@@ -352,7 +347,8 @@ public sealed class CommunityPassportReadModelService(
                 entry.OccurredAt,
                 true,
                 true,
-                entry.EventId);
+                entry.EventId,
+                AttestationFor(entry.Connector));
         }).ToList();
 
         var ledgerEventActivities = ledgerEntries
@@ -389,9 +385,12 @@ public sealed class CommunityPassportReadModelService(
                 CommunityName,
                 "Participation",
                 occurredAt,
-                true,
+                registration.Status == RegistrationStatus.CheckedIn,
                 false,
-                registration.EventId));
+                registration.EventId,
+                registration.Status == RegistrationStatus.CheckedIn
+                    ? "Verified by Event Organizer"
+                    : "Registration status recorded"));
         }
 
         return contributions.OrderByDescending(contribution => contribution.OccurredAt).ToList();
@@ -525,7 +524,13 @@ public sealed class CommunityPassportReadModelService(
                 ? "Verified by participation evidence."
                 : $"Continue contributing through {name.ToLowerInvariant()} activities.")).ToArray();
         var currentStage = currentIndex >= 0 ? definitions[currentIndex].Name : "Getting started";
-        return new GrowthPathwayResponse(name, currentStage, milestones);
+        return new GrowthPathwayResponse(
+            name,
+            currentStage,
+            milestones,
+            evidenceCount > 0
+                ? "Progress derived from verified participation evidence"
+                : "No verified pathway evidence yet");
     }
 
     private static List<ActivityDayResponse> BuildActivity(IReadOnlyCollection<PassportContributionResponse> contributions)
@@ -573,27 +578,31 @@ public sealed class CommunityPassportReadModelService(
         bool isOrganizer,
         CancellationToken ct)
     {
-        var storedRelationships = await db.CommunityRelationships.AsNoTracking()
-            .Where(relationship => relationship.SourceMemberId == member.Id)
-            .OrderByDescending(relationship => relationship.UpdatedAt)
+        var storedRelationships = await (
+                from relationship in db.CommunityRelationships.AsNoTracking()
+                join target in db.CommunityMembers.AsNoTracking()
+                    on relationship.TargetMemberId equals target.Id
+                where relationship.SourceMemberId == member.Id
+                    && target.EnableRelationshipInsights
+                    && target.AppearInCollaboratorDiscovery
+                    && (!isOrganizer || target.ShareParticipationWithOrganizers)
+                    && (isOrganizer
+                        ? target.Visibility != ProfileVisibilityScope.Private
+                        : target.Visibility == ProfileVisibilityScope.Public
+                            || target.Visibility == ProfileVisibilityScope.CommunityOnly)
+                orderby relationship.UpdatedAt descending
+                select new StoredRelationshipCandidate(
+                    relationship.TargetMemberId,
+                    target.DisplayName,
+                    relationship.Kind,
+                    relationship.Context))
             .Take(12)
             .ToListAsync(ct);
-        var targetIds = storedRelationships.Select(relationship => relationship.TargetMemberId).Distinct().ToArray();
-        var targets = targetIds.Length == 0
-            ? []
-            : await db.CommunityMembers.AsNoTracking()
-                .Where(candidate => targetIds.Contains(candidate.Id)
-                    && candidate.EnableRelationshipInsights
-                    && candidate.AppearInCollaboratorDiscovery
-                    && (!isOrganizer || candidate.ShareParticipationWithOrganizers)
-                    && candidate.Visibility != ProfileVisibilityScope.Private)
-                .ToDictionaryAsync(candidate => candidate.Id, ct);
 
         var connections = storedRelationships
-            .Where(relationship => targets.ContainsKey(relationship.TargetMemberId))
             .Select(relationship => new PassportConnectionResponse(
                 relationship.TargetMemberId.Value,
-                targets[relationship.TargetMemberId].DisplayName,
+                relationship.DisplayName,
                 relationship.Kind,
                 relationship.Context,
                 $"This connection exists because {relationship.Context.TrimEnd('.').ToLowerInvariant()}."))
@@ -624,7 +633,10 @@ public sealed class CommunityPassportReadModelService(
                 && candidate.EnableRelationshipInsights
                 && candidate.AppearInCollaboratorDiscovery
                 && (!isOrganizer || candidate.ShareParticipationWithOrganizers)
-                && candidate.Visibility != ProfileVisibilityScope.Private
+                && (isOrganizer
+                    ? candidate.Visibility != ProfileVisibilityScope.Private
+                    : candidate.Visibility == ProfileVisibilityScope.Public
+                        || candidate.Visibility == ProfileVisibilityScope.CommunityOnly)
             group candidate by new { candidate.Id, candidate.DisplayName } into grouped
             orderby grouped.Count() descending, grouped.Key.DisplayName, grouped.Key.Id
             select new CoAttendeeCandidate(grouped.Key.Id, grouped.Key.DisplayName, grouped.Count());
@@ -642,6 +654,12 @@ public sealed class CommunityPassportReadModelService(
         CommunityMemberId MemberId,
         string DisplayName,
         int SharedEventCount);
+
+    private sealed record StoredRelationshipCandidate(
+        CommunityMemberId TargetMemberId,
+        string DisplayName,
+        CommunityRelationshipKind Kind,
+        string Context);
 
     private sealed record ContributionEventSource(
         string Title,
@@ -720,6 +738,20 @@ public sealed class CommunityPassportReadModelService(
             ParticipationActivityKind.Moderated => "Moderated",
             ParticipationActivityKind.LedProgram => "Led program",
             _ => activity.ToString()
+        };
+
+    private static string AttestationFor(ParticipationConnectorKind connector)
+        => connector switch
+        {
+            ParticipationConnectorKind.GitHub => "Recorded from GitHub contribution data",
+            ParticipationConnectorKind.Luma
+                or ParticipationConnectorKind.Eventbrite
+                or ParticipationConnectorKind.Meetup
+                or ParticipationConnectorKind.MLH => "Recorded from organizer event data",
+            ParticipationConnectorKind.Forms => "Recorded from a community form",
+            ParticipationConnectorKind.Discord => "Recorded from community activity data",
+            ParticipationConnectorKind.Custom => "Recorded by a community organizer",
+            _ => "Recorded participation evidence"
         };
 
     private static string ImpactArea(ParticipationActivityKind activity)

@@ -514,7 +514,8 @@ public sealed record CommunitySignalDto(
 public sealed record GrowthPathwayDto(
     string Name,
     string CurrentStage,
-    IReadOnlyList<GrowthMilestoneDto> Milestones);
+    IReadOnlyList<GrowthMilestoneDto> Milestones,
+    string Attestation = "Progress derived from verified participation evidence");
 
 /// <summary>One journey milestone.</summary>
 public sealed record GrowthMilestoneDto(string Name, string State, string Explanation);
@@ -530,7 +531,8 @@ public sealed record PassportContributionDto(
     DateTimeOffset OccurredAt,
     bool IsVerified,
     bool IsLedgerEvidence,
-    Guid? EventId = null);
+    Guid? EventId = null,
+    string Attestation = "Recorded participation evidence");
 
 /// <summary>Daily contribution activity.</summary>
 public sealed record ActivityDayDto(DateOnly Date, int Count, IReadOnlyList<string> Activities);

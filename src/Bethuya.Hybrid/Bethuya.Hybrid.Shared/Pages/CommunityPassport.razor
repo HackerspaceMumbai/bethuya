@@ -15,7 +15,7 @@
             <BbAlert Variant="AlertVariant.Info">Opening your Community Passport…</BbAlert>
         </div>
     }
-    else if (_errorMessage is not null)
+    else if (_passport is null && _errorMessage is not null)
     {
         <div class="p-8" data-test="community-passport-error">
             <BbAlert Variant="AlertVariant.Danger">@_errorMessage</BbAlert>
@@ -23,6 +23,12 @@
     }
     else if (_passport is not null)
     {
+        @if (_errorMessage is not null)
+        {
+            <div class="p-8" data-test="community-passport-error">
+                <BbAlert Variant="AlertVariant.Danger">@_errorMessage</BbAlert>
+            </div>
+        }
         <PassportExperienceView Model="_passport"
                                 StatusMessage="@StatusMessage"
                                 OnSavePrivacy="SavePrivacyAsync"
@@ -72,24 +78,21 @@
         }
     }
 
-    private async Task SavePortfolioAsync(PortfolioEditRequest request)
+    private async Task<bool> SavePortfolioAsync(PortfolioEditRequest request)
     {
         try
         {
-            if (request.Id is Guid id)
-            {
-                _ = await CommunityPassportApi.UpdatePortfolioEntryAsync(id, request.Entry);
-            }
-            else
-            {
-                _ = await CommunityPassportApi.CreatePortfolioEntryAsync(request.Entry);
-            }
+            _ = request.Id is Guid id
+                ? await CommunityPassportApi.UpdatePortfolioEntryAsync(id, request.Entry)
+                : await CommunityPassportApi.CreatePortfolioEntryAsync(request.Entry);
             StatusMessage = "Portfolio entry saved.";
             await LoadAsync();
+            return true;
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
             _errorMessage = "We couldn’t save that portfolio entry.";
+            return false;
         }
     }
 

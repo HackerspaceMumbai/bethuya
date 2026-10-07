@@ -379,6 +379,40 @@ public sealed class CommunityPassportPhase1Tests
     }
 
     [Test]
+    public async Task PendingRegistration_IsRecordedButNotVerified()
+    {
+        await using var db = CreateDbContext();
+        var member = BuildMember("pending-registrant", "pending@example.com");
+        var evt = new Event { Title = "Community Night", CreatedBy = "organizer@example.com" };
+        db.AddRange(
+            member,
+            evt,
+            new Registration
+            {
+                EventId = evt.Id,
+                CommunityMemberId = member.Id,
+                FullName = member.DisplayName,
+                Email = member.Email,
+                Status = RegistrationStatus.Pending
+            });
+        await db.SaveChangesAsync();
+        var service = new CommunityPassportReadModelService(
+            db,
+            new CommunityPassportService(db),
+            new CommunityPassportAccessPolicy(),
+            new DeterministicCommunityStoryGenerator());
+
+        var result = await service.GetMineAsync(
+            new CommunitySubjectContext(member.UserId, member.DisplayName, member.Email));
+
+        await Assert.That(result.Contributions).HasSingleItem();
+        await Assert.That(result.Contributions[0].IsVerified).IsFalse();
+        await Assert.That(result.Contributions[0].Attestation).IsEqualTo("Registration status recorded");
+        await Assert.That(result.Journey.Single(pathway => pathway.Name == "Participation").CurrentStage)
+            .IsEqualTo("Getting started");
+    }
+
+    [Test]
     public async Task Experience_DoesNotClaimUnlinkedRegistrationByMutableEmail()
     {
         await using var db = CreateDbContext();
@@ -611,6 +645,36 @@ public sealed class CommunityPassportPhase1Tests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Connections).IsEmpty();
+    }
+
+    [Test]
+    public async Task MemberConnections_HideOrganizerOnlyTargets()
+    {
+        await using var db = CreateDbContext();
+        var source = BuildMember("member-view-source", "source@example.com");
+        var target = BuildMember("member-view-target", "target@example.com");
+        target.Visibility = ProfileVisibilityScope.OrganizerOnly;
+        db.AddRange(
+            source,
+            target,
+            new CommunityRelationship
+            {
+                SourceMemberId = source.Id,
+                TargetMemberId = target.Id,
+                Kind = CommunityRelationshipKind.Collaborator,
+                Context = "Built a community project together"
+            });
+        await db.SaveChangesAsync();
+        var service = new CommunityPassportReadModelService(
+            db,
+            new CommunityPassportService(db),
+            new CommunityPassportAccessPolicy(),
+            new DeterministicCommunityStoryGenerator());
+
+        var result = await service.GetMineAsync(
+            new CommunitySubjectContext(source.UserId, source.DisplayName, source.Email));
+
+        await Assert.That(result.Connections).IsEmpty();
     }
 
     [Test]

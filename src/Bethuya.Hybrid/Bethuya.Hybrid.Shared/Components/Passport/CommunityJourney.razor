@@ -1,7 +1,6 @@
 @{
     var active = Journey.Where(pathway => pathway.CurrentStage != "Getting started").ToArray();
-    var featured = active.Take(3).ToArray();
-    var future = Journey.Except(featured).ToArray();
+    var future = Journey.Where(pathway => pathway.CurrentStage == "Getting started").ToArray();
 }
 
 <section class="passport-section journey-section" aria-labelledby="journey-heading" data-test="passport-journey">
@@ -14,7 +13,7 @@
         <BbBadge Variant="BadgeVariant.Outline">Multi-pathway</BbBadge>
     </div>
     <div class="pathway-stack">
-        @foreach (var pathway in featured)
+        @foreach (var pathway in active)
         {
             <article class="pathway-card">
                 <header>
@@ -35,10 +34,10 @@
                         </li>
                     }
                 </ol>
-                <footer><LucideIcon Name="badge-check" Size="13" /> @PassportPresentation.JourneyAttestation(pathway.Name)</footer>
+                <footer><LucideIcon Name="badge-check" Size="13" /> @pathway.Attestation</footer>
             </article>
         }
-        @if (featured.Length == 0)
+        @if (active.Length == 0)
         {
             <p class="empty-copy">The first verified contribution will begin a Bethuya growth pathway.</p>
         }

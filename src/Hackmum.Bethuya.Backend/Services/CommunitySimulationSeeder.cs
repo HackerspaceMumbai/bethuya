@@ -321,18 +321,22 @@ public sealed partial class CommunitySimulationSeeder(
                 .Where(r => r.EventId == fixtureEventId && personaEmails.Contains(r.Email.ToLower()))
                 .ToListAsync(ct);
 #pragma warning restore CA1304, CA1311
-            var existingRegistrationByEmail = existingRegistrations
-                .ToDictionary(registration => registration.Email, StringComparer.OrdinalIgnoreCase);
+            var existingRegistrationsByEmail = existingRegistrations
+                .ToLookup(registration => registration.Email, StringComparer.OrdinalIgnoreCase);
 
             foreach (var persona in personas)
             {
-                if (existingRegistrationByEmail.TryGetValue(persona.Email, out var existingRegistration))
+                var matchingRegistrations = existingRegistrationsByEmail[persona.Email].ToArray();
+                if (matchingRegistrations.Length > 0)
                 {
-                    if (existingRegistration.CommunityMemberId != memberByPersonaKey[persona.Key].Id)
+                    foreach (var existingRegistration in matchingRegistrations)
                     {
-                        existingRegistration.CommunityMemberId = memberByPersonaKey[persona.Key].Id;
+                        if (existingRegistration.CommunityMemberId != memberByPersonaKey[persona.Key].Id)
+                        {
+                            existingRegistration.CommunityMemberId = memberByPersonaKey[persona.Key].Id;
+                        }
                     }
-                    registrationsAlreadyExisted++;
+                    registrationsAlreadyExisted += matchingRegistrations.Length;
                     continue;
                 }
 
