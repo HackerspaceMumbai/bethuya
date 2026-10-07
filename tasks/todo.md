@@ -15,6 +15,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+## [2026-10-07] Normalize registration email ownership
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the post-commit Greptile review by normalizing submitted registration email whitespace before immutable member ownership comparison and persistence.
+- **Acceptance:** A signed-in member registering with surrounding whitespace in their own email receives the correct `CommunityMemberId`; the stored registration email is trimmed; focused endpoint tests and the affected build pass; the review thread is replied to and resolved.
+- **Completion Evidence:** The registration endpoint now trims the submitted email once and reuses it for profile lookup, immutable member comparison, and persistence. A TestServer regression verifies surrounding whitespace still links `CommunityMemberId` and stores the canonical email. The focused test, all 487 TUnit/bUnit tests, full solution build, correctness review, and .NET performance review pass.
+
 ## [2026-10-07] Remediate Community Passport security findings
 - **Status:** done
 - **Agent/Owner:** Copilot (privacy-sensitive backend fix; requires Squad security review)

@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-07] Normalize identity inputs before comparison and persistence
+- **What happened:** A registration email with surrounding whitespace was accepted but failed the immutable member-link comparison, leaving valid attendance absent from the member's Passport.
+- **Root cause:** The endpoint compared the raw submitted email with the normalized provisioned-member email and persisted the raw value.
+- **Fix:** Normalize the submitted email once before profile lookup, ownership comparison, and registration persistence, with endpoint regression coverage.
+- **Prevention:** Normalize identity-bearing input at the request boundary and reuse that canonical value for every lookup, authorization decision, and stored representation.
+
 ## [2026-10-06] TUnit filters belong to Microsoft.Testing.Platform
 - **What happened:** A targeted `dotnet test` invocation passed `--filter` after the test-application separator and ran zero tests.
 - **Root cause:** This repository uses TUnit on Microsoft.Testing.Platform, whose executable accepts `--treenode-filter` or `--filter-uid`, not the VSTest `--filter` option.
