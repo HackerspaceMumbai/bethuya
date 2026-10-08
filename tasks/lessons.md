@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-07] Synchronize hosted-service tests on persisted outcomes
+- **What happened:** A hosted-service test used a fixed seven-second delay, which failed under CI scheduling load; waiting only for the external publish call then exposed that persistence was still in progress.
+- **Root cause:** The test synchronized on elapsed time and then on an intermediate side effect rather than the complete durable outcome it asserted.
+- **Fix:** The test now waits with a bounded cancellation token until both the outbox message is processed and the event archive URL is persisted.
+- **Prevention:** For background-service tests, await an observable final state or completion signal; never assume a polling interval plus arbitrary buffer guarantees durable completion.
+
 ## [2026-10-07] Guard asynchronous mutations across route changes
 - **What happened:** Clearing a stale Passport during navigation hid the old member's actions, but an already-running Champion mutation could still complete later and update or reload the newly selected member's UI.
 - **Root cause:** The mutation validated its member before the API await but did not associate the continuation with the member and action generation that initiated it.

@@ -162,7 +162,7 @@
         try
         {
             var passport = await CommunityPassportApi.GetMemberExperienceAsync(requestedMemberId, cancellationToken);
-            if (_disposed || loadGeneration != _loadGeneration || requestedMemberId != MemberId)
+            if (loadGeneration != _loadGeneration || requestedMemberId != MemberId)
             {
                 return;
             }
@@ -172,14 +172,14 @@
         }
         catch (Exception ex) when (ex is Refit.ApiException or HttpRequestException or TaskCanceledException)
         {
-            if (!_disposed && loadGeneration == _loadGeneration && requestedMemberId == MemberId)
+            if (loadGeneration == _loadGeneration && requestedMemberId == MemberId)
             {
                 _loadError = "We couldn’t open this member passport. It may be private or unavailable.";
             }
         }
         finally
         {
-            if (!_disposed && loadGeneration == _loadGeneration)
+            if (loadGeneration == _loadGeneration)
             {
                 _loading = false;
             }
@@ -286,8 +286,7 @@
     }
 
     private bool IsCurrentAction(Guid memberId, long actionGeneration)
-        => !_disposed
-            && actionGeneration == _actionGeneration
+        => actionGeneration == _actionGeneration
             && _loadedMemberId == memberId
             && MemberId == memberId;
 

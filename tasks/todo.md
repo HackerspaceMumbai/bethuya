@@ -15,6 +15,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+## [2026-10-07] Clear final Passport review and CI findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Resolve duplicate lifecycle static-analysis comments and replace the event archive hosted-service test's timing delay with completion-based synchronization after CI failed under runner load.
+- **Acceptance:** Organizer Passport lifecycle guards remain disposal-safe without constant-condition findings; the hosted-service test waits for the actual publish event rather than a fixed delay; focused/full tests and solution build pass; all review threads are replied to and resolved.
+- **Completion Evidence:** Removed redundant post-await `_disposed` conditions while retaining disposal safety through generation invalidation and the initial disposed guard. Replaced the hosted-service test's fixed delay with bounded synchronization on both persisted outbox completion and event archive URL. The formerly flaky test passes three consecutive Release runs; the CI-equivalent Release solution build and all 489 tests pass.
+
 ## [2026-10-07] Prevent stale organizer Passport actions
 - **Status:** done
 - **Agent/Owner:** Copilot
