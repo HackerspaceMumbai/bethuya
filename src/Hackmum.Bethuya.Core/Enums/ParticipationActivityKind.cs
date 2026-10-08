@@ -12,5 +12,15 @@ public enum ParticipationActivityKind
     SubmittedSession,
     JoinedCommunity,
     MessageEngaged,
-    Other
+    Other,
+    /// <summary>Verified delivery of a session.</summary>
+    Spoke,
+    /// <summary>Verified project contribution.</summary>
+    ContributedProject,
+    /// <summary>Verified chapter membership.</summary>
+    JoinedChapter,
+    /// <summary>Verified mentorship of the target member.</summary>
+    Mentored,
+    /// <summary>Verified use of a technology during participation.</summary>
+    UsedTechnology
 }

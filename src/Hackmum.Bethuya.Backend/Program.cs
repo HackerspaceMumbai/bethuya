@@ -52,6 +52,8 @@ builder.Services.AddScoped<CurationSampleSeeder>();
 builder.Services.AddScoped<CommunitySimulationSeeder>();
 builder.Services.AddScoped<PlanningCycleService>();
 builder.Services.AddScoped<CommunityPassportService>();
+builder.Services.AddScoped<CommunityGraphService>();
+if (builder.Environment.IsDevelopment()) builder.Services.AddScoped<CommunityGraphDevelopmentSeeder>();
 builder.Services.AddScoped<ParticipationLedgerService>();
 builder.Services.AddScoped<CommunityJourneyReadModelService>();
 builder.Services.AddScoped<CommunityRecommendationService>();
@@ -94,6 +96,7 @@ app.MapCurationEndpoints();
 app.MapApprovalEndpoints();
 app.MapProfileEndpoints();
 app.MapCommunityPassportEndpoints();
+app.MapCommunityGraphEndpoints();
 app.MapPlanningCycleEndpoints();
 app.MapMentorshipEndpoints();
 

@@ -7,6 +7,9 @@ namespace Bethuya.Hybrid.Shared.Services;
 /// </summary>
 public interface ICommunityPassportApi
 {
+    /// <summary>Reads the privacy-filtered graph backed by verified participation.</summary>
+    [Get("/api/community/graph")]
+    Task<Hackmum.Bethuya.Core.Models.CommunityGraphSnapshot> GetGraphAsync(CancellationToken ct = default);
     /// <summary>
     /// Gets the current user's Community Passport projection.
     /// </summary>
@@ -193,7 +196,11 @@ public sealed record ParticipationEntryWriteDto(
     Guid? EventId = null,
     string? ExternalEventId = null,
     string? ExternalRecordId = null,
-    string? SourceCorrelationId = null);
+    string? SourceCorrelationId = null,
+    bool IsVerified = false,
+    string? TargetKind = null,
+    string? TargetKey = null,
+    string? TargetLabel = null);
 
 /// <summary>
 /// Participation write result summary.

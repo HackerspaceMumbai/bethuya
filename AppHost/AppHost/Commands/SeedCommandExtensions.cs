@@ -1,5 +1,7 @@
 using Aspire.Hosting.ApplicationModel;
 using System.Net.Http;
+using Bethuya.Hybrid.Shared.Services;
+using Refit;
 
 namespace AppHost.Commands;
 
@@ -134,6 +136,35 @@ public static class SeedCommandExtensions
 
                 ConfirmationMessage =
                     "Seed the community simulation fixtures for the six development personas?"
+            });
+
+        backend.WithCommand(
+            "seed-community-graph",
+            "Seed Community Graph",
+            async context =>
+            {
+                try
+                {
+                    var endpointUrl = await backendHttpEndpoint.GetValueAsync(context.CancellationToken);
+                    if (string.IsNullOrWhiteSpace(endpointUrl))
+                        return CommandResults.Failure("Backend HTTP endpoint is unavailable.");
+
+                    // Same Development-only organizer persona boundary as the community simulation command.
+                    // Provisioning personas makes the graph visible immediately when switching personas in Web.
+                    var api = RestService.For<ICommunityGraphSeedApi>(endpointUrl.TrimEnd('/'));
+                    await api.SeedPersonasAsync("Vikram", context.CancellationToken);
+                    await api.SeedGraphAsync("Vikram", context.CancellationToken);
+                    return CommandResults.Success();
+                }
+                catch (Exception ex)
+                {
+                    return CommandResults.Failure(ex);
+                }
+            },
+            new CommandOptions
+            {
+                Description = "Seed development personas and fictional verified participation for the Community Graph, Passport proof, and opportunity suggestions. Safe to repeat.",
+                ConfirmationMessage = "Seed fictional Community Graph fixtures and development personas? Existing records are preserved."
             });
 
         return backend;

@@ -30,8 +30,42 @@ public static class ParticipationNormalizationEngine
             throw new ArgumentException("Occurrence timestamp is required.", nameof(entry));
         }
 
+        if (!Enum.IsDefined(entry.Activity) || !Enum.IsDefined(entry.Connector))
+            throw new ArgumentException("A valid activity and connector are required.", nameof(entry));
+
+        var targetKind = NormalizeOptional(entry.TargetKind, 30, nameof(entry.TargetKind), "Target kind");
+        var targetKey = NormalizeOptional(entry.TargetKey, 200, nameof(entry.TargetKey), "Target key");
+        var targetLabel = NormalizeOptional(entry.TargetLabel, 200, nameof(entry.TargetLabel), "Target label");
+        if ((targetKind is not null || targetKey is not null || targetLabel is not null)
+            && (targetKind is null || targetKey is null || targetLabel is null))
+            throw new ArgumentException("Target kind, key and label must be provided together.", nameof(entry));
+        if (targetKind is not null && targetKind is not ("Member" or "Event" or "Project" or "Community" or "Chapter" or "Technology"))
+            throw new ArgumentException("Unsupported participation target kind.", nameof(entry));
+        var expectedKind = entry.Activity switch
+        {
+            Enums.ParticipationActivityKind.ContributedProject => "Project",
+            Enums.ParticipationActivityKind.JoinedChapter => "Chapter",
+            Enums.ParticipationActivityKind.Mentored => "Member",
+            Enums.ParticipationActivityKind.UsedTechnology => "Technology",
+            _ => null
+        };
+        if (expectedKind is not null && targetKind != expectedKind)
+            throw new ArgumentException($"{entry.Activity} requires a {expectedKind} target.", nameof(entry));
+        if (entry.Activity is Enums.ParticipationActivityKind.Attended or Enums.ParticipationActivityKind.Spoke or Enums.ParticipationActivityKind.Volunteered
+            && targetKind is not null && targetKind != "Event")
+            throw new ArgumentException("Event participation requires an Event target.", nameof(entry));
+        if (entry.Activity == Enums.ParticipationActivityKind.JoinedCommunity && targetKind is not null && targetKind != "Community")
+            throw new ArgumentException("Community membership requires a Community target.", nameof(entry));
+        if (entry.Activity == Enums.ParticipationActivityKind.Spoke && entry.EventId is null && targetKind != "Event")
+            throw new ArgumentException("Speaking participation requires an event identifier or Event target.", nameof(entry));
+        if (targetKind == "Member" && (!Guid.TryParse(targetKey, out var memberKey) || memberKey == Guid.Empty))
+            throw new ArgumentException("Member targets must use a canonical community member identifier.", nameof(entry));
+
         return entry with
         {
+            TargetKind = targetKind,
+            TargetKey = targetKey,
+            TargetLabel = targetLabel,
             ExternalMemberKey = NormalizeRequired(
                 entry.ExternalMemberKey,
                 200,

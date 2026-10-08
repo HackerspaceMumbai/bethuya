@@ -16,4 +16,8 @@ public sealed record NormalizedParticipationEntry(
     EventId? EventId = null,
     string? ExternalEventId = null,
     string? ExternalRecordId = null,
-    string? SourceCorrelationId = null);
+    string? SourceCorrelationId = null,
+    bool IsVerified = false,
+    string? TargetKind = null,
+    string? TargetKey = null,
+    string? TargetLabel = null);

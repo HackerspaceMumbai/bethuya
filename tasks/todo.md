@@ -780,3 +780,50 @@ All work items must be added here **before** writing code (plan-first protocol).
 - **Agent/Owner:** Copilot CLI
 - **Description:** Place Core chips on the first row and Diversity + Cohort Health chips on the second row, keeping full chip names visible and renaming Underrep to Access Equity.
 - **Acceptance:** Core renders as row 1, Diversity and Cohort Health render as row 2, chip labels are not ellipsized (except long term replaced by Access Equity), and tests/live UI checks pass.
+## [2026-10-05] Community Graph V1
+- **Status:** done
+- **Plan:** Inspect approved design and existing participation data; add TUnit coverage for evidence-derived graph; implement graph exploration and Passport preview using existing architecture; validate build, render tests and targeted Playwright screenshots.
+- **Validation (2026-10-06):** Build passed with zero warnings/errors; 344/344 TUnit tests passed; Playwright for .NET graph flow passed against Aspire/PostgreSQL, with desktop and mobile screenshots in tests/Hackmum.Bethuya.E2E/bin/Debug/net10.0/artifacts/community-graph. Code and .NET performance reviews completed; coordinate alignment and evidence ownership findings fixed.
+- **Delivery:** Authenticated /community-graph, ledger verification/target migration, evidence-driven recommendations, privacy-filtered graph and development-only fixtures. Production records require trusted verification; no automatic legacy backfill.
+
+## [2026-10-06] Aspire Community Graph seed command
+- **Status:** done
+- **Plan:** Add a backend dashboard command using the existing development seed endpoint and typed Refit contract; verify command registration and execution.
+- **Validation:** Registered and successfully executed seed-community-graph through the running Aspire resource command API. Build passed with zero warnings/errors; code review found no issues.
+
+## [2026-10-06] Align Community Graph with app branding
+- **Status:** done
+- **Plan:** Replace screenshot-specific colors and typography with existing app theme tokens; preserve graph semantics and layout; build and capture Playwright desktop/mobile visual proof.
+- **Validation:** Web build passed with zero warnings/errors. Playwright graph flow passed; captured desktop, 693x648 compact, and mobile screenshots. Replaced hard-coded screenshot palette with shared dark-gold theme tokens and inherited app typography.
+
+## [2026-10-06] Restore accessible Community Graph category colors
+- **Status:** done
+- **Plan:** Restore distinct original entity colors, semantic indicators and graph selection accents while retaining Bethuya surfaces and branding; verify contrast and Playwright screenshots.
+- **Validation:** Build and Playwright graph flow passed. Original six-color entity palette restored consistently across nodes, edges, filters and legend, while retaining branded surfaces. Minimum calculated contrast across background/card/hover surfaces: 6.69:1 category text and 4.72:1 edges at 80% opacity; labels, symbols and dashed recommendation links remain non-color cues. Desktop/compact/mobile screenshots refreshed.
+
+## [2026-10-06] Graph focus navigation
+- [ ] Separate selection from focus; double-click any node or use Passport action to explore its immediate ledger-backed connections, with Back navigation and preserved filters.
+- [ ] Validate with TUnit render coverage and Playwright visual proof.
+
+- Implemented graph focus navigation: single-click inspection, double-click/Passport exploration for every node kind, one-hop evidence connections, Back history, existing filters retained.
+- Validation: web rebuild passed with zero warnings/errors; 5/5 TUnit render tests passed. Earlier Playwright run captured project-focus.png (visually reviewed). Full E2E rerun blocked: active Aspire instance now belongs to another worktree and lacks graph seed endpoint; did not interrupt it.
+
+## [2026-10-06] Complete browser verification
+- [ ] Start this worktree in isolation, discover its endpoints, run full graph flow including every node kind and responsive screenshots, fix failures and record evidence.
+
+- [x] Full Playwright graph verification passed against this worktree at https://localhost:55515 (1 flow, 0 failures). Covered all seven node kinds, single-click vs double-click, keyboard Passport action, Back history, ledger proof, search/no-results/reset, discovery filters, health toggle, desktop/693px/390px layouts and no mobile page overflow. Captured all node focus screenshots and reviewed opportunity/mobile proof.
+
+## [2026-10-07] Community Graph security and performance review
+- [ ] Review authorization/privacy, verification ingestion and dev-only seeding; examine query/render bounds and report actionable findings with validation limits.
+
+- [x] Security/performance review completed. Confirmed P2 shared-attendance evidence amplification (synthetic valid 400-entry input yields 26,080 serialized proof copies, about 19.3 MB). Authorization questions: automatic profile provisioning grants default-community access; pre-existing ingestion identity resolution is global across communities. Existing graph checks 10/10 passed; backend/web transitive vulnerability scans clean against current NuGet sources. No production code changed; load targets not benchmarked.
+
+## [2026-10-07] Record accepted authorization decisions
+- [x] User confirmed Passport creation establishes community membership and graph access without separate approval; elevated privileges remain role-based.
+- [x] User confirmed global ledger identity resolution is intentional. Governance belongs at source authority, provenance, auditing and verification boundaries.
+- Evidence-duplication performance finding remains open; these decisions close both authorization questions.
+
+## [2026-10-08] Commit and push Community Graph
+- [ ] Stage feature, documentation and tests; run staged code/performance reviews and checks; commit and push a codex branch. Retain acknowledged evidence-amplification finding as open.
+
+- Pre-commit validation: 346/346 TUnit tests passed; staged code-review and .NET performance review completed with no new blockers. Prior full graph Playwright flow passed. Local Codex configuration and extracted design references excluded from commit.

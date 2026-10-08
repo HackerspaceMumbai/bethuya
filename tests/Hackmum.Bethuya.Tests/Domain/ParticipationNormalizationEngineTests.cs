@@ -7,6 +7,29 @@ namespace Hackmum.Bethuya.Tests.Domain;
 public sealed class ParticipationNormalizationEngineTests
 {
     [Test]
+    public async Task Normalize_RejectsIncompatibleGraphTargets()
+    {
+        var input = new NormalizedParticipationEntry(ParticipationConnectorKind.Forms, "member", ParticipationActivityKind.Spoke,
+            DateTimeOffset.UtcNow, "Delivered session", "session-proof", IsVerified: true,
+            TargetKind: "Project", TargetKey: "project-one", TargetLabel: "Project One");
+        var error = Assert.Throws<ArgumentException>(() => ParticipationNormalizationEngine.Normalize(input));
+        await Assert.That(error!.Message).Contains("Event target");
+    }
+
+    [Test]
+    public async Task Normalize_PreservesVerificationAndRequiresCompleteStructuredTarget()
+    {
+        var input = new NormalizedParticipationEntry(ParticipationConnectorKind.GitHub, "member", ParticipationActivityKind.ContributedProject,
+            DateTimeOffset.UtcNow, "Reviewed PR #142", "pr:142", IsVerified: true,
+            TargetKind: "Project", TargetKey: " community-portal ", TargetLabel: " Community Portal ");
+        var normalized = ParticipationNormalizationEngine.Normalize(input);
+        await Assert.That(normalized.IsVerified).IsTrue();
+        await Assert.That(normalized.TargetKey).IsEqualTo("community-portal");
+        await Assert.That(normalized.TargetLabel).IsEqualTo("Community Portal");
+        var error = Assert.Throws<ArgumentException>(() => ParticipationNormalizationEngine.Normalize(input with { TargetLabel = null }));
+        await Assert.That(error!.Message).Contains("provided together");
+    }
+    [Test]
     public async Task Normalize_TrimsFields_AndPreservesCanonicalValues()
     {
         var input = new NormalizedParticipationEntry(
