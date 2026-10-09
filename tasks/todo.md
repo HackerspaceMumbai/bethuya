@@ -15,6 +15,196 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+## [2026-10-07] Clear final Passport review and CI findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Resolve duplicate lifecycle static-analysis comments and replace the event archive hosted-service test's timing delay with completion-based synchronization after CI failed under runner load.
+- **Acceptance:** Organizer Passport lifecycle guards remain disposal-safe without constant-condition findings; the hosted-service test waits for the actual publish event rather than a fixed delay; focused/full tests and solution build pass; all review threads are replied to and resolved.
+- **Completion Evidence:**Removed redundant post-await `_disposed` conditions while retaining disposal safety through generation invalidation and the initial disposed guard. Replaced the hosted-service test's fixed delay with bounded synchronization on both persisted outbox completion and event archive URL. The formerly flaky test passes three consecutive Release runs; the CI-equivalent Release solution build and all 489 tests pass.
+
+## [2026-10-07] Prevent stale organizer Passport actions
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the latest CodeRabbit review by preventing a previously loaded organizer Passport from exposing Champion actions after the route changes to a different member.
+- **Acceptance:** Changing `MemberId` immediately disassociates the previous Passport and closes its action dialogs; stale or overlapping loads cannot overwrite the current member state; Champion mutations target only the successfully loaded matching member; focused render regression, affected tests, and solution build pass; the review thread is replied to and resolved.
+- **Completion Evidence:**Organizer Passport loads now clear stale member state, cancel superseded reads, ignore out-of-order completions, and expose Champion actions only for a successfully loaded matching member. Award/revoke continuations are member-and-generation guarded so old requests cannot update or reload a newly selected member. Focused regressions cover navigation during both reads and mutations; all 489 TUnit/bUnit tests and the solution build pass.
+
+## [2026-10-07] Normalize registration email ownership
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the post-commit Greptile review by normalizing submitted registration email whitespace before immutable member ownership comparison and persistence.
+- **Acceptance:** A signed-in member registering with surrounding whitespace in their own email receives the correct `CommunityMemberId`; the stored registration email is trimmed; focused endpoint tests and the affected build pass; the review thread is replied to and resolved.
+- **Completion Evidence:**The registration endpoint now trims the submitted email once and reuses it for profile lookup, immutable member comparison, and persistence. A TestServer regression verifies surrounding whitespace still links `CommunityMemberId` and stores the canonical email. The focused test, all 487 TUnit/bUnit tests, full solution build, correctness review, and .NET performance review pass.
+
+## [2026-10-07] Remediate Community Passport security findings
+- **Status:** done
+- **Agent/Owner:** Copilot (privacy-sensitive backend fix; requires Squad security review)
+- **Description:** Prevent mutable profile email from granting access to another member's registration-derived Passport history, and enforce organizer participation-sharing consent when projecting Passport connections.
+- **Acceptance:** Passport registration ownership is anchored to immutable member identity rather than editable email; organizer views cannot receive stored or inferred connections for members who disabled organizer participation sharing; regression tests cover both exploit paths; affected tests and solution build pass.
+- **Completion Evidence:**Added nullable `Registration.CommunityMemberId` with an indexed, set-null foreign key and migration; authenticated registration creation and simulation seeding now establish or repair that immutable link. Legacy Passport, unified Passport, directory signals, Community Journey, and co-attendee inference no longer establish member ownership through email. Organizer stored and inferred connections now require the target's `ShareParticipationWithOrganizers` consent. Security regression coverage includes mutable-email attempts across Passport and Journey plus both organizer connection paths. All 448 TUnit/bUnit tests pass, the full solution builds with 0 warnings/errors, and the final security verification found no unresolved high-confidence vulnerabilities.
+
+## [2026-10-06] Correct Community Passport wireframe structure
+- **Status:** done
+- **Agent/Owner:** Copilot (working in Trinity's frontend domain; Squad capability: needs review)
+- **Description:** Refactor the Community Passport into reusable section components and a wireframe-faithful primary journal column plus secondary context rail, while preserving existing APIs, permissions, interactions, Bethuya branding, and evidence semantics.
+- **Acceptance:** CommunityPassport composition uses dedicated Hero, Participation Summary, Journey, Recommendations, Portfolio, Connections, Contribution Timeline, Participation Rhythm, and Privacy components; desktop keeps summary/journey/portfolio/timeline in the primary column and recommendations/connections/rhythm/supporting context in a secondary rail; mobile preserves reading order; centralized `--bethuya-*` tokens drive the dark editorial styling; human-readable attestations remain prominent; prohibited social/reputation/technical-ledger patterns are absent; bUnit/TUnit, full build, and live desktop/mobile Playwright verification pass. Performance and security reviews remain deferred until explicitly requested.
+- **Completion Evidence:**The 674-line presentation monolith is now a 160-line composition host plus dedicated Hero, Summary, Journey, Recommendations, Portfolio, Connections, Timeline, Rhythm, Trust Context, and Privacy components. Desktop Playwright measured a 586px primary journal column and 304px secondary context rail with four required sections in each; 390px mobile had no horizontal overflow. Human-readable organizer, chapter, mentorship, and repository attestations replace technical ledger language; roles and recognition remain separately labeled; prohibited social/reputation patterns are absent. Owner sharing/privacy and organizer Champion/event-registration provenance flows pass live verification with zero browser console errors. All 444 TUnit/bUnit tests pass, the full solution builds with 0 warnings/errors, and screenshots are saved in session artifacts. Performance and security reviews were not run.
+
+## [2026-10-06] Align Community Passport with evidence-first wireframes
+- **Status:** done
+- **Agent/Owner:** Copilot (Squad capability: needs review)
+- **Description:** Restructure the shared member/organizer Community Passport into the continuous wireframe hierarchy while retaining Bethuya branding, application shell, existing APIs, member controls, organizer Champion workflow, and source-event navigation.
+- **Acceptance:** The Passport presents identity and standing, verified communities, evidence-derived summary, living journey, What's Next, verified portfolio, connection summary, contribution highlights, participation rhythm, and member-controlled privacy as one integrated Bethuya page; roles and recognition remain distinct; provenance is prominent; no social/reputation mechanics or backend identifiers appear; member editing and organizer read-only behavior remain intact; bUnit/TUnit tests, solution build, and live Playwright visual verification pass. Performance and security reviews are explicitly deferred until requested by the user.
+- **Completion Evidence:**The shared Passport now renders the full continuous evidence-first hierarchy inside the existing Bethuya shell and dark/gold brand; active pathways are prioritized while future tracks remain visible; member share, privacy, portfolio, export endpoint, and contribution provenance behaviors remain wired; organizer verification confirmed Champion controls, read-only member data, and event/registration links. Desktop and 390px Playwright checks reported no horizontal overflow, final screenshots are stored in session artifacts, all 444 TUnit/bUnit tests pass, the full solution builds with 0 warnings/errors, and the isolated seeded Aspire environment is running for manual verification. Performance and security reviews were not run, as requested.
+
+## [2026-10-05] Link Passport contributions to source events
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add navigable event provenance to event-backed Community Passport contributions so members can open the source event and organizers can open the event registration records directly from the contribution ledger.
+- **Acceptance:** The versioned Passport contract carries an optional event ID, ledger and registration projections populate it, event-backed contribution cards render stable event links plus organizer-only registration links, non-event evidence stays unlinked, bUnit/TUnit regression coverage passes, and the solution builds without warnings.
+- **Completion Evidence:**Event-backed ledger and registration contributions now carry `EventId`; contribution cards render accessible `View event` links and organizer-only `View registrations` links; canonical CSV export includes `event_id`; event metadata loading projects only title/date; 444 TUnit/bUnit tests pass; the full solution builds with 0 warnings/errors; `git diff --check` passes; and live Aspire/Playwright verification traversed Priya's organizer-view contribution to both the seeded event and registrations page.
+
+## [2026-10-01] Redesign the Community Passport Phase 1 experience
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Deliver a production-ready member Community Passport from real Unified Participation Ledger data, including explainable community signals, deterministic story, multi-track journey, contributions and activity graph, verified and member-curated portfolio, consent-aware connections, opportunity history, expanded privacy/discovery controls, canonical portable export, and a narrow organizer directory/individual-passport surface.
+- **Acceptance:** The unified member/organizer passport template is backed by permission-aware versioned APIs and durable Phase 1 models; derived signals and organizer-awarded Champion recognition always explain their evidence without scores; portfolio CRUD/order/pinning, consent controls, opportunity/relationship summaries, and canonical ZIP export work end to end; organizer directory access is role- and visibility-gated; targeted TUnit, bUnit, Aspire, and Playwright verification passes with visual proof and mandatory review gates completed.
+- **Completion Evidence:**Full solution build succeeds with 0 warnings/errors; 444 TUnit/bUnit tests pass; `git diff --check` passes; isolated Aspire/Postgres probes verified the normalized-email migration, organizer directory, member detail and connection query, ledger-only Champion evidence selection, and award/revoke audit flow; desktop/mobile proof is preserved in the session artifacts; correctness and .NET performance review findings were remediated, including consent synchronization, metadata-preserving portfolio edits, active-award uniqueness/concurrency, pre-pagination visibility filtering, narrow directory projections, indexed literal email matching, directory batching, and bounded eligible co-attendee queries. This Squad task remains flagged for squad-member review before merge.
+
+## [2026-10-05] Addressing Homepage load review findings
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Address PR #61 feedback by logging unexpected Homepage projection failures and expressing cancellation-source ownership with a using declaration.
+- **Acceptance:** The Homepage preserves its user-facing error state, records the underlying exception, disposes each cancellation source on every exit path, relevant tests pass, and both review threads are replied to and resolved.
+- **Evidence:** Added structured error logging and a using declaration for each load's cancellation source; 461/461 TUnit+bUnit tests pass; code and performance reviews are clean.
+
+## [2026-10-05] Constraining readiness status pills
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Prevent touchpoint readiness status pills from overflowing narrow event-mode cards while preserving legibility and risk emphasis.
+- **Acceptance:** Every readiness pill remains within its card at desktop and mobile widths; targeted bUnit/TUnit and Playwright checks pass.
+- **Evidence:** Live browser geometry confirms all six pills remain within their card bounds; 461/461 TUnit+bUnit tests pass; targeted Playwright event-mode test passes.
+
+## [2026-10-02] Making Homepage personas claims-driven
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Remove the manual Homepage role impersonation control, resolve a stable command-center audience from the authenticated claims principal, provide distinct deterministic experiences for Anish, Priya, Rohan, Maya, Farah, and Vikram, and preserve Strategic/Event mode behavior.
+- **Acceptance:** All six personas have distinct documented user stories and visible homepage priorities; unknown identities use a safe role-derived fallback; TUnit/bUnit and Playwright verify the claims-driven experiences end to end; build, Aspire, and mandatory reviews pass.
+- **Completion Evidence:**Added an issuer-bound development persona claim and claims-to-audience resolver without changing authorization roles; removed “View As”; implemented six distinct priorities and narratives; documented all six user stories and trust boundaries; 454/454 TUnit/bUnit tests, solution build, migration-service exit 0, and 3/3 targeted Playwright tests pass; security, code, and performance reviews completed with final review clean.
+
+## [2026-10-02] Fixing curation-load cancellation disposal race
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Capture the curation availability cancellation token before awaiting authentication so superseded or disposed loads cannot access a disposed token source.
+- **Acceptance:** Superseding a load while authentication is pending does not throw, only the current load queries availability, focused/full TUnit tests pass, and the review thread is resolved.
+- **Completion Evidence:**Added a pending-authentication regression test and captured the token before the await; the full TUnit suite passes 440/440.
+
+## [2026-10-01] Refreshing same-event curation availability
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the non-inline PR review finding by refreshing curation availability when navigation remains within the same event context.
+- **Acceptance:** Returning from imports to another route for the same event re-queries availability and updates the Curation link; unrelated navigation does not add API calls; focused tests pass.
+- **Completion Evidence:**Added a same-event imports-to-event regression test that ends on a non-curation route so link visibility depends on the latest availability response; the full TUnit suite passes.
+
+## [2026-10-01] Documenting Homepage v3 command-center architecture
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add durable product and architecture documentation under `/docs` covering the Homepage v3 ethos, Strategic/Event mode semantics, deterministic intelligence rationale, stable provider boundary, workspace-routing principle, migration bootstrap decision, and verification expectations; link it from the README.
+- **Acceptance:** A dedicated document explains both current behavior and future integration seams without relying on task logs or PR context, and the README provides a discoverable link.
+- **Completion Evidence:**Added `docs/HOMEPAGE_COMMAND_CENTER.md` and linked it from `README.md`; the document covers the 30-second operating questions, human-review ethos, operational mode hierarchy, module responsibilities, provider contract, future replacement rules, workspace boundaries, migration reliability decision, verification contract, and v3 non-goals.
+
+## [2026-10-01] Addressing migration and E2E review follow-ups
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Use EF Core's provider-aware migration-history creation API and make Event Mode Playwright assertions independent of the system date.
+- **Acceptance:** Migration-history bootstrap remains idempotent and concurrency-safe through the provider API; both command-center E2E tests explicitly select Event Mode; build, TUnit, fresh Aspire migration, and targeted Playwright checks pass; both review threads are replied to and resolved.
+- **Completion Evidence:**Solution build passed with 0 warnings/errors; 438/438 TUnit tests passed; fresh Aspire migration-service finished with no `Failed executing` logs while backend/web became healthy; 2/2 Playwright tests passed after explicitly selecting Event Mode.
+
+## [2026-10-01] Making command-center modes operational
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Make Strategic and Event modes materially change homepage hierarchy, deterministic content, operational metrics, approvals, event readiness detail, insight framing, and contributor prioritization.
+- **Acceptance:** Event Mode promotes the attention queue and approvals, uses event-specific snapshot metrics, expands event readiness intelligence, and adapts insight/momentum content; Strategic Mode keeps insight and momentum primary; TUnit, build, Aspire, targeted Playwright, and visual screenshots verify both modes.
+- **Completion Evidence:**Solution build passed with 0 warnings/errors; 438/438 TUnit tests passed; 2/2 targeted Playwright tests passed against fresh Aspire URL `https://localhost:52899`; migration-service finished successfully while backend/web became healthy; desktop Event/Strategic and mobile visual captures confirm the hierarchy shift. Pre-commit review findings for metric-label contrast, duplicate approval-rail coverage, and render-time enum allocations were resolved.
+
+## [2026-10-01] Removing redundant profile switch condition
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace the exhaustive boolean switch arm flagged by PR #61 code quality review with direct profile property patterns.
+- **Acceptance:** The profile redirect behavior remains unchanged, the relevant tests pass, and the review thread is replied to and resolved.
+- **Completion Evidence:**The profile redirect switch now uses property patterns and the full TUnit suite passes 436/436.
+
+## [2026-10-01] Addressing Homepage v3 review findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Resolve all actionable PR #61 feedback covering clock-driven mode selection, navigation correctness, BB scoped styling, accessibility semantics, exception handling, and E2E artifact paths; document and resolve inapplicable feedback.
+- **Acceptance:** Every review thread receives a disposition and is resolved; deterministic clock tests, query/fragment routing coverage, full unit tests, build, fresh Aspire migration proof, and targeted Playwright tests pass; changes are committed and pushed.
+
+## [2026-10-01] Removing false migration failure and updating PR branch
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Reconcile the Homepage v3 branch with current `main`, eliminate the fresh-database `__EFMigrationsHistory` probe that appears as a migration failure in Aspire, and preserve genuine migration error reporting.
+- **Acceptance:** ✅ Fresh isolated PostgreSQL startup completes `migration-service` with exit code 0 and no error-level migration logs. ✅ Provider-specific migration history creation is idempotent and covered by TUnit. ✅ PostgreSQL, backend, and web become healthy. ✅ Command-center Playwright tests pass against the merged Aspire app. ✅ PR #61 is updated from current `main`.
+
+## [2026-09-29] Clarify registration approval import workflow
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Make the import wizard explain that registration artifacts may arrive at request and approval stages, support partial approval-only updates by email, and avoid implicitly approving imports without an approval field.
+- **Acceptance:** Render and service tests cover the organizer guidance, pending default, separate approval artifact update, and no duplicate registrations/members; documentation explains both combined and stage-specific exports. Verified all 393 tests pass; changes remain local for manual verification.
+
+## [2026-09-28] Add empty event curation seed action
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add a separate Development-only backend action, exposed under the Aspire backend resource actions, that creates a fresh event with no registrations or attendees for exercising registration/attendance import.
+- **Acceptance:** Running the action creates exactly one event and no attendee/registration rows; existing curation sandbox seeding remains unchanged; tests and targeted builds pass.
+- **Completion Evidence:**Backend build succeeded with 0 warnings/errors; `EmptyImportEventSeederTests` 1/1 passed and full unit suite 389/389 passed. AppHost build succeeded with 0 warnings/errors; after restarting Aspire, the backend is Running and the enabled `seed-empty-import-event` action is visible in its dashboard resource commands. The action is documented under import manual-testing instructions.
+
+## [2026-09-24] Investigating PR #60 security workflow and review state
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Determine whether the failing `.github/workflows/security-scan.yml` runs are caused by PR #60, pre-existing workflow configuration, or transient infrastructure; inspect and classify current unresolved review feedback; apply only necessary surgical fixes and validate merge readiness.
+- **Acceptance:** Failure classification is evidence-backed from GitHub run metadata and repository files; actionable review threads are fixed/resolved or explicitly classified; PR checks and local targeted validation are recorded.
+- **Completion Evidence:**PR `Security` check, CodeQL, dependency review, vulnerable-package scan, build/test, and Squad CI are green on `e5a76eb`; the failing workflow-path runs are push events with zero jobs/check-runs across repeated commits; all 43 review threads report `isResolved=true`; no code fix was warranted.
+
+## [2026-09-21] Address Greptile archive ordering and collision findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Prevent stale outbox projections and archive path collisions, make duplicate recovery transaction-safe, and preserve Vogen identifiers through the processor.
+- **Acceptance:** Newer projections supersede older eligible work, archive paths include immutable event identity, unique insert races recover safely, build/tests pass, and every Greptile thread is replied to and resolved.
+
+## [2026-09-21] Address archive outbox review findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace raw archive outbox identifiers with Vogen value objects, document public members, and normalize the migration namespace syntax.
+- **Acceptance:** The infrastructure and targeted tests build cleanly with no warnings, and the review findings are resolved without changing archive behavior.
+
+## [2026-09-13] Implementing durable event archive synchronization
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace synchronous GitHub publication with a transactional outbox, deterministic public archive projection, and resilient background processing while preserving existing archive contracts.
+- **Acceptance:** Published event mutations commit without GitHub availability; an outbox message is persisted atomically; a hosted worker processes with durable leasing/backoff; generated projection is public-only and deterministic; targeted tests/build pass.
+
+## [2026-08-08] Developer Testing Harness — Layer 5: Community Acceptance Test Harness
+- **Status:** done
+- **Completion Evidence:**
+  - Branch: `indcoder-musical-spork`
+  - Build: `dotnet build Bethuya.slnx --nologo` — 0 errors, 0 warnings
+  - Integration: `tests\\Bethuya.IntegrationTests\\bin\\Debug\\net10.0\\Bethuya.IntegrationTests.exe --filter-uid <7 harness UIDs>` — 7/7 passed, 0 failed, 0 skipped
+  - E2E: `BETHUYA_BASE_URL=https://localhost:7112 ASPIRE_BACKEND_URL=http://localhost:8080 dotnet test tests\\Hackmum.Bethuya.E2E\\Hackmum.Bethuya.E2E.csproj --filter "FullyQualifiedName~CommunityAcceptanceHarnessTests" --no-build` — 5/5 passed, 0 failed, 0 skipped
+  - Screenshots: `artifacts\\layer5\\*.png`
+  - Evidence: exact fixture-event lookup against `/api/events/slug/community-simulation-fixture`, seeded persona journey proof, curation auth gate proof, and exact event-row UI assertion
+  - Review gates: thread-safe persona client caching, concurrency-safe seeding, falsifiable curation auth probe, and shared HttpClient mutation fixes verified
+  - PR #57 remained on the existing harness branch; final SHA recorded in the handoff
+- **Agent/Owner:** Squad Coordinator (Copilot, autopilot mode)
+- **Description:** Implement Layer 5 acceptance test harness proving deterministic seeding from Layer 4 enables repeatable acceptance tests. Focus on persona persistence, auth boundaries, decision audit attribution, and structured log capture using existing APIs (Passport/Dashboard).
+- **Surfaces:**
+  1. `tests/Bethuya.IntegrationTests/CommunityAcceptanceHarnessFixture.cs` — typed helper for seeding orchestration and persona client provisioning; reuses `BethuyaAppFixture`; provides `SeedAsync()`, `GetPersonaClient()`, `GetPassportJourneyAsync()`, `GetDashboardReadModelAsync()`.
+  2. `tests/Bethuya.IntegrationTests/CommunityAcceptanceHarnessTests.cs` — TUnit acceptance tests (7 tests in this class): deterministic seeding (all 6 personas, stable IDs), idempotency (zero new rows on reseed), journey/API persistence for the exact community-simulation fixture event, authorization boundaries (Farah→403, Vikram→200), and dashboard visibility.
+  3. `tests/Hackmum.Bethuya.E2E/Tests/CommunityAcceptanceHarnessTests.cs` — Playwright E2E acceptance flow (5 tests): homepage/toolbar visibility, persona switching persistence across nav, Vikram/Farah curation auth probes, exact fixture event lookup + UI row match, persona screenshots.
+  4. No new CLI commands or entry points (targeted `dotnet test` uses `--filter-uid` for TUnit and `--filter` for E2E).
+  5. No new production code (tests-only layer leverages Layer 4 endpoints).
+- **Constraints satisfied:** Reused Layer 4 seeding endpoint only; no new seeder/duplicated seed-curation; tested current models/APIs only (no Graph/Chapters/Projects/Mentorship); TUnit+Playwright per standards; Vogen/Refit/BB/EF-retry/auth/privacy rules honored; central package management preserved; no Layer 6 work.
+- **Acceptance:** All Layer 5 TUnit tests pass against real Aspire/Postgres; all Layer 5 Playwright tests pass with `BETHUYA_BASE_URL` and `ASPIRE_BACKEND_URL` set; `dotnet build Bethuya.slnx` 0 warnings; screenshots captured under `artifacts/layer5`; PR #57 updated on the existing harness branch and pushed forward from remote tip `ca3cb75`.
 
 ## [2026-08-08] Developer Testing Harness — Layer 4: Deterministic Community Simulation Seeder
 - **Status:** done
@@ -748,6 +938,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Completed Tasks
 
+## [2026-09-28] Preserve Luma approval and check-in milestones
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Map Luma approval_status to registration state, import only nonempty checked_in_at as attendance, update seeded Luma templates and passport projections without duplicating members, registrations, or attendance on later exports.
+- **Acceptance:** TUnit covers pending → approved → checked-in replay, declined, blank check-ins, invalid statuses, and idempotent template seeding; document the two-pass organizer workflow. Keep changes local for manual verification.
+- **Completion Evidence:**Full test suite passed (392/392) using isolated output paths to avoid disrupting the running Aspire web resource; `git diff --check` passed. The attached Luma export shape was checked: 540 rows (403 pending approval, 98 approved, 39 declined; 49 approved rows have a check-in timestamp). No production export was imported into a database. Changes remain local and unpushed.
+
 <!-- Move done tasks here -->
 
 ## [2026-05-28] Polish curation profile header
@@ -834,3 +1031,49 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 - [x] PR64 valid findings fixed: normalized evidence IDs (dense regression under 2 MB), independent discovery consent, verified event requirements, typed EventId dictionary, transient-safe seed replay, filtered seed command exceptions. Six Path.Combine warnings rejected because appended segments are fixed relative literals or fixed test-kind suffixes.
 - [x] Validation: 350/350 TUnit tests and full Playwright graph flow passed. Staged code/performance reviews found no blockers and confirmed prior P2 resolved. Explain-diff review: graph response/client, source validation, development seeding and tests; existing authorization decisions retained. API/client must deploy together for EvidenceIds contract.
+## [2026-09-30] Build Homepage v3 Community Command Center
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Replace the event-centric root dashboard with a role-aware organizer command center backed by deterministic rule-based intelligence behind stable shared interfaces. Preserve the current member dashboard at `/member/home`, add meaningful top-level workspace destinations, and keep the UX ready for future live intelligence providers.
+- **Acceptance:** ✅ `/` answers what changed, what needs attention, and what to do next for Community Administrator, Event Organizer, Volunteer Lead, and Mentorship Lead variants. ✅ Strategic/Event mode is explainable and manually overridable without hiding critical warnings. ✅ Current dashboard remains at `/member/home`. ✅ Every exposed workspace link resolves. ✅ TUnit/bUnit, targeted Playwright, responsive visual proof, and builds pass. ⚠️ Aspire live health is blocked by a pre-existing EF pending-model migration failure; backend and migration logs were captured, and the backend-independent UI was verified through the standalone Web host.
+## [2026-10-01] Fix migration startup and validate Homepage v3 through Aspire
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Identify and resolve the EF pending-model migration drift that prevents `migration-service`, `backend`, and `web` from becoming healthy, then run Homepage v3 Playwright tests against the actual Aspire Web endpoint.
+- **Acceptance:** ✅ Replaced the undiscoverable hand-written migration with a metadata-complete EF migration and synchronized snapshot. ✅ The migration reconciles both canonical databases without the column and databases created while the historical migration incorrectly included it. ✅ `has-pending-model-changes` reports no drift. ✅ Fresh isolated Aspire startup finishes migration and reports healthy PostgreSQL, backend, and web resources. ✅ Three targeted Playwright tests pass against the Aspire Web HTTPS endpoint, including desktop/mobile screenshots and relocated member-dashboard navigation. ✅ Full solution build passes with 0 warnings and 0 errors.
+
+## [2026-09-21] Organizer Import Wizard UI
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add the organizer-facing `/imports` Blazor wizard for event/source selection, CSV/XLSX upload, Dry Run preview, and commit, backed by typed Refit contracts.
+- **Acceptance:** Full solution builds cleanly; import wizard bUnit render coverage passes; existing test suite remains green.
+
+## [2026-09-21] Fix import authorization findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Enforce batch/event ownership or admin access on import operations and owner/system/admin access on user template reads and clones.
+- **Acceptance:** ✅ Unauthorized users cannot read, replay, preview, list, clone, or commit other users' import data/templates. ✅ Template ownership regression tests pass. ✅ `dotnet build Bethuya.slnx --no-restore -v:minimal` passes with 0 warnings/errors. ✅ `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-build -v q` passes (371/371).
+
+- [x] Dashboard event cards show registered / pending / approved / checked-in counts for organizers (`GET /api/import/events/registration-summaries`); import template select shows the template name instead of its id.
+
+- [x] Curation nav link appears for Admin/Curator once active registrations exceed capacity (`GET /api/curation/{eventId}/availability`); `/imports?eventId=` now counts as event context.
+
+## 2026-09-30 — Pre-commit import performance review
+
+- [x] Eliminate the redundant full-file upload allocation.
+- [x] Avoid quadratic registration-email matching and unnecessary entity tracking.
+- [x] Preserve case-insensitive registration matching with mixed-case regression coverage.
+- [x] Add an indexed normalized-email lookup for community-member resolution.
+- [x] Parallelize independent dashboard event and registration-summary requests.
+
+## [2026-10-02] Homepage v3 architectural refinement — Operations vs Participation
+- **Status:** done
+- **Agent/Owner:** Copilot Coding Agent
+- **Description:** Split the homepage into two surfaces resolved from persona claims: one shared Community Operations Command Center (Admin / Organizer / Volunteer Lead / Mentorship Lead — identical layout, role-aware content) and a Community Participation homepage (visitor onboarding and member journey). Add the People To Watch module between Community Insight and the Attention Queue, generalize Upcoming Events into Upcoming Touchpoints, add Quick Actions to the rail, and make Strategic vs Event hierarchy unmistakable.
+- **Acceptance:** Operations personas share one layout with genuinely role-specific attention sets; participation personas never render snapshot, attention, review, approval, or deadline modules; People To Watch renders between insight and attention; Event mode reorders hierarchy and promotes deadlines; docs updated; bUnit/TUnit + Playwright pass; solution builds clean.
+- **Evidence:** 461/461 TUnit+bUnit tests pass; solution build succeeds with 0 warnings and 0 errors; migration-service, backend, and web reached healthy state; final targeted Playwright suite passes 4/4; security and performance reviews found no actionable issues; final code-review findings were fixed and regression-tested.
+
+## [2026-10-09] Resolve PR64 merge conflicts
+- [ ] Merge latest main preserving Passport and Graph services, contracts, seed commands, schema fields and upstream enum values; test and review before pushing.
+
+- [x] Resolved all seven merge conflicts with origin/main 53f06a1, preserving both features. Integrated Private visibility, granular consent and project-contribution compatibility. 506/506 tests passed. Independent code review cleared the privacy integration fix; performance review found no blockers. Explain-diff: merge integrates upstream Passport/import work; no new infrastructure or package choices beyond main.

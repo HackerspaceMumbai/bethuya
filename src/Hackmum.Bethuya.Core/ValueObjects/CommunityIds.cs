@@ -81,3 +81,63 @@ public readonly partial struct RegistrationId
             ? Validation.Ok
             : Validation.Invalid("Registration id cannot be empty.");
 }
+
+/// <summary>
+/// Stable identifier for a durable event archive outbox message.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct EventArchiveOutboxMessageId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Event archive outbox message id cannot be empty.");
+}
+
+/// <summary>
+/// Stable identifier for a member-curated portfolio entry.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct CommunityPortfolioEntryId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Community portfolio entry id cannot be empty.");
+}
+
+/// <summary>
+/// Stable identifier for a member opportunity.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct MemberOpportunityId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Member opportunity id cannot be empty.");
+}
+
+/// <summary>
+/// Stable identifier for a community relationship record.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct CommunityRelationshipId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Community relationship id cannot be empty.");
+}
+
+/// <summary>
+/// Stable identifier for an organizer-awarded community signal.
+/// </summary>
+[ValueObject<Guid>]
+public readonly partial struct CommunitySignalAwardId
+{
+    private static Validation Validate(Guid value)
+        => value != Guid.Empty
+            ? Validation.Ok
+            : Validation.Invalid("Community signal award id cannot be empty.");
+}

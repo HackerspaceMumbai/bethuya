@@ -10,7 +10,7 @@ namespace Hackmum.Bethuya.Tests.Services;
 public sealed class CommunityPassportServiceTests
 {
     [Test]
-    public async Task GetPassportAsync_ProvisionsMemberFromExistingProfileAndRegistrations()
+    public async Task GetPassportAsync_DoesNotClaimExistingRegistrationsByMutableEmail()
     {
         await using var db = CreateDbContext();
         var userId = "user-123";
@@ -62,6 +62,7 @@ public sealed class CommunityPassportServiceTests
                 FullName = "Augustine Correa",
                 Email = "aug@example.com",
                 Status = RegistrationStatus.CheckedIn,
+                ApprovalObservedAt = new DateTimeOffset(2026, 6, 25, 12, 0, 0, TimeSpan.Zero),
                 ContributionPreferences = ["Volunteer desk"]
             },
             new Registration
@@ -80,11 +81,10 @@ public sealed class CommunityPassportServiceTests
             new CommunitySubjectContext(userId, "Augustine Correa", "aug@example.com"));
 
         await Assert.That(passport.DisplayName).IsEqualTo("Augustine Correa");
-        await Assert.That(passport.CurrentTier).IsEqualTo("Volunteer Track");
-        await Assert.That(passport.Metrics.EventsRegistered).IsEqualTo(2);
-        await Assert.That(passport.Metrics.EventsAttended).IsEqualTo(1);
-        await Assert.That(passport.Metrics.EventsWaitlisted).IsEqualTo(1);
-        await Assert.That(passport.Metrics.VolunteerSignals).IsEqualTo(1);
+        await Assert.That(passport.Metrics.EventsRegistered).IsEqualTo(0);
+        await Assert.That(passport.Metrics.EventsAttended).IsEqualTo(0);
+        await Assert.That(passport.Metrics.EventsWaitlisted).IsEqualTo(0);
+        await Assert.That(passport.Metrics.VolunteerSignals).IsEqualTo(0);
         await Assert.That(passport.LinkedIdentities.Select(identity => identity.Provider))
             .Contains(IdentityProviderKind.Platform);
         await Assert.That(passport.LinkedIdentities.Select(identity => identity.Provider))
@@ -96,7 +96,7 @@ public sealed class CommunityPassportServiceTests
     }
 
     [Test]
-    public async Task GetPassportAsync_MatchesRegistrationsCaseInsensitively()
+    public async Task GetPassportAsync_UsesImmutableRegistrationMemberLink()
     {
         await using var db = CreateDbContext();
         var userId = "user-case-match";
@@ -127,10 +127,17 @@ public sealed class CommunityPassportServiceTests
             CreatedBy = "organizer"
         };
 
-        db.Events.Add(evt);
+        var member = new CommunityMember
+        {
+            UserId = userId,
+            DisplayName = "Casey Matcher",
+            Email = "casey@example.com"
+        };
+        db.AddRange(evt, member);
         db.Registrations.Add(new Registration
         {
             EventId = evt.Id,
+            CommunityMemberId = member.Id,
             FullName = "Casey Matcher",
             Email = "CASEY@EXAMPLE.COM",
             Status = RegistrationStatus.Accepted

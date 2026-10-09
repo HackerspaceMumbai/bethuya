@@ -38,6 +38,14 @@ public static class DevelopmentEndpoints
             return Results.Ok(result);
         });
 
+        group.MapPost("/imports/empty-event", async (
+            EmptyImportEventSeeder seeder,
+            CancellationToken ct) =>
+        {
+            var result = await seeder.SeedAsync(ct);
+            return Results.Ok(result);
+        });
+
         group.MapPost("/community-simulation/seed", async (
             CommunitySimulationSeeder seeder,
             CancellationToken ct) =>

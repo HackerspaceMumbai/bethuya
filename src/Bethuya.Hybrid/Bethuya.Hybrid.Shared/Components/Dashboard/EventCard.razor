@@ -31,6 +31,16 @@
             </div>
         </div>
 
+        @if (Event.Registrations is { } counts)
+        {
+            <div class="event-badge-row" data-test="registration-counts" aria-label="Registration progress">
+                <BbBadge Variant="BadgeVariant.Outline"><span data-test="count-registered">@counts.Registered registered</span></BbBadge>
+                <BbBadge Variant="BadgeVariant.Secondary"><span data-test="count-pending">@counts.Pending pending</span></BbBadge>
+                <BbBadge Variant="BadgeVariant.Default"><span data-test="count-approved">@counts.Approved approved</span></BbBadge>
+                <BbBadge Variant="BadgeVariant.Outline"><span data-test="count-checked-in">@counts.CheckedIn checked in</span></BbBadge>
+            </div>
+        }
+
         @if (Event.Status == "Draft")
         {
             <div class="draft-nudge" data-test="draft-nudge">

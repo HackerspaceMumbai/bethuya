@@ -30,7 +30,7 @@ public sealed class MentorProfileRepository(BethuyaDbContext db) : IMentorProfil
                 profile.Status == MentorshipStatus.OptedIn &&
                 profile.IsDiscoverable &&
                 profile.Member != null &&
-                profile.Member.IsDiscoverableToCommunity)
+                profile.Member.AppearInMentorshipRecommendations)
             .AsNoTracking();
 
         // Push expertise-area prefiltering when supported by the provider, then

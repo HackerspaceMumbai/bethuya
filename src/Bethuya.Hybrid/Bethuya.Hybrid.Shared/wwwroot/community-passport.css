@@ -1,0 +1,1178 @@
+/* Blazor Blueprint provides controls, not the Passport's editorial record, journey, provenance timeline, or rhythm composition. */
+.passport-shell {
+    --bethuya-gold: var(--hs-gold, #d4a830);
+    --bethuya-green: #51c98b;
+    --bethuya-blue: #7f9cf5;
+    --bethuya-surface: color-mix(in srgb, var(--hs-card, #151713) 94%, #10172d 6%);
+    --bethuya-surface-raised: color-mix(in srgb, var(--bethuya-surface) 88%, white 12%);
+    --bethuya-border: var(--hs-border, #34352f);
+    --bethuya-text-primary: var(--hs-foreground, #ebe7dc);
+    --bethuya-text-secondary: var(--hs-muted-foreground, #a9a394);
+    --bethuya-gold-soft: color-mix(in srgb, var(--bethuya-gold) 10%, transparent);
+    --bethuya-gold-border: color-mix(in srgb, var(--bethuya-gold) 32%, var(--bethuya-border));
+    --bethuya-green-soft: color-mix(in srgb, var(--bethuya-green) 8%, transparent);
+    --bethuya-green-border: color-mix(in srgb, var(--bethuya-green) 28%, var(--bethuya-border));
+    --bethuya-blue-soft: color-mix(in srgb, var(--bethuya-blue) 9%, transparent);
+    max-width: 94rem;
+    margin: 0 auto;
+    padding: clamp(1rem, 2.5vw, 2.25rem);
+    display: grid;
+    gap: 1.35rem;
+    overflow-x: hidden;
+    color: var(--bethuya-text-primary);
+    background:
+        radial-gradient(circle at 85% 3%, var(--bethuya-gold-soft), transparent 25rem),
+        linear-gradient(180deg, color-mix(in srgb, white 1.2%, transparent), transparent 30rem);
+}
+
+.passport-shell *,
+.passport-shell *::before,
+.passport-shell *::after {
+    box-sizing: border-box;
+}
+
+.passport-shell button,
+.passport-shell a,
+.passport-shell summary,
+.passport-shell select {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: color-mix(in srgb, var(--bethuya-gold) 18%, transparent);
+}
+
+.passport-shell a:focus-visible,
+.passport-shell button:focus-visible,
+.passport-shell summary:focus-visible,
+.passport-shell select:focus-visible {
+    outline: 2px solid var(--bethuya-gold);
+    outline-offset: 3px;
+}
+
+.passport-shell h1,
+.passport-shell h2,
+.passport-shell h3 {
+    text-wrap: balance;
+}
+
+.passport-shell [id] {
+    scroll-margin-top: 1rem;
+}
+
+.passport-hero,
+.passport-section {
+    border: 1px solid var(--bethuya-border);
+    border-radius: var(--hs-radius, .75rem);
+    background: var(--bethuya-surface);
+}
+
+.passport-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 25rem);
+    gap: 1.4rem;
+    padding: clamp(1.15rem, 3vw, 1.75rem);
+}
+
+.passport-identity-cluster {
+    display: flex;
+    gap: 1.1rem;
+    min-width: 0;
+}
+
+.passport-mark {
+    position: relative;
+    flex: 0 0 auto;
+    width: 5rem;
+    height: 5.8rem;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--bethuya-gold-border);
+    border-radius: .65rem;
+    background: linear-gradient(145deg, var(--bethuya-gold-soft), transparent 55%), var(--bethuya-surface);
+    color: var(--bethuya-gold);
+    font: 700 1.25rem Georgia, serif;
+}
+
+.passport-mark::after {
+    content: "";
+    position: absolute;
+    inset: auto .35rem .35rem;
+    height: .3rem;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--bethuya-gold) 72%, var(--bethuya-border) 72%);
+}
+
+.passport-mark i {
+    position: absolute;
+    right: .35rem;
+    top: .35rem;
+    width: .65rem;
+    height: .65rem;
+    border: 2px solid var(--bethuya-surface);
+    border-radius: 50%;
+    background: var(--bethuya-green);
+}
+
+.passport-identity {
+    min-width: 0;
+}
+
+.passport-kicker,
+.section-eyebrow {
+    margin: 0;
+    color: var(--bethuya-gold);
+    font-size: .67rem;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+}
+
+.identity-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .55rem;
+    margin: .2rem 0;
+}
+
+.identity-title h1 {
+    margin: 0;
+    font: 650 clamp(1.65rem, 3vw, 2.65rem)/1.05 Georgia, "Times New Roman", serif;
+    letter-spacing: -.03em;
+}
+
+.verified-member,
+.community-chip,
+.role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    border: 1px solid var(--bethuya-border);
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.verified-member {
+    padding: .22rem .5rem;
+    color: var(--bethuya-green);
+    background: var(--bethuya-green-soft);
+    font-size: .67rem;
+    font-weight: 750;
+}
+
+.passport-byline {
+    margin: 0;
+    color: var(--bethuya-text-secondary);
+    font-size: .78rem;
+}
+
+.identity-meta {
+    display: grid;
+    gap: .65rem;
+    margin-top: 1.1rem;
+}
+
+.meta-row {
+    display: grid;
+    grid-template-columns: 7.8rem minmax(0, 1fr);
+    align-items: start;
+    gap: .7rem;
+    font-size: .72rem;
+}
+
+.meta-row > span {
+    color: var(--bethuya-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+.meta-row > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    min-width: 0;
+}
+
+.role-chip {
+    padding: .18rem .48rem;
+    background: var(--bethuya-blue-soft);
+    color: var(--bethuya-text-primary);
+}
+
+.community-chip {
+    padding: .2rem .48rem;
+    background: var(--bethuya-gold-soft);
+    color: var(--bethuya-text-primary);
+}
+
+.muted-value {
+    color: var(--bethuya-text-secondary);
+}
+
+.standing-card {
+    display: grid;
+    gap: .8rem;
+    padding: 1rem;
+    border: 1px solid var(--bethuya-gold-border);
+    background: color-mix(in srgb, var(--bethuya-surface) 88%, black 12%);
+}
+
+.standing-label,
+.standing-recognition,
+.recommendation-card header,
+.rhythm-graph header,
+.privacy-summary-grid article header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+}
+
+.standing-label > span {
+    color: var(--bethuya-text-secondary);
+    font-size: .62rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.standing-label strong,
+.rhythm-state,
+.consent-state {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    color: var(--bethuya-green);
+    font-size: .65rem;
+}
+
+.standing-label i,
+.rhythm-state i,
+.consent-state i,
+.ledger-content footer strong i {
+    width: .38rem;
+    height: .38rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.standing-recognition small {
+    color: var(--bethuya-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-size: .6rem;
+}
+
+.standing-recognition h2 {
+    margin: .15rem 0 0;
+    font: 650 1.08rem Georgia, serif;
+}
+
+.standing-seal {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 1px solid var(--bethuya-gold-border);
+    color: var(--bethuya-gold);
+    background: var(--bethuya-gold-soft);
+}
+
+.standing-card > p {
+    margin: 0;
+    color: var(--bethuya-text-secondary);
+    font-size: .72rem;
+    line-height: 1.55;
+}
+
+.recognition-list,
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.recognition-list span {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .3rem .5rem;
+    border: 1px solid var(--bethuya-gold-border);
+    color: var(--bethuya-gold);
+    font-size: .66rem;
+}
+
+.hero-actions {
+    justify-content: flex-end;
+    padding-top: .25rem;
+}
+
+.passport-composition {
+    display: grid;
+    grid-template-columns: minmax(0, 1.72fr) minmax(19rem, .72fr);
+    gap: 1.35rem;
+    align-items: start;
+}
+
+.passport-primary-journal,
+.passport-secondary-rail {
+    display: grid;
+    gap: 1.35rem;
+    min-width: 0;
+}
+
+.passport-section {
+    min-width: 0;
+    padding: clamp(1rem, 2.2vw, 1.35rem);
+}
+
+.participation-summary {
+    padding: 0;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 var(--bethuya-gold-border);
+}
+
+.summary-heading {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: .8rem;
+    padding: .95rem 1.15rem;
+    border-bottom: 1px solid var(--bethuya-border);
+}
+
+.section-icon,
+.pathway-icon {
+    display: grid;
+    place-items: center;
+    color: var(--bethuya-gold);
+    background: var(--bethuya-gold-soft);
+    border: 1px solid var(--bethuya-gold-border);
+}
+
+.section-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+}
+
+.summary-heading h2,
+.section-heading h2 {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: .1rem 0 0;
+    color: var(--bethuya-text-primary);
+    font: 650 clamp(1.1rem, 2vw, 1.45rem)/1.15 Georgia, serif;
+}
+
+.summary-heading > span,
+.section-heading > span {
+    color: var(--bethuya-text-secondary);
+    font-size: .65rem;
+}
+
+.participation-summary blockquote {
+    margin: 0;
+    padding: 1.25rem 1.5rem;
+    color: var(--bethuya-text-primary);
+    font: italic 1rem/1.7 Georgia, serif;
+    background: linear-gradient(90deg, var(--bethuya-gold-soft), transparent);
+}
+
+.participation-summary footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .75rem 1.15rem;
+    border-top: 1px solid var(--bethuya-border);
+    color: var(--bethuya-text-secondary);
+    font-size: .65rem;
+}
+
+.participation-summary footer span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.section-heading > div {
+    min-width: 0;
+}
+
+.section-heading > div > p:last-child {
+    margin: .3rem 0 0;
+    color: var(--bethuya-text-secondary);
+    font-size: .7rem;
+    line-height: 1.5;
+}
+
+.pathway-stack,
+.connection-list,
+.attestation-list {
+    display: grid;
+    gap: .75rem;
+}
+
+.pathway-card,
+.recommendation-card,
+.portfolio-card,
+.connection-card,
+.rhythm-context,
+.rhythm-graph,
+.privacy-summary-grid article {
+    border: 1px solid var(--bethuya-border);
+    background: color-mix(in srgb, var(--bethuya-surface-raised) 35%, transparent);
+}
+
+.pathway-card {
+    padding: .9rem;
+}
+
+.pathway-card > header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: .65rem;
+    align-items: center;
+}
+
+.pathway-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: .4rem;
+}
+
+.pathway-card h3 {
+    margin: 0;
+    font-size: .84rem;
+}
+
+.pathway-card header p {
+    margin: .1rem 0 0;
+    color: var(--bethuya-green);
+    font-size: .65rem;
+}
+
+.pathway-card header > span {
+    color: var(--bethuya-text-secondary);
+    font-size: .6rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.journey-rail {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin: .9rem 0 .65rem;
+    padding: 0;
+    list-style: none;
+}
+
+.journey-node {
+    position: relative;
+    display: grid;
+    gap: .2rem;
+    padding-right: .65rem;
+    min-width: 0;
+}
+
+.journey-node::before {
+    content: "";
+    position: absolute;
+    left: .55rem;
+    right: 0;
+    top: .3rem;
+    height: 1px;
+    background: var(--bethuya-border);
+}
+
+.journey-node:last-child::before {
+    display: none;
+}
+
+.journey-dot {
+    z-index: 1;
+    width: .62rem;
+    height: .62rem;
+    margin-bottom: .3rem;
+    border: 2px solid var(--bethuya-text-secondary);
+    border-radius: 50%;
+    background: var(--bethuya-surface);
+}
+
+.journey-node--completed .journey-dot {
+    border-color: var(--bethuya-green);
+    background: var(--bethuya-green);
+}
+
+.journey-node--current .journey-dot {
+    border-color: var(--bethuya-gold);
+    box-shadow: 0 0 0 4px var(--bethuya-gold-soft);
+}
+
+.journey-node strong {
+    font-size: .65rem;
+}
+
+.journey-node small {
+    color: var(--bethuya-text-secondary);
+    font-size: .58rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.pathway-card > footer {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--bethuya-border);
+    color: var(--bethuya-green);
+    font-size: .61rem;
+}
+
+.future-pathways {
+    display: grid;
+    gap: .5rem;
+    padding: .85rem 0 .1rem;
+    border-top: 1px solid var(--bethuya-border);
+}
+
+.future-pathways > span {
+    color: var(--bethuya-text-secondary);
+    font-size: .58rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.future-pathways > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.future-pathways > div span {
+    display: inline-flex;
+    align-items: center;
+    gap: .28rem;
+    padding: .3rem .5rem;
+    border: 1px solid var(--bethuya-border);
+    color: var(--bethuya-text-secondary);
+    font-size: .61rem;
+}
+
+.recommendation-card {
+    padding: 1rem;
+}
+
+.recommendation-card header span {
+    color: var(--bethuya-gold);
+    font-size: .64rem;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+.recommendation-card header small,
+.opportunity-history small {
+    color: var(--bethuya-text-secondary);
+}
+
+.recommendation-card h3 {
+    margin: .65rem 0 .35rem;
+    font: 650 1rem/1.3 Georgia, serif;
+}
+
+.recommendation-card > p,
+.empty-opportunity p {
+    color: var(--bethuya-text-secondary);
+    font-size: .7rem;
+    line-height: 1.5;
+}
+
+.eligibility-list {
+    display: grid;
+    gap: .45rem;
+    margin-top: .85rem;
+    padding: .7rem;
+    background: var(--bethuya-gold-soft);
+}
+
+.eligibility-list strong,
+.eligibility-list span {
+    display: flex;
+    gap: .3rem;
+    font-size: .62rem;
+}
+
+.eligibility-list strong {
+    color: var(--bethuya-gold);
+    text-transform: uppercase;
+}
+
+.eligibility-list span {
+    color: var(--bethuya-text-secondary);
+}
+
+.empty-opportunity {
+    display: grid;
+    justify-items: center;
+    gap: .35rem;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--bethuya-text-secondary);
+}
+
+.empty-opportunity strong {
+    color: var(--bethuya-text-primary);
+}
+
+.opportunity-history {
+    display: grid;
+    gap: .5rem;
+    margin-top: .75rem;
+}
+
+.opportunity-history div {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .55rem 0;
+    border-bottom: 1px solid var(--bethuya-border);
+    font-size: .66rem;
+}
+
+.portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .7rem;
+}
+
+.portfolio-card {
+    min-width: 0;
+    padding: .85rem;
+}
+
+.portfolio-card--verified {
+    border-color: var(--bethuya-green-border);
+}
+
+.portfolio-card--featured {
+    border-color: var(--bethuya-gold-border);
+}
+
+.verified-label {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    color: var(--bethuya-green);
+    font-size: .58rem;
+    font-weight: 800;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.portfolio-card h3,
+.connection-card h3,
+.ledger-entry h3 {
+    margin: .45rem 0 .28rem;
+    font: 650 .84rem/1.3 Georgia, serif;
+}
+
+.portfolio-card p,
+.connection-card p,
+.ledger-entry p {
+    margin: 0;
+    color: var(--bethuya-text-secondary);
+    font-size: .67rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.portfolio-card small {
+    display: flex;
+    gap: .3rem;
+    margin-top: .75rem;
+    color: var(--bethuya-green);
+    font-size: .6rem;
+}
+
+.portfolio-links,
+.card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .7rem;
+}
+
+.portfolio-links a,
+.contribution-source-links a {
+    color: var(--bethuya-gold);
+    text-underline-offset: .2rem;
+}
+
+.connection-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .35rem;
+    margin-bottom: .8rem;
+}
+
+.connection-stats div {
+    display: grid;
+    justify-items: center;
+    gap: .15rem;
+    padding: .7rem .35rem;
+    border: 1px solid var(--bethuya-border);
+}
+
+.connection-stats strong {
+    font: 650 1.15rem Georgia, serif;
+    font-variant-numeric: tabular-nums;
+}
+
+.connection-stats span {
+    color: var(--bethuya-text-secondary);
+    font-size: .57rem;
+    text-align: center;
+}
+
+.connection-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .65rem;
+    padding: .7rem;
+}
+
+.mini-avatar {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--bethuya-border);
+    border-radius: 50%;
+    background: var(--bethuya-blue-soft);
+    color: var(--bethuya-text-primary);
+    font-size: .58rem;
+}
+
+.connection-card small {
+    color: var(--bethuya-blue);
+    font-size: .55rem;
+    text-transform: uppercase;
+}
+
+.connection-card h3 {
+    margin-top: .12rem;
+}
+
+.connection-card span,
+.attestation-list span {
+    display: flex;
+    gap: .25rem;
+    margin-top: .4rem;
+    color: var(--bethuya-green);
+    font-size: .56rem;
+}
+
+.filter-field {
+    display: grid;
+    gap: .25rem;
+    color: var(--bethuya-text-secondary);
+    font-size: .62rem;
+}
+
+.filter-field select {
+    min-width: 11rem;
+    padding: .45rem .6rem;
+    border: 1px solid var(--bethuya-border);
+    border-radius: .35rem;
+    background-color: var(--bethuya-surface);
+    color: var(--bethuya-text-primary);
+    font-size: .68rem;
+}
+
+.ledger-list {
+    display: grid;
+}
+
+.ledger-entry {
+    display: grid;
+    grid-template-columns: 1rem 6.8rem minmax(0, 1fr);
+    gap: .75rem;
+    min-width: 0;
+}
+
+.ledger-rail {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.ledger-rail::after {
+    content: "";
+    position: absolute;
+    top: 1rem;
+    bottom: 0;
+    width: 1px;
+    background: var(--bethuya-border);
+}
+
+.ledger-entry:last-child .ledger-rail::after {
+    display: none;
+}
+
+.ledger-rail i {
+    z-index: 1;
+    width: .58rem;
+    height: .58rem;
+    margin-top: .95rem;
+    border-radius: 50%;
+    background: var(--bethuya-blue);
+    box-shadow: 0 0 0 4px var(--bethuya-surface);
+}
+
+.ledger-entry time {
+    padding-top: .72rem;
+    color: var(--bethuya-gold);
+    font-size: .62rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.ledger-content {
+    margin-bottom: .7rem;
+    padding: .72rem .8rem;
+    border: 1px solid var(--bethuya-border);
+    background: color-mix(in srgb, var(--bethuya-surface-raised) 35%, transparent);
+}
+
+.ledger-content > header,
+.ledger-content > footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .65rem;
+}
+
+.ledger-content > header {
+    justify-content: space-between;
+}
+
+.ledger-content h3 {
+    margin-top: 0;
+}
+
+.ledger-content > footer {
+    margin-top: .7rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--bethuya-border);
+    font-size: .58rem;
+}
+
+.ledger-content footer > span {
+    display: inline-flex;
+    gap: .3rem;
+    color: var(--bethuya-green);
+}
+
+.ledger-content footer > strong {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    margin-left: auto;
+    color: var(--bethuya-green);
+    font-weight: 650;
+}
+
+.contribution-source-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+}
+
+.contribution-source-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    text-decoration: none;
+}
+
+.contribution-source-links a:hover,
+.contribution-source-links a:focus-visible,
+.portfolio-links a:hover,
+.portfolio-links a:focus-visible {
+    color: var(--bethuya-text-primary);
+    text-decoration: underline;
+}
+
+.rhythm-context {
+    display: grid;
+    gap: .55rem;
+    padding: .8rem;
+}
+
+.rhythm-context > small {
+    color: var(--bethuya-text-secondary);
+    font-size: .57rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.rhythm-context > div {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: .45rem;
+    color: var(--bethuya-text-secondary);
+    font-size: .63rem;
+}
+
+.rhythm-context strong {
+    color: var(--bethuya-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.rhythm-graph {
+    margin-top: .75rem;
+    padding: .8rem;
+}
+
+.rhythm-graph header {
+    margin-bottom: .5rem;
+    font-size: .62rem;
+}
+
+.rhythm-graph header small {
+    color: var(--bethuya-text-secondary);
+}
+
+.trust-definitions {
+    display: grid;
+    gap: .65rem;
+    margin: 0;
+}
+
+.trust-definitions div {
+    padding-bottom: .65rem;
+    border-bottom: 1px solid var(--bethuya-border);
+}
+
+.trust-definitions dt {
+    color: var(--bethuya-gold);
+    font-size: .6rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.trust-definitions dd {
+    margin: .25rem 0 0;
+    color: var(--bethuya-text-secondary);
+    font-size: .68rem;
+    line-height: 1.5;
+}
+
+.privacy-section {
+    border-top: 2px solid var(--bethuya-gold-border);
+}
+
+.privacy-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .7rem;
+}
+
+.privacy-summary-grid article {
+    display: grid;
+    align-content: start;
+    gap: .6rem;
+    padding: .8rem;
+}
+
+.privacy-summary-grid article header {
+    justify-content: flex-start;
+    color: var(--bethuya-gold);
+    font-size: .66rem;
+}
+
+.privacy-summary-grid article header span {
+    margin-left: auto;
+    color: var(--bethuya-green);
+    font-size: .58rem;
+}
+
+.privacy-summary-grid article p {
+    margin: 0;
+    color: var(--bethuya-text-secondary);
+    font-size: .64rem;
+    line-height: 1.5;
+}
+
+.privacy-details {
+    margin-top: .8rem;
+    border: 1px solid var(--bethuya-border);
+}
+
+.privacy-details summary {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .75rem .85rem;
+    cursor: pointer;
+    color: var(--bethuya-text-primary);
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.privacy-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.privacy-details[open] summary {
+    border-bottom: 1px solid var(--bethuya-border);
+    color: var(--bethuya-gold);
+}
+
+.privacy-details .privacy-layout {
+    padding: .85rem;
+}
+
+.privacy-attestation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    margin-top: .8rem;
+    padding-top: .75rem;
+    border-top: 1px solid var(--bethuya-border);
+    color: var(--bethuya-text-secondary);
+    font-size: .58rem;
+}
+
+.privacy-attestation strong {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    margin-left: auto;
+    color: var(--bethuya-green);
+}
+
+.empty-copy {
+    color: var(--bethuya-text-secondary);
+    font-size: .7rem;
+}
+
+.outcome {
+    margin-top: .7rem !important;
+    padding: .6rem;
+    border: 1px solid var(--bethuya-gold-border);
+    background: var(--bethuya-gold-soft);
+}
+
+.dialog-form {
+    display: grid;
+    gap: 1rem;
+    padding-block: 1rem;
+}
+
+.switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+@media (max-width: 1100px) {
+    .passport-composition {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .passport-secondary-rail {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .trust-context {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 760px) {
+    .passport-shell {
+        padding: .8rem;
+    }
+
+    .passport-hero,
+    .passport-secondary-rail {
+        grid-template-columns: 1fr;
+    }
+
+    .passport-identity-cluster {
+        align-items: flex-start;
+    }
+
+    .passport-mark {
+        width: 3.8rem;
+        height: 4.5rem;
+    }
+
+    .meta-row {
+        grid-template-columns: 1fr;
+        gap: .25rem;
+    }
+
+    .summary-heading {
+        grid-template-columns: auto 1fr;
+    }
+
+    .summary-heading > span {
+        grid-column: 1 / -1;
+    }
+
+    .participation-summary footer,
+    .section-heading {
+        flex-direction: column;
+    }
+
+    .portfolio-grid,
+    .privacy-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .journey-rail {
+        gap: .4rem;
+    }
+
+    .ledger-entry {
+        grid-template-columns: .8rem 1fr;
+    }
+
+    .ledger-entry time {
+        grid-column: 2;
+        padding-top: .2rem;
+    }
+
+    .ledger-content {
+        grid-column: 2;
+    }
+
+    .ledger-rail {
+        grid-row: 1 / span 2;
+    }
+
+    .ledger-content footer > strong,
+    .privacy-attestation strong {
+        margin-left: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .passport-shell * {
+        scroll-behavior: auto !important;
+        transition: none !important;
+    }
+}

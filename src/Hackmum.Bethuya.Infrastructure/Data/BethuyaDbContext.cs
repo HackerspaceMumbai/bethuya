@@ -19,13 +19,24 @@ public sealed class BethuyaDbContext(DbContextOptions<BethuyaDbContext> options)
     public DbSet<CommunityMember> CommunityMembers => Set<CommunityMember>();
     public DbSet<ExternalIdentity> ExternalIdentities => Set<ExternalIdentity>();
     public DbSet<ParticipationLedgerEntry> ParticipationLedgerEntries => Set<ParticipationLedgerEntry>();
+    public DbSet<CommunityPortfolioEntry> CommunityPortfolioEntries => Set<CommunityPortfolioEntry>();
+    public DbSet<MemberOpportunity> MemberOpportunities => Set<MemberOpportunity>();
+    public DbSet<CommunityRelationship> CommunityRelationships => Set<CommunityRelationship>();
+    public DbSet<CommunitySignalAward> CommunitySignalAwards => Set<CommunitySignalAward>();
     public DbSet<PlanningCycle> PlanningCycles => Set<PlanningCycle>();
     public DbSet<PlannerDraft> PlannerDrafts => Set<PlannerDraft>();
     public DbSet<PlannerInvocationAudit> PlannerInvocationAudits => Set<PlannerInvocationAudit>();
     public DbSet<PublishedScheduleSnapshot> PublishedScheduleSnapshots => Set<PublishedScheduleSnapshot>();
     public DbSet<PendingImageUpload> PendingImageUploads => Set<PendingImageUpload>();
+    /// <summary>Gets durable event archive projections awaiting or undergoing publication.</summary>
+    public DbSet<EventArchiveOutboxMessage> EventArchiveOutboxMessages => Set<EventArchiveOutboxMessage>();
     /// <summary>Mentor opt-in profiles; one record per community member who has opted into the mentorship programme.</summary>
     public DbSet<MentorProfile> MentorProfiles => Set<MentorProfile>();
+    public DbSet<ImportTemplate> ImportTemplates => Set<ImportTemplate>();
+    public DbSet<ImportColumnMapping> ImportColumnMappings => Set<ImportColumnMapping>();
+    public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
+    public DbSet<ImportArtifact> ImportArtifacts => Set<ImportArtifact>();
+    public DbSet<ImportRawRow> ImportRawRows => Set<ImportRawRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

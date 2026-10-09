@@ -11,7 +11,7 @@ public class EventFlowTests : BethuyaE2ETest
     [TestMethod]
     public async Task HomePlanButton_ShouldNavigateToPlanPage()
     {
-        await GotoWithBudgetAsync("/");
+        await GotoWithBudgetAsync("/member/home");
 
         // Wait for Blazor interactive rendering within budget
         var createBtn = Page.Locator("[data-test='plan-event-cta'] button").First;

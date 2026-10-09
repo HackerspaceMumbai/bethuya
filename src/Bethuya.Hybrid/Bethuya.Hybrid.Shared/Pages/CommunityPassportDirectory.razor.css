@@ -1,0 +1,14 @@
+/* BB has cards and form controls but no directory composition for evidence-led member discovery. */
+.directory-shell { max-width:86rem; margin:0 auto; padding:clamp(1rem,3vw,2.5rem); display:grid; gap:1.25rem; }
+header { max-width:52rem; } header h1 { margin:.25rem 0 .6rem; font:600 clamp(2rem,5vw,3.6rem)/1 Georgia,serif; letter-spacing:-.04em; } header p { color:var(--hs-muted-foreground); }
+.eyebrow { margin:0; color:#d4a830!important; font-size:.72rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+::deep .directory-controls { display:grid; grid-template-columns:minmax(14rem,2fr) minmax(12rem,1fr) auto; align-items:end; gap:1rem; }
+.directory-summary { color:var(--hs-muted-foreground); }.directory-summary strong { color:var(--hs-foreground); }
+::deep .empty-directory { display:grid; place-items:center; gap:.25rem; min-height:9rem; color:var(--hs-muted-foreground); } ::deep .empty-directory strong { color:var(--hs-foreground); font-size:1.1rem; }
+.directory-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,20rem),1fr)); gap:1rem; }
+.member-card { display:grid; gap:1rem; padding:1.25rem; border:1px solid var(--hs-border); border-radius:.85rem; background:var(--hs-card); }
+.member-card__identity { display:flex; align-items:center; gap:.8rem; }.member-card__identity h2 { margin:0; font:600 1.2rem/1.2 Georgia,serif; }.member-card__identity p { margin:.2rem 0 0; color:var(--hs-muted-foreground); font-size:.8rem; }
+.member-avatar { width:2.8rem; height:2.8rem; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; background:rgba(212,168,48,.13); color:#d4a830; font-weight:800; }
+.member-card__signals { min-height:2rem; display:flex; align-items:flex-start; flex-wrap:wrap; gap:.4rem; color:var(--hs-muted-foreground); font-size:.78rem; }
+.pagination { display:flex; align-items:center; justify-content:center; gap:1rem; color:var(--hs-muted-foreground); font-size:.8rem; }
+@media (max-width:720px) { ::deep .directory-controls { grid-template-columns:1fr; } }

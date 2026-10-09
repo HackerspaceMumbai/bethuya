@@ -40,6 +40,12 @@ Bethuya acts as an intelligence and coordination layer sitting above existing co
 | ✅ **Opportunity & Fairness Engine** | ❌ CFP / Session management system |
 | ✅ **Volunteer & Leadership Pipeline Manager** | ❌ Secret social-credit or ranking system |
 
+### Community Operations Command Center
+
+The organizer homepage is a mode-aware command center for answering **what changed, what needs attention, and what to do next**. It uses deterministic, explainable intelligence today behind a stable provider boundary, allowing Community Intelligence, Community Graph, and Opportunity Engine services to replace individual data sources later without redesigning the experience.
+
+See [Homepage v3: Community Operations Command Center](docs/HOMEPAGE_COMMAND_CENTER.md) for the product ethos, Strategic/Event mode semantics, architecture, workspace boundaries, migration rationale, and verification contract.
+
 ## 🌍 Why Bethuya Exists
 
 Communities today operate across multiple disconnected systems:
@@ -105,6 +111,8 @@ Bethuya supports member progression throughout the entire community lifecycle:
 - **Operational health endpoints:** all services expose `/health` + `/alive` and compatibility aliases `/healthz` + `/livez`.
 
 See [`docs/OBSERVABILITY_FRAMEWORK.md`](docs/OBSERVABILITY_FRAMEWORK.md) for implementation details, guardrails, and rollout phases.
+
+See [`docs/EVENT_ARCHIVE_PUBLICATION.md`](docs/EVENT_ARCHIVE_PUBLICATION.md) for the durable archive-publication workflow, outbox processing, GitHub safety rules, and local validation steps.
 
 Success is not measured by event count alone, but also by
 

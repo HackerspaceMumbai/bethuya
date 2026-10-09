@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Core.Models;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,11 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
             values => values.ToList());
 
         builder.HasKey(r => r.Id);
+
+        builder.Property(r => r.CommunityMemberId)
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? CommunityMemberId.From(value.Value) : null);
 
         builder.Property(r => r.FullName)
             .IsRequired()
@@ -83,9 +89,15 @@ internal sealed class RegistrationConfiguration : IEntityTypeConfiguration<Regis
             .HasForeignKey(r => r.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(r => r.CommunityMember)
+            .WithMany(member => member.Registrations)
+            .HasForeignKey(r => r.CommunityMemberId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(r => r.CommunityMemberId);
+
         // Unique per (event, email) — natural idempotency key used by seeding and deduplication.
-        // Email is stored as-is (no citext); persona emails are controlled-lowercase, consistent with
-        // the OrdinalIgnoreCase pre-read check in the seeder and ILike matching in PassportService.
+        // Passport ownership is intentionally based on CommunityMemberId, never this mutable email.
         builder.HasIndex(r => new { r.EventId, r.Email })
             .IsUnique();
     }

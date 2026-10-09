@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Hackmum.Bethuya.Core.Enums;
+using Hackmum.Bethuya.Core.ValueObjects;
 
 namespace Hackmum.Bethuya.Core.Models;
 
@@ -7,6 +8,8 @@ public sealed class Registration
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
     public Guid EventId { get; init; }
+    [JsonIgnore]
+    public CommunityMemberId? CommunityMemberId { get; set; }
     public required string FullName { get; set; }
     public required string Email { get; set; }
     public string? Bio { get; set; }
@@ -29,8 +32,12 @@ public sealed class Registration
     public DateTimeOffset? GovernmentIdUploadedAt { get; set; }
     public InclusionSignals InclusionSignals { get; set; } = new();
     public RegistrationStatus Status { get; set; } = RegistrationStatus.Pending;
+    /// <summary>When approval was first observed by Bethuya; the Luma export does not supply an approval timestamp.</summary>
+    public DateTimeOffset? ApprovalObservedAt { get; set; }
     public DateTimeOffset RegisteredAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public Event? Event { get; init; }
+    [JsonIgnore]
+    public CommunityMember? CommunityMember { get; init; }
 }

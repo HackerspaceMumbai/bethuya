@@ -1,0 +1,8 @@
+/* BB supplies form controls but not the passport-specific consent grouping and explanatory rows. */
+.privacy-layout { display:grid; gap:1rem; }
+.privacy-control-heading p { margin:0; color:#d4a830; font-size:.65rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.privacy-control-heading h3 { margin:.2rem 0; font:600 1.05rem/1.2 Georgia,serif; }
+.privacy-control-heading small { color:var(--hs-muted-foreground); font-size:.68rem; }
+::deep .privacy-switches { display:grid; gap:0; }
+.switch-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.85rem 0; border-bottom:1px solid var(--hs-border); }
+.switch-row div { display:grid; }.switch-row small { color:#a9a394; }

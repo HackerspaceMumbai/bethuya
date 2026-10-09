@@ -1,0 +1,44 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="@($"command-section {(Primary ? "command-section--primary" : "")}")"
+         aria-labelledby="attention-heading"
+         data-test="attention-queue">
+    <div class="section-heading">
+        <p>@(Primary ? "Live event operations" : "Needs attention")</p>
+        <h2 id="attention-heading">@(Primary ? "Event attention queue" : "Community attention queue")</h2>
+        @if (Primary)
+        {
+            <span>Resolve the critical path before the next attendee update.</span>
+        }
+    </div>
+    <div class="attention-list">
+        @foreach (var item in Items)
+        {
+            <article class="@($"attention-item attention-item--{GetSeveritySlug(item.Severity)}")"
+                     data-test="attention-item">
+                <div class="attention-icon" aria-hidden="true">
+                    <LucideIcon Name="triangle-alert" Size="18" />
+                </div>
+                <div class="attention-copy">
+                    <span>@item.Category</span>
+                    <h3>@item.Title</h3>
+                    <p>@item.Summary</p>
+                </div>
+                <a href="@item.Route">@item.ActionLabel <span aria-hidden="true">→</span></a>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AttentionItem> Items { get; set; } = [];
+    [Parameter] public bool Primary { get; set; }
+
+    private static string GetSeveritySlug(AttentionSeverity severity) => severity switch
+    {
+        AttentionSeverity.Advisory => "advisory",
+        AttentionSeverity.Required => "required",
+        AttentionSeverity.Critical => "critical",
+        _ => "advisory"
+    };
+}

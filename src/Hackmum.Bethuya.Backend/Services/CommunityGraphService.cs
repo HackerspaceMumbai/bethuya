@@ -20,9 +20,9 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
 
         // Organizer-only profiles stay out of this member-facing exploration surface, even for organizers.
         var members = await db.CommunityMembers.AsNoTracking()
-            .Where(m => m.CommunitySlug == viewer.CommunitySlug
+            .Where(m => m.CommunitySlug == viewer.CommunitySlug && m.EnableRelationshipInsights
                 && (m.Id == viewer.Id || (m.IsDiscoverableToCommunity
-                    && m.Visibility != ProfileVisibilityScope.OrganizerOnly)))
+                    && (m.Visibility == ProfileVisibilityScope.Public || m.Visibility == ProfileVisibilityScope.CommunityOnly))))
             .OrderByDescending(m => m.Id == viewer.Id).ThenBy(m => m.DisplayName).ThenBy(m => m.UserId)
             .Take(81).ToListAsync(ct);
         var truncated = members.Count > 80;
@@ -58,7 +58,8 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
         }
 
         // Shared attendance explains proximity; it never implies mentorship or collaboration.
-        var shared = ties.Where(t => t.Key.Kind == "Attended").GroupBy(t => t.Key.Target).ToList();
+        var collaboratorIds = members.Where(m => m.AppearInCollaboratorDiscovery).Select(m => MemberNode(m).Id).ToHashSet();
+        var shared = ties.Where(t => t.Key.Kind == "Attended" && collaboratorIds.Contains(t.Key.Source)).GroupBy(t => t.Key.Target).ToList();
         var peerTies = 0;
         foreach (var group in shared)
         {
@@ -82,14 +83,14 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
         {
             var memberId = MemberNode(member).Id;
             var speaking = ties.Where(t => t.Key.Source == memberId && t.Key.Kind == "Spoke at").ToArray();
-            if (speaking.Length >= 2)
+            if (member.AppearInOpportunityRecommendations && member.AppearInSpeakerRecommendations && speaking.Length >= 2)
                 AddOpportunity("speaker", "Workshop Speaker", $"Delivered sessions at {speaking.Length} distinct events.", speaking.SelectMany(t => t.Value).ToList());
             var contributions = ties.Where(t => t.Key.Source == memberId && t.Key.Kind == "Contributes to")
                 .SelectMany(t => t.Value).DistinctBy(p => p.EntryId).ToList();
-            if (contributions.Count >= 2)
+            if (member.AppearInOpportunityRecommendations && member.AppearInCollaboratorDiscovery && contributions.Count >= 2)
                 AddOpportunity("reviewer", "Project Reviewer", $"{contributions.Count} verified project contributions.", contributions);
             var mentoring = ties.Where(t => t.Key.Source == memberId && t.Key.Kind == "Mentors").ToArray();
-            if (mentoring.Length >= 2)
+            if (member.AppearInOpportunityRecommendations && member.AppearInMentorshipRecommendations && mentoring.Length >= 2)
                 AddOpportunity("mentor", "Mentorship Circle Lead", $"Mentored {mentoring.Length} community members.", mentoring.SelectMany(t => t.Value).ToList());
 
             void AddOpportunity(string key, string title, string reason, List<CommunityGraphEvidence> proof)
@@ -136,7 +137,7 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
         {
             ParticipationActivityKind.JoinedCommunity => "Community",
             ParticipationActivityKind.JoinedChapter => "Chapter",
-            ParticipationActivityKind.ContributedProject => "Project",
+            ParticipationActivityKind.ContributedProject or ParticipationActivityKind.ProjectContributed => "Project",
             ParticipationActivityKind.UsedTechnology => "Technology",
             _ => "Event"
         };
@@ -159,7 +160,7 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
         ParticipationActivityKind.Attended => "Attended",
         ParticipationActivityKind.Volunteered => "Volunteered",
         ParticipationActivityKind.Spoke => "Spoke at",
-        ParticipationActivityKind.ContributedProject => "Contributes to",
+        ParticipationActivityKind.ContributedProject or ParticipationActivityKind.ProjectContributed => "Contributes to",
         ParticipationActivityKind.JoinedCommunity => "Community member",
         ParticipationActivityKind.JoinedChapter => "Chapter member",
         ParticipationActivityKind.Mentored => "Mentors",

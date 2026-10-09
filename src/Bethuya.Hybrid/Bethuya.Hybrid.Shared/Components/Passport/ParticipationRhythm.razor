@@ -1,0 +1,27 @@
+<section class="passport-section rhythm-section" aria-labelledby="rhythm-heading">
+    <div class="section-heading">
+        <div>
+            <p class="section-eyebrow">Consistency, not ranking</p>
+            <h2 id="rhythm-heading"><LucideIcon Name="calendar-range" Size="20" /> Participation Rhythm</h2>
+            <p>Activity cadence across verified community participation.</p>
+        </div>
+        <span class="rhythm-state"><i></i> Active rhythm</span>
+    </div>
+    <div class="rhythm-context">
+        <small>Participation context</small>
+        <div><LucideIcon Name="calendar-check" Size="13" /><span>Verified records</span><strong>@VerifiedContributionCount</strong></div>
+        <div><LucideIcon Name="users" Size="13" /><span>Community connections</span><strong>@ConnectionCount</strong></div>
+        <div><LucideIcon Name="route" Size="13" /><span>Active pathways</span><strong>@ActivePathwayCount</strong></div>
+    </div>
+    <div class="rhythm-graph">
+        <header><span>26-week activity rhythm</span><small>@PassportPresentation.ActiveWeeks(Activity) active weeks</small></header>
+        <PassportActivityGraph Activity="Activity" />
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ActivityDayDto> Activity { get; set; } = [];
+    [Parameter] public int VerifiedContributionCount { get; set; }
+    [Parameter] public int ConnectionCount { get; set; }
+    [Parameter] public int ActivePathwayCount { get; set; }
+}

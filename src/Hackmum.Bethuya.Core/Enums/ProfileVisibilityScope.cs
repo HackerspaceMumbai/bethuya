@@ -16,5 +16,9 @@ public enum ProfileVisibilityScope
     /// <summary>
     /// Visible only to organizers.
     /// </summary>
-    OrganizerOnly
+    OrganizerOnly,
+    /// <summary>
+    /// Visible only to the owning member.
+    /// </summary>
+    Private
 }

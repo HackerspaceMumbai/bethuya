@@ -45,6 +45,16 @@ public sealed record CurationRegistrantResponse(
 public sealed record GenerateCurationProposalRequest(
     string? RequestedBy = null);
 
+/// <summary>
+/// Lightweight signal that tells navigation whether curation is needed for an event:
+/// curation opens once active registrations exceed venue capacity.
+/// </summary>
+public sealed record CurationAvailabilityResponse(
+    Guid EventId,
+    int Capacity,
+    int ActiveRegistrations,
+    bool IsOversubscribed);
+
 public sealed record CurationProfileSummaryResponse(
     string Headline,
     string Organization,

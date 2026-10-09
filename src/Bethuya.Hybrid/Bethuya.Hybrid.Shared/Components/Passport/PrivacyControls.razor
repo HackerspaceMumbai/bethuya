@@ -1,0 +1,44 @@
+<section class="passport-section privacy-section" aria-labelledby="privacy-heading" data-test="passport-privacy-section">
+    <div class="section-heading">
+        <div>
+            <p class="section-eyebrow">Member-owned record</p>
+            <h2 id="privacy-heading"><LucideIcon Name="shield-check" Size="20" /> Member-Controlled Data &amp; Privacy</h2>
+            <p>You control how participation records are shared, discovered, and exported across Bethuya communities.</p>
+        </div>
+        <span class="consent-state"><i></i> Consent active</span>
+    </div>
+    <div class="privacy-summary-grid">
+        <article>
+            <header><LucideIcon Name="eye" Size="15" /><strong>Profile visibility</strong><span>@Model.Privacy.Visibility</span></header>
+            <p>Control how your participation record is discovered across Bethuya.</p>
+        </article>
+        <article>
+            <header><LucideIcon Name="file-down" Size="15" /><strong>Data portability</strong><span>Portable</span></header>
+            <p>Export verified participation records and human-readable provenance.</p>
+            <div data-test="passport-privacy-export-btn">
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="OnExport">
+                    <LucideIcon Name="download" Size="13" /> Export Records
+                </BbButton>
+            </div>
+        </article>
+        <article>
+            <header><LucideIcon Name="sliders-horizontal" Size="15" /><strong>Consent management</strong><span>Granular</span></header>
+            <p>Manage organizer, mentorship, opportunity, and relationship discovery consent.</p>
+        </article>
+    </div>
+    <details class="privacy-details">
+        <summary><LucideIcon Name="settings-2" Size="15" /> Manage Granular Consent</summary>
+        <PassportPrivacyPanel Privacy="Model.Privacy" OnSave="OnSavePrivacy" />
+    </details>
+    <footer class="privacy-attestation">
+        <span>Member: @Model.Identity.DisplayName</span>
+        <span>@Model.Identity.CommunityName</span>
+        <strong><LucideIcon Name="shield-check" Size="12" /> Attested member record</strong>
+    </footer>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public CommunityPassportExperienceDto Model { get; set; } = default!;
+    [Parameter] public EventCallback OnExport { get; set; }
+    [Parameter] public EventCallback<UpdatePassportPrivacyPreferencesDto> OnSavePrivacy { get; set; }
+}

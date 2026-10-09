@@ -167,6 +167,66 @@ public static class SeedCommandExtensions
                 ConfirmationMessage = "Seed fictional Community Graph fixtures and development personas? Existing records are preserved."
             });
 
+        backend.WithCommand(
+            "seed-empty-import-event",
+            "Seed empty import event",
+            async context =>
+            {
+                try
+                {
+                    var endpointUrl = await backendHttpEndpoint
+                        .GetValueAsync(context.CancellationToken);
+
+                    if (string.IsNullOrWhiteSpace(endpointUrl))
+                    {
+                        return CommandResults.Failure(
+                            "Backend HTTP endpoint is unavailable.");
+                    }
+
+                    var requestUrl =
+                        $"{endpointUrl.TrimEnd('/')}/api/dev/imports/empty-event";
+
+                    using var httpClient = new HttpClient();
+
+                    Console.WriteLine(
+                        $"Create empty import event request URL: {requestUrl}");
+
+                    using var response = await httpClient.PostAsync(
+                        requestUrl,
+                        content: null,
+                        context.CancellationToken);
+
+                    var responseBody = await response.Content
+                        .ReadAsStringAsync(context.CancellationToken);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine(
+                            $"Create empty import event response: {responseBody}");
+
+                        return CommandResults.Success();
+                    }
+
+                    return CommandResults.Failure(
+                        $"Empty import event request failed. " +
+                        $"Status: {(int)response.StatusCode} " +
+                        $"({response.ReasonPhrase}). " +
+                        $"Response: {responseBody}");
+                }
+                catch (Exception ex)
+                {
+                    return CommandResults.Failure(ex);
+                }
+            },
+            new CommandOptions
+            {
+                Description =
+                    "Create a fresh event with zero attendees and zero registrations for import testing.",
+
+                ConfirmationMessage =
+                    "Create a fresh event with no attendees or registrations for import testing?"
+            });
+
         return backend;
     }
 

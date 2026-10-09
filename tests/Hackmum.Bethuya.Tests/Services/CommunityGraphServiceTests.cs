@@ -9,6 +9,32 @@ namespace Hackmum.Bethuya.Tests.Services;
 public sealed class CommunityGraphServiceTests
 {
     [Test]
+    public async Task Graph_RespectsGranularPrivacyWhenOtherDiscoveryRemainsEnabled()
+    {
+        await using var db = CreateDatabase();
+        var viewer = Member("viewer");
+        var speaker = Member("speaker");
+        speaker.AppearInSpeakerRecommendations = false;
+        var hidden = Member("no-insights");
+        hidden.EnableRelationshipInsights = false;
+        var peer = Member("no-collaboration");
+        peer.AppearInCollaboratorDiscovery = false;
+        db.CommunityMembers.AddRange(viewer, speaker, hidden, peer);
+        db.ParticipationLedgerEntries.AddRange(
+            Entry(speaker, ParticipationActivityKind.Spoke, "Event", "one", "One"),
+            Entry(speaker, ParticipationActivityKind.Spoke, "Event", "two", "Two"),
+            Entry(hidden, ParticipationActivityKind.JoinedCommunity),
+            Entry(viewer, ParticipationActivityKind.Attended, "Event", "one", "One"),
+            Entry(peer, ParticipationActivityKind.Attended, "Event", "one", "One"));
+        await db.SaveChangesAsync();
+        var graph = await new CommunityGraphService(db).ReadAsync(viewer.UserId);
+        await Assert.That(graph.Nodes.Any(n => n.Label == "speaker")).IsTrue();
+        await Assert.That(graph.Nodes.Any(n => n.Label == "no-insights")).IsFalse();
+        await Assert.That(graph.Opportunities.Count).IsEqualTo(0);
+        await Assert.That(graph.Relationships.Any(r => r.Kind == "Shared attendance")).IsFalse();
+    }
+
+    [Test]
     public async Task Graph_DiscoveryDoesNotRequireOrganizerSharing()
     {
         await using var db = CreateDatabase();
@@ -55,12 +81,15 @@ public sealed class CommunityGraphServiceTests
         var visible = Member("visible");
         var hidden = Member("hidden");
         hidden.IsDiscoverableToCommunity = false;
+        var privateMember = Member("private");
+        privateMember.Visibility = ProfileVisibilityScope.Private;
         var outsider = Member("outsider");
         outsider.CommunitySlug = "another-community";
-        db.CommunityMembers.AddRange(viewer, visible, hidden, outsider);
+        db.CommunityMembers.AddRange(viewer, visible, hidden, outsider, privateMember);
         db.ParticipationLedgerEntries.AddRange(
             Entry(visible, ParticipationActivityKind.JoinedCommunity),
             Entry(hidden, ParticipationActivityKind.JoinedCommunity),
+            Entry(privateMember, ParticipationActivityKind.JoinedCommunity),
             Entry(outsider, ParticipationActivityKind.JoinedCommunity),
             Entry(viewer, ParticipationActivityKind.JoinedCommunity, verified: false));
         await db.SaveChangesAsync();
@@ -68,7 +97,7 @@ public sealed class CommunityGraphServiceTests
         var graph = await new CommunityGraphService(db).ReadAsync("viewer");
 
         await Assert.That(graph.Nodes.Any(n => n.Label == "visible")).IsTrue();
-        await Assert.That(graph.Nodes.Any(n => n.Label == "hidden" || n.Label == "outsider")).IsFalse();
+        await Assert.That(graph.Nodes.Any(n => n.Label == "hidden" || n.Label == "outsider" || n.Label == "private")).IsFalse();
         await Assert.That(graph.Relationships.Count).IsEqualTo(1);
         await Assert.That(graph.Relationships[0].EvidenceIds.Count).IsEqualTo(1);
         await Assert.That(graph.Evidence.Single(p => p.EntryId == graph.Relationships[0].EvidenceIds[0]).Summary).IsEqualTo("Confirmed participation");

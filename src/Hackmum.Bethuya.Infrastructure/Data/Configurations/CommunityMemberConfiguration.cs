@@ -66,5 +66,20 @@ internal sealed class CommunityMemberConfiguration : IEntityTypeConfiguration<Co
             .HasForeignKey(identity => identity.CommunityMemberId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(member => member.PortfolioEntries)
+            .WithOne(entry => entry.CommunityMember)
+            .HasForeignKey(entry => entry.CommunityMemberId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(member => member.Opportunities)
+            .WithOne(opportunity => opportunity.CommunityMember)
+            .HasForeignKey(opportunity => opportunity.CommunityMemberId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(member => member.SignalAwards)
+            .WithOne(award => award.CommunityMember)
+            .HasForeignKey(award => award.CommunityMemberId)
+            .OnDelete(DeleteBehavior.Cascade);
+
     }
 }

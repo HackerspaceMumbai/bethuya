@@ -16,6 +16,108 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-07] Synchronize hosted-service tests on persisted outcomes
+- **What happened:** A hosted-service test used a fixed seven-second delay, which failed under CI scheduling load; waiting only for the external publish call then exposed that persistence was still in progress.
+- **Root cause:** The test synchronized on elapsed time and then on an intermediate side effect rather than the complete durable outcome it asserted.
+- **Fix:** The test now waits with a bounded cancellation token until both the outbox message is processed and the event archive URL is persisted.
+- **Prevention:** For background-service tests, await an observable final state or completion signal; never assume a polling interval plus arbitrary buffer guarantees durable completion.
+
+## [2026-10-07] Guard asynchronous mutations across route changes
+- **What happened:** Clearing a stale Passport during navigation hid the old member's actions, but an already-running Champion mutation could still complete later and update or reload the newly selected member's UI.
+- **Root cause:** The mutation validated its member before the API await but did not associate the continuation with the member and action generation that initiated it.
+- **Fix:** Added member-and-generation checks after mutation awaits, invalidated actions on route loads, cleared member-specific state on member changes, and cancelled superseded Passport reads.
+- **Prevention:** For parameter-driven components, bind both reads and writes to a captured identity/generation and reject every post-await state mutation when that context is stale.
+
+## [2026-10-07] Normalize identity inputs before comparison and persistence
+- **What happened:** A registration email with surrounding whitespace was accepted but failed the immutable member-link comparison, leaving valid attendance absent from the member's Passport.
+- **Root cause:** The endpoint compared the raw submitted email with the normalized provisioned-member email and persisted the raw value.
+- **Fix:** Normalize the submitted email once before profile lookup, ownership comparison, and registration persistence, with endpoint regression coverage.
+- **Prevention:** Normalize identity-bearing input at the request boundary and reuse that canonical value for every lookup, authorization decision, and stored representation.
+
+## [2026-10-06] TUnit filters belong to Microsoft.Testing.Platform
+- **What happened:** A targeted `dotnet test` invocation passed `--filter` after the test-application separator and ran zero tests.
+- **Root cause:** This repository uses TUnit on Microsoft.Testing.Platform, whose executable accepts `--treenode-filter` or `--filter-uid`, not the VSTest `--filter` option.
+- **Fix:** Ran the small 444-test project suite directly, then completed the full solution build.
+- **Prevention:** Use `--treenode-filter`/`--filter-uid` for targeted TUnit runs, or run the bounded project suite when it completes quickly.
+
+## [2026-10-05] Compact card headers need an explicit narrow-width composition
+- **What happened:** Readiness status pills overflowed cards when a long title and fixed-width pill shared a 191px card header row.
+- **Root cause:** The flex header kept both elements on one line, and the title's intrinsic width left insufficient inline space for the status pill.
+- **Fix:** Stacked the status pill beneath the title block, constrained it to the card width, and added a Playwright bounding-box assertion.
+- **Prevention:** For dense cards below 240px, design header metadata as a vertical composition or verify every inline badge against the narrowest supported width.
+
+## [2026-10-05] Treat an absent authentication cascade as an explicit state
+- **What happened:** The homepage's initial null authentication task matched its null processed-task sentinel, so hosts without an authentication cascade remained on the loading state forever.
+- **Root cause:** Reference equality alone could not distinguish “never processed” from “processed an absent cascade.”
+- **Fix:** Added an explicit processed-state flag and a bUnit regression test that renders Home without an authentication cascade.
+- **Prevention:** When null is a valid input, pair cached-value comparisons with a separate initialization marker rather than using null as both value and sentinel.
+
+## [2026-10-05] Upcoming labels must filter relative activities independently
+- **What happened:** A welcome call derived as two days before an upcoming event appeared in the past when the event was only one day away.
+- **Root cause:** Selecting a future anchor event did not guarantee every relative activity derived from that event was also future-dated.
+- **Fix:** Excluded the welcome call after its date passes and added boundary tests for the final two days before the event.
+- **Prevention:** Validate every derived item against the current clock before placing it in an “upcoming” collection.
+
+## [2026-10-05] Invalidate both identity resolution and projection loads
+- **What happened:** The homepage cleared data while a replacement authentication state was pending, but an older asynchronous provider call could still complete afterward and commit the previous persona's projection.
+- **Root cause:** Authentication-task freshness and projection-load freshness were treated as one lifecycle boundary even though each has its own await and race window.
+- **Fix:** Added cancellation and generation checks around projection loads, captured the audience locally, and added overlapping authentication/provider regression coverage.
+- **Prevention:** Any claims-driven UI that awaits downstream data must invalidate both the authentication await and every data await before allowing results to mutate rendered state.
+
+## [2026-10-02] Explicit auth cascades still need authorization services in bUnit
+- **What happened:** A bUnit test supplied a custom cascading `Task<AuthenticationState>` but rendering `AuthorizeView` failed because authorization policy services were absent.
+- **Root cause:** The cascading authentication state replaces only the state value; `AuthorizeView` still resolves `IAuthorizationPolicyProvider` and related services from dependency injection.
+- **Fix:** Registered bUnit's test authorization services before supplying the custom pending authentication-state cascade.
+- **Prevention:** Call `AddTestAuthorization()` whenever a rendered component tree contains `AuthorizeView`, even when the test controls `AuthenticationState` through an explicit cascade.
+
+## [2026-10-01] Use one callback for mixed asynchronous substitute responses
+- **What happened:** A NSubstitute setup mixed a concrete task with callback delegates in the sequential `Returns` overload and failed to compile.
+- **Root cause:** That overload inferred concrete `Task<T>` values and could not accept delegate-shaped entries.
+- **Fix:** Used one callback with an invocation counter to choose each asynchronous response.
+- **Prevention:** When sequential substitute responses need different asynchronous behavior, use a single callback that returns the appropriate `Task<T>` per invocation.
+
+## [2026-10-01] Use Microsoft Testing Platform filters for TUnit projects
+- **What happened:** A focused `dotnet test` invocation used the VSTest `--filter` option, which the repository's Microsoft Testing Platform/TUnit runner rejected.
+- **Root cause:** The test project runs as a Microsoft Testing Platform executable and supports `--filter-uid` or `--treenode-filter`, not the legacy VSTest filter syntax.
+- **Fix:** Ran the complete TUnit project, which passed all 439 tests.
+- **Prevention:** Use the test application's advertised Microsoft Testing Platform options for focused TUnit runs; do not assume VSTest `--filter` is available.
+
+## [2026-10-01] Prefer provider migration APIs over executing generated SQL directly
+- **What happened:** The history-table bootstrap executed `GetCreateIfNotExistsScript()` through `ExecuteSqlRawAsync`, which was idempotent sequentially but bypassed provider handling for concurrent creation races.
+- **Root cause:** Generated SQL captures database syntax but not all provider-specific exception handling around that operation.
+- **Fix:** Call `IHistoryRepository.CreateIfNotExistsAsync` so the active provider owns both the SQL and its concurrency behavior.
+- **Prevention:** When EF exposes an operation method alongside a generated-script method, prefer the operation method unless the script must be composed into a larger transaction.
+
+## [2026-10-01] Full solution builds require all Aspire project resources to release assemblies
+- **What happened:** A full solution build still encountered a locked `ServiceDefaults.dll` after the `backend` and `web` resources were stopped.
+- **Root cause:** The independently hosted `planner-hosted` project also references `ServiceDefaults` and remained alive while the broader solution build tried to replace its output.
+- **Fix:** Allowed the orphaned hosted-agent process to exit, then reran the clean solution build and full TUnit suite before restarting Aspire.
+- **Prevention:** Prefer resource-specific rebuilds during development; before a full solution build, stop every running Aspire project resource that consumes shared assemblies, not only the projects directly changed.
+
+## [2026-09-29] Compositional select values may display enum keys instead of item labels
+- **What happened:** The import-kind combobox rendered the bound internal value (`Registration`) instead of its longer organizer-facing option text.
+- **Root cause:** The compositional `BbSelectItem` children register their display text when the popover opens, so a closed, already-selected field cannot always resolve the option label on initial render.
+- **Fix:** Provide an explicit `DisplayTextSelector` for import kinds, matching the existing event selector's lookup pattern, and assert the friendly label in the bUnit render test.
+- **Prevention:** For preselected `BbFormFieldSelect` values, verify the closed field's accessible/display text in bUnit and provide a `DisplayTextSelector` when child options do not resolve before the popover opens.
+
+## [2026-09-21] Persisting an archive path requires a data backfill
+- **What happened:** The initial stable archive-path migration added a nullable column but did not preserve locations already published to GitHub.
+- **Root cause:** Runtime initialization only protects future projections; it cannot recover the prior canonical location once mutable event metadata changes.
+- **Fix:** The migration derives existing paths from `GitHubFolderUrl` when available, then backfills deterministic legacy-style paths for remaining events.
+- **Prevention:** Whenever a mutable, derived value becomes persisted identity, add a data backfill for existing rows and review its compatibility with the previous derivation.
+
+## [2026-09-21] Validate review state against current code
+- **What happened:** A prior CodeRabbit review retained a `CHANGES_REQUESTED` verdict even after its inline threads were resolved, and several low-risk maintainability findings were still valid in the current branch.
+- **Root cause:** Review verdicts and inline-thread state are separate GitHub records, while the original implementation still used raw outbox identifiers and undocumented public members.
+- **Fix:** Added Vogen identifiers and EF conversions, documented the outbox model and DbSet, and converted the archive migration to a file-scoped namespace; verified the solution build and all 334 unit tests.
+- **Prevention:** Re-check both live review threads and review records, and validate the current checkout before treating a stale review verdict as code-complete.
+
+## [2026-09-13] Outbox leases must be claimed and released durably
+- **What happened:** The first archive outbox worker draft selected a row and saved its lease in a separate step, and failures left the lease and retry schedule unchanged.
+- **Root cause:** A read-then-update lease is not safe when multiple worker instances run, and logging an exception without persisting retry state loses operational recovery information.
+- **Fix:** The worker now claims rows inside a serializable transaction, persists attempt counts, and records exponential backoff, cleared leases, and bounded error text after failures.
+- **Prevention:** Treat outbox claiming and failure state as durable state transitions; review scale-out and crash recovery explicitly before relying on a background worker.
+
 ## [2026-08-04] Blazor Server persona-switch links must force a real navigation, not an in-app `<a href>` intercepted by enhanced navigation
 - **What happened:** `DevPersonaToolbar`'s persona links were originally plain `<a href="/dev/persona/{key}?returnUrl=...">` elements. In the real running app (Blazor Web App with `@rendermode InteractiveServer`), clicking them was intercepted by Blazor's client-side "enhanced navigation" instead of causing a genuine full-page HTTP request. The `GET /dev/persona/{key}` endpoint (and its `Set-Cookie` + redirect) never actually executed on the server for that click, so the persona never switched, and the existing SignalR circuit's cached `AuthenticationState` was never re-evaluated.
 - **Root cause:** Blazor Web Apps intercept same-origin anchor clicks by default to route them through the existing circuit for a faster perceived navigation, unless the request targets a genuinely different origin/scheme or `forceLoad` is explicitly requested. A plain `<a href>` gives Blazor no signal that this particular navigation must bypass the circuit and hit the server fresh — which is required here because the Layer 2 cookie-setting endpoint's response can only take effect via a full page load (the SSR-rendered identity is derived once per circuit).
@@ -709,3 +811,64 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - Blazor E2E tests must await enabled actions and updated focus status before keyboard activation or resolving nodes after rerender. Opportunity titles can repeat across members; wait until the focused neighborhood renders before asserting a unique accessible-name locator.
 
 - Normalize shared graph evidence in the response, not just within each edge. Keep community discovery independent of organizer-only consent. Clear tracked seed entities on retry replay. Browser screenshot setup must check toolbar state before toggling it.
+## [2026-10-01] Validate deterministic UI independently when Aspire dependencies are unhealthy
+- An unrelated EF `PendingModelChangesWarning` in the migration/backend startup path can keep the Aspire `web` resource behind its `WaitFor(backend)` gate even when the Web project and backend-independent pages compile correctly.
+- Read `backend` and `migration-service` logs first, preserve the failure as evidence, then validate deterministic UI slices with the Web host directly instead of weakening migrations or masking the dependency failure.
+
+## [2026-10-01] Never hand-write an EF migration without metadata and snapshot updates
+- **What happened:** A hand-written `AddClaimTokenToEventArchiveOutbox` class had no generated designer metadata, so EF did not discover it and continued to report pending model changes.
+- **Root cause:** The schema change was split between an undiscoverable migration and a rewrite of an already-published historical migration, leaving the migration chain ambiguous for clean and previously initialized databases.
+- **Fix:** Restored the historical migration, regenerated a complete migration plus designer and snapshot, and made its SQL reconcile databases where `ClaimToken` is either absent or already present.
+- **Prevention:** Generate migrations with `dotnet ef migrations add`, verify `has-pending-model-changes`, and test both clean-database and upgrade paths before changing published migration history.
+
+## [2026-10-01] Microsoft Testing Platform does not accept VSTest logger arguments
+- **What happened:** The first targeted E2E invocation ran zero tests because `--logger` is not supported by this repository's Microsoft Testing Platform runner.
+- **Root cause:** The command used a VSTest CLI option even though the project uses `MSTest.Sdk`'s executable test runner.
+- **Fix:** Re-ran with `--output Detailed`; all three targeted Playwright tests passed.
+- **Prevention:** Use the runner's displayed options (`--output`, `--report-trx`) rather than VSTest-only arguments for this test project.
+
+## 2026-09-21 — Import wizard scope correction
+The original backend implementation deferred the organizer UI, but the PRD success criterion requires a non-technical organizer workflow. The `/imports` wizard was added as a follow-up, and the docs were corrected to describe the UI as implemented rather than out of scope.
+
+## [2026-09-24] Distinguish zero-job workflow records from PR security failures
+- **What happened:** GitHub showed repeated failures named `.github/workflows/security-scan.yml` for push events on the PR branch, while the PR's actual `Security` check passed.
+- **Root cause:** The workflow-path records had zero jobs and zero check-runs on every observed commit, so they do not represent a gitleaks execution or a code failure. The checked-in workflow is pull-request-only, and the active PR security jobs completed successfully.
+- **Fix:** No source or workflow change was made; classify the records as a pre-existing GitHub workflow-registration/history anomaly rather than PR-caused or transient runner infrastructure.
+- **Prevention:** Always inspect event type plus job/check-run count before treating a workflow-path failure as a failed security scan; corroborate with the named PR check and repeated-run behavior.
+
+- **BbFileUpload replacement:** `MaxFileCount` counts files already in the queue, so `MaxFileCount="1"` rejects every replacement ("Maximum 1 files allowed") and the old file silently stays selected. For single-file flows, omit `MaxFileCount` and rely on non-`Multiple` mode, which clears the queue before adding. Verify replacement with a bUnit `InputFile.UploadFiles` test that uploads twice.
+
+
+- **Compositional BB selects need DisplayTextSelector whenever a value is preselected.** Items register their text only when the popover opens, so a closed select with a data-driven value (e.g. the default import template) renders the raw id. Map the value to its label with `DisplayTextSelector`.
+
+- **NavMenu event context must parse query strings.** `ToBaseRelativePath` keeps `?query`, so `/imports?eventId=…` (and `/events/{id}?x`) was never recognized as an event route and event-scoped links vanished. Strip the query before splitting segments, and read `eventId` from it where the route carries it there.
+- **Minimal API DbContext params in shared endpoint groups need `[FromServices]`.** Test hosts that don't register the DbContext otherwise fail endpoint metadata inference for the whole group ("Body was inferred").
+
+- **Guard messages must render next to the action that triggers them.** An early-return validation guard in the import wizard wrote to a status region at the top of the page, so clicking 'Run validation' appeared to do nothing. Also, stale query IDs (e.g. `?eventId=` after a reseed) must show a visible notice instead of silently leaving the selection empty.
+
+## [2026-10-01] Generated EF migrations can misclassify snapshot drift as a new column
+
+- **What happened:** The Community Passport migration attempted to add `EventArchiveOutboxMessages.ClaimToken`, and the live Aspire database rejected it because the column already existed.
+- **Root cause:** The table-creation migration already contained `ClaimToken`, but the model snapshot did not. EF therefore generated an `AddColumn` operation when the model later constrained the property to 32 characters.
+- **Fix:** Replaced the invalid add/drop operations with reversible `AlterColumn` operations from `text` to `character varying(32)`, then verified the migration against the live Postgres resource.
+- **Prevention:** Before accepting a generated migration, compare every unrelated operation against earlier migrations and run it through the real Aspire database; snapshot drift can compile cleanly while producing invalid DDL.
+
+## [2026-10-01] Build and test gates must not share output files concurrently
+
+- **What happened:** Running the full solution build and TUnit suite in parallel produced compiler file-lock failures and enough resource contention to trigger unrelated bUnit timeouts.
+- **Root cause:** Both commands wrote the same project `obj` and `bin` outputs while the tests were loading those assemblies.
+- **Fix:** Re-ran the TUnit suite and solution build sequentially; both completed cleanly.
+- **Prevention:** Run build and test gates sequentially when they share project outputs. Parallelize only read-only validation such as diff checks.
+## [2026-10-07] Security-sensitive read models must share the same identity boundary
+- **What happened:** Replacing an insecure ownership join in the primary Passport read model left an alternate Community Journey projection independently querying registrations by mutable email.
+- **Root cause:** Sibling read models implemented the same ownership concept separately and did not share the immutable member-identity boundary.
+- **Fix:** Member-specific participation reads now use `Registration.CommunityMemberId` throughout Passport and Journey projections; profile email remains display and contact data only.
+- **Prevention:** After security remediation, search all sibling read models and endpoints for the original join key, then rerun the security review against the complete attack surface.
+
+## [2026-10-01] Fresh-database EF history probes can look like migration failures
+- **What happened:** Aspire displayed an error-level `SELECT` against `__EFMigrationsHistory` even though EF caught the missing-table exception, applied every migration, and exited successfully.
+- **Root cause:** On a fresh PostgreSQL database, the provider's migration-history existence probe reads the table and treats the expected undefined-table response as control flow; command logging still records that probe as an error.
+- **Fix:** Execute the provider-generated `CREATE TABLE IF NOT EXISTS` history script before `MigrateAsync`, avoiding the exception-driven probe without suppressing genuine EF command failures.
+- **Prevention:** Validate one-shot migration resources by exit code, terminal success log, and structured error logs. Test both fresh and existing databases, and never globally filter `RelationalEventId.CommandError` to hide an expected startup probe.
+
+- Merging new privacy enums requires an explicit visibility allow-list, not exclusion of only the formerly most restrictive value. Reconcile granular discovery consent and parallel activity names at the graph/Passport boundary.

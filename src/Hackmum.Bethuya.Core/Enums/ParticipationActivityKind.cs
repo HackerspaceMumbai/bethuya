@@ -13,14 +13,18 @@ public enum ParticipationActivityKind
     JoinedCommunity,
     MessageEngaged,
     Other,
-    /// <summary>Verified delivery of a session.</summary>
+    Mentored,
     Spoke,
-    /// <summary>Verified project contribution.</summary>
+    Organized,
+    ProjectContributed,
+    ContentCreated,
+    Maintained,
+    Moderated,
+    LedProgram,
+    /// <summary>Verified project contribution from graph ingestion.</summary>
     ContributedProject,
     /// <summary>Verified chapter membership.</summary>
     JoinedChapter,
-    /// <summary>Verified mentorship of the target member.</summary>
-    Mentored,
     /// <summary>Verified use of a technology during participation.</summary>
     UsedTechnology
 }

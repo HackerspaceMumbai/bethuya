@@ -64,3 +64,5 @@ Identity resolution is intentionally global across the Participation Ledger. Thi
 Both authorization assumptions raised in the security review are accepted as intended behavior. The duplicated relationship evidence finding is resolved by snapshot-level evidence records referenced through EvidenceIds on relationships and opportunities. No supporting proof is dropped. A dense 400-record regression enforces a 2 MB serialized payload budget and JSON round-trip integrity.
 
 Verified attendance and volunteering require an internal EventId or complete Event target; unverified legacy inputs retain their previous behavior. The development seeder clears tracked state before each retry attempt.
+
+After integrating the granular Passport privacy controls, graph membership also requires relationship insights. Private and organizer-only peer profiles are excluded. Shared-attendance discovery requires collaborator opt-in on both members; opportunity suggestions require opportunity opt-in plus their speaker, collaborator or mentorship category preference. Both project contribution activity names are recognized across the graph and Passport.

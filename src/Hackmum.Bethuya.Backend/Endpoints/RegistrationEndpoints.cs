@@ -40,6 +40,7 @@ public static class RegistrationEndpoints
             CreateRegistrationRequest request,
             IRegistrationRepository repo,
             IAttendeeProfileRepository profileRepo,
+            CommunityPassportService passportService,
             InclusionSignalsNormalizer inclusionSignalsNormalizer,
             ClaimsPrincipal user,
             CancellationToken ct) =>
@@ -50,16 +51,26 @@ public static class RegistrationEndpoints
                     ["intent"] = ["Why do you want to attend this event? is required."]
                 });
 
-            var profileInclusionSource = await ResolveProfileInclusionSourceAsync(user, request.Email, profileRepo, ct);
+            var email = request.Email.Trim();
+            var profileInclusionSource = await ResolveProfileInclusionSourceAsync(user, email, profileRepo, ct);
             var inclusionSignals = profileInclusionSource is not null
                 ? inclusionSignalsNormalizer.FromSource(profileInclusionSource)
                 : new InclusionSignals();
+            var subject = user.GetSubject();
+            var member = subject is null
+                ? null
+                : await passportService.EnsureMemberProvisionedAsync(subject, ct);
+            var memberId = member is not null
+                && string.Equals(email, member.Email, StringComparison.OrdinalIgnoreCase)
+                    ? member.Id
+                    : (Hackmum.Bethuya.Core.ValueObjects.CommunityMemberId?)null;
 
             var reg = new Registration
             {
                 EventId = request.EventId,
+                CommunityMemberId = memberId,
                 FullName = request.FullName,
-                Email = request.Email,
+                Email = email,
                 Bio = request.Bio,
                 Interests = request.Interests,
                 Intent = request.Intent.Trim(),

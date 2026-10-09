@@ -33,7 +33,9 @@ public sealed class CommunityJourneyReadModelService(
     {
         var member = await communityPassportService.EnsureMemberProvisionedAsync(subject, ct);
 
-        var registrations = await QueryRegistrationsByEmail(member.Email)
+        var registrations = await db.Registrations
+            .AsNoTracking()
+            .Where(registration => registration.CommunityMemberId == member.Id)
             .OrderByDescending(registration => registration.UpdatedAt)
             .ToListAsync(ct);
 
@@ -172,18 +174,6 @@ public sealed class CommunityJourneyReadModelService(
             Attendance: attendance,
             VolunteerGrowth: volunteerGrowth,
             LeadershipFunnel: funnel);
-    }
-
-    private IQueryable<Registration> QueryRegistrationsByEmail(string email)
-    {
-        var query = db.Registrations.AsNoTracking();
-        if (db.Database.IsNpgsql())
-        {
-            var pattern = EscapeLikePattern(email.Trim());
-            return query.Where(registration => EF.Functions.ILike(registration.Email, pattern));
-        }
-
-        return query.Where(registration => string.Equals(registration.Email, email, StringComparison.OrdinalIgnoreCase));
     }
 
     private static List<JourneyTimelineEntryResponse> BuildTimeline(
@@ -488,12 +478,6 @@ public sealed class CommunityJourneyReadModelService(
         => denominator <= 0
             ? 0d
             : Math.Round(((double)numerator / denominator) * 100d, 2);
-
-    private static string EscapeLikePattern(string value)
-        => value
-            .Replace(@"\", @"\\", StringComparison.Ordinal)
-            .Replace("%", @"\%", StringComparison.Ordinal)
-            .Replace("_", @"\_", StringComparison.Ordinal);
 
     private readonly record struct CommunityMemberLookup(
         Hackmum.Bethuya.Core.ValueObjects.CommunityMemberId Id,
