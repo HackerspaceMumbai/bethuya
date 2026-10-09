@@ -413,6 +413,7 @@ public sealed class CommunityCommandCenterTests
         await Assert.That(cut.Markup).Contains("Community Graph");
         await Assert.That(cut.Markup).Contains("What is available now");
         await Assert.That(cut.Markup).Contains("What comes next");
+        await Assert.That(cut.Markup).DoesNotContain("Opportunity Engine");
     }
 
     [Test]

@@ -1,0 +1,103 @@
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+
+<section id="section-member-opportunities"
+         class="oe-section"
+         aria-labelledby="member-opportunities-heading"
+         data-test="member-opportunities-section">
+    <div class="oe-section__header">
+        <div>
+            <h2 id="member-opportunities-heading">Members Ready For Their Next Opportunity</h2>
+            <p>Prioritized recommendations based on verified participation evidence.</p>
+        </div>
+    </div>
+
+    <div class="oe-filters" data-test="opportunity-filters" role="group" aria-label="Opportunity filters">
+        @foreach (var filter in Filters)
+        {
+            <button type="button"
+                    class="@($"oe-filter{(ActiveFilter == filter.Category ? " oe-filter--active" : "")}")"
+                    data-test="@($"filter-{filter.Category.ToString().ToLowerInvariant()}")"
+                    aria-pressed="@(ActiveFilter == filter.Category ? "true" : "false")"
+                    @onclick="() => OnFilterChanged.InvokeAsync(filter.Category)">
+                @filter.Label
+                <span>@filter.Count</span>
+            </button>
+        }
+    </div>
+
+    <div class="oe-opportunity-list">
+        @foreach (var opportunity in FilteredOpportunities)
+        {
+            var isSelected = opportunity.OpportunityId == SelectedOpportunityId;
+            <article class="@($"oe-opportunity-card{(isSelected ? " oe-opportunity-card--selected" : "")}")"
+                     data-test="member-opportunity-card">
+                <div class="oe-opportunity-card__top">
+                    <div class="oe-opportunity-card__identity">
+                        <span class="oe-avatar" aria-hidden="true">@opportunity.MemberInitials</span>
+                        <div>
+                            <h3>
+                                @opportunity.MemberName
+                                @if (isSelected)
+                                {
+                                    <span class="oe-pill">Selected</span>
+                                }
+                            </h3>
+                            <p>@opportunity.OpportunityTitle (@opportunity.Category)</p>
+                        </div>
+                    </div>
+                    <span class="oe-evidence oe-evidence--@opportunity.EvidenceStrength.ToString().ToLowerInvariant()"
+                          data-test="evidence-strength">
+                        Evidence Strength: @opportunity.EvidenceStrength
+                    </span>
+                </div>
+                <div class="oe-opportunity-card__body">
+                    <p>
+                        <strong>Receipts:</strong>
+                        @string.Join(" • ", opportunity.Receipts)
+                    </p>
+                    <p>
+                        <strong>Current Pathway:</strong>
+                        @opportunity.CurrentPathway
+                    </p>
+                </div>
+                <div class="oe-opportunity-card__footer">
+                    <span>@opportunity.StatusDetail</span>
+                    <div data-test="inspect-opportunity-action">
+                        <BbButton Variant="ButtonVariant.Outline"
+                                  OnClick="() => OnInspect.InvokeAsync(opportunity.OpportunityId)">
+                            @(isSelected ? "Inspect Details" : "Inspect & Review")
+                        </BbButton>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MemberOpportunity> Opportunities { get; set; } = [];
+    [Parameter] public OpportunityCategory ActiveFilter { get; set; } = OpportunityCategory.All;
+    [Parameter] public string? SelectedOpportunityId { get; set; }
+    [Parameter] public EventCallback<OpportunityCategory> OnFilterChanged { get; set; }
+    [Parameter] public EventCallback<string> OnInspect { get; set; }
+
+    private IEnumerable<MemberOpportunity> FilteredOpportunities =>
+        ActiveFilter == OpportunityCategory.All
+            ? Opportunities
+            : Opportunities.Where(o => o.Category == ActiveFilter);
+
+    private IReadOnlyList<FilterItem> Filters =>
+    [
+        new(OpportunityCategory.All, "All Opportunities", Opportunities.Count),
+        new(OpportunityCategory.Contribute, "Contribute", Count(OpportunityCategory.Contribute)),
+        new(OpportunityCategory.Lead, "Lead", Count(OpportunityCategory.Lead)),
+        new(OpportunityCategory.Share, "Share", Count(OpportunityCategory.Share)),
+        new(OpportunityCategory.Connect, "Connect", Count(OpportunityCategory.Connect)),
+        new(OpportunityCategory.Recognize, "Recognize", Count(OpportunityCategory.Recognize))
+    ];
+
+    private int Count(OpportunityCategory category) =>
+        Opportunities.Count(o => o.Category == category);
+
+    private sealed record FilterItem(OpportunityCategory Category, string Label, int Count);
+}

@@ -1,0 +1,69 @@
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+
+<section id="section-risks-interventions"
+         class="oe-section oe-section--risk"
+         aria-labelledby="risks-heading"
+         data-test="risks-interventions-section">
+    <div class="oe-section__header">
+        <div>
+            <div class="oe-section__title-row">
+                <LucideIcon Name="hand-heart" Size="18" />
+                <h2 id="risks-heading">Risks &amp; Interventions</h2>
+            </div>
+            <p>Isolated care queue for volunteer fatigue, organizer burnout, and member retention risk.</p>
+        </div>
+        <span class="oe-pill oe-pill--warning">@Risks.Count Active Alerts</span>
+    </div>
+
+    <div class="oe-risk-list">
+        @foreach (var risk in Risks)
+        {
+            <article class="oe-risk-card" data-test="risk-intervention-card">
+                <div class="oe-risk-card__top">
+                    <span class="oe-avatar oe-avatar--warning" aria-hidden="true">@risk.MemberInitials</span>
+                    <div>
+                        <div class="oe-risk-card__title">
+                            <span class="oe-pill oe-pill--warning">@risk.Title</span>
+                            <h3>@risk.MemberName</h3>
+                            <span>(@risk.MemberRole)</span>
+                        </div>
+                        <p>
+                            <strong>Signals:</strong>
+                            @string.Join(" • ", risk.Signals)
+                        </p>
+                    </div>
+                    <div class="oe-care-owner">
+                        Care Owner: <strong>@(risk.IsDeferred ? "Deferred" : risk.CareOwner)</strong>
+                    </div>
+                </div>
+                <div class="oe-risk-card__actions">
+                    <div data-test="risk-assign-support">
+                        <BbButton Variant="ButtonVariant.Outline"
+                                  OnClick="() => OnAssignSupport.InvokeAsync(risk.RiskId)">
+                            Assign Support Volunteers
+                        </BbButton>
+                    </div>
+                    <div data-test="risk-schedule-checkin">
+                        <BbButton Variant="ButtonVariant.Default"
+                                  OnClick="() => OnScheduleCheckIn.InvokeAsync(risk.RiskId)">
+                            Schedule Check-In
+                        </BbButton>
+                    </div>
+                    <div data-test="risk-defer">
+                        <BbButton Variant="ButtonVariant.Ghost"
+                                  OnClick="() => OnDefer.InvokeAsync(risk.RiskId)">
+                            Defer
+                        </BbButton>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<RiskIntervention> Risks { get; set; } = [];
+    [Parameter] public EventCallback<string> OnAssignSupport { get; set; }
+    [Parameter] public EventCallback<string> OnScheduleCheckIn { get; set; }
+    [Parameter] public EventCallback<string> OnDefer { get; set; }
+}

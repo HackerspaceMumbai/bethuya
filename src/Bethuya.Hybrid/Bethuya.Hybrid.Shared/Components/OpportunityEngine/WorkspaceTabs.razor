@@ -1,0 +1,53 @@
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+
+<nav class="oe-tabs" aria-label="Opportunity Engine workspaces" data-test="opportunity-workspace-tabs">
+    @foreach (var tab in Tabs)
+    {
+        <button type="button"
+                class="@GetTabClass(tab.Id)"
+                data-test="@($"workspace-tab-{GetSlug(tab.Id)}")"
+                aria-pressed="@(ActiveTab == tab.Id ? "true" : "false")"
+                @onclick="() => OnTabSelected.InvokeAsync(tab.Id)">
+            <LucideIcon Name="@tab.Icon" Size="15" />
+            <span>@tab.Label</span>
+            @if (!string.IsNullOrWhiteSpace(tab.Badge))
+            {
+                <span class="oe-tab-badge">@tab.Badge</span>
+            }
+        </button>
+    }
+</nav>
+
+@code {
+    [Parameter, EditorRequired] public OpportunityWorkspaceTab ActiveTab { get; set; }
+    [Parameter] public EventCallback<OpportunityWorkspaceTab> OnTabSelected { get; set; }
+    [Parameter] public int OpportunityCount { get; set; }
+    [Parameter] public int ChampionCount { get; set; }
+    [Parameter] public int RiskCount { get; set; }
+
+    private IReadOnlyList<TabItem> Tabs =>
+    [
+        new(OpportunityWorkspaceTab.CommunityNeeds, "Community Needs", "calendar-check", "Primary"),
+        new(OpportunityWorkspaceTab.MemberOpportunities, "Member Opportunities", "users", OpportunityCount.ToString()),
+        new(OpportunityWorkspaceTab.ChampionPipeline, "Champion Pipeline", "award", ChampionCount.ToString()),
+        new(OpportunityWorkspaceTab.RisksInterventions, "Risks & Interventions", "hand-heart", $"{RiskCount} Alert")
+    ];
+
+    private string GetTabClass(OpportunityWorkspaceTab tab)
+    {
+        var isActive = ActiveTab == tab;
+        var isRisk = tab == OpportunityWorkspaceTab.RisksInterventions;
+        return $"oe-tab{(isActive ? " oe-tab--active" : "")}{(isRisk ? " oe-tab--risk" : "")}";
+    }
+
+    private static string GetSlug(OpportunityWorkspaceTab tab) => tab switch
+    {
+        OpportunityWorkspaceTab.CommunityNeeds => "community-needs",
+        OpportunityWorkspaceTab.MemberOpportunities => "member-opportunities",
+        OpportunityWorkspaceTab.ChampionPipeline => "champion-pipeline",
+        OpportunityWorkspaceTab.RisksInterventions => "risks-interventions",
+        _ => "unknown"
+    };
+
+    private sealed record TabItem(OpportunityWorkspaceTab Id, string Label, string Icon, string Badge);
+}
