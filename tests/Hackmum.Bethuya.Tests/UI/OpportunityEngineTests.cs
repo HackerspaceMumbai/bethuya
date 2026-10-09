@@ -128,6 +128,12 @@ public sealed class OpportunityEngineTests
             .Contains("Cloud Native Day 2026");
         await Assert.That(cut.Find("[data-test='pathway-journey']").TextContent)
             .Contains("Recommended Speaker");
+
+        var scrollCalls = ctx.JSInterop.Invocations
+            .Where(i => i.Identifier == "bethuyaOpportunityEngine.scrollToSection")
+            .ToList();
+        await Assert.That(scrollCalls.Count).IsGreaterThan(0);
+        await Assert.That(scrollCalls[^1].Arguments[0] as string).IsEqualTo("section-selected-opportunity");
     }
 
     [Test]

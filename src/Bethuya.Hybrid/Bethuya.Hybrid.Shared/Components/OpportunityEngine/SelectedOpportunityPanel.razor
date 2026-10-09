@@ -1,6 +1,10 @@
 @using Bethuya.Hybrid.Shared.Models.OpportunityEngine
 
-<aside class="oe-detail-panel" data-test="selected-opportunity-panel" aria-label="Selected opportunity">
+<aside id="section-selected-opportunity"
+       class="oe-detail-panel"
+       data-test="selected-opportunity-panel"
+       aria-label="Selected opportunity"
+       tabindex="-1">
     @if (Opportunity is null)
     {
         <div class="oe-detail-empty" data-test="opportunity-panel-empty">

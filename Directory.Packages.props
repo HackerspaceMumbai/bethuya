@@ -55,8 +55,6 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.5.3" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
-    <PackageVersion Include="ClosedXML" Version="0.105.0" />
-    <PackageVersion Include="CsvHelper" Version="33.1.0" />
     <!-- Aspire hosting for Key Vault (AppHost) - provisions Key Vault; azd stores secret params here -->
     <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.5.3" />
     <!-- Aspire hosting for Keycloak (AppHost - local OIDC testing) -->

@@ -113,7 +113,7 @@
             return;
         }
 
-        await Js.InvokeVoidAsync("bethuyaOpportunityEngine.scrollToSection", sectionId);
+        await ScrollToSectionAsync(sectionId);
     }
 
     private Task SelectEventAsync(string eventId)
@@ -134,8 +134,13 @@
         _selectedChampionId = null;
         _activeTab = OpportunityWorkspaceTab.MemberOpportunities;
         _actionMessage = null;
-        await SelectTabAsync(OpportunityWorkspaceTab.MemberOpportunities);
+        // On stacked (narrow) layouts the detail panel sits below the workspace sections;
+        // scroll there so View Matches / Inspect land on evidence + approval actions.
+        await ScrollToSectionAsync("section-selected-opportunity");
     }
+
+    private async Task ScrollToSectionAsync(string sectionId) =>
+        await Js.InvokeVoidAsync("bethuyaOpportunityEngine.scrollToSection", sectionId);
 
     private Task DeferOpportunityAsync()
     {
