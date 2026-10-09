@@ -176,3 +176,244 @@ public sealed record UpdateCommunityPassportPrivacyRequest(
     ProfileVisibilityScope Visibility,
     bool ShareParticipationWithOrganizers,
     bool IsDiscoverableToCommunity);
+
+/// <summary>
+/// Versioned aggregate used by the unified Community Passport experience.
+/// </summary>
+public sealed record CommunityPassportExperienceResponse(
+    string SchemaVersion,
+    PassportViewerResponse Viewer,
+    PassportIdentitySummaryResponse Identity,
+    CommunityStoryResponse CommunityStory,
+    IReadOnlyList<CommunitySignalResponse> Signals,
+    IReadOnlyList<GrowthPathwayResponse> Journey,
+    IReadOnlyList<PassportContributionResponse> Contributions,
+    IReadOnlyList<ActivityDayResponse> Activity,
+    PassportPortfolioResponse Portfolio,
+    IReadOnlyList<PassportConnectionResponse> Connections,
+    IReadOnlyList<PassportOpportunityResponse> Opportunities,
+    PassportPrivacyPreferencesResponse Privacy,
+    PassportResidencyResponse Residency);
+
+/// <summary>
+/// Describes how the current viewer may interact with the passport.
+/// </summary>
+public sealed record PassportViewerResponse(
+    bool IsOwner,
+    bool IsOrganizer,
+    bool CanEdit,
+    bool IsParticipationRedacted);
+
+/// <summary>
+/// Member identity fields shown in the passport hero.
+/// </summary>
+public sealed record PassportIdentitySummaryResponse(
+    Guid MemberId,
+    string DisplayName,
+    string Email,
+    string Initials,
+    string CommunityName,
+    DateTimeOffset MemberSince,
+    string? OccupationStatus,
+    string? Affiliation);
+
+/// <summary>
+/// Evidence-backed member journey narrative.
+/// </summary>
+public sealed record CommunityStoryResponse(
+    string Narrative,
+    IReadOnlyList<string> Evidence);
+
+/// <summary>
+/// Explainable community participation signal.
+/// </summary>
+public sealed record CommunitySignalResponse(
+    CommunitySignalKind Kind,
+    string Label,
+    bool IsOrganizerAwarded,
+    string Explanation,
+    IReadOnlyList<string> Evidence);
+
+/// <summary>
+/// One evidence-based growth pathway and its milestones.
+/// </summary>
+public sealed record GrowthPathwayResponse(
+    string Name,
+    string CurrentStage,
+    IReadOnlyList<GrowthMilestoneResponse> Milestones,
+    string Attestation = "Progress derived from verified participation evidence");
+
+/// <summary>
+/// One pathway milestone.
+/// </summary>
+public sealed record GrowthMilestoneResponse(
+    string Name,
+    string State,
+    string Explanation);
+
+/// <summary>
+/// Human-friendly normalized participation record.
+/// </summary>
+public sealed record PassportContributionResponse(
+    Guid Id,
+    string Type,
+    string Title,
+    string Description,
+    string Community,
+    string ImpactArea,
+    DateTimeOffset OccurredAt,
+    bool IsVerified,
+    bool IsLedgerEvidence,
+    Guid? EventId = null,
+    string Attestation = "Recorded participation evidence");
+
+/// <summary>
+/// Daily contribution count used by the accessible activity graph.
+/// </summary>
+public sealed record ActivityDayResponse(
+    DateOnly Date,
+    int Count,
+    IReadOnlyList<string> Activities);
+
+/// <summary>
+/// Verified and member-curated portfolio projection.
+/// </summary>
+public sealed record PassportPortfolioResponse(
+    IReadOnlyList<VerifiedPortfolioHighlightResponse> VerifiedHighlights,
+    IReadOnlyList<PortfolioEntryResponse> Entries);
+
+/// <summary>
+/// Automatically projected portfolio highlight.
+/// </summary>
+public sealed record VerifiedPortfolioHighlightResponse(
+    string Title,
+    string Description,
+    string Evidence);
+
+/// <summary>
+/// Member-curated portfolio entry.
+/// </summary>
+public sealed record PortfolioEntryResponse(
+    Guid Id,
+    string Title,
+    string Description,
+    bool IsFeatured,
+    int DisplayOrder,
+    IReadOnlyList<PortfolioLinkResponse> Links,
+    IReadOnlyList<Guid> EvidenceEntryIds);
+
+/// <summary>
+/// Typed external portfolio link.
+/// </summary>
+public sealed record PortfolioLinkResponse(
+    PortfolioLinkKind Kind,
+    string Url,
+    string? Label);
+
+/// <summary>
+/// Contextual relationship summary.
+/// </summary>
+public sealed record PassportConnectionResponse(
+    Guid MemberId,
+    string DisplayName,
+    CommunityRelationshipKind Kind,
+    string Context,
+    string Explanation);
+
+/// <summary>
+/// Opportunity history with lifecycle and outcome.
+/// </summary>
+public sealed record PassportOpportunityResponse(
+    Guid Id,
+    MemberOpportunityKind Kind,
+    string Title,
+    string Description,
+    MemberOpportunityStatus CurrentStatus,
+    string? Outcome,
+    DateTimeOffset OfferedAt,
+    IReadOnlyList<OpportunityLifecycleEventResponse> Lifecycle);
+
+/// <summary>
+/// One opportunity lifecycle transition.
+/// </summary>
+public sealed record OpportunityLifecycleEventResponse(
+    MemberOpportunityStatus Status,
+    DateTimeOffset OccurredAt,
+    string Explanation);
+
+/// <summary>
+/// Complete member privacy, consent, and discovery preferences.
+/// </summary>
+public sealed record PassportPrivacyPreferencesResponse(
+    ProfileVisibilityScope Visibility,
+    bool ShareParticipationWithOrganizers,
+    bool AppearInMentorshipRecommendations,
+    bool AppearInOpportunityRecommendations,
+    bool AppearInCollaboratorDiscovery,
+    bool AppearInSpeakerRecommendations,
+    bool AppearInVolunteerLeadershipRecommendations,
+    bool EnableRelationshipInsights,
+    bool ReceiveOpportunityRecommendations);
+
+/// <summary>
+/// Updates the complete privacy and discovery preference set.
+/// </summary>
+public sealed record UpdatePassportPrivacyPreferencesRequest(
+    ProfileVisibilityScope Visibility,
+    bool ShareParticipationWithOrganizers,
+    bool AppearInMentorshipRecommendations,
+    bool AppearInOpportunityRecommendations,
+    bool AppearInCollaboratorDiscovery,
+    bool AppearInSpeakerRecommendations,
+    bool AppearInVolunteerLeadershipRecommendations,
+    bool EnableRelationshipInsights,
+    bool ReceiveOpportunityRecommendations);
+
+/// <summary>
+/// Creates or updates a member-curated portfolio entry.
+/// </summary>
+public sealed record UpsertPortfolioEntryRequest(
+    string Title,
+    string Description,
+    bool IsFeatured,
+    int DisplayOrder,
+    IReadOnlyList<PortfolioLinkResponse> Links,
+    IReadOnlyList<Guid> EvidenceEntryIds);
+
+/// <summary>
+/// Reorders the current member's portfolio entries.
+/// </summary>
+public sealed record ReorderPortfolioEntriesRequest(
+    IReadOnlyList<Guid> EntryIds);
+
+/// <summary>
+/// Organizer request to award Champion recognition.
+/// </summary>
+public sealed record AwardChampionSignalRequest(
+    string Rationale,
+    IReadOnlyList<Guid> EvidenceEntryIds);
+
+/// <summary>
+/// Organizer request to revoke Champion recognition.
+/// </summary>
+public sealed record RevokeChampionSignalRequest(
+    string Reason);
+
+/// <summary>
+/// Organizer directory response.
+/// </summary>
+public sealed record CommunityPassportDirectoryResponse(
+    int TotalCount,
+    IReadOnlyList<CommunityPassportDirectoryEntryResponse> Entries);
+
+/// <summary>
+/// One privacy-filtered organizer directory entry.
+/// </summary>
+public sealed record CommunityPassportDirectoryEntryResponse(
+    Guid MemberId,
+    string DisplayName,
+    string Community,
+    string? OccupationStatus,
+    IReadOnlyList<string> Signals,
+    DateTimeOffset MemberSince,
+    bool IsParticipationShared);

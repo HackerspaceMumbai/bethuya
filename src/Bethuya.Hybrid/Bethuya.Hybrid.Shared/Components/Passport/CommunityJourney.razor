@@ -1,0 +1,61 @@
+@{
+    var active = Journey.Where(pathway => pathway.CurrentStage != "Getting started").ToArray();
+    var future = Journey.Where(pathway => pathway.CurrentStage == "Getting started").ToArray();
+}
+
+<section class="passport-section journey-section" aria-labelledby="journey-heading" data-test="passport-journey">
+    <div class="section-heading">
+        <div>
+            <p class="section-eyebrow">Growth through participation</p>
+            <h2 id="journey-heading"><LucideIcon Name="route" Size="20" /> Living Community Journey</h2>
+            <p>Multi-track pathways shaped by active community roles and verified contribution.</p>
+        </div>
+        <BbBadge Variant="BadgeVariant.Outline">Multi-pathway</BbBadge>
+    </div>
+    <div class="pathway-stack">
+        @foreach (var pathway in active)
+        {
+            <article class="pathway-card">
+                <header>
+                    <div class="pathway-icon" aria-hidden="true"><LucideIcon Name="@PassportPresentation.JourneyIcon(pathway.Name)" Size="16" /></div>
+                    <div>
+                        <h3>@PassportPresentation.JourneyTitle(pathway.Name)</h3>
+                        <p>@pathway.CurrentStage</p>
+                    </div>
+                    <span>@pathway.Milestones.Count(milestone => milestone.State is "Completed" or "Current") / @pathway.Milestones.Count milestones</span>
+                </header>
+                <ol class="journey-rail">
+                    @foreach (var milestone in pathway.Milestones)
+                    {
+                        <li class="journey-node journey-node--@milestone.State.ToLowerInvariant()">
+                            <span class="journey-dot" aria-hidden="true"></span>
+                            <strong>@milestone.Name</strong>
+                            <small>@milestone.Explanation</small>
+                        </li>
+                    }
+                </ol>
+                <footer><LucideIcon Name="badge-check" Size="13" /> @pathway.Attestation</footer>
+            </article>
+        }
+        @if (active.Length == 0)
+        {
+            <p class="empty-copy">The first verified contribution will begin a Bethuya growth pathway.</p>
+        }
+        @if (future.Length > 0)
+        {
+            <footer class="future-pathways">
+                <span>Future pathways to explore</span>
+                <div>
+                    @foreach (var pathway in future)
+                    {
+                        <span><LucideIcon Name="@PassportPresentation.JourneyIcon(pathway.Name)" Size="12" /> @PassportPresentation.JourneyTitle(pathway.Name)</span>
+                    }
+                </div>
+            </footer>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<GrowthPathwayDto> Journey { get; set; } = [];
+}

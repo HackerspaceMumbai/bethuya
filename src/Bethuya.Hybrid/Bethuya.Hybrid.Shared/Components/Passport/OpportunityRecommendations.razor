@@ -1,0 +1,54 @@
+@{
+    var next = Opportunities.OrderByDescending(item => item.OfferedAt).FirstOrDefault();
+}
+
+<section class="passport-section recommendations-section" id="opportunities" aria-labelledby="opportunities-heading" data-test="passport-opportunities">
+    <div class="section-heading">
+        <div>
+            <p class="section-eyebrow">Opportunity Engine output</p>
+            <h2 id="opportunities-heading"><LucideIcon Name="wand-sparkles" Size="20" /> What’s Next</h2>
+            <p>Explainable recommendations grounded in verified participation.</p>
+        </div>
+        <BbBadge>Curated</BbBadge>
+    </div>
+    @if (next is not null)
+    {
+        <article class="recommendation-card">
+            <header><span>@next.Kind</span><small>@next.CurrentStatus</small></header>
+            <h3>@next.Title</h3>
+            <p>@next.Description</p>
+            <div class="eligibility-list">
+                <strong><LucideIcon Name="circle-check" Size="13" /> Relevant because</strong>
+                @foreach (var reason in PassportPresentation.EligibilityReasons(next))
+                {
+                    <span><LucideIcon Name="check" Size="12" /> @reason</span>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(next.Outcome))
+            {
+                <p class="outcome"><strong>Outcome:</strong> @next.Outcome</p>
+            }
+        </article>
+    }
+    else
+    {
+        <div class="empty-opportunity">
+            <LucideIcon Name="compass" Size="22" />
+            <strong>No active recommendation</strong>
+            <p>Bethuya will surface explainable pathways as verified participation grows.</p>
+        </div>
+    }
+    @if (Opportunities.Count > 1)
+    {
+        <div class="opportunity-history">
+            @foreach (var opportunity in Opportunities.Skip(1).Take(3))
+            {
+                <div><span>@opportunity.Title</span><small>@opportunity.CurrentStatus</small></div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PassportOpportunityDto> Opportunities { get; set; } = [];
+}

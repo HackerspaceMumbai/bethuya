@@ -1,0 +1,6 @@
+/* BB has action and dialog primitives but no organizer review rail around the shared passport composition. */
+.organizer-toolbar { max-width:86rem; margin:0 auto; padding:1rem clamp(1rem,3vw,2.5rem) 0; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.champion-actions { display:flex; gap:.6rem; }.page-message { max-width:81rem; margin:1rem auto 0; padding:0 1rem; }
+.dialog-form { display:grid; gap:1rem; }.form-group { display:grid; gap:.45rem; }
+fieldset { display:grid; gap:.5rem; max-height:15rem; overflow:auto; border:1px solid var(--hs-border); border-radius:.65rem; padding:.8rem; } legend { padding:0 .3rem; font-weight:700; }
+fieldset label { display:flex; align-items:flex-start; gap:.6rem; font-size:.85rem; } fieldset small { display:block; color:var(--hs-muted-foreground); }

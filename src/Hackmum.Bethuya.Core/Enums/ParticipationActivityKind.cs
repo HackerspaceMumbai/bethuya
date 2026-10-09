@@ -12,5 +12,13 @@ public enum ParticipationActivityKind
     SubmittedSession,
     JoinedCommunity,
     MessageEngaged,
-    Other
+    Other,
+    Mentored,
+    Spoke,
+    Organized,
+    ProjectContributed,
+    ContentCreated,
+    Maintained,
+    Moderated,
+    LedProgram
 }

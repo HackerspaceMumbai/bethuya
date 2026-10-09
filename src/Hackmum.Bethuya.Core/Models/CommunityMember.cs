@@ -53,6 +53,34 @@ public sealed class CommunityMember
     /// </summary>
     public bool IsDiscoverableToCommunity { get; set; } = true;
     /// <summary>
+    /// Whether the member may appear in mentorship discovery.
+    /// </summary>
+    public bool AppearInMentorshipRecommendations { get; set; } = true;
+    /// <summary>
+    /// Whether the member may appear in opportunity discovery.
+    /// </summary>
+    public bool AppearInOpportunityRecommendations { get; set; } = true;
+    /// <summary>
+    /// Whether the member may appear in collaborator discovery.
+    /// </summary>
+    public bool AppearInCollaboratorDiscovery { get; set; } = true;
+    /// <summary>
+    /// Whether the member may appear in speaker discovery.
+    /// </summary>
+    public bool AppearInSpeakerRecommendations { get; set; } = true;
+    /// <summary>
+    /// Whether the member may appear in volunteer leadership discovery.
+    /// </summary>
+    public bool AppearInVolunteerLeadershipRecommendations { get; set; } = true;
+    /// <summary>
+    /// Whether relationship intelligence may be generated for the member.
+    /// </summary>
+    public bool EnableRelationshipInsights { get; set; } = true;
+    /// <summary>
+    /// Whether proactive opportunity recommendations may be delivered.
+    /// </summary>
+    public bool ReceiveOpportunityRecommendations { get; set; } = true;
+    /// <summary>
     /// Residency region label used for policy routing.
     /// </summary>
     public string ResidencyRegion { get; set; } = "South India";
@@ -82,4 +110,24 @@ public sealed class CommunityMember
     /// Unified participation ledger entries linked to this member.
     /// </summary>
     public List<ParticipationLedgerEntry> ParticipationLedgerEntries { get; init; } = [];
+
+    /// <summary>
+    /// Event registrations securely linked to this member identity.
+    /// </summary>
+    public List<Registration> Registrations { get; init; } = [];
+
+    /// <summary>
+    /// Member-curated portfolio entries.
+    /// </summary>
+    public List<CommunityPortfolioEntry> PortfolioEntries { get; init; } = [];
+
+    /// <summary>
+    /// Opportunities offered to this member.
+    /// </summary>
+    public List<MemberOpportunity> Opportunities { get; init; } = [];
+
+    /// <summary>
+    /// Explicit community recognition awards.
+    /// </summary>
+    public List<CommunitySignalAward> SignalAwards { get; init; } = [];
 }

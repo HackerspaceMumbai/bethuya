@@ -1,0 +1,39 @@
+@{
+    var roles = PassportPresentation.Roles(Model);
+    var recognition = PassportPresentation.Recognition(Model);
+    var attestations = Model.Contributions
+        .Select(PassportPresentation.ContributionProvenance)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Take(4)
+        .ToArray();
+}
+
+<section class="passport-section trust-context" aria-labelledby="trust-context-heading" data-test="passport-trust-context">
+    <div class="section-heading">
+        <div>
+            <p class="section-eyebrow">Trust &amp; provenance</p>
+            <h2 id="trust-context-heading"><LucideIcon Name="shield-check" Size="20" /> How to Read This Passport</h2>
+            <p>Roles describe participation. Recognition records explicit human acknowledgement.</p>
+        </div>
+    </div>
+    <dl class="trust-definitions">
+        <div>
+            <dt>Roles</dt>
+            <dd>@(roles.Count == 0 ? "No verified role yet" : string.Join(", ", roles.Select(item => item.Label)))</dd>
+        </div>
+        <div>
+            <dt>Recognition</dt>
+            <dd>@(recognition.Count == 0 ? "No organizer-awarded recognition yet" : string.Join(", ", recognition.Select(item => item.Label)))</dd>
+        </div>
+    </dl>
+    <div class="attestation-list" aria-label="Evidence sources and attestations">
+        @foreach (var attestation in attestations)
+        {
+            <span><LucideIcon Name="badge-check" Size="12" /> @attestation</span>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public CommunityPassportExperienceDto Model { get; set; } = default!;
+}

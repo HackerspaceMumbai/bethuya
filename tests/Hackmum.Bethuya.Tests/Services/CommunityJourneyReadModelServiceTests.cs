@@ -73,6 +73,14 @@ public sealed class CommunityJourneyReadModelServiceTests
             .Where(member => member.UserId == subject.UserId)
             .Select(member => member.Id)
             .SingleAsync();
+        var linkedRegistrations = await db.Registrations
+            .Where(registration => registration.EventId == lifecycleEvent.Id)
+            .ToListAsync();
+        foreach (var registration in linkedRegistrations)
+        {
+            registration.CommunityMemberId = memberId;
+        }
+        await db.SaveChangesAsync();
 
         db.ParticipationLedgerEntries.AddRange(
             new ParticipationLedgerEntry
@@ -121,6 +129,39 @@ public sealed class CommunityJourneyReadModelServiceTests
         await Assert.That(projection.Projections.Count).IsGreaterThan(0);
         await Assert.That(projection.LifecycleProgression.Select(item => item.CurrentState)).Contains("Published");
         await Assert.That(projection.LifecycleProgression.Select(item => item.NextState)).Contains("Completed");
+    }
+
+    [Test]
+    public async Task GetJourneyProjectionAsync_DoesNotClaimUnlinkedRegistrationByMutableEmail()
+    {
+        await using var db = CreateDbContext();
+        var passportService = new CommunityPassportService(db);
+        var subject = new CommunitySubjectContext(
+            "journey-email-attacker",
+            "Email Attacker",
+            "victim@example.com");
+        var evt = new Event
+        {
+            Title = "Victim Event",
+            CreatedBy = "organizer"
+        };
+        db.AddRange(
+            evt,
+            new Registration
+            {
+                EventId = evt.Id,
+                FullName = "Victim",
+                Email = subject.Email!,
+                Status = RegistrationStatus.CheckedIn
+            });
+        await db.SaveChangesAsync();
+        var service = new CommunityJourneyReadModelService(db, passportService);
+
+        var projection = await service.GetJourneyProjectionAsync(subject);
+
+        await Assert.That(projection.JourneyScore).IsEqualTo(0);
+        await Assert.That(projection.Timeline).IsEmpty();
+        await Assert.That(projection.LifecycleProgression).IsEmpty();
     }
 
     [Test]

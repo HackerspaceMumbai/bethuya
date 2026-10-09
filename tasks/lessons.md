@@ -16,6 +16,30 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-07] Synchronize hosted-service tests on persisted outcomes
+- **What happened:** A hosted-service test used a fixed seven-second delay, which failed under CI scheduling load; waiting only for the external publish call then exposed that persistence was still in progress.
+- **Root cause:** The test synchronized on elapsed time and then on an intermediate side effect rather than the complete durable outcome it asserted.
+- **Fix:** The test now waits with a bounded cancellation token until both the outbox message is processed and the event archive URL is persisted.
+- **Prevention:** For background-service tests, await an observable final state or completion signal; never assume a polling interval plus arbitrary buffer guarantees durable completion.
+
+## [2026-10-07] Guard asynchronous mutations across route changes
+- **What happened:** Clearing a stale Passport during navigation hid the old member's actions, but an already-running Champion mutation could still complete later and update or reload the newly selected member's UI.
+- **Root cause:** The mutation validated its member before the API await but did not associate the continuation with the member and action generation that initiated it.
+- **Fix:** Added member-and-generation checks after mutation awaits, invalidated actions on route loads, cleared member-specific state on member changes, and cancelled superseded Passport reads.
+- **Prevention:** For parameter-driven components, bind both reads and writes to a captured identity/generation and reject every post-await state mutation when that context is stale.
+
+## [2026-10-07] Normalize identity inputs before comparison and persistence
+- **What happened:** A registration email with surrounding whitespace was accepted but failed the immutable member-link comparison, leaving valid attendance absent from the member's Passport.
+- **Root cause:** The endpoint compared the raw submitted email with the normalized provisioned-member email and persisted the raw value.
+- **Fix:** Normalize the submitted email once before profile lookup, ownership comparison, and registration persistence, with endpoint regression coverage.
+- **Prevention:** Normalize identity-bearing input at the request boundary and reuse that canonical value for every lookup, authorization decision, and stored representation.
+
+## [2026-10-06] TUnit filters belong to Microsoft.Testing.Platform
+- **What happened:** A targeted `dotnet test` invocation passed `--filter` after the test-application separator and ran zero tests.
+- **Root cause:** This repository uses TUnit on Microsoft.Testing.Platform, whose executable accepts `--treenode-filter` or `--filter-uid`, not the VSTest `--filter` option.
+- **Fix:** Ran the small 444-test project suite directly, then completed the full solution build.
+- **Prevention:** Use `--treenode-filter`/`--filter-uid` for targeted TUnit runs, or run the bounded project suite when it completes quickly.
+
 ## [2026-10-05] Do not remove Blazor-owned DOM nodes in Playwright
 - **What happened:** Removing the dev persona toolbar from the DOM before an Opportunity Engine Approve click caused a Blazor circuit `removeChild` failure and left the workflow unchanged.
 - **Root cause:** Playwright deleted nodes Blazor still tracked; the next InteractiveServer render tried to detach already-missing children.
@@ -807,6 +831,25 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 - **Minimal API DbContext params in shared endpoint groups need `[FromServices]`.** Test hosts that don't register the DbContext otherwise fail endpoint metadata inference for the whole group ("Body was inferred").
 
 - **Guard messages must render next to the action that triggers them.** An early-return validation guard in the import wizard wrote to a status region at the top of the page, so clicking 'Run validation' appeared to do nothing. Also, stale query IDs (e.g. `?eventId=` after a reseed) must show a visible notice instead of silently leaving the selection empty.
+
+## [2026-10-01] Generated EF migrations can misclassify snapshot drift as a new column
+
+- **What happened:** The Community Passport migration attempted to add `EventArchiveOutboxMessages.ClaimToken`, and the live Aspire database rejected it because the column already existed.
+- **Root cause:** The table-creation migration already contained `ClaimToken`, but the model snapshot did not. EF therefore generated an `AddColumn` operation when the model later constrained the property to 32 characters.
+- **Fix:** Replaced the invalid add/drop operations with reversible `AlterColumn` operations from `text` to `character varying(32)`, then verified the migration against the live Postgres resource.
+- **Prevention:** Before accepting a generated migration, compare every unrelated operation against earlier migrations and run it through the real Aspire database; snapshot drift can compile cleanly while producing invalid DDL.
+
+## [2026-10-01] Build and test gates must not share output files concurrently
+
+- **What happened:** Running the full solution build and TUnit suite in parallel produced compiler file-lock failures and enough resource contention to trigger unrelated bUnit timeouts.
+- **Root cause:** Both commands wrote the same project `obj` and `bin` outputs while the tests were loading those assemblies.
+- **Fix:** Re-ran the TUnit suite and solution build sequentially; both completed cleanly.
+- **Prevention:** Run build and test gates sequentially when they share project outputs. Parallelize only read-only validation such as diff checks.
+## [2026-10-07] Security-sensitive read models must share the same identity boundary
+- **What happened:** Replacing an insecure ownership join in the primary Passport read model left an alternate Community Journey projection independently querying registrations by mutable email.
+- **Root cause:** Sibling read models implemented the same ownership concept separately and did not share the immutable member-identity boundary.
+- **Fix:** Member-specific participation reads now use `Registration.CommunityMemberId` throughout Passport and Journey projections; profile email remains display and contact data only.
+- **Prevention:** After security remediation, search all sibling read models and endpoints for the original join key, then rerun the security review against the complete attack surface.
 
 ## [2026-10-01] Fresh-database EF history probes can look like migration failures
 - **What happened:** Aspire displayed an error-level `SELECT` against `__EFMigrationsHistory` even though EF caught the missing-table exception, applied every migration, and exited successfully.
