@@ -1,0 +1,159 @@
+@inject DialogService DialogService
+<article class="passport-shell" aria-label="Bethuya Community Passport">
+    @if (!string.IsNullOrWhiteSpace(StatusMessage))
+    {
+        <div aria-live="polite" data-test="community-passport-status">
+            <BbAlert Variant="AlertVariant.Success">@StatusMessage</BbAlert>
+        </div>
+    }
+
+    <PassportHero Model="Model" OnExport="OnExport" />
+
+    @if (Model.Viewer.IsParticipationRedacted)
+    {
+        <BbAlert Variant="AlertVariant.Info">
+            This member has not shared participation intelligence with organizers. Identity details remain visible, while evidence-backed sections are private.
+        </BbAlert>
+    }
+
+    <div class="passport-composition">
+        <main class="passport-primary-journal" data-test="passport-primary-journal">
+            <VerifiedParticipationSummary Model="Model" />
+            <CommunityJourney Journey="Model.Journey" />
+            <CommunityPortfolio Portfolio="Model.Portfolio"
+                                CanEdit="Model.Viewer.CanEdit"
+                                OnEdit="OpenPortfolioDialog"
+                                OnDelete="ConfirmDeleteAsync" />
+            <ContributionTimeline Contributions="Model.Contributions"
+                                  IsOrganizer="Model.Viewer.IsOrganizer" />
+        </main>
+
+        <aside class="passport-secondary-rail" aria-label="Passport context" data-test="passport-secondary-rail">
+            <OpportunityRecommendations Opportunities="Model.Opportunities" />
+            <CommunityConnections Connections="Model.Connections" />
+            <ParticipationRhythm Activity="Model.Activity"
+                                 VerifiedContributionCount="@Model.Contributions.Count(item => item.IsVerified)"
+                                 ConnectionCount="Model.Connections.Count"
+                                 ActivePathwayCount="@Model.Journey.Count(pathway => pathway.CurrentStage != "Getting started")" />
+            <PassportTrustContext Model="Model" />
+        </aside>
+    </div>
+
+    @if (Model.Viewer.IsOwner)
+    {
+        <PrivacyControls Model="Model" OnExport="OnExport" OnSavePrivacy="OnSavePrivacy" />
+    }
+</article>
+
+<BbDialog @bind-Open="_portfolioDialogOpen">
+    <BbDialogContent>
+        <BbDialogHeader>
+            <BbDialogTitle>@(_editingPortfolioId is null ? "Add an Initiative" : "Edit Initiative")</BbDialogTitle>
+            <BbDialogDescription>Describe a concrete community outcome and add one optional HTTPS source.</BbDialogDescription>
+        </BbDialogHeader>
+        <div class="dialog-form">
+            <div data-test="portfolio-title-input">
+                <BbFormFieldInput TValue="string" @bind-Value="_portfolioTitle" Label="Initiative title" />
+            </div>
+            <div class="form-group">
+                <BbLabel>Contribution &amp; impact</BbLabel>
+                <BbTextarea @bind-Value="_portfolioDescription" MaxLength="2000" ShowCharacterCount="true" />
+            </div>
+            <div data-test="portfolio-link-input">
+                <BbFormFieldInput TValue="string" @bind-Value="_portfolioLink" Label="Evidence link (optional)" />
+            </div>
+            <label class="switch-row"><BbSwitch @bind-Checked="_portfolioFeatured" AriaLabel="Feature this initiative" /><span>Feature this initiative</span></label>
+        </div>
+        <BbDialogFooter>
+            <div data-test="portfolio-cancel-btn"><BbDialogClose><BbButton Variant="ButtonVariant.Outline">Cancel</BbButton></BbDialogClose></div>
+            <div data-test="portfolio-save-btn"><BbButton OnClick="SavePortfolioAsync">Save Initiative</BbButton></div>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
+@code {
+    [Parameter, EditorRequired] public CommunityPassportExperienceDto Model { get; set; } = default!;
+    [Parameter] public string? StatusMessage { get; set; }
+    [Parameter] public EventCallback<UpdatePassportPrivacyPreferencesDto> OnSavePrivacy { get; set; }
+    [Parameter] public Func<PortfolioEditRequest, Task<bool>>? OnSavePortfolio { get; set; }
+    [Parameter] public EventCallback<Guid> OnDeletePortfolio { get; set; }
+    [Parameter] public EventCallback OnExport { get; set; }
+
+    private bool _portfolioDialogOpen;
+    private Guid? _editingPortfolioId;
+    private string _portfolioTitle = string.Empty;
+    private string _portfolioDescription = string.Empty;
+    private string _portfolioLink = string.Empty;
+    private bool _portfolioFeatured;
+    private int _portfolioDisplayOrder;
+    private IReadOnlyList<PortfolioLinkDto> _portfolioOriginalLinks = [];
+    private IReadOnlyList<Guid> _portfolioEvidenceEntryIds = [];
+
+    private void OpenPortfolioDialog(PortfolioEntryDto? entry)
+    {
+        var entryLinks = entry?.Links ?? [];
+        _editingPortfolioId = entry?.Id;
+        _portfolioTitle = entry?.Title ?? string.Empty;
+        _portfolioDescription = entry?.Description ?? string.Empty;
+        _portfolioLink = entryLinks.FirstOrDefault()?.Url ?? string.Empty;
+        _portfolioFeatured = entry?.IsFeatured ?? false;
+        _portfolioDisplayOrder = entry?.DisplayOrder
+            ?? (Model.Portfolio.Entries.Count == 0 ? 0 : Model.Portfolio.Entries.Max(item => item.DisplayOrder) + 1);
+        _portfolioOriginalLinks = entryLinks;
+        _portfolioEvidenceEntryIds = entry?.EvidenceEntryIds ?? [];
+        _portfolioDialogOpen = true;
+    }
+
+    private async Task SavePortfolioAsync()
+    {
+        var trimmedLink = _portfolioLink.Trim();
+        IReadOnlyList<PortfolioLinkDto> links;
+        if (string.IsNullOrWhiteSpace(trimmedLink))
+        {
+            links = _portfolioOriginalLinks.Skip(1).ToArray();
+        }
+        else if (_portfolioOriginalLinks.Count == 0)
+        {
+            links = [new PortfolioLinkDto("Link", trimmedLink, null)];
+        }
+        else
+        {
+            links =
+            [
+                _portfolioOriginalLinks[0] with { Url = trimmedLink },
+                .. _portfolioOriginalLinks.Skip(1)
+            ];
+        }
+
+        if (OnSavePortfolio is null)
+        {
+            return;
+        }
+
+        var saved = await OnSavePortfolio(new PortfolioEditRequest(
+            _editingPortfolioId,
+            new UpsertPortfolioEntryDto(
+                _portfolioTitle,
+                _portfolioDescription,
+                _portfolioFeatured,
+                _portfolioDisplayOrder,
+                links,
+                _portfolioEvidenceEntryIds)));
+        if (saved)
+        {
+            _portfolioDialogOpen = false;
+        }
+    }
+
+    private async Task ConfirmDeleteAsync(Guid entryId)
+    {
+        var result = await DialogService.ConfirmAsync(
+            "Remove this initiative?",
+            "The verified participation record stays intact; only the member-curated initiative is removed.",
+            new ConfirmDialogOptions { Destructive = true, ConfirmText = "Remove" });
+        if (result.Confirmed)
+        {
+            await OnDeletePortfolio.InvokeAsync(entryId);
+        }
+    }
+}

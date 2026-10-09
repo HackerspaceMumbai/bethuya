@@ -17,7 +17,7 @@ public interface IMentorProfileRepository
     /// <summary>
     /// Returns all mentor profiles that are currently discoverable, with optional expertise-area filtering.
     /// Only members whose <see cref="MentorProfile.IsDiscoverable"/> is <see langword="true"/> and whose
-    /// owning <see cref="CommunityMember.IsDiscoverableToCommunity"/> is <see langword="true"/> are included.
+    /// owning <see cref="CommunityMember.AppearInMentorshipRecommendations"/> is <see langword="true"/> are included.
     /// Only profiles with status <see cref="MentorshipStatus.OptedIn"/> are returned.
     /// </summary>
     Task<List<MentorProfile>> GetDiscoverableMentorsAsync(

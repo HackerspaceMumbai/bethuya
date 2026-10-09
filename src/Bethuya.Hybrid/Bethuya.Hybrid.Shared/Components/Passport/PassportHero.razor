@@ -1,0 +1,87 @@
+@{
+    var roles = PassportPresentation.Roles(Model);
+    var recognition = PassportPresentation.Recognition(Model);
+    var communities = PassportPresentation.VerifiedCommunities(Model);
+    var champion = recognition.FirstOrDefault(signal => signal.Kind == "Champion");
+    var verifiedCount = Model.Contributions.Count(item => item.IsVerified);
+}
+
+<header class="passport-hero" data-test="community-passport-header">
+    <div class="passport-identity-cluster">
+        <div class="passport-mark" aria-hidden="true">
+            <span>@Model.Identity.Initials</span>
+            <i title="Verified Bethuya member"></i>
+        </div>
+        <div class="passport-identity">
+            <p class="passport-kicker">Bethuya · Community Passport</p>
+            <div class="identity-title">
+                <h1>@Model.Identity.DisplayName</h1>
+                <span class="verified-member"><LucideIcon Name="badge-check" Size="13" /> Verified member</span>
+            </div>
+            <p class="passport-byline">@Model.Identity.CommunityName · Member since @Model.Identity.MemberSince.ToString("yyyy", System.Globalization.CultureInfo.CurrentCulture)</p>
+            <div class="identity-meta">
+                <div class="meta-row">
+                    <span>Roles</span>
+                    <div>
+                        @foreach (var role in roles)
+                        {
+                            <span class="role-chip" data-test="passport-signal" title="@role.Explanation">@role.Label</span>
+                        }
+                        @if (roles.Count == 0)
+                        {
+                            <span class="muted-value">Participation role forming</span>
+                        }
+                    </div>
+                </div>
+                <div class="meta-row">
+                    <span>Verified communities</span>
+                    <div class="community-chip-list" data-test="passport-verified-communities">
+                        @foreach (var community in communities)
+                        {
+                            <span class="community-chip"><LucideIcon Name="map-pin-check" Size="12" /> @community</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="standing-card" aria-label="Community standing" data-test="passport-community-standing">
+        <div class="standing-label">
+            <span>Community standing</span>
+            <strong><i></i> Active good standing</strong>
+        </div>
+        <div class="standing-recognition">
+            <div>
+                <small>Recognition</small>
+                <h2>@(champion?.Label ?? (verifiedCount >= 3 ? "Trusted Contributor" : "Verified Member"))</h2>
+            </div>
+            <div class="standing-seal" aria-hidden="true">✦</div>
+        </div>
+        <p>@(champion?.Explanation ?? $"{verifiedCount} verified participation record{(verifiedCount == 1 ? "" : "s")} across Bethuya communities.")</p>
+        @if (recognition.Count > 0)
+        {
+            <div class="recognition-list">
+                @foreach (var item in recognition)
+                {
+                    <span data-test="passport-recognition" title="@item.Explanation"><LucideIcon Name="award" Size="12" /> @item.Label</span>
+                }
+            </div>
+        }
+        <div class="hero-actions">
+            @if (Model.Viewer.IsOwner)
+            {
+                <div data-test="passport-export-btn">
+                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="OnExport">
+                        <LucideIcon Name="download" Size="14" /> Export Journal
+                    </BbButton>
+                </div>
+            }
+        </div>
+    </aside>
+</header>
+
+@code {
+    [Parameter, EditorRequired] public CommunityPassportExperienceDto Model { get; set; } = default!;
+    [Parameter] public EventCallback OnExport { get; set; }
+}

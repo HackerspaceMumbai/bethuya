@@ -1,0 +1,70 @@
+@{
+    var contributionTypes = Contributions.Select(item => item.Type).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+    var filtered = string.IsNullOrWhiteSpace(_filter)
+        ? Contributions
+        : Contributions.Where(item => string.Equals(item.Type, _filter, StringComparison.Ordinal)).ToArray();
+}
+
+<section class="passport-section contributions-section" aria-labelledby="contributions-heading" data-test="passport-contributions">
+    <div class="section-heading">
+        <div>
+            <p class="section-eyebrow">Participation record</p>
+            <h2 id="contributions-heading"><LucideIcon Name="scroll-text" Size="20" /> Contribution Timeline</h2>
+            <p>Chronological verified contributions and recorded participation status.</p>
+        </div>
+        <div class="filter-field" data-test="passport-contribution-filter">
+            <BbFormFieldSelect TValue="string" @bind-Value="_filter" Label="Filter records">
+                <BbSelectItem Value="@string.Empty" Text="All contributions" />
+                @foreach (var type in contributionTypes)
+                {
+                    <BbSelectItem Value="@type" Text="@type" />
+                }
+            </BbFormFieldSelect>
+        </div>
+    </div>
+    <div class="ledger-list">
+        @foreach (var contribution in filtered)
+        {
+            <article class="ledger-entry" data-test="passport-contribution">
+                <div class="ledger-rail" aria-hidden="true"><i></i></div>
+                <time datetime="@contribution.OccurredAt.ToString("O")">@contribution.OccurredAt.ToString("dd MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)</time>
+                <div class="ledger-content">
+                    <header>
+                        <h3>@contribution.Title</h3>
+                        <BbBadge Variant="BadgeVariant.Outline">@contribution.ImpactArea</BbBadge>
+                    </header>
+                    <p>@contribution.Description</p>
+                    <footer>
+                        <span><LucideIcon Name="badge-check" Size="12" /> @PassportPresentation.ContributionProvenance(contribution)</span>
+                        @if (contribution.EventId is Guid eventId)
+                        {
+                            <div class="contribution-source-links">
+                                <a href="@($"/events/{eventId}")" aria-label="@($"View source event for {contribution.Title}")" data-test="passport-contribution-event-link">
+                                    <LucideIcon Name="calendar-days" Size="13" /> View Event
+                                </a>
+                                @if (IsOrganizer)
+                                {
+                                    <a href="@($"/events/{eventId}/registrations")" aria-label="@($"View source registrations for {contribution.Title}")" data-test="passport-contribution-registrations-link">
+                                        <LucideIcon Name="clipboard-list" Size="13" /> View Registrations
+                                    </a>
+                                }
+                            </div>
+                        }
+                        <strong><i></i> @(contribution.IsVerified ? "Verified record" : "Recorded status")</strong>
+                    </footer>
+                </div>
+            </article>
+        }
+        @if (filtered.Count == 0)
+        {
+            <p class="empty-copy">No contribution records match this filter.</p>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PassportContributionDto> Contributions { get; set; } = [];
+    [Parameter] public bool IsOrganizer { get; set; }
+
+    private string _filter = string.Empty;
+}

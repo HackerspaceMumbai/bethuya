@@ -15,6 +15,61 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+## [2026-10-07] Clear final Passport review and CI findings
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Resolve duplicate lifecycle static-analysis comments and replace the event archive hosted-service test's timing delay with completion-based synchronization after CI failed under runner load.
+- **Acceptance:** Organizer Passport lifecycle guards remain disposal-safe without constant-condition findings; the hosted-service test waits for the actual publish event rather than a fixed delay; focused/full tests and solution build pass; all review threads are replied to and resolved.
+- **Completion Evidence:** Removed redundant post-await `_disposed` conditions while retaining disposal safety through generation invalidation and the initial disposed guard. Replaced the hosted-service test's fixed delay with bounded synchronization on both persisted outbox completion and event archive URL. The formerly flaky test passes three consecutive Release runs; the CI-equivalent Release solution build and all 489 tests pass.
+
+## [2026-10-07] Prevent stale organizer Passport actions
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the latest CodeRabbit review by preventing a previously loaded organizer Passport from exposing Champion actions after the route changes to a different member.
+- **Acceptance:** Changing `MemberId` immediately disassociates the previous Passport and closes its action dialogs; stale or overlapping loads cannot overwrite the current member state; Champion mutations target only the successfully loaded matching member; focused render regression, affected tests, and solution build pass; the review thread is replied to and resolved.
+- **Completion Evidence:** Organizer Passport loads now clear stale member state, cancel superseded reads, ignore out-of-order completions, and expose Champion actions only for a successfully loaded matching member. Award/revoke continuations are member-and-generation guarded so old requests cannot update or reload a newly selected member. Focused regressions cover navigation during both reads and mutations; all 489 TUnit/bUnit tests and the solution build pass.
+
+## [2026-10-07] Normalize registration email ownership
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Address the post-commit Greptile review by normalizing submitted registration email whitespace before immutable member ownership comparison and persistence.
+- **Acceptance:** A signed-in member registering with surrounding whitespace in their own email receives the correct `CommunityMemberId`; the stored registration email is trimmed; focused endpoint tests and the affected build pass; the review thread is replied to and resolved.
+- **Completion Evidence:** The registration endpoint now trims the submitted email once and reuses it for profile lookup, immutable member comparison, and persistence. A TestServer regression verifies surrounding whitespace still links `CommunityMemberId` and stores the canonical email. The focused test, all 487 TUnit/bUnit tests, full solution build, correctness review, and .NET performance review pass.
+
+## [2026-10-07] Remediate Community Passport security findings
+- **Status:** done
+- **Agent/Owner:** Copilot (privacy-sensitive backend fix; requires Squad security review)
+- **Description:** Prevent mutable profile email from granting access to another member's registration-derived Passport history, and enforce organizer participation-sharing consent when projecting Passport connections.
+- **Acceptance:** Passport registration ownership is anchored to immutable member identity rather than editable email; organizer views cannot receive stored or inferred connections for members who disabled organizer participation sharing; regression tests cover both exploit paths; affected tests and solution build pass.
+- **Completion Evidence:** Added nullable `Registration.CommunityMemberId` with an indexed, set-null foreign key and migration; authenticated registration creation and simulation seeding now establish or repair that immutable link. Legacy Passport, unified Passport, directory signals, Community Journey, and co-attendee inference no longer establish member ownership through email. Organizer stored and inferred connections now require the target's `ShareParticipationWithOrganizers` consent. Security regression coverage includes mutable-email attempts across Passport and Journey plus both organizer connection paths. All 448 TUnit/bUnit tests pass, the full solution builds with 0 warnings/errors, and the final security verification found no unresolved high-confidence vulnerabilities.
+
+## [2026-10-06] Correct Community Passport wireframe structure
+- **Status:** done
+- **Agent/Owner:** Copilot (working in Trinity's frontend domain; Squad capability: needs review)
+- **Description:** Refactor the Community Passport into reusable section components and a wireframe-faithful primary journal column plus secondary context rail, while preserving existing APIs, permissions, interactions, Bethuya branding, and evidence semantics.
+- **Acceptance:** CommunityPassport composition uses dedicated Hero, Participation Summary, Journey, Recommendations, Portfolio, Connections, Contribution Timeline, Participation Rhythm, and Privacy components; desktop keeps summary/journey/portfolio/timeline in the primary column and recommendations/connections/rhythm/supporting context in a secondary rail; mobile preserves reading order; centralized `--bethuya-*` tokens drive the dark editorial styling; human-readable attestations remain prominent; prohibited social/reputation/technical-ledger patterns are absent; bUnit/TUnit, full build, and live desktop/mobile Playwright verification pass. Performance and security reviews remain deferred until explicitly requested.
+- **Completion Evidence:** The 674-line presentation monolith is now a 160-line composition host plus dedicated Hero, Summary, Journey, Recommendations, Portfolio, Connections, Timeline, Rhythm, Trust Context, and Privacy components. Desktop Playwright measured a 586px primary journal column and 304px secondary context rail with four required sections in each; 390px mobile had no horizontal overflow. Human-readable organizer, chapter, mentorship, and repository attestations replace technical ledger language; roles and recognition remain separately labeled; prohibited social/reputation patterns are absent. Owner sharing/privacy and organizer Champion/event-registration provenance flows pass live verification with zero browser console errors. All 444 TUnit/bUnit tests pass, the full solution builds with 0 warnings/errors, and screenshots are saved in session artifacts. Performance and security reviews were not run.
+
+## [2026-10-06] Align Community Passport with evidence-first wireframes
+- **Status:** done
+- **Agent/Owner:** Copilot (Squad capability: needs review)
+- **Description:** Restructure the shared member/organizer Community Passport into the continuous wireframe hierarchy while retaining Bethuya branding, application shell, existing APIs, member controls, organizer Champion workflow, and source-event navigation.
+- **Acceptance:** The Passport presents identity and standing, verified communities, evidence-derived summary, living journey, What's Next, verified portfolio, connection summary, contribution highlights, participation rhythm, and member-controlled privacy as one integrated Bethuya page; roles and recognition remain distinct; provenance is prominent; no social/reputation mechanics or backend identifiers appear; member editing and organizer read-only behavior remain intact; bUnit/TUnit tests, solution build, and live Playwright visual verification pass. Performance and security reviews are explicitly deferred until requested by the user.
+- **Completion Evidence:** The shared Passport now renders the full continuous evidence-first hierarchy inside the existing Bethuya shell and dark/gold brand; active pathways are prioritized while future tracks remain visible; member share, privacy, portfolio, export endpoint, and contribution provenance behaviors remain wired; organizer verification confirmed Champion controls, read-only member data, and event/registration links. Desktop and 390px Playwright checks reported no horizontal overflow, final screenshots are stored in session artifacts, all 444 TUnit/bUnit tests pass, the full solution builds with 0 warnings/errors, and the isolated seeded Aspire environment is running for manual verification. Performance and security reviews were not run, as requested.
+
+## [2026-10-05] Link Passport contributions to source events
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Add navigable event provenance to event-backed Community Passport contributions so members can open the source event and organizers can open the event registration records directly from the contribution ledger.
+- **Acceptance:** The versioned Passport contract carries an optional event ID, ledger and registration projections populate it, event-backed contribution cards render stable event links plus organizer-only registration links, non-event evidence stays unlinked, bUnit/TUnit regression coverage passes, and the solution builds without warnings.
+- **Completion Evidence:** Event-backed ledger and registration contributions now carry `EventId`; contribution cards render accessible `View event` links and organizer-only `View registrations` links; canonical CSV export includes `event_id`; event metadata loading projects only title/date; 444 TUnit/bUnit tests pass; the full solution builds with 0 warnings/errors; `git diff --check` passes; and live Aspire/Playwright verification traversed Priya's organizer-view contribution to both the seeded event and registrations page.
+
+## [2026-10-01] Redesign the Community Passport Phase 1 experience
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Deliver a production-ready member Community Passport from real Unified Participation Ledger data, including explainable community signals, deterministic story, multi-track journey, contributions and activity graph, verified and member-curated portfolio, consent-aware connections, opportunity history, expanded privacy/discovery controls, canonical portable export, and a narrow organizer directory/individual-passport surface.
+- **Acceptance:** The unified member/organizer passport template is backed by permission-aware versioned APIs and durable Phase 1 models; derived signals and organizer-awarded Champion recognition always explain their evidence without scores; portfolio CRUD/order/pinning, consent controls, opportunity/relationship summaries, and canonical ZIP export work end to end; organizer directory access is role- and visibility-gated; targeted TUnit, bUnit, Aspire, and Playwright verification passes with visual proof and mandatory review gates completed.
+- **Completion Evidence:** Full solution build succeeds with 0 warnings/errors; 444 TUnit/bUnit tests pass; `git diff --check` passes; isolated Aspire/Postgres probes verified the normalized-email migration, organizer directory, member detail and connection query, ledger-only Champion evidence selection, and award/revoke audit flow; desktop/mobile proof is preserved in the session artifacts; correctness and .NET performance review findings were remediated, including consent synchronization, metadata-preserving portfolio edits, active-award uniqueness/concurrency, pre-pagination visibility filtering, narrow directory projections, indexed literal email matching, directory batching, and bounded eligible co-attendee queries. This Squad task remains flagged for squad-member review before merge.
 
 ## [2026-10-05] Addressing Homepage load review findings
 - **Status:** done

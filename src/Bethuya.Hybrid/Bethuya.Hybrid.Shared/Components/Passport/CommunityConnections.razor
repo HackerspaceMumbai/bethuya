@@ -1,0 +1,46 @@
+@{
+    var groups = Connections.GroupBy(item => item.Kind).OrderByDescending(group => group.Count()).ToArray();
+}
+
+<section class="passport-section connections-section" id="connections" aria-labelledby="connections-heading" data-test="passport-connections">
+    <div class="section-heading">
+        <div>
+            <p class="section-eyebrow">Community Graph context</p>
+            <h2 id="connections-heading"><LucideIcon Name="network" Size="20" /> Community Connections</h2>
+            <p>Consent-aware collaboration and mentorship context from the Community Graph.</p>
+        </div>
+        <span>@Connections.Count verified</span>
+    </div>
+    <div class="connection-stats">
+        @foreach (var group in groups.Take(3))
+        {
+            <div><strong>@group.Count()</strong><span>@PassportPresentation.PluralizeConnection(group.Key, group.Count())</span></div>
+        }
+        @if (groups.Length == 0)
+        {
+            <div><strong>0</strong><span>Verified connections</span></div>
+        }
+    </div>
+    <div class="connection-list">
+        @foreach (var connection in Connections.Take(4))
+        {
+            <article class="connection-card">
+                <div class="mini-avatar" aria-hidden="true">@PassportPresentation.Initials(connection.DisplayName)</div>
+                <div>
+                    <small>@connection.Kind</small>
+                    <h3>@connection.DisplayName</h3>
+                    <p>@connection.Context</p>
+                    <span><LucideIcon Name="badge-check" Size="11" /> @connection.Explanation</span>
+                </div>
+            </article>
+        }
+        @if (Connections.Count == 0)
+        {
+            <p class="empty-copy">Connection summaries appear only when consented, verified context is available.</p>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PassportConnectionDto> Connections { get; set; } = [];
+}
