@@ -21,7 +21,11 @@ public sealed record ParticipationEntryWriteRequest(
     Guid? EventId = null,
     string? ExternalEventId = null,
     string? ExternalRecordId = null,
-    string? SourceCorrelationId = null);
+    string? SourceCorrelationId = null,
+    bool IsVerified = false,
+    string? TargetKind = null,
+    string? TargetKey = null,
+    string? TargetLabel = null);
 
 /// <summary>
 /// Result returned after writing participation entries.

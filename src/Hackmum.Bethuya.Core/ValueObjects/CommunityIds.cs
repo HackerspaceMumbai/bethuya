@@ -2,6 +2,14 @@ using Vogen;
 
 namespace Hackmum.Bethuya.Core.ValueObjects;
 
+/// <summary>A namespaced graph entity key, stable across projections.</summary>
+[ValueObject<string>]
+public readonly partial struct GraphNodeId
+{
+    private static Validation Validate(string value)
+        => !string.IsNullOrWhiteSpace(value) ? Validation.Ok : Validation.Invalid("Graph key is required.");
+}
+
 /// <summary>
 /// Stable identifier for a community member profile.
 /// </summary>

@@ -15,9 +15,12 @@
     <PackageReference Include="Aspire.Hosting.Keycloak" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Scalar.Aspire" />
+    <PackageReference Include="Refit" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Share the small Refit contract without referencing the Razor UI project from AppHost. -->
+    <Compile Include="..\..\src\Bethuya.Hybrid\Bethuya.Hybrid.Shared\Services\ICommunityGraphSeedApi.cs" Link="Contracts\ICommunityGraphSeedApi.cs" />
     <ProjectReference Include="..\..\src\Hackmum.Bethuya.Backend\Hackmum.Bethuya.Backend.csproj" />
     <ProjectReference Include="..\..\src\Bethuya.Hybrid\Bethuya.Hybrid.Web\Bethuya.Hybrid.Web.csproj" />
     <ProjectReference Include="..\..\src\Bethuya.MigrationService\Bethuya.MigrationService.csproj" />

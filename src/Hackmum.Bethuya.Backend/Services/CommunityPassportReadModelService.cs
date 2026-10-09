@@ -161,7 +161,7 @@ public sealed class CommunityPassportReadModelService(
         bool hasVolunteerIntent)
     {
         var activitySet = activities.ToHashSet();
-        if (activitySet.Contains(ParticipationActivityKind.ProjectContributed))
+        if ((activitySet.Contains(ParticipationActivityKind.ProjectContributed) || activitySet.Contains(ParticipationActivityKind.ContributedProject)))
         {
             yield return "Builder";
         }
@@ -412,7 +412,7 @@ public sealed class CommunityPassportReadModelService(
             ?? ledgerEntries.ToArray();
         var signals = new List<CommunitySignalResponse>();
         AddDerivedSignal(signals, CommunitySignalKind.Builder, "Builder",
-            materializedLedgerEntries.Where(entry => entry.Activity == ParticipationActivityKind.ProjectContributed),
+            materializedLedgerEntries.Where(entry => entry.Activity is ParticipationActivityKind.ProjectContributed or ParticipationActivityKind.ContributedProject),
             "Builds projects and contributes technical work.");
         AddDerivedSignal(signals, CommunitySignalKind.Volunteer, "Volunteer",
             materializedLedgerEntries.Where(entry => entry.Activity == ParticipationActivityKind.Volunteered),
@@ -504,7 +504,7 @@ public sealed class CommunityPassportReadModelService(
         var spoke = ledgerEntries.Count(entry => entry.Activity is ParticipationActivityKind.Spoke or ParticipationActivityKind.SubmittedSession);
         var mentored = ledgerEntries.Count(entry => entry.Activity == ParticipationActivityKind.Mentored);
         var organized = ledgerEntries.Count(entry => entry.Activity is ParticipationActivityKind.Organized or ParticipationActivityKind.LedProgram);
-        var maintained = ledgerEntries.Count(entry => entry.Activity is ParticipationActivityKind.ProjectContributed or ParticipationActivityKind.Maintained);
+        var maintained = ledgerEntries.Count(entry => entry.Activity is ParticipationActivityKind.ProjectContributed or ParticipationActivityKind.ContributedProject or ParticipationActivityKind.Maintained);
 
         return
         [
@@ -738,7 +738,7 @@ public sealed class CommunityPassportReadModelService(
             ParticipationActivityKind.Mentored => "Mentored",
             ParticipationActivityKind.Spoke => "Spoke",
             ParticipationActivityKind.Organized => "Organized",
-            ParticipationActivityKind.ProjectContributed => "Project contributed",
+            ParticipationActivityKind.ProjectContributed or ParticipationActivityKind.ContributedProject => "Project contributed",
             ParticipationActivityKind.ContentCreated => "Content created",
             ParticipationActivityKind.Maintained => "Maintained",
             ParticipationActivityKind.Moderated => "Moderated",
@@ -767,7 +767,7 @@ public sealed class CommunityPassportReadModelService(
             ParticipationActivityKind.Spoke or ParticipationActivityKind.ContentCreated => "Knowledge sharing",
             ParticipationActivityKind.Volunteered or ParticipationActivityKind.Organized
                 or ParticipationActivityKind.LedProgram => "Community operations",
-            ParticipationActivityKind.ProjectContributed or ParticipationActivityKind.Maintained => "Building",
+            ParticipationActivityKind.ProjectContributed or ParticipationActivityKind.ContributedProject or ParticipationActivityKind.Maintained => "Building",
             _ => "Participation"
         };
 

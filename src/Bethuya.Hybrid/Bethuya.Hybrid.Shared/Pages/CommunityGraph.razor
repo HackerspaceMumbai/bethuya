@@ -1,0 +1,345 @@
+@page "/community-graph"
+@page "/graph"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.Globalization
+@using Hackmum.Bethuya.Core.Models
+@using Hackmum.Bethuya.Core.ValueObjects
+@using Bethuya.Hybrid.Shared.Services
+@inject ICommunityPassportApi PassportApi
+
+<PageTitle>Community Graph — Bethuya</PageTitle>
+
+<section class="community-graph" data-test="community-graph-page" aria-label="Community Graph">
+    <header class="graph-topbar">
+        <div><h1>Community Graph</h1><span class="subtle">Connections through participation</span></div>
+        <div class="graph-search" data-test="graph-search">
+            <BbInput Value="@_search" ValueChanged="SearchChanged" UpdateTiming="UpdateTiming.Immediate" AriaLabel="Search community graph" Placeholder="Search graph…" />
+        </div>
+        <span class="sync-status" role="status">● @(_loading ? "Loading ledger" : _error ? "Sync unavailable" : "Ledger snapshot")</span>
+        <div data-test="graph-refresh"><BbButton Variant="ButtonVariant.Outline" OnClick="LoadAsync" Disabled="@_loading">Refresh</BbButton></div>
+    </header>
+
+    <div class="discovery-rail">
+        <span class="rail-label">◎ Discovery mode</span>
+        @foreach (var mode in Modes)
+        {
+            <div data-test="@($"discovery-{mode.Replace(" ", "-", StringComparison.Ordinal)}")" class="@(_mode == mode ? "chip selected" : "chip")">
+                <BbButton Variant="ButtonVariant.Ghost" AriaLabel="@($"{mode}, {(_mode == mode ? "selected" : "not selected")}")" OnClick="@(() => SetMode(mode))">@mode</BbButton>
+            </div>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <div class="graph-state" data-test="graph-loading" role="status">Reading verified participation…</div>
+    }
+    else if (_error)
+    {
+        <div class="graph-state" data-test="graph-error" role="alert">
+            <h2>We couldn’t load the Community Graph</h2><p>Try again to read the latest Participation Ledger.</p>
+            <div data-test="graph-retry"><BbButton OnClick="LoadAsync">Try again</BbButton></div>
+        </div>
+    }
+    else if (_graph is not null)
+    {
+        <div class="graph-workspace">
+            <div class="exploration">
+                <div class="filter-rails">
+                    <div class="filter-row"><span class="rail-label">Entities</span>
+                        @foreach (var kind in Kinds)
+                        {
+                            <div class="chip @(_kinds.Contains(kind) ? "selected" : "")" data-test="@($"filter-{kind}")">
+                                <BbButton Variant="ButtonVariant.Ghost" AriaLabel="@($"{KindLabel(kind)}, {(_kinds.Contains(kind) ? "shown" : "hidden")}")" OnClick="@(() => ToggleKind(kind))"><span class="entity-dot @kind.ToLowerInvariant()"></span>@KindLabel(kind) (@_graph.Nodes.Count(n => n.Kind == kind))</BbButton>
+                            </div>
+                        }
+                    </div>
+                    <div class="filter-row"><span class="rail-label">Relations</span>
+                        @foreach (var relation in Relations)
+                        {
+                            <div class="chip @(_relations.Contains(relation) ? "selected" : "")" data-test="@($"relation-{relation.Replace(" ", "-", StringComparison.Ordinal)}")">
+                                <BbButton Variant="ButtonVariant.Ghost" AriaLabel="@($"{relation}, {(_relations.Contains(relation) ? "shown" : "hidden")}")" OnClick="@(() => ToggleRelation(relation))">@(_relations.Contains(relation) ? "✓ " : "")@relation</BbButton>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="graph-canvas" data-test="graph-canvas">
+                    <div class="filter-row" data-test="graph-focus">
+                        <div data-test="graph-back"><BbButton Variant="ButtonVariant.Ghost" OnClick="GoBack" Disabled="@(_focusHistory.Count == 0)">← Back</BbButton></div>
+                        <span role="status">@(_focusId is { } focus ? $"Exploring {Node(focus).Label}" : "Community overview") · Double-click a node to explore connections</span>
+                    </div>
+                    @if (_graph.Nodes.Count == 0)
+                    {
+                        <div class="canvas-empty" data-test="graph-empty"><h2>No verified participation yet</h2><p>Connections will appear when trusted sources verify participation in your community.</p><a href="passport" data-test="graph-empty-passport">Open your Community Passport →</a></div>
+                    }
+                    else if (_visibleNodes.Count == 0)
+                    {
+                        <div class="canvas-empty" data-test="graph-no-results"><h2>No matching connections</h2><p>Try another search or broaden your filters.</p><div data-test="graph-reset-filters"><BbButton OnClick="ResetFilters">Reset filters</BbButton></div></div>
+                    }
+                    else
+                    {
+                        <div class="graph-scroll" tabindex="0" aria-label="Scrollable community graph. Use node buttons or relationship lines to inspect evidence.">
+                            <div class="graph-stage" style="@StageStyle">
+                                @* BB has no graph renderer; SVG provides accessible relationship hit targets and native buttons provide spatial nodes. *@
+                                <svg class="graph-lines" viewBox="0 0 900 900" preserveAspectRatio="none" aria-label="Verified relationships">
+                                    @foreach (var tie in _visibleTies)
+                                    {
+                                        var source = _positions[tie.Source];
+                                        var target = _positions[tie.Target];
+                                        <g class="graph-edge @(tie == _selectedTie ? "active" : "") @(tie.Kind == "Recommended for" ? "suggestion" : "")" role="button" tabindex="0"
+                                           aria-label="@($"{Node(tie.Source).Label} — {tie.Kind} — {Node(tie.Target).Label}. Inspect ledger proof")"
+                                           data-test="graph-edge" @onclick="@(() => SelectTie(tie))" @onkeydown="@(e => SelectTieByKey(e, tie))">
+                                            <title>@tie.Kind · @tie.EvidenceIds.Count ledger records</title>
+                                            <line class="edge-hit" x1="@source.X" y1="@source.Y" x2="@target.X" y2="@target.Y" />
+                                            <line class="edge-visible @Node(tie.Target).Kind.ToLowerInvariant()" x1="@source.X" y1="@source.Y" x2="@target.X" y2="@target.Y" />
+                                        </g>
+                                    }
+                                </svg>
+                                @foreach (var node in _visibleNodes)
+                                {
+                                    <button type="button" class="graph-node @node.Kind.ToLowerInvariant() @(_selectedNode?.Id == node.Id ? "active" : "")"
+                                            style="@PositionStyle(node.Id)" data-test="graph-node" aria-pressed="@(_selectedNode?.Id == node.Id)"
+                                            aria-label="@($"{node.Label}, {node.Kind}. Open Passport preview")" @onclick="@(() => SelectNode(node))" @ondblclick="@(() => FocusNode(node))" @key="node.Id">
+                                        <span class="node-symbol">@Symbol(node)</span><span class="node-label">@node.Label</span><span class="node-description">@(node.Kind == "Opportunity" ? "Suggested pathway" : node.Kind)</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (_showHealth && _visibleNodes.Count > 0)
+                    {
+                        <div class="health-overlays" data-test="graph-health">
+                            @foreach (var health in _graph.Health)
+                            {
+                                <div class="health-overlay"><span>● @health.Title</span><p>@health.Detail</p></div>
+                            }
+                        </div>
+                    }
+                    <div class="canvas-footer">
+                        <div class="zoom-controls">
+                            <div data-test="graph-zoom-out"><BbButton Variant="ButtonVariant.Ghost" AriaLabel="Zoom out" OnClick="@(() => Zoom(-0.2))" Disabled="@(_zoom <= 0.6)">−</BbButton></div>
+                            <span>@((_zoom * 100).ToString("0", CultureInfo.InvariantCulture))%</span>
+                            <div data-test="graph-zoom-in"><BbButton Variant="ButtonVariant.Ghost" AriaLabel="Zoom in" OnClick="@(() => Zoom(0.2))" Disabled="@(_zoom >= 1.8)">+</BbButton></div>
+                            <div data-test="graph-fit"><BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => _zoom = 1)">Reset view</BbButton></div>
+                        </div>
+                        <label class="health-toggle"><input type="checkbox" @bind="_showHealth" data-test="graph-health-toggle" /> Community health</label>
+                    </div>
+                </div>
+                <footer class="graph-legend"><span><b>Node types</b> <i class="entity-dot member"></i>Member <i class="entity-dot event"></i>Event <i class="entity-dot community"></i>Community / Chapter <i class="entity-dot project"></i>Project <i class="entity-dot opportunity"></i>Opportunity <i class="entity-dot technology"></i>Technology</span><span><b>Relationships</b> ━ Verified participation <span class="suggested-key">┄ Suggested pathway</span></span></footer>
+                @if (_graph.IsTruncated || _limitedView)
+                {
+                    <p class="view-note" role="status">Showing a bounded snapshot: up to 80 members, 400 recent records and 48 visible nodes. Search or filter to narrow this view. Health describes this snapshot.</p>
+                }
+            </div>
+
+            <aside class="passport-preview" data-test="passport-preview" aria-label="Community Passport Preview" aria-live="polite">
+                <header class="passport-header"><span class="passport-icon">▣</span><div><h2>Community Passport Preview</h2><p>@(_selectedNode is null ? "Your inspection surface" : $"Selected entity · {_selectedNode.Kind}")</p></div><span class="verified-badge">● Verified ledger</span></header>
+                @if (_selectedNode is null)
+                {
+                    <div class="passport-empty"><span>◎</span><h3>Select a node or relationship</h3><p>Explore the graph, then read the participation behind each connection here.</p></div>
+                }
+                else
+                {
+                    <div class="passport-identity"><span class="passport-avatar @_selectedNode.Kind.ToLowerInvariant()">@Symbol(_selectedNode)</span><div><h3>@_selectedNode.Label</h3><p>@_selectedNode.Description</p><span class="identity-tag">@_selectedNode.Kind · Participation Ledger</span></div></div>
+                    <div data-test="graph-explore"><BbButton Variant="ButtonVariant.Outline" OnClick="@(() => FocusNode(_selectedNode))" Disabled="@(_focusId == _selectedNode.Id)">Explore connections</BbButton></div>
+                    <div class="passport-metrics">
+                        <div><b>@SelectedEvidence.Count</b><span>Records</span></div>
+                        <div><b>@SelectedEvidence.Count(p => p.Activity == "Attended")</b><span>Attendance</span></div>
+                        <div><b>@SelectedEvidence.Count(p => p.Activity == "Spoke")</b><span>Speaking</span></div>
+                        <div><b>@SelectedEvidence.Count(p => p.Activity == "Volunteered")</b><span>Volunteer</span></div>
+                    </div>
+                    <div class="passport-tabs" role="group" aria-label="Passport sections">
+                        @foreach (var tab in Tabs)
+                        {
+                            <div class="@(_tab == tab ? "active" : "")" data-test="@($"passport-tab-{tab.Replace(" ", "-", StringComparison.Ordinal)}")"><BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => _tab = tab)">@tab</BbButton></div>
+                        }
+                    </div>
+                    <div class="passport-content">
+                        @if (_tab == "Relationships")
+                        {
+                            @if (_selectedTie is not null)
+                            {
+                                <section class="relationship-proof" data-test="relationship-proof"><div class="proof-heading">◈ Relationship proof: @_selectedTie.Kind <span>Ledger verified</span></div>
+                                    <div class="proof-pair">@Node(_selectedTie.Source).Label <span>↔</span> @Node(_selectedTie.Target).Label</div>
+                                    <h4>Why this relationship exists</h4>
+                                    @foreach (var proof in EvidenceFor(_selectedTie.EvidenceIds))
+                                    {
+                                        <div class="proof-record"><span>✓</span><div>@proof.Summary<small>@proof.Connector · @proof.OccurredAt.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)</small></div></div>
+                                    }
+                                    <footer>✓ Traceable participation · No synthetic weights</footer>
+                                </section>
+                            }
+                            else
+                            {
+                                <h4>Verified relationships</h4>
+                                @foreach (var tie in SelectedTies)
+                                {
+                                    <div class="relationship-item" data-test="passport-relationship"><BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => SelectTie(tie))">@tie.Kind · @Node(tie.Source == _selectedNode.Id ? tie.Target : tie.Source).Label →</BbButton></div>
+                                }
+                            }
+                        }
+                        else if (_tab == "Participation Ledger")
+                        {
+                            <h4>Participation Ledger</h4>
+                            @foreach (var proof in SelectedEvidence)
+                            {
+                                <article class="ledger-record"><b>@proof.Activity</b><p>@proof.Summary</p><small>@proof.Connector · @proof.OccurredAt.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)</small><code>@proof.EntryId.Value</code></article>
+                            }
+                        }
+                        else
+                        {
+                            <h4>Participation overview</h4><p class="overview-copy">@_selectedNode.Label is connected through @SelectedEvidence.Count verified participation records. Select a relationship to see exactly why it exists.</p>
+                            <p class="subtle">Only records available within your community and privacy permissions are shown.</p>
+                            <a href="passport" data-test="graph-open-passport">Open your Community Passport →</a>
+                        }
+
+                        <section class="opportunity-section"><h4><span>ϟ</span> Suggested opportunities</h4>
+                            @if (SelectedOpportunities.Count == 0)
+                            {
+                                <p class="subtle">No evidence-backed pathways for this selection yet.</p>
+                            }
+                            @foreach (var opportunity in SelectedOpportunities)
+                            {
+                                <div class="opportunity-card" data-test="passport-opportunity"><div data-test="opportunity-inspect"><BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => SelectOpportunity(opportunity))">● @opportunity.Title →</BbButton></div><p>Recommended because: @opportunity.Reason</p><small>@opportunity.EvidenceIds.Count supporting records · Human review required</small></div>
+                            }
+                        </section>
+                        <div class="passport-principle">The graph is navigation.<br /><strong>Your Passport tells the story.</strong></div>
+                    </div>
+                }
+            </aside>
+        </div>
+    }
+</section>
+
+@code {
+    private static readonly string[] Kinds = ["Member", "Event", "Project", "Community", "Chapter", "Opportunity", "Technology"];
+    private static readonly string[] Modes = ["Explore connections", "Discover collaborators", "Discover mentors", "Discover projects", "Discover communities"];
+    private static readonly string[] Tabs = ["Overview", "Participation Ledger", "Relationships"];
+    private static readonly string[] Relations = ["Mentors", "Contributes to", "Attended", "Spoke at", "Volunteered", "Community member", "Chapter member", "Shared attendance", "Uses technology", "Recommended for"];
+    private readonly HashSet<string> _kinds = new(Kinds, StringComparer.Ordinal);
+    private readonly HashSet<string> _relations = new(Relations, StringComparer.Ordinal);
+    private readonly Dictionary<GraphNodeId, (double X, double Y)> _positions = [];
+    private Dictionary<ParticipationLedgerEntryId, CommunityGraphEvidence> _evidence = [];
+    private IEnumerable<CommunityGraphEvidence> EvidenceFor(IEnumerable<ParticipationLedgerEntryId> ids) => ids.Select(id => _evidence[id]);
+    private CommunityGraphSnapshot? _graph;
+    private CommunityGraphNode? _selectedNode;
+    private CommunityGraphRelationship? _selectedTie;
+    private GraphNodeId? _focusId;
+    private readonly Stack<GraphNodeId?> _focusHistory = new();
+    private List<CommunityGraphNode> _visibleNodes = [];
+    private List<CommunityGraphRelationship> _visibleTies = [];
+    private string _search = "";
+    private string _mode = Modes[0];
+    private string _tab = "Relationships";
+    private bool _loading = true;
+    private bool _error;
+    private bool _showHealth = true;
+    private bool _limitedView;
+    private double _zoom = 1;
+    private string StageStyle => FormattableString.Invariant($"width:{_zoom * 100}%;height:{_zoom * 900}px;min-width:{_zoom * 700}px");
+    private IEnumerable<CommunityGraphRelationship> SelectedTies => _graph?.Relationships.Where(t => t.Source == _selectedNode?.Id || t.Target == _selectedNode?.Id) ?? [];
+    private List<CommunityGraphEvidence> SelectedEvidence => SelectedTies.SelectMany(t => t.EvidenceIds).Distinct().Select(id => _evidence[id])
+        .Where(p => _selectedNode?.Kind != "Member" || p.MemberId == _selectedNode.Id)
+        .DistinctBy(p => p.EntryId).OrderByDescending(p => p.OccurredAt).ToList();
+    private List<CommunityGraphOpportunity> SelectedOpportunities => _graph?.Opportunities.Where(o => o.MemberId == _selectedNode?.Id || o.Id == _selectedNode?.Id).ToList() ?? [];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = false;
+        _selectedNode = null;
+        _selectedTie = null;
+        _focusId = null;
+        _focusHistory.Clear();
+        try
+        {
+            _graph = await PassportApi.GetGraphAsync();
+            _evidence = _graph.Evidence.ToDictionary(p => p.EntryId);
+            RebuildView();
+            _selectedNode = _visibleNodes.FirstOrDefault(n => n.Kind == "Member") ?? _visibleNodes.FirstOrDefault();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or Refit.ApiException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            _graph = null;
+            _error = true;
+        }
+        finally { _loading = false; }
+    }
+
+    private void RebuildView()
+    {
+        if (_graph is null) return;
+        var ties = _graph.Relationships.Where(t => _relations.Contains(t.Kind) && ModeMatches(t)).ToList();
+        if (_focusId is { } focus)
+            ties = ties.Where(t => t.Source == focus || t.Target == focus).ToList();
+        var connected = ties.SelectMany(t => new[] { t.Source, t.Target }).ToHashSet();
+        if (_focusId is { } focusedId) connected.Add(focusedId);
+        var matchingNodes = _graph.Nodes.Where(n => _kinds.Contains(n.Kind) && connected.Contains(n.Id)
+            && (string.IsNullOrWhiteSpace(_search) || n.Label.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))).ToList();
+        _limitedView = matchingNodes.Count > 48;
+        _visibleNodes = matchingNodes.OrderByDescending(n => n.Id == _focusId).Take(48).ToList();
+        var ids = _visibleNodes.Select(n => n.Id).ToHashSet();
+        _visibleTies = ties.Where(t => ids.Contains(t.Source) && ids.Contains(t.Target)).ToList();
+        if (_selectedNode is not null && !ids.Contains(_selectedNode.Id)) _selectedNode = null;
+        if (_selectedTie is not null && !_visibleTies.Contains(_selectedTie)) _selectedTie = null;
+        _positions.Clear();
+        var center = _visibleNodes.FirstOrDefault(n => n.Id == _focusId)
+            ?? _visibleNodes.FirstOrDefault(n => n.Kind == "Member") ?? _visibleNodes.FirstOrDefault();
+        if (center is null) return;
+        _positions[center.Id] = (450, 450);
+        var others = _visibleNodes.Where(n => n.Id != center.Id).ToList();
+        for (var index = 0; index < others.Count; index++)
+        {
+            var angle = -Math.PI * 0.8 + index * Math.PI * 2 / Math.Min(others.Count, 16);
+            var radius = others.Count > 16 ? 170 + (index / 16) * 105 : 290;
+            _positions[others[index].Id] = (Math.Round(450 + Math.Cos(angle) * radius), Math.Round(460 + Math.Sin(angle) * radius));
+        }
+    }
+
+    private bool ModeMatches(CommunityGraphRelationship tie) => _mode switch
+    {
+        "Discover mentors" => tie.Kind == "Mentors",
+        "Discover collaborators" => tie.Kind is "Contributes to" or "Shared attendance",
+        "Discover projects" => Node(tie.Target).Kind == "Project",
+        "Discover communities" => Node(tie.Target).Kind is "Community" or "Chapter",
+        _ => true
+    };
+    private CommunityGraphNode Node(GraphNodeId id) => _graph!.Nodes.First(n => n.Id == id);
+    private string PositionStyle(GraphNodeId id) => FormattableString.Invariant($"left:{_positions[id].X / 9}%;top:{_positions[id].Y / 9}%");
+    private void SearchChanged(string? value) { _search = value ?? ""; RebuildView(); }
+    private void ToggleKind(string kind) { if (!_kinds.Remove(kind)) _kinds.Add(kind); RebuildView(); }
+    private void ToggleRelation(string relation) { if (!_relations.Remove(relation)) _relations.Add(relation); RebuildView(); }
+    private void SetMode(string mode) { _mode = mode; RebuildView(); }
+    private void ResetFilters() { _search = ""; _mode = Modes[0]; _kinds.UnionWith(Kinds); _relations.UnionWith(Relations); RebuildView(); }
+    private void SelectNode(CommunityGraphNode node) { _selectedNode = node; _selectedTie = null; }
+    private void FocusNode(CommunityGraphNode node)
+    {
+        if (_focusId == node.Id) return;
+        _focusHistory.Push(_focusId);
+        _focusId = node.Id;
+        SelectNode(node);
+        RebuildView();
+    }
+    private void GoBack()
+    {
+        if (!_focusHistory.TryPop(out var previous)) return;
+        _focusId = previous;
+        _selectedNode = previous is { } id ? Node(id) : null;
+        _selectedTie = null;
+        RebuildView();
+    }
+    private void SelectTie(CommunityGraphRelationship tie) { _selectedTie = tie; _selectedNode = Node(tie.Source); _tab = "Relationships"; }
+    private void SelectTieByKey(KeyboardEventArgs args, CommunityGraphRelationship tie) { if (args.Key is "Enter" or " ") SelectTie(tie); }
+    private void SelectOpportunity(CommunityGraphOpportunity opportunity) => SelectTie(_graph!.Relationships.First(t => t.Target == opportunity.Id));
+    private void Zoom(double delta) => _zoom = Math.Clamp(Math.Round(_zoom + delta, 1), 0.6, 1.8);
+    private static string KindLabel(string kind) => kind == "Community" ? "Communities" : kind == "Technology" ? "Technologies" : $"{kind}s";
+    private static string Symbol(CommunityGraphNode node) => node.Kind switch
+    {
+        "Member" => string.Concat(node.Label.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0])),
+        "Event" => "▣", "Project" => "⬡", "Community" or "Chapter" => "▦", "Opportunity" => "⚑", _ => "⌘"
+    };
+}

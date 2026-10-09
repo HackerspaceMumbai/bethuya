@@ -20,5 +20,11 @@ public enum ParticipationActivityKind
     ContentCreated,
     Maintained,
     Moderated,
-    LedProgram
+    LedProgram,
+    /// <summary>Verified project contribution from graph ingestion.</summary>
+    ContributedProject,
+    /// <summary>Verified chapter membership.</summary>
+    JoinedChapter,
+    /// <summary>Verified use of a technology during participation.</summary>
+    UsedTechnology
 }

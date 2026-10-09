@@ -791,6 +791,26 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 - **What happened:** CurationSampleSeeder.SeedAsync uses Math.Clamp(reviewableCount, SandboxCapacity + 1, MaxReviewableRegistrants) where SandboxCapacity = 25. Passing ?reviewableCount=0 via query string results in 26 registrants being seeded (clamped to minimum). Minimal safe value for seeding just enough to get one registrant for a decision test: pass ?reviewableCount=26 explicitly.
 - **Prevention:** When writing seeded integration tests for the curation endpoint, use ?reviewableCount=26 as the minimum. The seeder always creates 8 pre-selected + N reviewable + historical registrants; the selected ones come first in the dashboard Registrants list.
+
+## 2026-10-05 — Community Graph implementation
+- The existing ledger has no verification or structured graph targets. Do not infer project, chapter or mentorship ties from free-text evidence; introduce explicit metadata and default legacy records to unverified.
+- BbInput defaults to OnChange. Graph search needs UpdateTiming.Immediate (JS-driven), confirmed from the installed 3.10.2 API documentation and covered by a render interaction test.
+- Aspire resource descriptions can include secret-valued environment fields. Always project only resource name, state and URLs before returning diagnostic output.
+- A fresh worktree needs restore; initial Aspire startup may time out during Copilot CLI download. Complete restore/build before retrying.
+
+
+- Graph SVG and HTML nodes must share the same coordinate mapping: use preserveAspectRatio=none for a rectangular percentage-positioned stage.
+- Joint relationship proof contains multiple members’ records. Preserve record ownership and filter Passport metrics to the selected member while retaining joint proof in the relationship view.
+- Stop the affected Aspire resource before rebuilding a shared Razor dependency on Windows; running Web processes hold its output assemblies open.
+
+- Approved feature references establish layout and information architecture; use the existing app's shared theme tokens for branding unless the user explicitly requests an app-wide visual rebrand.
+- Brand surface tokens and categorical data colors serve different purposes. Preserve distinct graph/legend colors when applying app branding; check text and composited edge contrast instead of replacing every accent with the primary brand color.
+
+- Re-discover Aspire resource ownership after interrupted work: localhost ports can be reused by another worktree. E2E graph focus fixtures must follow actual ledger edges (Community Portal connects to Maya, not David).
+
+- Blazor E2E tests must await enabled actions and updated focus status before keyboard activation or resolving nodes after rerender. Opportunity titles can repeat across members; wait until the focused neighborhood renders before asserting a unique accessible-name locator.
+
+- Normalize shared graph evidence in the response, not just within each edge. Keep community discovery independent of organizer-only consent. Clear tracked seed entities on retry replay. Browser screenshot setup must check toolbar state before toggling it.
 ## [2026-10-01] Validate deterministic UI independently when Aspire dependencies are unhealthy
 - An unrelated EF `PendingModelChangesWarning` in the migration/backend startup path can keep the Aspire `web` resource behind its `WaitFor(backend)` gate even when the Web project and backend-independent pages compile correctly.
 - Read `backend` and `migration-service` logs first, preserve the failure as evidence, then validate deterministic UI slices with the Web host directly instead of weakening migrations or masking the dependency failure.
@@ -850,3 +870,5 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 - **Root cause:** On a fresh PostgreSQL database, the provider's migration-history existence probe reads the table and treats the expected undefined-table response as control flow; command logging still records that probe as an error.
 - **Fix:** Execute the provider-generated `CREATE TABLE IF NOT EXISTS` history script before `MigrateAsync`, avoiding the exception-driven probe without suppressing genuine EF command failures.
 - **Prevention:** Validate one-shot migration resources by exit code, terminal success log, and structured error logs. Test both fresh and existing databases, and never globally filter `RelationalEventId.CommandError` to hide an expected startup probe.
+
+- Merging new privacy enums requires an explicit visibility allow-list, not exclusion of only the formerly most restrictive value. Reconcile granular discovery consent and parallel activity names at the graph/Passport boundary.
