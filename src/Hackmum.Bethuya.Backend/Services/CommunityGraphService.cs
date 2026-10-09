@@ -3,6 +3,7 @@ using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using EventId = Hackmum.Bethuya.Core.ValueObjects.EventId;
 
 namespace Hackmum.Bethuya.Backend.Services;
 
@@ -15,13 +16,13 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
         var now = DateTimeOffset.UtcNow;
         var viewer = await db.CommunityMembers.AsNoTracking().SingleOrDefaultAsync(m => m.UserId == userId, ct);
         if (viewer is null)
-            return new([], [], [], [], now, false);
+            return new([], [], [], [], now, false, []);
 
         // Organizer-only profiles stay out of this member-facing exploration surface, even for organizers.
         var members = await db.CommunityMembers.AsNoTracking()
             .Where(m => m.CommunitySlug == viewer.CommunitySlug
                 && (m.Id == viewer.Id || (m.IsDiscoverableToCommunity
-                    && m.ShareParticipationWithOrganizers && m.Visibility != ProfileVisibilityScope.OrganizerOnly)))
+                    && m.Visibility != ProfileVisibilityScope.OrganizerOnly)))
             .OrderByDescending(m => m.Id == viewer.Id).ThenBy(m => m.DisplayName).ThenBy(m => m.UserId)
             .Take(81).ToListAsync(ct);
         var truncated = members.Count > 80;
@@ -35,7 +36,7 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
         entries = entries.Take(400).ToList();
         var eventIds = entries.Where(e => e.EventId.HasValue).Select(e => e.EventId!.Value).Distinct().ToArray();
         var events = await db.Events.AsNoTracking().Where(e => eventIds.Contains(e.Id))
-            .ToDictionaryAsync(e => e.Id, e => e.Title, ct);
+            .ToDictionaryAsync(e => EventId.From(e.Id), e => e.Title, ct);
         var membersById = members.ToDictionary(m => m.Id);
         Dictionary<GraphNodeId, CommunityGraphNode> nodes = [];
         Dictionary<(GraphNodeId Source, GraphNodeId Target, string Kind), List<CommunityGraphEvidence>> ties = [];
@@ -94,7 +95,7 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
             void AddOpportunity(string key, string title, string reason, List<CommunityGraphEvidence> proof)
             {
                 var id = GraphNodeId.From($"opportunity:{member.Id.Value}:{key}");
-                opportunities.Add(new(id, memberId, title, reason, proof));
+                opportunities.Add(new(id, memberId, title, reason, proof.Select(p => p.EntryId).Distinct().ToList()));
                 nodes[id] = new(id, "Opportunity", title, "Suggested pathway · Human review required");
                 ties[(memberId, id, "Recommended for")] = proof;
             }
@@ -111,12 +112,12 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
                 $"{currentJoins} members joined in the last 30 days · {previousJoins} in the preceding 30 days")
         ];
         return new(nodes.Values.ToList(), ties.Select(t => new CommunityGraphRelationship(t.Key.Source,
-            t.Key.Target, t.Key.Kind, t.Value.DistinctBy(p => p.EntryId).OrderByDescending(p => p.OccurredAt).ToList())).ToList(),
-            opportunities, health, now, truncated);
+            t.Key.Target, t.Key.Kind, t.Value.DistinctBy(p => p.EntryId).OrderByDescending(p => p.OccurredAt).Select(p => p.EntryId).ToList())).ToList(),
+            opportunities, health, now, truncated, ties.Values.SelectMany(p => p).DistinctBy(p => p.EntryId).ToList());
     }
 
     private static CommunityGraphNode? ResolveTarget(ParticipationLedgerEntry entry, CommunityMember member,
-        Dictionary<CommunityMemberId, CommunityMember> members, Dictionary<Guid, string> events)
+        Dictionary<CommunityMemberId, CommunityMember> members, Dictionary<EventId, string> events)
     {
         if (entry.Activity == ParticipationActivityKind.Mentored)
         {
@@ -125,7 +126,7 @@ public sealed class CommunityGraphService(BethuyaDbContext db)
         }
         if (entry.Activity is ParticipationActivityKind.Attended or ParticipationActivityKind.Spoke or ParticipationActivityKind.Volunteered)
         {
-            if (entry.EventId is Guid eventId && events.TryGetValue(eventId, out var title))
+            if (entry.EventId is Guid eventId && events.TryGetValue(EventId.From(eventId), out var title))
                 return new(GraphNodeId.From($"event:{eventId}"), "Event", title, "Verified event participation");
             if (entry.TargetKind != "Event") return null;
         }

@@ -707,3 +707,5 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - Re-discover Aspire resource ownership after interrupted work: localhost ports can be reused by another worktree. E2E graph focus fixtures must follow actual ledger edges (Community Portal connects to Maya, not David).
 
 - Blazor E2E tests must await enabled actions and updated focus status before keyboard activation or resolving nodes after rerender. Opportunity titles can repeat across members; wait until the focused neighborhood renders before asserting a unique accessible-name locator.
+
+- Normalize shared graph evidence in the response, not just within each edge. Keep community discovery independent of organizer-only consent. Clear tracked seed entities on retry replay. Browser screenshot setup must check toolbar state before toggling it.

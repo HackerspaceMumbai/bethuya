@@ -90,7 +90,7 @@
                                         <g class="graph-edge @(tie == _selectedTie ? "active" : "") @(tie.Kind == "Recommended for" ? "suggestion" : "")" role="button" tabindex="0"
                                            aria-label="@($"{Node(tie.Source).Label} — {tie.Kind} — {Node(tie.Target).Label}. Inspect ledger proof")"
                                            data-test="graph-edge" @onclick="@(() => SelectTie(tie))" @onkeydown="@(e => SelectTieByKey(e, tie))">
-                                            <title>@tie.Kind · @tie.Evidence.Count ledger records</title>
+                                            <title>@tie.Kind · @tie.EvidenceIds.Count ledger records</title>
                                             <line class="edge-hit" x1="@source.X" y1="@source.Y" x2="@target.X" y2="@target.Y" />
                                             <line class="edge-visible @Node(tie.Target).Kind.ToLowerInvariant()" x1="@source.X" y1="@source.Y" x2="@target.X" y2="@target.Y" />
                                         </g>
@@ -164,7 +164,7 @@
                                 <section class="relationship-proof" data-test="relationship-proof"><div class="proof-heading">◈ Relationship proof: @_selectedTie.Kind <span>Ledger verified</span></div>
                                     <div class="proof-pair">@Node(_selectedTie.Source).Label <span>↔</span> @Node(_selectedTie.Target).Label</div>
                                     <h4>Why this relationship exists</h4>
-                                    @foreach (var proof in _selectedTie.Evidence)
+                                    @foreach (var proof in EvidenceFor(_selectedTie.EvidenceIds))
                                     {
                                         <div class="proof-record"><span>✓</span><div>@proof.Summary<small>@proof.Connector · @proof.OccurredAt.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)</small></div></div>
                                     }
@@ -202,7 +202,7 @@
                             }
                             @foreach (var opportunity in SelectedOpportunities)
                             {
-                                <div class="opportunity-card" data-test="passport-opportunity"><div data-test="opportunity-inspect"><BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => SelectOpportunity(opportunity))">● @opportunity.Title →</BbButton></div><p>Recommended because: @opportunity.Reason</p><small>@opportunity.Evidence.Count supporting records · Human review required</small></div>
+                                <div class="opportunity-card" data-test="passport-opportunity"><div data-test="opportunity-inspect"><BbButton Variant="ButtonVariant.Ghost" OnClick="@(() => SelectOpportunity(opportunity))">● @opportunity.Title →</BbButton></div><p>Recommended because: @opportunity.Reason</p><small>@opportunity.EvidenceIds.Count supporting records · Human review required</small></div>
                             }
                         </section>
                         <div class="passport-principle">The graph is navigation.<br /><strong>Your Passport tells the story.</strong></div>
@@ -221,6 +221,8 @@
     private readonly HashSet<string> _kinds = new(Kinds, StringComparer.Ordinal);
     private readonly HashSet<string> _relations = new(Relations, StringComparer.Ordinal);
     private readonly Dictionary<GraphNodeId, (double X, double Y)> _positions = [];
+    private Dictionary<ParticipationLedgerEntryId, CommunityGraphEvidence> _evidence = [];
+    private IEnumerable<CommunityGraphEvidence> EvidenceFor(IEnumerable<ParticipationLedgerEntryId> ids) => ids.Select(id => _evidence[id]);
     private CommunityGraphSnapshot? _graph;
     private CommunityGraphNode? _selectedNode;
     private CommunityGraphRelationship? _selectedTie;
@@ -238,7 +240,7 @@
     private double _zoom = 1;
     private string StageStyle => FormattableString.Invariant($"width:{_zoom * 100}%;height:{_zoom * 900}px;min-width:{_zoom * 700}px");
     private IEnumerable<CommunityGraphRelationship> SelectedTies => _graph?.Relationships.Where(t => t.Source == _selectedNode?.Id || t.Target == _selectedNode?.Id) ?? [];
-    private List<CommunityGraphEvidence> SelectedEvidence => SelectedTies.SelectMany(t => t.Evidence)
+    private List<CommunityGraphEvidence> SelectedEvidence => SelectedTies.SelectMany(t => t.EvidenceIds).Distinct().Select(id => _evidence[id])
         .Where(p => _selectedNode?.Kind != "Member" || p.MemberId == _selectedNode.Id)
         .DistinctBy(p => p.EntryId).OrderByDescending(p => p.OccurredAt).ToList();
     private List<CommunityGraphOpportunity> SelectedOpportunities => _graph?.Opportunities.Where(o => o.MemberId == _selectedNode?.Id || o.Id == _selectedNode?.Id).ToList() ?? [];
@@ -256,6 +258,7 @@
         try
         {
             _graph = await PassportApi.GetGraphAsync();
+            _evidence = _graph.Evidence.ToDictionary(p => p.EntryId);
             RebuildView();
             _selectedNode = _visibleNodes.FirstOrDefault(n => n.Kind == "Member") ?? _visibleNodes.FirstOrDefault();
         }

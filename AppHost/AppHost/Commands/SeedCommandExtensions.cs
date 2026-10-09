@@ -156,7 +156,7 @@ public static class SeedCommandExtensions
                     await api.SeedGraphAsync("Vikram", context.CancellationToken);
                     return CommandResults.Success();
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is HttpRequestException or ApiException or OperationCanceledException)
                 {
                     return CommandResults.Failure(ex);
                 }

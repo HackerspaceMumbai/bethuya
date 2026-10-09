@@ -9,14 +9,15 @@ public sealed record CommunityGraphSnapshot(
     IReadOnlyList<CommunityGraphOpportunity> Opportunities,
     IReadOnlyList<CommunityGraphHealth> Health,
     DateTimeOffset AsOf,
-    bool IsTruncated);
+    bool IsTruncated,
+    IReadOnlyList<CommunityGraphEvidence> Evidence);
 
 /// <summary>A navigable entity; all details come from participation records.</summary>
 public sealed record CommunityGraphNode(GraphNodeId Id, string Kind, string Label, string Description);
 
 /// <summary>An explainable relationship with its complete supporting records in this snapshot.</summary>
 public sealed record CommunityGraphRelationship(GraphNodeId Source, GraphNodeId Target, string Kind,
-    IReadOnlyList<CommunityGraphEvidence> Evidence);
+    IReadOnlyList<ParticipationLedgerEntryId> EvidenceIds);
 
 /// <summary>Ledger proof, excluding private connector identity and correlation fields.</summary>
 public sealed record CommunityGraphEvidence(ParticipationLedgerEntryId EntryId, string Summary,
@@ -24,7 +25,7 @@ public sealed record CommunityGraphEvidence(ParticipationLedgerEntryId EntryId, 
 
 /// <summary>A suggested pathway, not a published vacancy or an automatic selection.</summary>
 public sealed record CommunityGraphOpportunity(GraphNodeId Id, GraphNodeId MemberId, string Title,
-    string Reason, IReadOnlyList<CommunityGraphEvidence> Evidence);
+    string Reason, IReadOnlyList<ParticipationLedgerEntryId> EvidenceIds);
 
 /// <summary>An in-graph health annotation with a measurable basis.</summary>
 public sealed record CommunityGraphHealth(string Title, string Detail);

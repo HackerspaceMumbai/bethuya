@@ -57,7 +57,7 @@ public sealed class CommunityGraphEndpointTests
         await Assert.That(payload.Contains("private-", StringComparison.Ordinal)).IsFalse();
         await Assert.That(payload.Contains("private@example.com", StringComparison.Ordinal)).IsFalse();
         var graph = await response.Content.ReadFromJsonAsync<CommunityGraphSnapshot>();
-        await Assert.That(graph!.Relationships.Single().Evidence.Single().Summary).IsEqualTo("Confirmed community membership");
+        await Assert.That(graph!.Evidence.Single(p => p.EntryId == graph.Relationships.Single().EvidenceIds.Single()).Summary).IsEqualTo("Confirmed community membership");
     }
 
     private sealed class GraphAuthHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)

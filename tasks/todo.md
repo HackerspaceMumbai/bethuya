@@ -827,3 +827,10 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [ ] Stage feature, documentation and tests; run staged code/performance reviews and checks; commit and push a codex branch. Retain acknowledged evidence-amplification finding as open.
 
 - Pre-commit validation: 346/346 TUnit tests passed; staged code-review and .NET performance review completed with no new blockers. Prior full graph Playwright flow passed. Local Codex configuration and extracted design references excluded from commit.
+
+## [2026-10-08] Resolve PR 64 review
+- [ ] Normalize graph evidence transport with regression budget; separate discovery consent; validate verified event targets; use EventId; make seeder replay safe; narrow seed-command catch.
+- [ ] Test, review staged changes, update PR description, push fixes and resolve addressed threads; document false-positive fixed-relative-path warnings.
+
+- [x] PR64 valid findings fixed: normalized evidence IDs (dense regression under 2 MB), independent discovery consent, verified event requirements, typed EventId dictionary, transient-safe seed replay, filtered seed command exceptions. Six Path.Combine warnings rejected because appended segments are fixed relative literals or fixed test-kind suffixes.
+- [x] Validation: 350/350 TUnit tests and full Playwright graph flow passed. Staged code/performance reviews found no blockers and confirmed prior P2 resolved. Explain-diff review: graph response/client, source validation, development seeding and tests; existing authorization decisions retained. API/client must deploy together for EvidenceIds contract.

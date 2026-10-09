@@ -7,6 +7,20 @@ namespace Hackmum.Bethuya.Tests.Domain;
 public sealed class ParticipationNormalizationEngineTests
 {
     [Test]
+    public async Task Normalize_VerifiedAttendanceAndVolunteeringRequireEventTargets()
+    {
+        foreach (var activity in new[] { ParticipationActivityKind.Attended, ParticipationActivityKind.Volunteered })
+        {
+            var input = new NormalizedParticipationEntry(ParticipationConnectorKind.Forms, "member", activity,
+                DateTimeOffset.UtcNow, "Verified event participation", "proof", IsVerified: true);
+            await Assert.That(Assert.Throws<ArgumentException>(() => ParticipationNormalizationEngine.Normalize(input))).IsNotNull();
+            await Assert.That(ParticipationNormalizationEngine.Normalize(input with { IsVerified = false }).IsVerified).IsFalse();
+            var valid = input with { TargetKind = "Event", TargetKey = "event", TargetLabel = "Event" };
+            await Assert.That(ParticipationNormalizationEngine.Normalize(valid).IsVerified).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task Normalize_RejectsIncompatibleGraphTargets()
     {
         var input = new NormalizedParticipationEntry(ParticipationConnectorKind.Forms, "member", ParticipationActivityKind.Spoke,

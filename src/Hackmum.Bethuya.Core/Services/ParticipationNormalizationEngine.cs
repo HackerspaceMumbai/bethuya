@@ -58,6 +58,9 @@ public static class ParticipationNormalizationEngine
             throw new ArgumentException("Community membership requires a Community target.", nameof(entry));
         if (entry.Activity == Enums.ParticipationActivityKind.Spoke && entry.EventId is null && targetKind != "Event")
             throw new ArgumentException("Speaking participation requires an event identifier or Event target.", nameof(entry));
+        if (entry.IsVerified && entry.Activity is Enums.ParticipationActivityKind.Attended or Enums.ParticipationActivityKind.Volunteered
+            && entry.EventId is null && targetKind != "Event")
+            throw new ArgumentException("Verified event participation requires an event identifier or Event target.", nameof(entry));
         if (targetKind == "Member" && (!Guid.TryParse(targetKey, out var memberKey) || memberKey == Guid.Empty))
             throw new ArgumentException("Member targets must use a canonical community member identifier.", nameof(entry));
 

@@ -20,7 +20,9 @@ public class CommunityGraphFlowTests : BethuyaE2ETest
         await Page.GotoAsync($"{BaseUrl}/dev/persona/Vikram?returnUrl=/community-graph");
         var nodes = Page.Locator("[data-test='graph-node']");
         await Assertions.Expect(nodes.First).ToBeVisibleAsync(new() { Timeout = 30000 });
-        await Page.Locator("[data-test='dev-persona-toggle'] button").ClickAsync();
+        var personaToggle = Page.Locator("[data-test='dev-persona-toggle'] button");
+        if ((await personaToggle.InnerTextAsync()).Contains("Hide", StringComparison.OrdinalIgnoreCase))
+            await personaToggle.ClickAsync();
         await nodes.Filter(new() { HasText = "Priya Menon" }).ClickAsync();
         var preview = Page.Locator("[data-test='passport-preview']");
         await Assertions.Expect(preview).ToContainTextAsync("Priya Menon");

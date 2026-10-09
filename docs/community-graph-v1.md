@@ -4,7 +4,7 @@
 
 ## Data contract
 
-`GET /api/community/graph` is a read-only, authenticated Scalar-visible endpoint. The viewer must have a CommunityMember record; otherwise the response is empty. Only the viewer's community is queried. Other members must be discoverable, share participation and have Public or CommunityOnly visibility. OrganizerOnly profiles are excluded, including for organizer callers. Responses use `Cache-Control: no-store` and omit emails, external identity keys, provenance keys and correlation tokens.
+`GET /api/community/graph` is a read-only, authenticated Scalar-visible endpoint. The viewer must have a CommunityMember record; otherwise the response is empty. Only the viewer's community is queried. Other members must be discoverable and have Public or CommunityOnly visibility. Organizer-sharing consent is independent and does not gate community discovery. OrganizerOnly profiles are excluded, including for organizer callers. Responses use `Cache-Control: no-store` and omit emails, external identity keys, provenance keys and correlation tokens.
 
 Graph relationships are never saved or manually created. They are projected from non-future ledger entries with `IsVerified=true`, readable evidence and an eligible activity. Legacy entries default to false. Verification is asserted by the existing connector-ingestion policy, not by a graph editor. A connector must verify source participation before setting this flag. Existing idempotency rules still apply: duplicate provenance is ignored, not rewritten. There is no automatic backfill of verification.
 
@@ -61,4 +61,6 @@ Community Passport creation establishes community membership and grants access t
 
 Identity resolution is intentionally global across the Participation Ledger. This supports portable Community Passports, cross-community participation history, opportunity matching, mentorship discovery and relationship graph generation. Governance controls should enforce participation source authority, provenance, auditing and verification rather than restricting identity resolution boundaries. Global identity resolution does not itself remove the graph's existing read-visibility checks.
 
-Both authorization assumptions raised in the security review are accepted as intended behavior. The separate performance finding concerning duplicated relationship evidence remains open.
+Both authorization assumptions raised in the security review are accepted as intended behavior. The duplicated relationship evidence finding is resolved by snapshot-level evidence records referenced through EvidenceIds on relationships and opportunities. No supporting proof is dropped. A dense 400-record regression enforces a 2 MB serialized payload budget and JSON round-trip integrity.
+
+Verified attendance and volunteering require an internal EventId or complete Event target; unverified legacy inputs retain their previous behavior. The development seeder clears tracked state before each retry attempt.

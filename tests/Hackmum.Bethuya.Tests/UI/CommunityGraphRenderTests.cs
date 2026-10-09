@@ -18,7 +18,7 @@ public sealed class CommunityGraphRenderTests
         var fixture = Fixture();
         var project = new CommunityGraphNode(GraphNodeId.From("project:test"), "Project", "Portal", "");
         fixture = fixture with { Nodes = [.. fixture.Nodes, project], Relationships = [.. fixture.Relationships,
-            new(fixture.Nodes[0].Id, project.Id, "Contributes to", fixture.Relationships[0].Evidence)] };
+            new(fixture.Nodes[0].Id, project.Id, "Contributes to", fixture.Relationships[0].EvidenceIds)] };
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(fixture);
         context.Services.AddSingleton(api);
@@ -61,7 +61,7 @@ public sealed class CommunityGraphRenderTests
         context.Services.AddSingleton(api);
         var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
         cut.Find("[data-test='graph-error']");
-        api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(new CommunityGraphSnapshot([], [], [], [], DateTimeOffset.UtcNow, false));
+        api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(new CommunityGraphSnapshot([], [], [], [], DateTimeOffset.UtcNow, false, []));
         cut.Find("[data-test='graph-retry'] button").Click();
         await Assert.That(cut.Find("[data-test='graph-empty']").TextContent).Contains("No verified participation");
     }
@@ -101,8 +101,9 @@ public sealed class CommunityGraphRenderTests
         fixture = fixture with
         {
             Nodes = [.. fixture.Nodes, peer],
+            Evidence = [.. fixture.Evidence, peerProof],
             Relationships = [.. fixture.Relationships,
-                new(owner.Id, peer.Id, "Shared attendance", [fixture.Relationships[0].Evidence[0], peerProof])]
+                new(owner.Id, peer.Id, "Shared attendance", [fixture.Relationships[0].EvidenceIds[0], peerProof.EntryId])]
         };
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(fixture);
@@ -118,10 +119,11 @@ public sealed class CommunityGraphRenderTests
     {
         var member = GraphNodeId.From("member:priya");
         var eventId = GraphNodeId.From("event:cloud");
+        var proof = new CommunityGraphEvidence(ParticipationLedgerEntryId.From(Guid.NewGuid()),
+            "Checked in at Cloud Native Day", "Attended", "Meetup", DateTimeOffset.UtcNow, member);
         return new([
             new(member, "Member", "Priya Menon", "Platform Engineer"),
             new(eventId, "Event", "Cloud Native Day", "Community workshop")
-        ], [new(member, eventId, "Attended", [new(ParticipationLedgerEntryId.From(Guid.NewGuid()),
-            "Checked in at Cloud Native Day", "Attended", "Meetup", DateTimeOffset.UtcNow, member)])], [], [], DateTimeOffset.UtcNow, false);
+        ], [new(member, eventId, "Attended", [proof.EntryId])], [], [], DateTimeOffset.UtcNow, false, [proof]);
     }
 }

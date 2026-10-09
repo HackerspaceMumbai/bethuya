@@ -16,6 +16,8 @@ public sealed class CommunityGraphDevelopmentSeeder(BethuyaDbContext db, IHostEn
         var strategy = db.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
+            // A failed save or rolled-back transaction must not leave entities in the next attempt.
+            db.ChangeTracker.Clear();
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var priya = await MemberAsync("priya", "Priya Menon", "Staff Platform Engineer", ct);
             var david = await MemberAsync("david", "David L.", "Active mentee · Volunteer", ct);
