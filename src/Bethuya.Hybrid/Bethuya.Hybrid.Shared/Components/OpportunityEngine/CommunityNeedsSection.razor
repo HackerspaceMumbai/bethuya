@@ -1,0 +1,87 @@
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+
+<section id="section-community-needs"
+         class="oe-section oe-section--primary"
+         aria-labelledby="community-needs-heading"
+         data-test="community-needs-section">
+    <div class="oe-section__header">
+        <div>
+            <div class="oe-section__title-row">
+                <span class="oe-section__icon" aria-hidden="true"><LucideIcon Name="calendar-check" Size="18" /></span>
+                <h2 id="community-needs-heading">Community Needs &amp; Event Staffing</h2>
+                <span class="oe-pill">Primary Driver</span>
+            </div>
+            <p>Match verified members to the high-priority work that actively needs doing across current initiatives.</p>
+        </div>
+        @if (SelectedEvent is not null)
+        {
+            <div class="oe-needs-summary" data-test="needs-context">
+                <span>Active Needs: @SelectedEvent.OpenRoleCount Open Roles</span>
+                <span>@string.Join(" • ", SelectedEvent.NeedsSummary)</span>
+            </div>
+        }
+    </div>
+
+    <div class="oe-event-tabs" data-test="event-selector">
+        @foreach (var evt in Events)
+        {
+            <button type="button"
+                    class="@($"oe-event-tab{(evt.EventId == SelectedEventId ? " oe-event-tab--active" : "")}")"
+                    data-test="event-tab"
+                    aria-pressed="@(evt.EventId == SelectedEventId ? "true" : "false")"
+                    @onclick="() => OnEventSelected.InvokeAsync(evt.EventId)">
+                <LucideIcon Name="calendar" Size="14" />
+                <span>@evt.Title • @evt.DateLabel</span>
+                <span class="oe-event-tab__meta">@evt.OpenRoleCount Roles • @evt.MatchCount Matches</span>
+            </button>
+        }
+    </div>
+
+    @if (SelectedEvent is not null)
+    {
+        <div class="oe-event-canvas" data-test="active-event-canvas">
+            <div class="oe-event-canvas__header">
+                <h3>Active Event Canvas: @SelectedEvent.Title</h3>
+                <span>@SelectedEvent.LocationLabel • @SelectedEvent.DateLabel</span>
+            </div>
+            <div class="oe-staffing-grid">
+                @foreach (var need in SelectedEvent.Needs)
+                {
+                    <article class="oe-staffing-card" data-test="staffing-need-card">
+                        <div class="oe-staffing-card__top">
+                            <h4>@need.Role</h4>
+                            <span class="oe-pill oe-pill--success">Best Match</span>
+                        </div>
+                        <div class="oe-staffing-card__member">
+                            <span class="oe-avatar" aria-hidden="true">@need.BestMatchInitials</span>
+                            <div>
+                                <strong>@need.BestMatchName</strong>
+                                <p>@need.BestMatchDetail</p>
+                            </div>
+                        </div>
+                        <div class="oe-staffing-card__meta">
+                            <span>Match Count:</span>
+                            <span>@need.MatchCount Matches Available</span>
+                        </div>
+                        <div data-test="view-matches-action">
+                            <BbButton Variant="ButtonVariant.Outline" Class="oe-full-btn"
+                                      OnClick="() => OnViewMatches.InvokeAsync(need.LinkedOpportunityId)">
+                                View Matches
+                            </BbButton>
+                        </div>
+                    </article>
+                }
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<FeaturedEventNeeds> Events { get; set; } = [];
+    [Parameter, EditorRequired] public string SelectedEventId { get; set; } = "";
+    [Parameter] public EventCallback<string> OnEventSelected { get; set; }
+    [Parameter] public EventCallback<string> OnViewMatches { get; set; }
+
+    private FeaturedEventNeeds? SelectedEvent =>
+        Events.FirstOrDefault(e => e.EventId == SelectedEventId) ?? Events.FirstOrDefault();
+}

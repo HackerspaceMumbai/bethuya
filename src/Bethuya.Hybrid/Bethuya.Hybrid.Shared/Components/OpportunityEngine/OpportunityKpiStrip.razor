@@ -1,0 +1,18 @@
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+
+<section class="oe-kpi-strip" aria-label="Operational KPIs" data-test="opportunity-kpi-strip">
+    @foreach (var kpi in Kpis)
+    {
+        <article class="@($"oe-kpi{(kpi.IsPriority ? " oe-kpi--priority" : "")}")" data-test="opportunity-kpi">
+            <p>@kpi.Label</p>
+            <div>
+                <strong>@kpi.Value</strong>
+                <span>@kpi.Detail</span>
+            </div>
+        </article>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<OpportunityKpi> Kpis { get; set; } = [];
+}

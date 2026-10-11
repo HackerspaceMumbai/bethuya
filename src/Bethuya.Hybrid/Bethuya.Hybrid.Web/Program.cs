@@ -77,6 +77,7 @@ builder.Services.AddSingleton<IFormFactor, FormFactor>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
 builder.Services.AddSingleton<ICommunityParticipationService, DeterministicCommunityParticipationService>();
+builder.Services.AddSingleton<IOpportunityEngineService, DeterministicOpportunityEngineService>();
 builder.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCenterAudienceResolver>();
 
 // Authentication — provider selected via appsettings "Authentication:Provider"

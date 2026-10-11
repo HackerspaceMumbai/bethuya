@@ -1,0 +1,168 @@
+@using Bethuya.Hybrid.Shared.Models.OpportunityEngine
+
+<aside id="section-selected-opportunity"
+       class="oe-detail-panel"
+       data-test="selected-opportunity-panel"
+       aria-label="Selected opportunity"
+       tabindex="-1">
+    @if (Opportunity is null)
+    {
+        <div class="oe-detail-empty" data-test="opportunity-panel-empty">
+            <LucideIcon Name="sparkles" Size="22" />
+            <h2>Selected Opportunity</h2>
+            <p>Inspect a member opportunity or view matches from a community need to review evidence and take action.</p>
+        </div>
+    }
+    else
+    {
+        <div class="oe-detail-scroll">
+            <header class="oe-detail-header">
+                <p class="oe-eyebrow">Selected Opportunity</p>
+                <h2 data-test="selected-opportunity-title">@Opportunity.OpportunityTitle</h2>
+                <div class="oe-detail-meta">
+                    <span data-test="selected-opportunity-status">Status: @FormatStatus(Opportunity.Status)</span>
+                    <span class="oe-evidence oe-evidence--@Opportunity.EvidenceStrength.ToString().ToLowerInvariant()">
+                        Evidence Strength: @Opportunity.EvidenceStrength
+                    </span>
+                </div>
+                <div class="oe-detail-badges">
+                    <span>Human Review Required</span>
+                    <span>Zero Synthetic Weights</span>
+                </div>
+            </header>
+
+            <section class="oe-detail-block" data-test="community-need-context">
+                <h3>Community Need</h3>
+                <p class="oe-detail-emphasis">@Opportunity.NeedContext.EventTitle</p>
+                <dl class="oe-detail-dl">
+                    <div><dt>Role</dt><dd>@Opportunity.NeedContext.Role</dd></div>
+                    <div><dt>Required By</dt><dd>@Opportunity.NeedContext.RequiredBy</dd></div>
+                    <div><dt>Member</dt><dd>@Opportunity.MemberName</dd></div>
+                </dl>
+            </section>
+
+            <section class="oe-detail-block" data-test="why-opportunity-exists">
+                <h3>Why This Opportunity Exists</h3>
+                <p class="oe-detail-label">Verified Receipts</p>
+                <ul>
+                    @foreach (var reason in Opportunity.WhyExists)
+                    {
+                        <li>@reason</li>
+                    }
+                </ul>
+            </section>
+
+            <section class="oe-detail-block" data-test="evidence-sources">
+                <h3>Evidence Sources</h3>
+                <div class="oe-source-list">
+                    @foreach (var source in Opportunity.EvidenceSources)
+                    {
+                        <span>@source</span>
+                    }
+                </div>
+            </section>
+
+            <section class="oe-detail-block" data-test="pathway-journey">
+                <h3>Pathway Journey</h3>
+                <ol class="oe-pathway">
+                    @foreach (var step in Opportunity.PathwayJourney)
+                    {
+                        <li>@step</li>
+                    }
+                </ol>
+            </section>
+
+            <section class="oe-detail-block" data-test="graph-snapshot">
+                <h3>Community Graph Snapshot</h3>
+                <dl class="oe-detail-dl">
+                    <div><dt>Connected To</dt><dd>@Opportunity.Graph.ConnectedMembers Members</dd></div>
+                    <div><dt>Supports</dt><dd>@Opportunity.Graph.SupportsNewMembers New Members</dd></div>
+                    <div><dt>Collaborates With</dt><dd>@Opportunity.Graph.CollaboratesWithVolunteers Volunteers</dd></div>
+                    <div><dt>Primary Cluster</dt><dd>@Opportunity.Graph.PrimaryCluster</dd></div>
+                </dl>
+                <div class="oe-detail-actions-inline">
+                    <a href="/community-graph" data-test="view-graph-link">View Graph</a>
+                    <a href="/community-graph" data-test="view-connections-link">View Connections</a>
+                </div>
+            </section>
+
+            <section class="oe-detail-block" data-test="opportunity-workflow">
+                <h3>Opportunity Workflow</h3>
+                <ol class="oe-workflow">
+                    @foreach (var step in PrimaryWorkflow)
+                    {
+                        <li class="@(step == Opportunity.Status ? "oe-workflow__current" : "")">@FormatStatus(step)</li>
+                    }
+                </ol>
+                <p class="oe-detail-label">Alternative outcomes</p>
+                <div class="oe-alt-outcomes">
+                    @foreach (var alt in AlternativeOutcomes)
+                    {
+                        <span class="@(alt == Opportunity.Status ? "oe-workflow__current" : "")">@FormatStatus(alt)</span>
+                    }
+                </div>
+            </section>
+
+            @if (!string.IsNullOrWhiteSpace(ActionMessage))
+            {
+                <p class="oe-action-message" data-test="opportunity-action-message">@ActionMessage</p>
+            }
+        </div>
+
+        <footer class="oe-detail-footer" data-test="opportunity-action-footer">
+            <div data-test="action-defer">
+                <BbButton Variant="ButtonVariant.Ghost"
+                          Disabled="@(!ActionsEnabled)"
+                          OnClick="@(() => OnDefer.InvokeAsync())">Defer</BbButton>
+            </div>
+            <div data-test="action-message">
+                <BbButton Variant="ButtonVariant.Outline" OnClick="@(() => OnMessage.InvokeAsync())">Message Member</BbButton>
+            </div>
+            <div data-test="action-approve">
+                <BbButton Variant="ButtonVariant.Default"
+                          Disabled="@(!ActionsEnabled)"
+                          OnClick="@(() => OnApprove.InvokeAsync())">Approve &amp; Invite</BbButton>
+            </div>
+        </footer>
+    }
+</aside>
+
+@code {
+    private static readonly OpportunityWorkflowStatus[] PrimaryWorkflow =
+    [
+        OpportunityWorkflowStatus.Suggested,
+        OpportunityWorkflowStatus.UnderReview,
+        OpportunityWorkflowStatus.Approved,
+        OpportunityWorkflowStatus.Offered,
+        OpportunityWorkflowStatus.Accepted,
+        OpportunityWorkflowStatus.Completed
+    ];
+
+    private static readonly OpportunityWorkflowStatus[] AlternativeOutcomes =
+    [
+        OpportunityWorkflowStatus.Dismissed,
+        OpportunityWorkflowStatus.Declined,
+        OpportunityWorkflowStatus.Expired
+    ];
+
+    [Parameter] public MemberOpportunity? Opportunity { get; set; }
+    [Parameter] public string? ActionMessage { get; set; }
+    [Parameter] public bool ActionsEnabled { get; set; } = true;
+    [Parameter] public EventCallback OnDefer { get; set; }
+    [Parameter] public EventCallback OnMessage { get; set; }
+    [Parameter] public EventCallback OnApprove { get; set; }
+
+    private static string FormatStatus(OpportunityWorkflowStatus status) => status switch
+    {
+        OpportunityWorkflowStatus.UnderReview => "Needs Review",
+        OpportunityWorkflowStatus.Suggested => "Suggested",
+        OpportunityWorkflowStatus.Approved => "Approved",
+        OpportunityWorkflowStatus.Offered => "Offered",
+        OpportunityWorkflowStatus.Accepted => "Accepted",
+        OpportunityWorkflowStatus.Completed => "Completed",
+        OpportunityWorkflowStatus.Dismissed => "Dismissed",
+        OpportunityWorkflowStatus.Declined => "Declined",
+        OpportunityWorkflowStatus.Expired => "Expired",
+        _ => status.ToString()
+    };
+}

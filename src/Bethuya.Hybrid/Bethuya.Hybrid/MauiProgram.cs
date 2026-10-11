@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using BlazorBlueprint.Components;
 using Bethuya.Hybrid.Shared.Services;
 using Bethuya.Hybrid.Services;
@@ -22,6 +22,7 @@ public static class MauiProgram
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
         builder.Services.AddSingleton<ICommunityParticipationService, DeterministicCommunityParticipationService>();
+        builder.Services.AddSingleton<IOpportunityEngineService, DeterministicOpportunityEngineService>();
         builder.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCenterAudienceResolver>();
 
         builder.Services.AddMauiBlazorWebView();

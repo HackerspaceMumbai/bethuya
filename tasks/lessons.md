@@ -40,6 +40,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 - **Fix:** Ran the small 444-test project suite directly, then completed the full solution build.
 - **Prevention:** Use `--treenode-filter`/`--filter-uid` for targeted TUnit runs, or run the bounded project suite when it completes quickly.
 
+## [2026-10-05] Do not remove Blazor-owned DOM nodes in Playwright
+- **What happened:** Removing the dev persona toolbar from the DOM before an Opportunity Engine Approve click caused a Blazor circuit `removeChild` failure and left the workflow unchanged.
+- **Root cause:** Playwright deleted nodes Blazor still tracked; the next InteractiveServer render tried to detach already-missing children.
+- **Fix:** Keep toolbar nodes mounted and neutralize interception with an injected stylesheet (`pointer-events: none`) plus a forced click when needed.
+- **Prevention:** Never `remove()` Blazor-rendered elements in E2E setup; prefer CSS overrides or collapsing UI that Blazor itself owns.
+
 ## [2026-10-05] Compact card headers need an explicit narrow-width composition
 - **What happened:** Readiness status pills overflowed cards when a long title and fixed-width pill shared a 191px card header row.
 - **Root cause:** The flex header kept both elements on one line, and the title's intrinsic width left insufficient inline space for the status pill.

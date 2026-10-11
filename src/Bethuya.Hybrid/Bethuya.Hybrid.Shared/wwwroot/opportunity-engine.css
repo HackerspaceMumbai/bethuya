@@ -1,0 +1,816 @@
+/* BB does not provide the multi-section operational workspace grid, sticky detail panel, or pathway/workflow steppers. */
+/* Atmosphere + page shell: BB has no Hackerspace Command Center page composition or radial brand wash. */
+.opportunity-engine {
+    --oe-surface: rgba(24, 18, 16, 0.78);
+    --oe-surface-raised: rgba(31, 24, 20, 0.92);
+    --oe-cream: #f4eee3;
+    --oe-muted: #a99b88;
+    --oe-green: #72c69a;
+    --oe-amber: #e0ad42;
+    --oe-danger: #e26d5a;
+    position: relative;
+    display: grid;
+    gap: 1.25rem;
+    max-width: 92rem;
+    margin: 0 auto;
+    padding: 1.25rem 0 4rem;
+    color: var(--oe-cream);
+}
+
+.opportunity-engine::before {
+    position: absolute;
+    z-index: -1;
+    inset: -7rem -4rem auto;
+    height: 28rem;
+    content: "";
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(212, 168, 48, 0.13), transparent 32%),
+        radial-gradient(circle at 78% 8%, rgba(87, 128, 105, 0.1), transparent 26%);
+    filter: blur(12px);
+}
+
+/* BB NavLink / BbButton lack the compact gold text back-link used across organizer workspaces. */
+.oe-back {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--hs-gold);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.oe-back:hover {
+    color: #E8BE48;
+}
+
+/* BB has no header + philosophy strip layout matching Command Center hero typography. */
+.oe-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.oe-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.35rem;
+    color: var(--hs-gold);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.oe-header h1 {
+    margin: 0;
+    color: var(--oe-cream);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+}
+
+.oe-subtitle {
+    margin: 0.4rem 0 0;
+    max-width: 40rem;
+    color: var(--oe-muted);
+    font-size: 0.95rem;
+}
+
+.oe-philosophy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.65rem;
+    max-width: 28rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--oe-surface);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.75rem;
+}
+
+.oe-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--oe-green);
+}
+
+.oe-philosophy__label {
+    color: var(--oe-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.oe-philosophy__text {
+    color: var(--oe-cream);
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+/* BB Tabs lack the 4-up workspace jump strip with risk-accent + count badges. */
+.oe-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    padding: 0.45rem;
+    background: var(--oe-surface);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.85rem;
+}
+
+@media (min-width: 900px) {
+    .oe-tabs {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.oe-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 2.6rem;
+    padding: 0.55rem 0.7rem;
+    color: var(--oe-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.65rem;
+    cursor: pointer;
+}
+
+.oe-tab:hover {
+    color: var(--oe-cream);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.oe-tab--active {
+    color: var(--hs-bg);
+    background: var(--hs-gold);
+    border-color: var(--hs-gold);
+}
+
+.oe-tab--risk {
+    color: var(--oe-amber);
+    border-color: rgba(224, 173, 66, 0.28);
+}
+
+.oe-tab--risk.oe-tab--active {
+    color: var(--hs-bg);
+    background: var(--oe-amber);
+    border-color: var(--oe-amber);
+}
+
+.oe-tab-badge {
+    padding: 0.1rem 0.45rem;
+    color: inherit;
+    font-size: 0.65rem;
+    font-weight: 800;
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 999px;
+}
+
+/* BB Alert lacks the icon + multi-badge governance banner used for HITL / demo labels. */
+.oe-governance {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.75rem 0.9rem;
+    align-items: start;
+    padding: 0.9rem 1rem;
+    background: var(--oe-surface);
+    border: 1px solid rgba(212, 168, 48, 0.28);
+    border-radius: 0.85rem;
+}
+
+.oe-governance__icon {
+    display: grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    color: var(--hs-gold);
+    background: var(--hs-gold-15);
+    border-radius: 0.55rem;
+}
+
+.oe-governance p {
+    margin: 0;
+    color: var(--oe-muted);
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.oe-governance strong {
+    color: var(--hs-gold);
+}
+
+.oe-governance__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    grid-column: 2;
+}
+
+/* BB Badge/Chip variants do not cover success/warning operational status pills on dark surfaces. */
+.oe-governance__badges span,
+.oe-detail-badges span,
+.oe-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    color: var(--oe-cream);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--hs-border);
+    border-radius: 999px;
+}
+
+.oe-pill--success {
+    color: var(--oe-green);
+    border-color: rgba(114, 198, 154, 0.35);
+    background: rgba(114, 198, 154, 0.12);
+}
+
+.oe-pill--warning {
+    color: var(--oe-amber);
+    border-color: rgba(224, 173, 66, 0.4);
+    background: rgba(224, 173, 66, 0.12);
+}
+
+/* BB has no responsive 5-up KPI strip with priority inset accent for awaiting-review. */
+.oe-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+@media (min-width: 720px) {
+    .oe-kpi-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1100px) {
+    .oe-kpi-strip {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+.oe-kpi {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.9rem 1rem;
+    background: var(--oe-surface);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.85rem;
+}
+
+.oe-kpi--priority {
+    border-color: rgba(224, 173, 66, 0.45);
+    box-shadow: inset 3px 0 0 var(--oe-amber);
+}
+
+.oe-kpi p {
+    margin: 0;
+    color: var(--oe-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.oe-kpi--priority p {
+    color: var(--oe-amber);
+}
+
+.oe-kpi div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.oe-kpi strong {
+    color: var(--oe-cream);
+    font-size: 1.55rem;
+    font-weight: 700;
+}
+
+.oe-kpi span {
+    color: var(--oe-muted);
+    font-size: 0.68rem;
+}
+
+/* BB layout primitives lack sticky-right detail panel + multi-section main column grid. */
+.oe-workspace-grid {
+    display: grid;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+@media (min-width: 1100px) {
+    .oe-workspace-grid {
+        grid-template-columns: minmax(0, 1.45fr) minmax(19rem, 0.85fr);
+    }
+}
+
+.oe-workspace-main {
+    display: grid;
+    gap: 1.25rem;
+}
+
+/* BB Card/Section lack primary/risk bordered workspace section shells with icon title rows. */
+.oe-section {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem 1.1rem 1.15rem;
+    background: var(--oe-surface);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.95rem;
+}
+
+.oe-section--primary {
+    border-color: rgba(212, 168, 48, 0.42);
+    box-shadow: 0 0 0 1px rgba(212, 168, 48, 0.08);
+}
+
+.oe-section--risk {
+    border-color: rgba(224, 173, 66, 0.42);
+    background: linear-gradient(180deg, rgba(224, 173, 66, 0.06), var(--oe-surface));
+}
+
+.oe-section__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.oe-section__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.oe-section__icon {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--hs-bg);
+    background: var(--hs-gold);
+    border-radius: 0.55rem;
+}
+
+.oe-section h2 {
+    margin: 0;
+    color: var(--oe-cream);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+}
+
+.oe-section__header p {
+    margin: 0.35rem 0 0;
+    color: var(--oe-muted);
+    font-size: 0.8rem;
+}
+
+.oe-needs-summary,
+.oe-champion-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.oe-needs-summary span,
+.oe-champion-counts span,
+.oe-champion-counts a {
+    padding: 0.35rem 0.6rem;
+    color: var(--oe-cream);
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.55rem;
+    text-decoration: none;
+}
+
+/* BB ToggleGroup / ChipSet lack event + category filter chips with meta count badges. */
+.oe-event-tabs,
+.oe-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.oe-event-tab,
+.oe-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--oe-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.65rem;
+    cursor: pointer;
+}
+
+.oe-event-tab--active,
+.oe-filter--active {
+    color: var(--hs-bg);
+    background: var(--hs-gold);
+    border-color: var(--hs-gold);
+}
+
+.oe-event-tab__meta,
+.oe-filter span {
+    padding: 0.1rem 0.4rem;
+    font-size: 0.65rem;
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 999px;
+}
+
+.oe-event-canvas {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.95rem;
+    background: var(--oe-surface-raised);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.8rem;
+}
+
+.oe-event-canvas__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.oe-event-canvas__header h3 {
+    margin: 0;
+    color: var(--oe-cream);
+    font-size: 0.95rem;
+}
+
+.oe-event-canvas__header span {
+    color: var(--oe-muted);
+    font-size: 0.75rem;
+}
+
+.oe-staffing-grid,
+.oe-pathway-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.75rem;
+}
+
+/* BB Card lacks dense staffing/opportunity/risk/champion/pathway cards with avatar + action rows. */
+.oe-staffing-card,
+.oe-opportunity-card,
+.oe-risk-card,
+.oe-champion-card,
+.oe-pathway-card {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    background: rgba(13, 11, 9, 0.55);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.75rem;
+}
+
+.oe-staffing-card__top,
+.oe-opportunity-card__top,
+.oe-opportunity-card__footer,
+.oe-risk-card__top,
+.oe-risk-card__actions,
+.oe-champion-card,
+.oe-champion-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.65rem;
+}
+
+.oe-staffing-card h4,
+.oe-opportunity-card h3,
+.oe-risk-card h3,
+.oe-champion-card h3,
+.oe-pathway-card h3 {
+    margin: 0;
+    color: var(--oe-cream);
+    font-size: 0.9rem;
+}
+
+.oe-staffing-card__member,
+.oe-opportunity-card__identity,
+.oe-champion-card__identity,
+.oe-risk-card__top {
+    display: flex;
+    gap: 0.7rem;
+    align-items: flex-start;
+}
+
+.oe-avatar {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+    color: var(--hs-gold);
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: var(--hs-gold-15);
+    border: 1px solid var(--hs-border-strong);
+    border-radius: 999px;
+}
+
+.oe-avatar--warning {
+    color: var(--oe-amber);
+    background: rgba(224, 173, 66, 0.14);
+    border-color: rgba(224, 173, 66, 0.4);
+}
+
+.oe-staffing-card__member p,
+.oe-opportunity-card p,
+.oe-risk-card p,
+.oe-champion-card p {
+    margin: 0.2rem 0 0;
+    color: var(--oe-muted);
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.oe-staffing-card__meta {
+    display: flex;
+    justify-content: space-between;
+    color: var(--oe-muted);
+    font-size: 0.72rem;
+}
+
+.oe-full-btn {
+    width: 100%;
+}
+
+.oe-opportunity-list,
+.oe-risk-list,
+.oe-champion-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.oe-opportunity-card--selected {
+    border-color: rgba(212, 168, 48, 0.55);
+    box-shadow: 0 0 0 1px rgba(212, 168, 48, 0.18);
+}
+
+.oe-opportunity-card__body {
+    padding: 0.7rem 0.8rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.6rem;
+}
+
+.oe-opportunity-card__body strong,
+.oe-detail-emphasis {
+    color: var(--oe-cream);
+}
+
+.oe-evidence {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    color: var(--oe-green);
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: rgba(114, 198, 154, 0.12);
+    border: 1px solid rgba(114, 198, 154, 0.3);
+    border-radius: 999px;
+}
+
+.oe-care-owner {
+    padding: 0.4rem 0.65rem;
+    color: var(--oe-muted);
+    font-size: 0.72rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(224, 173, 66, 0.28);
+    border-radius: 0.55rem;
+}
+
+.oe-care-owner strong {
+    color: var(--oe-amber);
+}
+
+.oe-risk-card__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* BB Drawer/Aside lack sticky scrollable review panel with pinned 3-action footer. */
+.oe-detail-panel {
+    position: sticky;
+    top: 1rem;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: 28rem;
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+    background: var(--oe-surface-raised);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.95rem;
+}
+
+.oe-detail-empty {
+    display: grid;
+    gap: 0.55rem;
+    place-content: center;
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: var(--oe-muted);
+}
+
+.oe-detail-empty h2 {
+    margin: 0;
+    color: var(--oe-cream);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.2rem;
+}
+
+.oe-detail-scroll {
+    display: grid;
+    gap: 1rem;
+    overflow: auto;
+    padding: 1rem 1rem 0.5rem;
+}
+
+.oe-detail-header h2 {
+    margin: 0.15rem 0 0.55rem;
+    color: var(--oe-cream);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+}
+
+.oe-detail-meta,
+.oe-detail-badges,
+.oe-source-list,
+.oe-alt-outcomes,
+.oe-detail-actions-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.oe-detail-meta {
+    margin-bottom: 0.55rem;
+    color: var(--oe-muted);
+    font-size: 0.75rem;
+}
+
+.oe-detail-block {
+    display: grid;
+    gap: 0.55rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--hs-border);
+}
+
+.oe-detail-block h3 {
+    margin: 0;
+    color: var(--oe-cream);
+    font-size: 0.88rem;
+}
+
+.oe-detail-label {
+    margin: 0;
+    color: var(--hs-gold);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* BB Stepper lacks compact pathway/workflow lists with gold markers on dark surfaces. */
+.oe-detail-block ul,
+.oe-pathway,
+.oe-workflow {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.oe-detail-block li,
+.oe-pathway li,
+.oe-workflow li {
+    position: relative;
+    padding: 0.35rem 0 0.35rem 1rem;
+    color: var(--oe-muted);
+    font-size: 0.78rem;
+}
+
+.oe-detail-block li::before,
+.oe-pathway li::before,
+.oe-workflow li::before {
+    position: absolute;
+    left: 0;
+    top: 0.7rem;
+    width: 0.35rem;
+    height: 0.35rem;
+    content: "";
+    background: var(--hs-gold);
+    border-radius: 999px;
+}
+
+.oe-detail-dl {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+}
+
+.oe-detail-dl div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.oe-detail-dl dt {
+    color: var(--oe-muted);
+    font-size: 0.74rem;
+}
+
+.oe-detail-dl dd {
+    margin: 0;
+    color: var(--oe-cream);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: right;
+}
+
+.oe-source-list span,
+.oe-alt-outcomes span {
+    padding: 0.25rem 0.55rem;
+    color: var(--oe-cream);
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.45rem;
+}
+
+.oe-workflow__current {
+    color: var(--hs-gold) !important;
+    font-weight: 700;
+}
+
+.oe-detail-actions-inline a {
+    color: var(--hs-gold);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.oe-action-message {
+    margin: 0;
+    padding: 0.7rem 0.8rem;
+    color: var(--oe-cream);
+    font-size: 0.78rem;
+    background: var(--hs-gold-15);
+    border: 1px solid var(--hs-border);
+    border-radius: 0.55rem;
+}
+
+.oe-detail-footer {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    padding: 0.85rem;
+    background: rgba(13, 11, 9, 0.72);
+    border-top: 1px solid var(--hs-border);
+}
+
+.oe-detail-footer > div {
+    display: grid;
+}
+
+@media (max-width: 1099px) {
+    .oe-detail-panel {
+        position: static;
+        max-height: none;
+    }
+}
+
