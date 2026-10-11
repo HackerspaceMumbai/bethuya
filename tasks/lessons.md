@@ -872,3 +872,5 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 - **Prevention:** Validate one-shot migration resources by exit code, terminal success log, and structured error logs. Test both fresh and existing databases, and never globally filter `RelationalEventId.CommandError` to hide an expected startup probe.
 
 - Merging new privacy enums requires an explicit visibility allow-list, not exclusion of only the formerly most restrictive value. Reconcile granular discovery consent and parallel activity names at the graph/Passport boundary.
+
+- New graph validation must not retroactively require structured targets on unverified legacy ledger inputs. Validate supplied targets independently of requiring them for verified records.

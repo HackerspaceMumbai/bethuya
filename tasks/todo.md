@@ -1077,3 +1077,8 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [ ] Merge latest main preserving Passport and Graph services, contracts, seed commands, schema fields and upstream enum values; test and review before pushing.
 
 - [x] Resolved all seven merge conflicts with origin/main 53f06a1, preserving both features. Integrated Private visibility, granular consent and project-contribution compatibility. 506/506 tests passed. Independent code review cleared the privacy integration fix; performance review found no blockers. Explain-diff: merge integrates upstream Passport/import work; no new infrastructure or package choices beyond main.
+
+## [2026-10-09] PR64 legacy ingestion review
+- [ ] Preserve unverified legacy mentorship/speaking ingestion while enforcing verified graph targets; add regression tests, review, push and resolve thread.
+
+- [x] Legacy unverified speaking/mentorship inputs preserved; verified targets and supplied-target validation retained. 507/507 tests passed, staged code/performance reviews clean. Explain-diff: two validation guards plus regression; no schema, API shape or UI change.

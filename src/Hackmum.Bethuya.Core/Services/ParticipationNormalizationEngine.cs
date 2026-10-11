@@ -49,14 +49,14 @@ public static class ParticipationNormalizationEngine
             Enums.ParticipationActivityKind.UsedTechnology => "Technology",
             _ => null
         };
-        if (expectedKind is not null && targetKind != expectedKind)
+        if (expectedKind is not null && (entry.IsVerified || targetKind is not null) && targetKind != expectedKind)
             throw new ArgumentException($"{entry.Activity} requires a {expectedKind} target.", nameof(entry));
         if (entry.Activity is Enums.ParticipationActivityKind.Attended or Enums.ParticipationActivityKind.Spoke or Enums.ParticipationActivityKind.Volunteered
             && targetKind is not null && targetKind != "Event")
             throw new ArgumentException("Event participation requires an Event target.", nameof(entry));
         if (entry.Activity == Enums.ParticipationActivityKind.JoinedCommunity && targetKind is not null && targetKind != "Community")
             throw new ArgumentException("Community membership requires a Community target.", nameof(entry));
-        if (entry.Activity == Enums.ParticipationActivityKind.Spoke && entry.EventId is null && targetKind != "Event")
+        if (entry.IsVerified && entry.Activity == Enums.ParticipationActivityKind.Spoke && entry.EventId is null && targetKind != "Event")
             throw new ArgumentException("Speaking participation requires an event identifier or Event target.", nameof(entry));
         if (entry.IsVerified && entry.Activity is Enums.ParticipationActivityKind.Attended or Enums.ParticipationActivityKind.Volunteered
             && entry.EventId is null && targetKind != "Event")

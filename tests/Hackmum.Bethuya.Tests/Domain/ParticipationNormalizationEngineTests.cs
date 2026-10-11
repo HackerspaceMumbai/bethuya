@@ -7,6 +7,22 @@ namespace Hackmum.Bethuya.Tests.Domain;
 public sealed class ParticipationNormalizationEngineTests
 {
     [Test]
+    public async Task Normalize_LegacyUnverifiedSpeakingAndMentorshipRemainValid()
+    {
+        foreach (var activity in new[] { ParticipationActivityKind.Spoke, ParticipationActivityKind.Mentored })
+        {
+            var input = new NormalizedParticipationEntry(ParticipationConnectorKind.Forms, "member", activity,
+                DateTimeOffset.UtcNow, "Legacy participation", "legacy-proof", ExternalEventId: "external-event");
+            var normalized = ParticipationNormalizationEngine.Normalize(input);
+            await Assert.That(normalized.ExternalEventId).IsEqualTo("external-event");
+            await Assert.That(normalized.IsVerified).IsFalse();
+            await Assert.That(Assert.Throws<ArgumentException>(() => ParticipationNormalizationEngine.Normalize(input with { IsVerified = true }))).IsNotNull();
+            await Assert.That(Assert.Throws<ArgumentException>(() => ParticipationNormalizationEngine.Normalize(input with
+                { TargetKind = "Project", TargetKey = "project", TargetLabel = "Project" }))).IsNotNull();
+        }
+    }
+
+    [Test]
     public async Task Normalize_VerifiedAttendanceAndVolunteeringRequireEventTargets()
     {
         foreach (var activity in new[] { ParticipationActivityKind.Attended, ParticipationActivityKind.Volunteered })
