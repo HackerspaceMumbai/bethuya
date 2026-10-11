@@ -23,6 +23,12 @@ public static class DevelopmentEndpoints
 
         var group = app.MapGroup("/api/dev").WithTags("Development");
 
+        group.MapPost("/community-graph/seed", async ([Microsoft.AspNetCore.Mvc.FromServices] CommunityGraphDevelopmentSeeder seeder, CancellationToken ct) =>
+        {
+            await seeder.SeedAsync(ct);
+            return Results.Ok(new { Message = "Fictional Community Graph development fixtures seeded." });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
         group.MapPost("/curation/seed", async (
             int reviewableCount,
             CurationSampleSeeder seeder,

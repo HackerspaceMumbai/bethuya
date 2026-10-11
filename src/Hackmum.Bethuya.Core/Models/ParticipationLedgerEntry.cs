@@ -8,6 +8,14 @@ namespace Hackmum.Bethuya.Core.Models;
 /// </summary>
 public sealed class ParticipationLedgerEntry
 {
+    /// <summary>True only when a trusted ingestion source has verified this participation.</summary>
+    public bool IsVerified { get; init; }
+    /// <summary>Structured target type; never inferred from evidence text.</summary>
+    public string? TargetKind { get; init; }
+    /// <summary>Stable source target key, scoped to connector for external entities.</summary>
+    public string? TargetKey { get; init; }
+    /// <summary>Source-supplied display label for the target.</summary>
+    public string? TargetLabel { get; init; }
     /// <summary>
     /// Unique ledger entry identifier.
     /// </summary>

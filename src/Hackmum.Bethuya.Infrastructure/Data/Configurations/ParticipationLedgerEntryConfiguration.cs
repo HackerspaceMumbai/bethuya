@@ -10,6 +10,10 @@ internal sealed class ParticipationLedgerEntryConfiguration : IEntityTypeConfigu
     public void Configure(EntityTypeBuilder<ParticipationLedgerEntry> builder)
     {
         builder.HasKey(entry => entry.Id);
+        builder.Property(entry => entry.IsVerified).HasDefaultValue(false);
+        builder.Property(entry => entry.TargetKind).HasMaxLength(30);
+        builder.Property(entry => entry.TargetKey).HasMaxLength(200);
+        builder.Property(entry => entry.TargetLabel).HasMaxLength(200);
 
         builder.Property(entry => entry.Id)
             .HasConversion(id => id.Value, value => ParticipationLedgerEntryId.From(value))

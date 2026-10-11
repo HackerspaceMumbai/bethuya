@@ -1,0 +1,115 @@
+/* BB has no spatial graph workspace; this scoped layout reproduces the approved graph/Passport composition. */
+.community-graph { --graph-member:#b5c6ff; --graph-event:#ffce13; --graph-project:#c084fc; --graph-community:#2ed6ac; --graph-opportunity:#ff9b4b; --graph-technology:#55cde3; --graph-bg:var(--hs-bg); --graph-panel:var(--hs-card); --graph-line:var(--hs-border); --graph-muted:color-mix(in srgb, var(--hs-text) 62%, var(--hs-text-muted)); color:var(--hs-text); background:var(--graph-bg); margin:-1rem; min-height:calc(100vh - 70px); font-family:var(--font-sans); color-scheme:dark; }
+.graph-topbar { display:flex; align-items:center; gap:20px; padding:18px 24px; background:var(--hs-bg); border-bottom:1px solid var(--graph-line); }
+.graph-topbar h1 { font-size:19px; font-weight:650; margin:0; letter-spacing:-.025em; }
+.subtle { color:var(--graph-muted); font-size:12px; line-height:1.7; }
+.graph-search { width:300px; min-width:200px; max-width:100%; margin-left:auto; }
+.sync-status { color:var(--graph-community); font-size:12px; white-space:nowrap; padding:8px 12px; border:1px solid var(--hs-border); border-radius:20px; background:var(--hs-card); }
+.discovery-rail { display:flex; gap:8px; align-items:center; padding:12px 20px; overflow-x:auto; background:var(--hs-bg); border-bottom:1px solid var(--graph-line); }
+.rail-label { color:var(--graph-muted); text-transform:uppercase; letter-spacing:.06em; font-size:10px; font-weight:700; white-space:nowrap; min-width:66px; }
+.chip { flex-shrink:0; border:1px solid var(--hs-border); border-radius:9px; background:var(--hs-card); }
+.chip.selected { background:var(--hs-card-hover); border-color:var(--hs-border-strong); color:var(--hs-gold); }
+.graph-workspace { display:grid; grid-template-columns:minmax(400px,1fr) minmax(340px,440px); align-items:start; }
+.exploration { min-width:0; }
+.filter-rails { padding:12px 18px; display:grid; gap:9px; border-bottom:1px solid var(--graph-line); background:var(--hs-bg); }
+.filter-row { display:flex; align-items:center; gap:7px; overflow-x:auto; padding-bottom:3px; }
+.entity-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:currentColor; flex-shrink:0; vertical-align:middle; }
+/* BB has no categorical graph palette; shared category tokens keep nodes, edges and legend aligned. Labels and shapes provide non-color cues. */
+.member { --entity-color:var(--graph-member); } .event { --entity-color:var(--graph-event); } .project { --entity-color:var(--graph-project); } .community,.chapter { --entity-color:var(--graph-community); } .opportunity { --entity-color:var(--graph-opportunity); } .technology { --entity-color:var(--graph-technology); }
+.entity-dot,.edge-visible { color:var(--entity-color, var(--hs-gold)); }
+/* BB has no spatial graph controls; align the compact controls with the shared app brand tokens. */
+.community-graph ::deep button { font-size:12px; color:inherit; }
+.community-graph ::deep input:not([type=checkbox]) { background:var(--hs-bg); border-color:var(--hs-border); color:var(--hs-text); }
+.community-graph ::deep button:focus-visible,.graph-scroll:focus-visible { outline:2px solid var(--hs-gold); outline-offset:4px; }
+.chip ::deep button { height:30px; padding:4px 10px; gap:6px; white-space:nowrap; }
+.chip.selected ::deep button:hover { background:var(--hs-card-hover); }
+.discovery-rail .chip.selected { background:var(--hs-gold); color:var(--primary-foreground); border-color:var(--hs-border-strong); box-shadow:0 0 0 2px var(--hs-gold-25); }
+.discovery-rail .chip.selected ::deep button:hover { background:var(--hs-gold-hover); }
+.health-toggle input { accent-color:var(--hs-gold); }
+/* BB has no graph canvas, spatial node controls, relationship hit areas, or in-canvas health annotations. */
+.graph-canvas { position:relative; min-height:850px; background-image:radial-gradient(var(--hs-border) 1px,transparent 1px); background-size:26px 26px; }
+.graph-scroll { height:850px; overflow:auto; }
+.graph-stage { position:relative; min-height:540px; }
+.graph-lines { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.edge-hit { stroke:transparent; stroke-width:18; cursor:pointer; }
+.edge-visible { stroke:currentColor; stroke-width:1.8; opacity:.8; pointer-events:none; vector-effect:non-scaling-stroke; }
+.graph-edge:hover .edge-visible,.graph-edge:focus .edge-visible,.graph-edge.active .edge-visible { stroke-width:3.5; opacity:1; filter:drop-shadow(0 0 5px var(--graph-technology)); }
+.graph-edge.suggestion .edge-visible { stroke-dasharray:6 5; }
+.graph-node { position:absolute; transform:translate(-50%,-50%); display:flex; align-items:center; flex-direction:column; background:transparent; border:0; padding:6px; max-width:164px; cursor:pointer; z-index:2; }
+.graph-node.member,.graph-node.event,.graph-node.project,.graph-node.community,.graph-node.chapter,.graph-node.opportunity,.graph-node.technology { color:var(--entity-color); }
+.node-symbol { display:grid; place-items:center; width:54px; height:54px; border-radius:13px; border:2px solid currentColor; background:var(--hs-card); box-shadow:0 0 0 4px var(--hs-card); font-size:23px; font-weight:700; transition:box-shadow .15s ease; }
+.graph-node.active .node-symbol { width:70px; height:70px; box-shadow:0 0 0 4px var(--entity-color),0 0 24px color-mix(in srgb, var(--entity-color) 35%, transparent); background:var(--hs-card-hover); }
+.graph-node:hover .node-symbol { box-shadow:0 0 0 4px var(--hs-border-strong),0 0 16px var(--hs-gold-25); }
+.graph-node.opportunity .node-symbol { border-style:dashed; }
+.node-label { padding:5px 9px 2px; margin-top:9px; background:var(--hs-card); color:var(--hs-text); border-radius:3px; font-size:12px; font-weight:600; line-height:1.4; }
+.node-description { font-size:10px; padding:1px 8px 4px; background:var(--hs-card); border-radius:0 0 3px 3px; }
+.health-overlays { position:absolute; top:30px; left:14px; right:14px; display:flex; align-items:flex-start; gap:14px; justify-content:space-between; pointer-events:none; }
+.health-overlay { max-width:245px; padding:10px 13px; border:1px solid var(--hs-border-strong); background:var(--hs-card); border-radius:9px; font-size:11px; letter-spacing:.035em; }
+.health-overlay:nth-child(2) { margin-top:95px; color:var(--graph-community); border-color:var(--hs-border); background:var(--hs-card); }
+.health-overlay span { font-weight:700; text-transform:uppercase; }
+.health-overlay p { margin:5px 0 0; font-size:10px; color:var(--graph-muted); line-height:1.5; }
+.canvas-footer { position:absolute; bottom:12px; left:14px; right:14px; display:flex; justify-content:space-between; align-items:center; gap:8px; pointer-events:none; }
+.zoom-controls { display:flex; align-items:center; background:var(--hs-card); border:1px solid var(--graph-line); border-radius:8px; font-size:11px; pointer-events:auto; }
+.health-toggle { display:flex; align-items:center; gap:6px; font-size:11px; padding:10px; background:var(--hs-card); border-radius:6px; pointer-events:auto; }
+.graph-legend { display:grid; gap:9px; padding:16px 20px; background:var(--hs-bg); border-top:1px solid var(--graph-line); font-size:10px; line-height:1.9; color:var(--graph-muted); }
+.graph-legend b { text-transform:uppercase; letter-spacing:.05em; margin-right:10px; color:var(--hs-text); }
+.graph-legend i { margin:0 4px 0 8px; }
+.suggested-key { color:var(--graph-opportunity); margin-left:12px; }
+.view-note { margin:0; padding:10px 18px; color:var(--graph-muted); font-size:11px; background:var(--hs-card); }
+.graph-state,.canvas-empty { padding:100px 35px; text-align:center; color:var(--graph-muted); }
+.graph-state h2,.canvas-empty h2 { font-size:19px; color:var(--hs-text); margin-bottom:12px; }
+.canvas-empty { padding-top:250px; }
+.canvas-empty p { max-width:380px; margin:0 auto 20px; line-height:1.8; font-size:13px; }
+.community-graph a { color:var(--hs-gold); text-decoration:none; font-size:13px; }
+/* BB cards do not provide a persistent graph inspection rail or connected ledger proof layout. */
+.passport-preview { background:var(--graph-panel); border-left:1px solid var(--graph-line); min-height:1030px; }
+.passport-header { display:flex; align-items:center; gap:11px; padding:18px; border-bottom:1px solid var(--graph-line); }
+.passport-icon { padding:8px 11px; font-size:22px; background:var(--hs-card-hover); border:1px solid var(--hs-border-strong); border-radius:4px; color:var(--hs-gold); }
+.passport-header h2 { font-size:13px; font-weight:650; margin:0 0 4px; }
+.passport-header p { font-size:10px; color:var(--graph-muted); margin:0; }
+.verified-badge { margin-left:auto; border:1px solid var(--hs-border); border-radius:12px; padding:7px 10px; color:var(--graph-community); font-size:10px; background:var(--hs-card); }
+.passport-identity { display:flex; align-items:center; gap:14px; padding:21px 20px 17px; }
+.passport-avatar { display:grid; place-items:center; width:58px; height:62px; flex-shrink:0; background:var(--hs-card-hover); border:2px solid var(--hs-border-strong); box-shadow:0 0 0 3px var(--hs-border); border-radius:13px; font-size:21px; font-weight:650; }
+.passport-identity h3 { margin:0 0 4px; font-weight:650; font-size:16px; }
+.passport-identity p { margin:0 0 6px; font-size:11px; color:var(--graph-muted); }
+.identity-tag { font-size:9px; padding:3px 6px; background:var(--hs-card); color:var(--graph-muted); border:1px solid var(--hs-border); border-radius:3px; }
+.passport-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:0 20px 18px; }
+.passport-metrics div { display:grid; gap:3px; place-items:center; background:var(--hs-card); padding:9px 4px; border-radius:3px; }
+.passport-metrics b { color:var(--graph-member); font-size:15px; }
+.passport-metrics div:nth-child(2) b { color:var(--graph-event); }.passport-metrics div:nth-child(3) b { color:var(--graph-community); }
+.passport-metrics span { text-transform:uppercase; letter-spacing:.06em; font-size:8px; }
+.passport-tabs { display:flex; gap:1px; justify-content:space-around; border-top:1px solid var(--graph-line); border-bottom:1px solid var(--graph-line); padding:2px 8px 0; }
+.passport-tabs .active { border-bottom:2px solid var(--hs-gold); color:var(--hs-gold); }
+.passport-tabs ::deep button { padding:9px 7px; font-size:11px; }
+.passport-content { padding:20px; }
+.passport-content h4 { text-transform:uppercase; letter-spacing:.045em; font-size:11px; margin:0 0 15px; font-weight:650; }
+.relationship-proof { border:2px solid var(--hs-border-strong); border-radius:11px; padding:16px; background:var(--hs-card-hover); margin-bottom:24px; }
+.proof-heading { display:flex; align-items:center; gap:9px; color:var(--hs-gold); font-size:12px; font-weight:650; line-height:1.5; padding-bottom:15px; }
+.proof-heading span { font-size:9px; border:1px solid var(--hs-border-strong); background:var(--hs-card-hover); padding:5px 8px; margin-left:auto; }
+.proof-pair { background:var(--hs-bg); border-radius:4px; padding:12px; font-weight:650; font-size:12px; margin-bottom:17px; }
+.proof-pair span { color:var(--graph-technology); padding:0 7px; }
+.relationship-proof h4 { color:var(--hs-text); font-size:10px; }
+.proof-record { display:flex; gap:9px; align-items:flex-start; background:var(--hs-bg); padding:9px 10px; font-size:12px; line-height:1.5; }
+.proof-record > span { color:var(--graph-community); }
+.proof-record small { display:block; color:var(--graph-muted); font-size:9px; margin-top:4px; }
+.relationship-proof footer { color:var(--graph-community); font-size:10px; margin-top:17px; line-height:1.6; }
+.relationship-item { border-bottom:1px solid var(--hs-border); padding:5px 0; }
+.relationship-item ::deep button { white-space:normal; height:auto; text-align:left; justify-content:flex-start; }
+.opportunity-section { margin-top:24px; }
+.opportunity-section h4 { display:flex; gap:10px; align-items:center; font-size:12px; }
+.opportunity-section h4 > span { color:var(--hs-gold); font-size:22px; }
+.opportunity-card { background:var(--hs-card); border:1px solid var(--hs-border); border-radius:9px; padding:12px; margin:11px 0; }
+.opportunity-card ::deep button { padding:0; color:var(--graph-opportunity); white-space:normal; }
+.opportunity-card p { border-left:2px solid var(--hs-gold); padding-left:12px; font-size:12px; color:var(--graph-muted); line-height:1.8; margin:8px 0; }
+.opportunity-card small { color:var(--graph-community); font-size:9px; }
+.passport-principle { border:1px solid var(--hs-border-strong); border-radius:8px; padding:16px; margin-top:23px; background:var(--hs-card); color:var(--graph-muted); font-size:12px; line-height:1.9; }
+.passport-empty { text-align:center; padding:140px 30px; color:var(--graph-muted); }
+.passport-empty > span { font-size:42px; color:var(--graph-muted); }.passport-empty h3 { font-size:17px; margin:20px 0 12px; }.passport-empty p { font-size:13px; line-height:1.9; }
+.ledger-record { border-left:2px solid var(--hs-gold); padding:12px; background:var(--hs-card); margin-bottom:12px; font-size:12px; }
+.ledger-record p { line-height:1.7; margin:7px 0; }.ledger-record small { color:var(--graph-muted); }.ledger-record code { display:block; font-size:9px; margin-top:7px; overflow-wrap:anywhere; color:var(--graph-muted); }
+.overview-copy { font-size:13px; line-height:1.9; color:var(--hs-text); }
+/* BB has no responsive graph/inspection split; stack the same information architecture on small screens. */
+@media(min-width:1600px) { .graph-workspace { grid-template-columns:minmax(500px,1fr) 490px; }.graph-canvas,.graph-scroll { min-height:900px; height:900px; } }
+@media(max-width:1150px) { .graph-workspace { grid-template-columns:minmax(0,1fr); }.passport-preview { min-height:0; border-left:0; border-top:1px solid var(--graph-line); }.graph-topbar { flex-wrap:wrap; }.graph-search { margin-left:0; flex:1; }.passport-empty { padding:50px 25px; }.passport-content { max-width:850px; }.health-overlay { max-width:220px; } }
+@media(max-width:600px) { .graph-topbar { padding:16px; gap:12px; }.graph-topbar > div:first-child { width:100%; }.sync-status { font-size:10px; }.graph-search { min-width:190px; }.graph-canvas { min-height:650px; }.graph-scroll { height:650px; }.health-overlays { gap:8px; }.health-overlay { padding:8px; max-width:170px; }.health-overlay:nth-child(2) { margin-top:75px; }.canvas-footer { flex-wrap:wrap; }.passport-content { padding:16px; }.passport-header { padding:15px; }.graph-legend { padding:12px; }.discovery-rail { padding-left:14px; } }
+@media(prefers-reduced-motion:reduce) { .node-symbol { transition:none; } }

@@ -98,7 +98,11 @@ public sealed class ParticipationLedgerService(
                     Evidence = normalized.Evidence,
                     ProvenanceKey = normalized.ProvenanceKey,
                     SourceCorrelationId = normalized.SourceCorrelationId,
-                    OccurredAt = normalized.OccurredAt
+                    OccurredAt = normalized.OccurredAt,
+                    IsVerified = normalized.IsVerified,
+                    TargetKind = normalized.TargetKind,
+                    TargetKey = normalized.TargetKey,
+                    TargetLabel = normalized.TargetLabel
                 });
                 existingDedupeKeys.Add(dedupeKey);
             }
@@ -216,7 +220,11 @@ public sealed class ParticipationLedgerService(
             EventId: entry.EventId.HasValue ? Hackmum.Bethuya.Core.ValueObjects.EventId.From(entry.EventId.Value) : null,
             ExternalEventId: entry.ExternalEventId,
             ExternalRecordId: entry.ExternalRecordId,
-            SourceCorrelationId: entry.SourceCorrelationId);
+            SourceCorrelationId: entry.SourceCorrelationId,
+            IsVerified: entry.IsVerified,
+            TargetKind: entry.TargetKind,
+            TargetKey: entry.TargetKey,
+            TargetLabel: entry.TargetLabel);
 
     private async Task<ResolvedParticipationEntry[]> ResolveEntriesAsync(
         IReadOnlyList<ParticipationEntryWriteRequest> entries,
