@@ -15,6 +15,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+## [2026-10-12] Fix NU1109 central package downgrades after Aspire 13.6.1
+- **Status:** done
+- **Agent/Owner:** Cursor
+- **Description:** Raise centrally managed package versions so Aspire.Npgsql.EFCore / Aspire.Hosting.Azure.AppContainers 13.6.1 and EF Core Design transitive floors no longer trigger NU1109.
+- **Acceptance:** `dotnet restore` succeeds with no NU1109 package-downgrade errors.
+- **Completion Evidence:** Bumped OTel 1.17.0, EF Core 10.0.12, Extensions.* 10.0.12, KeyVault.Secrets 4.11.1 in Directory.Packages.props. `dotnet restore` exit 0; previously failing AppHost/Backend/Infrastructure/MigrationService/Tests/IntegrationTests restored with no NU1109.
+
 ## [2026-10-07] Clear final Passport review and CI findings
 - **Status:** done
 - **Agent/Owner:** Copilot
