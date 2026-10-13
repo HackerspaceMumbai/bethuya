@@ -406,11 +406,11 @@ public sealed class CommunityCommandCenterTests
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>()
-            .NavigateTo("/community-graph");
+            .NavigateTo("/community-health");
 
         var cut = ctx.RenderComponent<WorkspacePreview>();
 
-        await Assert.That(cut.Markup).Contains("Community Graph");
+        await Assert.That(cut.Markup).Contains("Community Health");
         await Assert.That(cut.Markup).Contains("What is available now");
         await Assert.That(cut.Markup).Contains("What comes next");
         await Assert.That(cut.Markup).DoesNotContain("Opportunity Engine");
