@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-13] Real page routes must displace WorkspacePreview placeholders on merge
+- **What happened:** Home crashed every Blazor circuit with `InvalidOperationException: The following routes are ambiguous: 'community-graph'`.
+- **Root cause:** Community Graph PR #64 registered `@page "/community-graph"` on `CommunityGraph.razor` while the older Homepage placeholder `WorkspacePreview.razor` still claimed the same route.
+- **Fix:** Removed `/community-graph` from `WorkspacePreview` so only `CommunityGraph` owns that path; pointed command-center unit/E2E expectations at the real graph page.
+- **Prevention:** When shipping a real page that replaces a `WorkspacePreview` destination, delete that `@page` directive (and its definition case) in the same change, and grep for remaining duplicate `@page` values before merge.
+
 ## [2026-10-07] Synchronize hosted-service tests on persisted outcomes
 - **What happened:** A hosted-service test used a fixed seven-second delay, which failed under CI scheduling load; waiting only for the external publish call then exposed that persistence was still in progress.
 - **Root cause:** The test synchronized on elapsed time and then on an intermediate side effect rather than the complete durable outcome it asserted.

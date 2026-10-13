@@ -1,4 +1,3 @@
-@page "/community-graph"
 @page "/community-health"
 @page "/volunteers"
 @page "/mentorship"
@@ -82,15 +81,6 @@
 
     private static WorkspaceDefinition GetDefinition(string route) => route switch
     {
-        "community-graph" => new(
-            "Community relationships",
-            "Community Graph",
-            "network",
-            "Understand how participation, collaboration, and contribution connect people over time—without reducing the community to a contact database.",
-            ["Four momentum journeys are visible", "Returning contributors are identified", "Cross-event participation history is represented"],
-            ["Relationship exploration", "Collaboration clusters", "Consent-aware connection context"],
-            "Review the people gaining momentum",
-            "/#momentum-heading"),
         "community-health" => new(
             "Signals, not scores",
             "Community Health",
