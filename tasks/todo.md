@@ -15,6 +15,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+## [2026-10-13] Fix ambiguous /community-graph route after Community Graph merge
+- **Status:** done
+- **Agent/Owner:** Cursor
+- **Description:** PR #64 added `CommunityGraph` on `/community-graph` while `WorkspacePreview` still claimed the same route, crashing every Blazor circuit (including Home) with ambiguous-route `InvalidOperationException`.
+- **Acceptance:** Only `CommunityGraph` owns `/community-graph`; workspace preview keeps the remaining placeholder routes; command-center unit/E2E expectations point at the real graph page; home loads without circuit errors after rebuild/restart.
+- **Completion Evidence:** Removed `@page "/community-graph"` (and its preview definition) from `WorkspacePreview.razor`. Updated command-center unit + E2E expectations. WorkspacePreview tests 2/2 and CommunityGraphRenderTests 5/5 passed. Restarted AppHost from this worktree; Home and `/community-graph` load with no ambiguous-route / circuit errors in Aspire otel logs.
+
 ## [2026-10-12] Fix NU1109 central package downgrades after Aspire 13.6.1
 - **Status:** done
 - **Agent/Owner:** Cursor

@@ -85,7 +85,7 @@ public class CommandCenterFlowTests : BethuyaE2ETest
         var communityGraphLink = Page.Locator("[data-test='quick-navigation'] a").First;
         await Assertions.Expect(communityGraphLink).ToHaveAttributeAsync("href", "/community-graph");
         await GotoWithBudgetAsync("/community-graph");
-        await Assertions.Expect(Page.Locator("[data-test='workspace-preview']")).ToContainTextAsync("Community Graph");
+        await Assertions.Expect(Page.Locator("[data-test='community-graph-page']")).ToContainTextAsync("Community Graph");
     }
 
     [TestMethod]
