@@ -26,14 +26,16 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
     <!-- Auth providers -->
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.5" />
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Identity.Web" Version="4.10.0" />
+    <!-- Pin the transitive PKCS dependency to the fix for GHSA-2fmv-rv2c-59x7. -->
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.13" />
     <PackageVersion Include="Auth0.AspNetCore.Authentication" Version="1.7.0" />
     <!-- Blazor auth components (AuthorizeView, CascadingAuthenticationState, etc.) -->
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.13" />
     <!-- Input validation -->
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <!-- Refit - typed REST client generation -->
@@ -45,9 +47,9 @@
     <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.50" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.50" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.13" />
     <!-- EF Core - Postgres (local Postgres container via Aspire for dev) -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.12" />
@@ -60,7 +62,7 @@
     <!-- Aspire hosting for Keycloak (AppHost - local OIDC testing) -->
     <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.6.1-preview.1.26506.6" />
     <!-- ASP.NET Core TestHost for minimal-API endpoint testing -->
-    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.13" />
     <!-- Testing - TUnit (not xUnit/NUnit per project standards) -->
     <PackageVersion Include="TUnit" Version="1.51.0" />
     <!-- Aspire integration testing - DistributedApplicationTestingBuilder -->
@@ -91,8 +93,8 @@
     <!-- Microsoft.Extensions.AI for AI provider abstraction -->
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.6.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
     <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.4.0" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.1" />
@@ -103,6 +105,6 @@
     <!-- Cloudinary - image upload for event cover pics -->
     <PackageVersion Include="CloudinaryDotNet" Version="1.29.1" />
     <!-- OpenAPI document generation (.NET built-in) -->
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
   </ItemGroup>
 </Project>

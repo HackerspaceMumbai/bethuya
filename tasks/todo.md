@@ -1103,3 +1103,9 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [ ] Preserve unverified legacy mentorship/speaking ingestion while enforcing verified graph targets; add regression tests, review, push and resolve thread.
 
 - [x] Legacy unverified speaking/mentorship inputs preserved; verified targets and supplied-target validation retained. 507/507 tests passed, staged code/performance reviews clean. Explain-diff: two validation guards plus regression; no schema, API shape or UI change.
+
+## [2026-10-17] Fix AppHost NuGet security restore failures
+- [x] Verified advisory fixes and updated central ASP.NET Core/cryptography pins to 10.0.13, MessagePack to 3.1.12 (preserving newer main during merge), and required Extensions dependencies to 10.0.13. AppHost restore and build pass (0 warnings/errors); AppHost/backend/web/migration transitive audits report no vulnerable packages; TUnit suite passes 516/516. No audit suppressions added.
+
+## [2026-10-17] Merge security restore fix into main
+- [x] Staged code review approved; final dependency restore passes with main's MessagePack 3.1.12 preserved. Prepared for merge into local main. Earlier TUnit run passed 516/516; final rerun was blocked by running backend DLL locks.

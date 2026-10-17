@@ -886,3 +886,10 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 - Merging new privacy enums requires an explicit visibility allow-list, not exclusion of only the formerly most restrictive value. Reconcile granular discovery consent and parallel activity names at the graph/Passport boundary.
 
 - New graph validation must not retroactively require structured targets on unverified legacy ledger inputs. Validate supplied targets independently of requiring them for verified records.
+
+## 2026-10-17 - Security servicing pins
+- AppHost restore traverses hosted projects: audit the complete graph, including MessagePack and XML cryptography, rather than only the first reported vulnerabilities.
+- With central transitive pinning, ASP.NET Core 10.0.13 also requires Hosting.Abstractions and Options.ConfigurationExtensions pins at least 10.0.13; older central pins cause NU1109.
+- In this environment parallel restore failed without diagnostics; single-node restore exposed the NuGet network restriction and actionable errors. Network-enabled restore succeeded.
+- Before merging, main already pinned MessagePack 3.1.12 and XML cryptography 10.0.13. Preserve these newer upstream fixes instead of downgrading MessagePack to the minimum patched version.
+- Merge validation encountered DLL locks from a backend running in this worktree. Preserve the running app during a Git-only merge and report the validation limit; final dependency restore passed.
