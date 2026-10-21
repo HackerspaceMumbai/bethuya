@@ -1,0 +1,65 @@
+/* BB lacks an operational triage inbox grid with leave-transition cards. */
+.immediate-decisions {
+    display: grid;
+    gap: 1rem;
+}
+
+.decision-count {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-weight: 650;
+}
+
+.governance-banner {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border: 1px dashed rgba(212, 168, 48, 0.45);
+    border-radius: 0.55rem;
+    background: rgba(212, 168, 48, 0.08);
+    color: var(--command-cream, #f4eee3);
+    font-size: 0.92rem;
+}
+
+.decision-toolbar {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.decision-empty {
+    color: var(--command-muted, #a99b88);
+}
+
+.decision-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+
+.section-heading {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.section-heading p {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.35rem;
+    font-weight: 650;
+}
+
+.section-heading--row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}

@@ -1,0 +1,72 @@
+/* BB Card lacks narrative-hero typography hierarchy for Observation → Risk → Action. */
+.strategic-insight {
+    width: 100%;
+}
+
+.insight-hero {
+    background: var(--command-surface-raised, rgba(31, 24, 20, 0.92));
+    border: 1px solid rgba(212, 168, 48, 0.42);
+    box-shadow: 0 0.75rem 2.5rem rgba(0, 0, 0, 0.28);
+}
+
+.insight-hero__content {
+    display: grid;
+    gap: 0.95rem;
+    padding: 1.75rem 1.9rem;
+}
+
+.insight-kicker {
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--command-amber, #e0ad42);
+    font-weight: 750;
+}
+
+.insight-observation {
+    margin: 0;
+    font-size: clamp(1.55rem, 2.8vw, 2.15rem);
+    line-height: 1.28;
+    color: var(--command-cream, #f4eee3);
+    font-weight: 700;
+    max-width: 54rem;
+}
+
+.insight-risk {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-size: 1.05rem;
+    line-height: 1.5;
+}
+
+.insight-recommendation {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.02rem;
+    line-height: 1.55;
+    opacity: 0.88;
+}
+
+.insight-label {
+    font-weight: 700;
+}
+
+.insight-cta {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 0.45rem;
+    padding: 0.72rem 1.25rem;
+    border-radius: 0.55rem;
+    background: var(--primary, #D4A830);
+    color: var(--primary-foreground, #0d0b09);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.insight-cta:hover,
+.insight-cta:focus-visible {
+    background: var(--hs-gold-hover, #E8BE48);
+    outline: 2px solid var(--ring, #D4A830);
+    outline-offset: 2px;
+}

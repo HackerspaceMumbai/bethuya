@@ -1,0 +1,32 @@
+/* Visual pathway cards — BB has no growth-journey progression rail. */
+.growth-journeys {
+    display: grid;
+    gap: 1rem;
+}
+
+.journey-card-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.section-heading {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.section-heading p {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.35rem;
+    font-weight: 650;
+}

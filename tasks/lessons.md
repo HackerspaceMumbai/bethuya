@@ -16,6 +16,24 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-21] Keep leave animations inside the queue, not on Home
+- **What happened:** Decision resolve on Home did `StateHasChanged` + `Task.Delay(220)` then rebuilt the list, forcing two full InteractiveServer renders of every V9 section.
+- **Root cause:** Leave-transition state lived on the page that also owns Strategic Insight and Growth Journeys.
+- **Fix:** ImmediateDecisionsQueue owns leaving IDs and the 220ms delay; Home only removes the decision once. Static sections skip re-render via `ShouldRender` when their parameter references are unchanged.
+- **Prevention:** Animate list removals in the list component; never delay on a page that hosts unrelated heavy sections.
+
+## [2026-10-21] Command Center refinement keeps Path Finder and Ledger as peer destinations
+- **What happened:** An earlier nav pass nested Participation Ledger under Community Graph framing and let Path Finder disappear into Command Center narrative.
+- **Root cause:** Graph route query params (`view=ledger|topology`) were treated as nav hierarchy instead of alternate views of one page; Path Finder was assumed redundant with Growth Journeys on Home.
+- **Fix:** Restored separate Insights links (Ledger → Topology → Graph) and a first-class Organizer → Path Finder link to `/opportunities`, without adding new Command Center sections.
+- **Prevention:** Treat route query modes as page state, not information architecture; keep Path Finder as its own organizer destination whenever Growth Journeys appear on Home.
+
+## [2026-10-20] Command Center V9 deletes unused V8 modules with the model rewrite
+- **What happened:** After replacing `CommunityCommandCenter` fields, leftover Snapshot/Rail/Review/Attention components failed the build with missing type errors.
+- **Root cause:** Those modules still referenced removed records (`SnapshotMetric`, `ReviewItem`, etc.) and were no longer composed by `Home.razor`.
+- **Fix:** Deleted the unused V8 Command Center components in the same change as the model rewrite.
+- **Prevention:** When shrinking a projection contract, grep for the removed type names and remove or rewrite every consumer before building.
+
 ## [2026-10-13] Real page routes must displace WorkspacePreview placeholders on merge
 - **What happened:** Home crashed every Blazor circuit with `InvalidOperationException: The following routes are ambiguous: 'community-graph'`.
 - **Root cause:** Community Graph PR #64 registered `@page "/community-graph"` on `CommunityGraph.razor` while the older Homepage placeholder `WorkspacePreview.razor` still claimed the same route.

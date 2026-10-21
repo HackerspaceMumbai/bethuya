@@ -1,0 +1,101 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="event-workspaces" aria-labelledby="event-workspaces-heading" data-test="active-event-workspaces">
+    <div class="section-heading">
+        <p>Operational workspaces</p>
+        <h2 id="event-workspaces-heading">Active Event Workspaces</h2>
+    </div>
+
+    @foreach (var workspace in _heroWorkspaces)
+    {
+        <article @key="workspace.WorkspaceId" class="event-hero" data-test="event-workspace-hero">
+            <div class="event-hero__header">
+                <div class="event-readiness" data-test="event-readiness" data-readiness="@workspace.ReadinessPercent">
+                    <p class="event-readiness__percent">@workspace.ReadinessPercent% READY</p>
+                    <p class="@($"event-readiness__label {(workspace.ReadinessPercent >= 90 ? "event-readiness__label--ready" : "event-readiness__label--risk")}")">
+                        @workspace.ReadinessLabel.ToUpperInvariant()
+                    </p>
+                </div>
+                <div>
+                    <h3>@workspace.Title</h3>
+                    <p class="event-date">@workspace.DateLabel</p>
+                </div>
+                <a class="event-cta" href="@workspace.EventRoute" data-test="open-event-workspace">Open Event Workspace</a>
+            </div>
+            <div class="event-columns">
+                <div>
+                    <h4>Operations</h4>
+                    <ul>
+                        @foreach (var line in workspace.Operations)
+                        {
+                            <li>@line</li>
+                        }
+                    </ul>
+                </div>
+                <div>
+                    <h4>Community Impact</h4>
+                    <ul>
+                        @foreach (var line in workspace.CommunityImpact)
+                        {
+                            <li>@line</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </article>
+    }
+
+    <div class="event-subgrid">
+        @foreach (var workspace in _supportingWorkspaces)
+        {
+            <article @key="workspace.WorkspaceId" class="event-subcard" data-test="event-workspace-card">
+                <p class="@($"event-readiness__mini {(workspace.ReadinessPercent >= 90 ? "event-readiness__mini--ready" : "event-readiness__mini--risk")}")"
+                   data-test="event-readiness">
+                    @workspace.ReadinessPercent% · @workspace.ReadinessLabel
+                </p>
+                <h3>@workspace.Title</h3>
+                <p class="event-date">@workspace.DateLabel</p>
+                <a href="@workspace.EventRoute">Open workspace →</a>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<EventWorkspace>? _boundWorkspaces;
+    private EventWorkspace[] _heroWorkspaces = [];
+    private EventWorkspace[] _supportingWorkspaces = [];
+    private bool _shouldRender = true;
+
+    [Parameter, EditorRequired] public IReadOnlyList<EventWorkspace> Workspaces { get; set; } = [];
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_boundWorkspaces, Workspaces))
+        {
+            _shouldRender = false;
+            return;
+        }
+
+        _boundWorkspaces = Workspaces;
+        var heroes = new List<EventWorkspace>();
+        var supporting = new List<EventWorkspace>();
+        foreach (var workspace in Workspaces)
+        {
+            if (workspace.IsHero)
+            {
+                heroes.Add(workspace);
+            }
+            else
+            {
+                supporting.Add(workspace);
+            }
+        }
+
+        _heroWorkspaces = [.. heroes];
+        _supportingWorkspaces = [.. supporting];
+        _shouldRender = true;
+    }
+
+    protected override bool ShouldRender() => _shouldRender;
+}

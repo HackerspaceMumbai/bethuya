@@ -1,0 +1,46 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="chapter-recommendations" aria-labelledby="chapter-recommendations-heading" data-test="chapter-recommendations">
+    <div class="section-heading">
+        <p>Strategic investments</p>
+        <h2 id="chapter-recommendations-heading">Actionable Chapter Recommendations</h2>
+    </div>
+    <div class="recommendation-row">
+        @foreach (var recommendation in Recommendations)
+        {
+            <article @key="recommendation.RecommendationId" class="recommendation-card" data-test="chapter-recommendation">
+                <h3>@recommendation.Title</h3>
+                <p class="recommendation-outcome"><span>Expected Outcome:</span> @recommendation.ExpectedOutcome</p>
+                <div>
+                    <p class="recommendation-evidence-label">Supporting Evidence</p>
+                    <ul>
+                        @foreach (var proof in recommendation.SupportingEvidence)
+                        {
+                            <li>@proof</li>
+                        }
+                    </ul>
+                </div>
+                <a class="recommendation-action" href="@recommendation.ActionRoute" data-test="chapter-recommendation-action">
+                    @recommendation.ActionLabel
+                </a>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<ChapterRecommendation>? _renderedRecommendations;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ChapterRecommendation> Recommendations { get; set; } = [];
+
+    protected override bool ShouldRender()
+    {
+        if (ReferenceEquals(_renderedRecommendations, Recommendations))
+        {
+            return false;
+        }
+
+        _renderedRecommendations = Recommendations;
+        return true;
+    }
+}

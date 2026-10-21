@@ -1,0 +1,143 @@
+/* BB has no growth-journey progression rail with evidence CTA. */
+.journey-card {
+    display: grid;
+    gap: 1rem;
+    padding: 1.15rem;
+    border-radius: 0.8rem;
+    background: var(--command-surface, rgba(24, 18, 16, 0.78));
+    border: 1px solid rgba(212, 168, 48, 0.2);
+}
+
+.journey-member {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+}
+
+.journey-avatar {
+    display: grid;
+    place-items: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 999px;
+    background: rgba(212, 168, 48, 0.16);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--command-cream, #f4eee3);
+    flex-shrink: 0;
+}
+
+.journey-member h3 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.05rem;
+}
+
+.journey-recommendation {
+    margin: 0.25rem 0 0;
+    color: var(--command-muted, #a99b88);
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+.journey-pathway {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0;
+}
+
+.pathway-step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.5rem 1fr auto;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.45rem 0 0.45rem 0.15rem;
+    color: var(--command-muted, #a99b88);
+    font-size: 0.92rem;
+}
+
+.pathway-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 0.72rem;
+    top: 1.55rem;
+    bottom: -0.15rem;
+    width: 2px;
+    background: rgba(212, 168, 48, 0.28);
+}
+
+.pathway-node {
+    display: grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(212, 168, 48, 0.35);
+    background: rgba(24, 18, 16, 0.95);
+    font-size: 0.72rem;
+    z-index: 1;
+}
+
+.pathway-step--completed {
+    color: var(--command-cream, #f4eee3);
+}
+
+.pathway-step--completed .pathway-node {
+    background: rgba(114, 198, 154, 0.2);
+    border-color: var(--command-green, #72c69a);
+    color: var(--command-green, #72c69a);
+}
+
+.pathway-step--current {
+    color: var(--command-cream, #f4eee3);
+    font-weight: 650;
+}
+
+.pathway-step--current .pathway-node {
+    background: rgba(212, 168, 48, 0.22);
+    border-color: var(--command-amber, #e0ad42);
+    color: var(--command-amber, #e0ad42);
+}
+
+.pathway-step--recommended {
+    color: var(--command-amber, #e0ad42);
+    font-weight: 750;
+}
+
+.pathway-step--recommended .pathway-node {
+    background: var(--primary, #D4A830);
+    border-color: var(--primary, #D4A830);
+    color: var(--primary-foreground, #0d0b09);
+}
+
+.pathway-step--recommended::after {
+    background: rgba(212, 168, 48, 0.45);
+}
+
+.pathway-recommended {
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 750;
+}
+
+.view-evidence-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--command-amber, #e0ad42);
+    font-weight: 650;
+    cursor: pointer;
+    font-size: 0.92rem;
+    width: fit-content;
+}
+
+.view-evidence-btn:hover,
+.view-evidence-btn:focus-visible {
+    text-decoration: underline;
+    outline: 2px solid var(--ring, #D4A830);
+    outline-offset: 2px;
+}

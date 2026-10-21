@@ -1,0 +1,102 @@
+.chapter-recommendations {
+    display: grid;
+    gap: 1rem;
+}
+
+.recommendation-row {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.recommendation-card {
+    display: grid;
+    gap: 0.65rem;
+    padding: 1.1rem;
+    border-radius: 0.75rem;
+    background: var(--command-surface, rgba(24, 18, 16, 0.78));
+    border: 1px solid rgba(212, 168, 48, 0.2);
+}
+
+.recommendation-card h3 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.05rem;
+}
+
+.recommendation-outcome {
+    margin: 0;
+    color: var(--command-muted, #a99b88);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.recommendation-outcome span {
+    color: var(--command-cream, #f4eee3);
+    font-weight: 650;
+}
+
+.recommendation-evidence-label {
+    margin: 0 0 0.3rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--command-amber, #e0ad42);
+    font-weight: 650;
+}
+
+.recommendation-card ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--command-cream, #f4eee3);
+    line-height: 1.45;
+}
+
+.recommendation-action {
+    display: inline-flex;
+    margin-top: 0.25rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--primary, #D4A830);
+    color: var(--primary, #D4A830);
+    text-decoration: none;
+    font-weight: 650;
+    font-size: 0.9rem;
+    width: fit-content;
+}
+
+.recommendation-action:hover,
+.recommendation-action:focus-visible {
+    background: rgba(212, 168, 48, 0.12);
+    outline: 2px solid var(--ring, #D4A830);
+    outline-offset: 2px;
+}
+
+.section-heading {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.section-heading p {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.35rem;
+    font-weight: 650;
+}
+
+.section-heading--row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}

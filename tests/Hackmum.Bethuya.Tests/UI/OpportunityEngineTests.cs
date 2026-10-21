@@ -64,7 +64,7 @@ public sealed class OpportunityEngineTests
         await Assert.That(cut.Find("[data-test='opportunity-engine-back-link']").GetAttribute("href")).IsEqualTo("/");
         await Assert.That(cut.Find("[data-test='view-graph-link']")).IsNotNull();
         await Assert.That(cut.Find("[data-test='view-connections-link']")).IsNotNull();
-        await Assert.That(cut.Markup).Contains("Opportunity Engine");
+        await Assert.That(cut.Find("[data-test='opportunity-engine']").GetAttribute("data-path-finder")).IsEqualTo("true");
         await Assert.That(cut.Markup).Contains("Turn verified participation into meaningful opportunities.");
         await Assert.That(cut.Find("[data-test='badge-human-in-the-loop']").TextContent).Contains("Human-in-the-Loop");
         await Assert.That(cut.Find("[data-test='badge-zero-synthetic-weights']").TextContent)

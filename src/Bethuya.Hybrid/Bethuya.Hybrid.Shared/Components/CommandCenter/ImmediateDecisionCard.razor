@@ -1,0 +1,69 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<article class="@CardClass"
+         data-test="decision-card"
+         data-decision-id="@Item.DecisionId">
+    <p class="decision-kind">@FormatKind(Item.Kind)</p>
+    <h3>@Item.Title</h3>
+    <p class="decision-summary">@Item.Summary</p>
+    <div class="decision-evidence-block" data-test="decision-evidence">
+        <p class="decision-evidence__label">Evidence</p>
+        <ul class="decision-evidence" aria-label="Ledger evidence">
+            @for (var i = 0; i < Item.Evidence.Count && i < 3; i++)
+            {
+                <li>@Item.Evidence[i]</li>
+            }
+        </ul>
+    </div>
+    <p class="decision-recommended" data-test="decision-recommended-action">
+        <span>Recommended action</span>
+        @GetRecommendedAction(Item)
+    </p>
+    <div class="decision-actions">
+        <div data-test="decision-primary">
+            <BbButton OnClick="HandlePrimaryAsync" AriaLabel="@($"{Item.PrimaryVerb} {Item.Title}")">
+                @Item.PrimaryVerb
+            </BbButton>
+        </div>
+        <div data-test="decision-review">
+            <BbButton Variant="ButtonVariant.Outline"
+                      OnClick="HandleReviewAsync"
+                      AriaLabel="@($"Review {Item.Title}")">
+                Review
+            </BbButton>
+        </div>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public ImmediateDecision Item { get; set; } = default!;
+    [Parameter] public bool IsLeaving { get; set; }
+    [Parameter] public EventCallback<ImmediateDecision> OnPrimary { get; set; }
+    [Parameter] public EventCallback<ImmediateDecision> OnReview { get; set; }
+
+    private string CardClass => IsLeaving ? "decision-card decision-card--leaving" : "decision-card";
+
+    private Task HandlePrimaryAsync() => OnPrimary.InvokeAsync(Item);
+
+    private Task HandleReviewAsync() => OnReview.InvokeAsync(Item);
+
+    private static string FormatKind(DecisionKind kind) => kind switch
+    {
+        DecisionKind.WaitlistAdmission => "Waitlist admission",
+        DecisionKind.VolunteerAssignment => "Volunteer assignment",
+        DecisionKind.SpeakerConfirmation => "Speaker confirmation",
+        DecisionKind.MentorNomination => "Mentor nomination",
+        DecisionKind.SponsorApproval => "Sponsor approval",
+        _ => "Decision"
+    };
+
+    private static string GetRecommendedAction(ImmediateDecision item) => item.Kind switch
+    {
+        DecisionKind.WaitlistAdmission => "Review admission",
+        DecisionKind.VolunteerAssignment => "Resolve role assignment",
+        DecisionKind.SpeakerConfirmation => "Confirm speaker readiness",
+        DecisionKind.MentorNomination => "Review mentor nomination",
+        DecisionKind.SponsorApproval => "Review sponsor approval",
+        _ => $"Review {item.PrimaryVerb.ToLowerInvariant()}"
+    };
+}

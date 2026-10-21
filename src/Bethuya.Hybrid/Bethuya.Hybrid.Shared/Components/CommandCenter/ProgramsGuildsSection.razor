@@ -1,0 +1,44 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="programs-guilds" aria-labelledby="programs-heading" data-test="programs-guilds">
+    <div class="section-heading">
+        <p>Produced outcomes</p>
+        <h2 id="programs-heading">Community Programs &amp; Guilds</h2>
+    </div>
+    <div class="program-grid">
+        @foreach (var program in Programs)
+        {
+            <article @key="program.ProgramId" class="program-card" data-test="program-card">
+                <h3>@program.Name</h3>
+                <p class="program-tagline">@program.Tagline</p>
+                <p class="program-produced-label">Produced</p>
+                <ul class="program-outcomes">
+                    @foreach (var outcome in program.ProducedOutcomes)
+                    {
+                        <li>@outcome</li>
+                    }
+                </ul>
+                <a class="program-link" href="@program.WorkspaceRoute" data-test="program-workspace-link">
+                    Open Program Workspace <span aria-hidden="true">→</span>
+                </a>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<CommunityProgram>? _renderedPrograms;
+
+    [Parameter, EditorRequired] public IReadOnlyList<CommunityProgram> Programs { get; set; } = [];
+
+    protected override bool ShouldRender()
+    {
+        if (ReferenceEquals(_renderedPrograms, Programs))
+        {
+            return false;
+        }
+
+        _renderedPrograms = Programs;
+        return true;
+    }
+}

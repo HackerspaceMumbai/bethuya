@@ -4,6 +4,7 @@ using Bunit;
 using Bunit.TestDoubles;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.ValueObjects;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
@@ -87,6 +88,25 @@ public sealed class CommunityGraphRenderTests
         context.Services.AddBlazorBlueprintComponents();
         context.AddTestAuthorization().SetAuthorized("viewer");
         return context;
+    }
+
+    [Test]
+    public async Task Graph_ViewLedgerQuery_OpensParticipationLedgerTab()
+    {
+        using var context = CreateContext();
+        var api = Substitute.For<ICommunityPassportApi>();
+        api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(Fixture());
+        context.Services.AddSingleton(api);
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo("/community-graph?view=ledger");
+
+        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        cut.WaitForElement("[data-test='passport-preview']");
+        cut.Find("[data-test='graph-node']").Click();
+
+        var tabClass = cut.Find("[data-test='passport-tab-Participation-Ledger']").GetAttribute("class") ?? "";
+        await Assert.That(tabClass.Contains("active", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(cut.Find("[data-test='passport-preview']").TextContent)
+            .Contains("Participation Ledger");
     }
 
     [Test]

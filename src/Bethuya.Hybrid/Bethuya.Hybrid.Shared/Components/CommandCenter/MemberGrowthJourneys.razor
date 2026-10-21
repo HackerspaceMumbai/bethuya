@@ -1,0 +1,35 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="growth-journeys" aria-labelledby="growth-journeys-heading" data-test="member-growth-journeys">
+    <div class="section-heading">
+        <p>Leadership development</p>
+        <h2 id="growth-journeys-heading">Member Growth Journeys</h2>
+    </div>
+
+    <div class="journey-card-grid" data-test="journey-grid">
+        @foreach (var journey in Journeys)
+        {
+            <GrowthJourneyCard @key="journey.MemberId"
+                               Journey="journey"
+                               OnViewEvidence="OnViewEvidence" />
+        }
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<GrowthJourney>? _renderedJourneys;
+
+    [Parameter, EditorRequired] public IReadOnlyList<GrowthJourney> Journeys { get; set; } = [];
+    [Parameter] public EventCallback<GrowthJourney> OnViewEvidence { get; set; }
+
+    protected override bool ShouldRender()
+    {
+        if (ReferenceEquals(_renderedJourneys, Journeys))
+        {
+            return false;
+        }
+
+        _renderedJourneys = Journeys;
+        return true;
+    }
+}

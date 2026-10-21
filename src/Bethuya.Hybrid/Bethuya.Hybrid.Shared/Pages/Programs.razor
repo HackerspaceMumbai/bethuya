@@ -1,0 +1,53 @@
+@page "/programs"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = $"{BethuyaRoles.Admin},{BethuyaRoles.Organizer},{BethuyaRoles.Curator}")]
+@using Bethuya.Hybrid.Shared.Auth
+@using Bethuya.Hybrid.Shared.Components.CommandCenter
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+@using Bethuya.Hybrid.Shared.Services
+@inject ICommunityCommandCenterService CommandCenterService
+@inject ICommandCenterAudienceResolver AudienceResolver
+
+<PageTitle>Programs &amp; Guilds — Bethuya</PageTitle>
+
+<main class="programs-page" data-test="programs-page">
+    <a class="programs-back" href="/" data-test="programs-back-link">
+        <LucideIcon Name="arrow-left" Size="15" /> Back to command center
+    </a>
+
+    <header class="programs-hero">
+        <p>Produced outcomes</p>
+        <h1>Community Programs &amp; Guilds</h1>
+        <p class="programs-purpose">
+            Programs are measured by the leaders they produce — not by sessions held.
+        </p>
+    </header>
+
+    @if (_loading)
+    {
+        <p role="status" data-test="programs-loading">Loading program outcomes…</p>
+    }
+    else if (_programs.Count > 0)
+    {
+        <ProgramsGuildsSection Programs="@_programs" />
+    }
+</main>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<CommunityProgram> _programs = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var principal = AuthenticationStateTask is null
+            ? new System.Security.Claims.ClaimsPrincipal()
+            : (await AuthenticationStateTask).User;
+        var audience = AudienceResolver.Resolve(principal);
+        var model = await CommandCenterService.GetAsync(audience.Role);
+        _programs = model.Programs;
+        _loading = false;
+    }
+}

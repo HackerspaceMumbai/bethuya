@@ -28,6 +28,41 @@
     filter: blur(12px);
 }
 
+.command-center--v9 {
+    gap: 2rem;
+}
+
+/* Shared section headings for V9 modules (scoped components inherit via ::deep or duplicate). */
+.command-center ::deep .section-heading {
+    display: grid;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.command-center ::deep .section-heading p {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.command-center ::deep .section-heading h2 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.35rem;
+    font-weight: 650;
+}
+
+.command-center ::deep .section-heading--row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
 .command-center--event {
     --command-amber: #f06f4f;
 }
@@ -54,32 +89,32 @@
     transform: translateY(0);
 }
 
-.command-header {
+/* Compact welcome context — Strategic Insight is the primary focal point above. */
+.command-context {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
-    gap: 2rem;
-    padding: 1.25rem 0 0.5rem;
+    gap: 1rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid rgba(212, 168, 48, 0.14);
 }
 
 .command-kicker,
 .command-audience__label {
-    margin: 0 0 0.55rem;
+    margin: 0 0 0.2rem;
     color: var(--hs-gold);
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0.15em;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
 }
 
-.command-header h1 {
-    margin: 0;
-    max-width: 52rem;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(2.2rem, 5vw, 4.4rem);
-    font-weight: 500;
-    letter-spacing: -0.045em;
-    line-height: 0.98;
+.command-context .command-kicker {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    font-weight: 600;
+    color: var(--command-muted, #a99b88);
 }
 
 .command-subtitle {
@@ -94,7 +129,11 @@
 }
 
 .command-audience {
-    margin-top: 1rem;
+    margin-top: 0.15rem;
+}
+
+.command-context .command-summary {
+    font-size: 0.82rem;
 }
 
 .command-audience__label {

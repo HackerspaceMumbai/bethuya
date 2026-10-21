@@ -1,0 +1,31 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="strategic-insight" aria-labelledby="strategic-insight-heading" data-test="strategic-insight">
+    <BbCard Class="insight-hero">
+        <BbCardContent Class="insight-hero__content">
+            <p class="insight-kicker">Strategic Community Insight</p>
+            <h2 id="strategic-insight-heading" class="insight-observation">@Insight.Observation</h2>
+            <p class="insight-risk" data-test="strategic-insight-risk"><span class="insight-label">Risk:</span> @Insight.Risk</p>
+            <p class="insight-recommendation" data-test="strategic-insight-recommendation"><span class="insight-label">Recommendation:</span> @Insight.RecommendedAction</p>
+            <div data-test="strategic-insight-action">
+                <a href="@Insight.ActionRoute" class="insight-cta">@Insight.ActionLabel</a>
+            </div>
+        </BbCardContent>
+    </BbCard>
+</section>
+@code {
+    private StrategicInsight? _renderedInsight;
+
+    [Parameter, EditorRequired] public StrategicInsight Insight { get; set; } = default!;
+
+    protected override bool ShouldRender()
+    {
+        if (ReferenceEquals(_renderedInsight, Insight))
+        {
+            return false;
+        }
+
+        _renderedInsight = Insight;
+        return true;
+    }
+}

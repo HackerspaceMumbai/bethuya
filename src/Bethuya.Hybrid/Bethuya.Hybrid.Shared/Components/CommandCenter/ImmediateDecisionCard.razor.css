@@ -1,0 +1,100 @@
+/* BB lacks leave-transition decision cards with ledger evidence preview. */
+.decision-card {
+    display: grid;
+    gap: 0.65rem;
+    max-height: 32rem;
+    padding: 1.1rem 1.15rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: var(--command-surface, rgba(24, 18, 16, 0.78));
+    border: 1px solid rgba(212, 168, 48, 0.22);
+    transition:
+        opacity 220ms ease,
+        transform 220ms ease,
+        max-height 220ms ease,
+        padding 220ms ease,
+        margin 220ms ease,
+        border-width 220ms ease;
+}
+
+.decision-card--leaving {
+    max-height: 0;
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    transform: translateY(-0.4rem);
+    border-width: 0;
+    pointer-events: none;
+}
+
+.decision-kind {
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--command-muted, #a99b88);
+}
+
+.decision-card h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--command-cream, #f4eee3);
+}
+
+.decision-summary {
+    margin: 0;
+    color: var(--command-muted, #a99b88);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.decision-evidence-block {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background: rgba(212, 168, 48, 0.06);
+    border: 1px solid rgba(212, 168, 48, 0.16);
+}
+
+.decision-evidence__label {
+    margin: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--command-amber, #e0ad42);
+}
+
+.decision-evidence {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--command-cream, #f4eee3);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.decision-recommended {
+    margin: 0;
+    display: grid;
+    gap: 0.15rem;
+    color: var(--command-cream, #f4eee3);
+    font-size: 0.92rem;
+    font-weight: 650;
+}
+
+.decision-recommended span {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--command-muted, #a99b88);
+    font-weight: 650;
+}
+
+.decision-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.25rem;
+}

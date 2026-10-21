@@ -23,7 +23,7 @@ public class NavigationTests : BethuyaE2ETest
     public async Task Navigation_ShouldHaveEventsLink()
     {
         await GotoWithBudgetAsync("/");
-        var eventsLink = Page.GetByRole(AriaRole.Link, new() { Name = "Events" });
+        var eventsLink = Page.GetByRole(AriaRole.Link, new() { Name = "Events & Gatherings" });
         await Assertions.Expect(eventsLink).ToBeVisibleAsync();
     }
 }

@@ -1,0 +1,122 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+<dialog @ref="_dialog"
+        class="evidence-drawer"
+        data-test="growth-journey-evidence-drawer"
+        aria-labelledby="evidence-drawer-title"
+        @onclose="HandleNativeCloseAsync">
+    @if (Journey is not null)
+    {
+        <form method="dialog" class="evidence-drawer__close-form">
+            <button type="submit" class="evidence-drawer__close" data-test="evidence-drawer-close" aria-label="Close evidence drawer">
+                Close
+            </button>
+        </form>
+
+        <header class="evidence-drawer__header">
+            <p>Participation Ledger evidence</p>
+            <h2 id="evidence-drawer-title">@Journey.MemberName</h2>
+            <p class="evidence-drawer__rationale">@Journey.Rationale</p>
+        </header>
+
+        <section aria-labelledby="ledger-heading">
+            <h3 id="ledger-heading">Ledger timeline</h3>
+            <ul>
+                @foreach (var item in Journey.LedgerTimeline)
+                {
+                    <li>@item</li>
+                }
+            </ul>
+        </section>
+
+        <section aria-labelledby="program-history-heading">
+            <h3 id="program-history-heading">Program history</h3>
+            @if (Journey.ProgramHistory.Count == 0)
+            {
+                <p class="evidence-empty">No program history yet.</p>
+            }
+            else
+            {
+                <ul>
+                    @foreach (var item in Journey.ProgramHistory)
+                    {
+                        <li>@item</li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <section aria-labelledby="event-history-heading">
+            <h3 id="event-history-heading">Event history</h3>
+            <ul>
+                @foreach (var item in Journey.EventHistory)
+                {
+                    <li>@item</li>
+                }
+            </ul>
+        </section>
+
+        <section aria-labelledby="graph-heading">
+            <h3 id="graph-heading">Community graph signals</h3>
+            <p>@Journey.GraphNote</p>
+        </section>
+
+        <section aria-labelledby="recommendation-heading">
+            <h3 id="recommendation-heading">Recommendation rationale</h3>
+            <p>@Journey.Recommendation</p>
+        </section>
+    }
+</dialog>
+
+@code {
+    private ElementReference _dialog;
+    private bool _wasOpen;
+    private string? _returnFocusSelector;
+    private bool _closingFromBlazor;
+
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public GrowthJourney? Journey { get; set; }
+    [Parameter] public string? ReturnFocusSelector { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            _returnFocusSelector = ReturnFocusSelector;
+            _closingFromBlazor = false;
+            await Js.InvokeVoidAsync("bethuyaEvidenceDrawer.open", _dialog);
+            _wasOpen = true;
+        }
+        else if (!IsOpen && _wasOpen)
+        {
+            _closingFromBlazor = true;
+            await Js.InvokeVoidAsync(
+                "bethuyaEvidenceDrawer.closeAndRestoreFocus",
+                _dialog,
+                _returnFocusSelector);
+            _wasOpen = false;
+            _closingFromBlazor = false;
+        }
+    }
+
+    private async Task HandleNativeCloseAsync()
+    {
+        if (_closingFromBlazor)
+        {
+            return;
+        }
+
+        _wasOpen = false;
+        if (!string.IsNullOrWhiteSpace(_returnFocusSelector))
+        {
+            await Js.InvokeVoidAsync("bethuyaEvidenceDrawer.focusSelector", _returnFocusSelector);
+        }
+
+        await OnClosed.InvokeAsync();
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

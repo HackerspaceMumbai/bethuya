@@ -15,6 +15,28 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+
+## [2026-10-21] Command Center V9 — InteractiveServer hot-path perf
+- **Status:** done
+- **Agent/Owner:** Cursor
+- **Description:** Fix High/Medium perf findings: decision resolve double-render + full-page re-render, leave-anim height collapse, Take/lambda/Where/string.Join allocs, drawer dual JS interop.
+- **Acceptance:** Resolve removes a card with one Home re-render after leave; static V9 sections skip re-render via ShouldRender; CommunityCommandCenterTests still pass.
+- **Completion Evidence:** Leave anim owned by ImmediateDecisionsQueue; Home RemoveAt once; ShouldRender on static sections; DecisionCard/JourneyCard avoid per-render lambdas; workspaces split + journey paths cached; `closeAndRestoreFocus` single interop. CommunityCommandCenterTests 30/30.
+
+## [2026-10-21] Command Center V9 — Final refinement pass
+- **Status:** done
+- **Agent/Owner:** Cursor
+- **Description:** Correct nav IA (Community / Insights / My Space / Organizer + Path Finder), demote Welcome vs Strategic Insight, strengthen decision evidence previews, readiness-first event workspaces, signal→journey linkage, visual Growth Journeys, tighter program cards. No new sections or batch approvals.
+- **Acceptance:** Nav matches approved groups; Path Finder links to Opportunity Engine; insight dominates greeting; decision cards show WHY evidence; events lead with readiness; signals show journey/next/future; journeys are visual pathways; tests updated.
+- **Completion Evidence:** Nav regrouped (Ledger before Topology/Graph; Path Finder under Organizer → `/opportunities`). Home order Insight → Decisions → compact `command-context`. Decision cards expose Evidence + Recommended action; event workspaces lead with readiness; signals show Journey/Next/Future; growth journeys use visual pathway rails. CommunityCommandCenterTests 30/30, OpportunityEngineTests 8/8.
+
+## [2026-10-20] Command Center V9 — Evidence-Backed Community Leadership OS
+- **Status:** done
+- **Agent/Owner:** Cursor
+- **Description:** Reshape the existing organizer homepage (`Home.razor` at `/`) and shared sidebar into the V9 nine-section leadership operating view: Strategic Insight, Immediate Decisions (HITL, no batch approve), Programs & Guilds, Event Workspaces, Leadership Signals, Member Growth Journeys with evidence drawer, Chapter Recommendations, and Chapter Health. Regroup nav into Operate / Community Graph / My Space / Administration. Extend the deterministic command-center projection; keep participation surface unchanged.
+- **Acceptance:** Operating personas see the nine sections in order; no Approve All; guided review removes one decision at a time; growth journey drawer is a native dialog with focus return; `/programs` lists the same program projection; Community Graph reads `view=ledger|topology`; TUnit + Playwright coverage updated; participation personas unchanged.
+- **Completion Evidence:** Rebuilt `Home.razor` with nine fixed sections; extended deterministic projection; added decision review session + growth journey evidence drawer (`<dialog>` + `evidenceDrawer.js`); regrouped `NavMenu`/`MainLayout`; added `/programs`; deleted unused V8 modules. CommunityCommandCenterTests 30/30, CommunityGraphRenderTests 6/6, NavMenuCurationRenderTests 6/6 passed.
+
 ## [2026-10-13] Fix ambiguous /community-graph route after Community Graph merge
 - **Status:** done
 - **Agent/Owner:** Cursor

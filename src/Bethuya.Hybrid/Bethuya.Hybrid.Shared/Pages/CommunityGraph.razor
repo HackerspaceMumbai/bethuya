@@ -7,6 +7,7 @@
 @using Hackmum.Bethuya.Core.ValueObjects
 @using Bethuya.Hybrid.Shared.Services
 @inject ICommunityPassportApi PassportApi
+@inject NavigationManager Navigation
 
 <PageTitle>Community Graph — Bethuya</PageTitle>
 
@@ -245,7 +246,50 @@
         .DistinctBy(p => p.EntryId).OrderByDescending(p => p.OccurredAt).ToList();
     private List<CommunityGraphOpportunity> SelectedOpportunities => _graph?.Opportunities.Where(o => o.MemberId == _selectedNode?.Id || o.Id == _selectedNode?.Id).ToList() ?? [];
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        ApplyViewQuery();
+        return LoadAsync();
+    }
+
+    private void ApplyViewQuery()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var queryStart = relative.IndexOf('?');
+        if (queryStart < 0)
+        {
+            return;
+        }
+
+        var query = relative[(queryStart + 1)..].Split('#')[0];
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = pair.IndexOf('=');
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            var key = Uri.UnescapeDataString(pair[..separator]);
+            if (!string.Equals(key, "view", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var value = Uri.UnescapeDataString(pair[(separator + 1)..]);
+            if (string.Equals(value, "ledger", StringComparison.OrdinalIgnoreCase))
+            {
+                _tab = "Participation Ledger";
+            }
+            else if (string.Equals(value, "topology", StringComparison.OrdinalIgnoreCase))
+            {
+                _tab = "Relationships";
+                _mode = Modes[0];
+            }
+
+            break;
+        }
+    }
 
     private async Task LoadAsync()
     {
