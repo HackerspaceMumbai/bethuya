@@ -1,3 +1,4 @@
+/* BB has no telemetry-to-next-action chapter health card grid. */
 .chapter-health {
     display: grid;
     gap: 1rem;

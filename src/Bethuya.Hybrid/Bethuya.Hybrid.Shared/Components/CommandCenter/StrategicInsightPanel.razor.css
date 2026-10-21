@@ -3,13 +3,13 @@
     width: 100%;
 }
 
-.insight-hero {
+.strategic-insight ::deep .insight-hero {
     background: var(--command-surface-raised, rgba(31, 24, 20, 0.92));
     border: 1px solid rgba(212, 168, 48, 0.42);
     box-shadow: 0 0.75rem 2.5rem rgba(0, 0, 0, 0.28);
 }
 
-.insight-hero__content {
+.strategic-insight ::deep .insight-hero__content {
     display: grid;
     gap: 0.95rem;
     padding: 1.75rem 1.9rem;

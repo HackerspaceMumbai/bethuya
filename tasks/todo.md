@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-21] Command Center V9 — PR #66 review must/should fixes
+- **Status:** done
+- **Agent/Owner:** Cursor
+- **Description:** Address PR review must-fix (Skip, Graph view query, review dialog a11y, auth-reset state, insight ::deep) and should-fix (h1, journey a11y, reduced motion, Hacktoberfest year, Rina consistency, Programs empty/finally, data-test, drawer test, CSS comments, XML docs). Track aggregate→candidate review disaggregation as a future GitHub issue (not blocking).
+- **Acceptance:** Skip advances without removing; Graph tabs follow `?view=`; review uses native dialog focus; auth reset clears drawer/review; insight styles apply; should-fix items landed; GitHub issue filed; tests pass locally. Do not push until asked.
+- **Completion Evidence:** Must/should fixes applied locally (unpushed). Issue https://github.com/HackerspaceMumbai/bethuya/issues/67 filed for candidate-level review disaggregation. CommunityCommandCenterTests 32/32, CommunityGraphRenderTests 7/7.
+
 ## [2026-10-21] Command Center V9 — InteractiveServer hot-path perf
 - **Status:** done
 - **Agent/Owner:** Cursor

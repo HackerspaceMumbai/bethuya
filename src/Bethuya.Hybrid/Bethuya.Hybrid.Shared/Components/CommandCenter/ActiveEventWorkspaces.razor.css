@@ -1,3 +1,4 @@
+/* BB has no readiness-first event workspace layout with hero + supporting cards. */
 .event-workspaces {
     display: grid;
     gap: 1rem;

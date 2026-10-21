@@ -1,3 +1,4 @@
+/* BB has no produced-outcomes program card grid (leaders created, not session counts). */
 .programs-guilds {
     display: grid;
     gap: 1rem;

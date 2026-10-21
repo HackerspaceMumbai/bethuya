@@ -1,3 +1,4 @@
+/* BB has no actionable chapter recommendation cards with expected outcome + evidence. */
 .chapter-recommendations {
     display: grid;
     gap: 1rem;

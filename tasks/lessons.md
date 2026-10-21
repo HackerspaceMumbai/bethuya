@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-21] Community Graph view query must react to LocationChanged
+- **What happened:** Insights links with `?view=ledger|topology` only applied on first load; subsequent query-only navigations kept the old tab.
+- **Root cause:** `ApplyViewQuery` ran only in `OnInitializedAsync`, which does not re-run when Blazor reuses the page.
+- **Fix:** Subscribe to `Navigation.LocationChanged`, re-parse `view`, and restore the default Relationships tab when the query is cleared.
+- **Prevention:** For query-driven tabs on a shared `@page`, always handle `LocationChanged` (or `SupplyParameterFromQuery` via the router), never init-only.
+
 ## [2026-10-21] Keep leave animations inside the queue, not on Home
 - **What happened:** Decision resolve on Home did `StateHasChanged` + `Task.Delay(220)` then rebuilt the list, forcing two full InteractiveServer renders of every V9 section.
 - **Root cause:** Leave-transition state lived on the page that also owns Strategic Insight and Growth Journeys.

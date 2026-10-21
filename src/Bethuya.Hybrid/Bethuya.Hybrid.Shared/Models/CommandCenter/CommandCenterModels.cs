@@ -33,26 +33,48 @@ public enum CommandCenterMode
     Event
 }
 
+/// <summary>Kinds of human-reviewed work in the Immediate Decisions inbox.</summary>
 public enum DecisionKind
 {
+    /// <summary>Admit or defer a waitlisted registrant.</summary>
     WaitlistAdmission,
+
+    /// <summary>Assign a volunteer to an open shift or role.</summary>
     VolunteerAssignment,
+
+    /// <summary>Confirm a speaker is ready to present.</summary>
     SpeakerConfirmation,
+
+    /// <summary>Nominate a member into a mentorship role.</summary>
     MentorNomination,
+
+    /// <summary>Approve or reject a sponsor engagement.</summary>
     SponsorApproval
 }
 
+/// <summary>Urgency of a leadership signal recommendation.</summary>
 public enum SignalUrgency
 {
+    /// <summary>Optional advancement opportunity.</summary>
     Recommendation,
+
+    /// <summary>Requires timely organizer intervention.</summary>
     Intervention
 }
 
+/// <summary>Progress of a stage on a member growth pathway.</summary>
 public enum JourneyStageStatus
 {
+    /// <summary>Stage already completed.</summary>
     Completed,
+
+    /// <summary>Member's current stage.</summary>
     Current,
+
+    /// <summary>Recommended next stage.</summary>
     Recommended,
+
+    /// <summary>Future stage not yet in focus.</summary>
     Future
 }
 

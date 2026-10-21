@@ -31,6 +31,12 @@
     {
         <ProgramsGuildsSection Programs="@_programs" />
     }
+    else
+    {
+        <p class="programs-empty" role="status" data-test="programs-empty">
+            No program outcomes are available yet. Open a Program Workspace after the next cohort cycle.
+        </p>
+    }
 </main>
 
 @code {
@@ -46,8 +52,14 @@
             ? new System.Security.Claims.ClaimsPrincipal()
             : (await AuthenticationStateTask).User;
         var audience = AudienceResolver.Resolve(principal);
-        var model = await CommandCenterService.GetAsync(audience.Role);
-        _programs = model.Programs;
-        _loading = false;
+        try
+        {
+            var model = await CommandCenterService.GetAsync(audience.Role);
+            _programs = model.Programs;
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 }

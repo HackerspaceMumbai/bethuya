@@ -97,6 +97,7 @@ else if (model is not null && audience is not null)
                                Current="@reviewCurrent"
                                Index="@reviewIndex"
                                Total="@decisions.Count"
+                               ReturnFocusSelector="[data-test='review-queue-launch'] button"
                                OnApprove="ResolveDecisionAsync"
                                OnReject="ResolveDecisionAsync"
                                OnSkip="SkipDecisionAsync"
@@ -149,6 +150,12 @@ else if (model is not null && audience is not null)
         model = null;
         participation = null;
         decisions = [];
+        reviewSessionOpen = false;
+        reviewCurrent = null;
+        reviewIndex = 0;
+        evidenceDrawerOpen = false;
+        selectedJourney = null;
+        evidenceReturnFocusSelector = null;
         errorMessage = null;
         requiresAuthentication = false;
         isLoading = true;
@@ -276,8 +283,19 @@ else if (model is not null && audience is not null)
     private Task ResolveDecisionAsync(ImmediateDecision decision) =>
         RemoveDecisionAsync(decision, advanceReview: true);
 
-    private Task SkipDecisionAsync(ImmediateDecision decision) =>
-        RemoveDecisionAsync(decision, advanceReview: true);
+    private Task SkipDecisionAsync(ImmediateDecision decision)
+    {
+        var index = decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
+        if (index < 0 || !reviewSessionOpen || decisions.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        // Skip advances without resolving — the decision stays pending for later HITL review.
+        reviewIndex = (index + 1) % decisions.Count;
+        reviewCurrent = decisions[reviewIndex];
+        return Task.CompletedTask;
+    }
 
     private Task RemoveDecisionAsync(ImmediateDecision decision, bool advanceReview)
     {

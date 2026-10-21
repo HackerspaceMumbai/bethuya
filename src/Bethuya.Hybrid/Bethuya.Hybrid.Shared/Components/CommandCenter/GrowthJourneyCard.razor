@@ -14,7 +14,10 @@
     <ol class="journey-pathway" aria-label="@($"{Journey.MemberName} growth pathway")" data-test="journey-pathway">
         @foreach (var stage in Journey.Stages)
         {
-            <li class="@GetStageClass(stage.Status)" data-test="journey-stage">
+            <li class="@GetStageClass(stage.Status)"
+                data-test="journey-stage"
+                aria-label="@GetStageAccessibleLabel(stage)"
+                aria-current="@(stage.Status == JourneyStageStatus.Current ? "step" : null)">
                 <span class="pathway-node" aria-hidden="true">@GetStageMark(stage.Status)</span>
                 <span class="pathway-label">@stage.Name</span>
                 @if (stage.Status == JourneyStageStatus.Recommended)
@@ -56,5 +59,13 @@
         JourneyStageStatus.Current => "●",
         JourneyStageStatus.Recommended => "←",
         _ => "○"
+    };
+
+    private static string GetStageAccessibleLabel(JourneyStage stage) => stage.Status switch
+    {
+        JourneyStageStatus.Completed => $"{stage.Name}, completed",
+        JourneyStageStatus.Current => $"{stage.Name}, current stage",
+        JourneyStageStatus.Recommended => $"{stage.Name}, recommended next",
+        _ => $"{stage.Name}, upcoming"
     };
 }

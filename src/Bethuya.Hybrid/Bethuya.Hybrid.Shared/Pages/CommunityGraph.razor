@@ -2,6 +2,7 @@
 @page "/graph"
 @rendermode InteractiveServer
 @attribute [Authorize]
+@implements IDisposable
 @using System.Globalization
 @using Hackmum.Bethuya.Core.Models
 @using Hackmum.Bethuya.Core.ValueObjects
@@ -234,6 +235,7 @@
     private string _search = "";
     private string _mode = Modes[0];
     private string _tab = "Relationships";
+    private string? _appliedView;
     private bool _loading = true;
     private bool _error;
     private bool _showHealth = true;
@@ -248,17 +250,56 @@
 
     protected override Task OnInitializedAsync()
     {
+        Navigation.LocationChanged += HandleLocationChanged;
         ApplyViewQuery();
         return LoadAsync();
     }
 
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        _ = InvokeAsync(() =>
+        {
+            ApplyViewQuery();
+            StateHasChanged();
+        });
+
     private void ApplyViewQuery()
+    {
+        var view = ReadViewQuery();
+        if (string.Equals(_appliedView, view, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _appliedView = view;
+        if (string.Equals(view, "ledger", StringComparison.OrdinalIgnoreCase))
+        {
+            _tab = "Participation Ledger";
+            return;
+        }
+
+        if (string.Equals(view, "topology", StringComparison.OrdinalIgnoreCase))
+        {
+            _tab = "Relationships";
+            _mode = Modes[0];
+            if (_graph is not null)
+            {
+                RebuildView();
+            }
+
+            return;
+        }
+
+        // Query removed or unknown — restore default discovery tab without forcing a reload.
+        _tab = "Relationships";
+    }
+
+    private string? ReadViewQuery()
     {
         var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
         var queryStart = relative.IndexOf('?');
         if (queryStart < 0)
         {
-            return;
+            return null;
         }
 
         var query = relative[(queryStart + 1)..].Split('#')[0];
@@ -276,20 +317,15 @@
                 continue;
             }
 
-            var value = Uri.UnescapeDataString(pair[(separator + 1)..]);
-            if (string.Equals(value, "ledger", StringComparison.OrdinalIgnoreCase))
-            {
-                _tab = "Participation Ledger";
-            }
-            else if (string.Equals(value, "topology", StringComparison.OrdinalIgnoreCase))
-            {
-                _tab = "Relationships";
-                _mode = Modes[0];
-            }
-
-            break;
+            var value = Uri.UnescapeDataString(pair[(separator + 1)..]).Trim();
+            return string.IsNullOrWhiteSpace(value) ? null : value;
         }
+
+        return null;
     }
+
+    /// <inheritdoc />
+    public void Dispose() => Navigation.LocationChanged -= HandleLocationChanged;
 
     private async Task LoadAsync()
     {

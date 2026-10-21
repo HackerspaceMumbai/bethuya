@@ -50,7 +50,23 @@ public sealed class CommunityCommandCenterTests
         await Assert.That(result.ChapterRecommendations).IsNotEmpty();
         await Assert.That(result.ChapterHealth).IsNotEmpty();
         await Assert.That(result.EventWorkspaces[0].Title).Contains("Hacktoberfest Mumbai");
+        await Assert.That(result.EventWorkspaces[0].Title).Contains(result.EventWorkspaces[0].DateLabel[^4..]);
         await Assert.That(result.EventWorkspaces[0].DateLabel).Contains("2026");
+    }
+
+    [Test]
+    public async Task DeterministicProvider_LeadershipSignalAndJourneyAgreeForRina()
+    {
+        var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
+
+        var result = await service.GetAsync(CommunityRole.MentorshipLead);
+        var signal = result.LeadershipSignals.Single(item => item.MemberName == "Rina Shah");
+        var journey = result.GrowthJourneys.Single(item => item.MemberName == "Rina Shah");
+        var current = journey.Stages.Single(stage => stage.Status == JourneyStageStatus.Current);
+        var recommended = journey.Stages.Single(stage => stage.Status == JourneyStageStatus.Recommended);
+
+        await Assert.That(signal.JourneyStages).Contains(current.Name);
+        await Assert.That(signal.NextStage).IsEqualTo(recommended.Name);
     }
 
     [Test]
@@ -219,10 +235,43 @@ public sealed class CommunityCommandCenterTests
         await cut.Find("[data-test='view-evidence'] button").ClickAsync(new());
         cut.WaitForElement("[data-test='growth-journey-evidence-drawer']");
 
-        await Assert.That(cut.Find("[data-test='growth-journey-evidence-drawer']").HasAttribute("open") ||
-                          cut.FindAll("[data-test='growth-journey-evidence-drawer']").Count == 1).IsTrue();
+        var openInvocations = ctx.JSInterop.Invocations
+            .Where(invocation => invocation.Identifier == "bethuyaEvidenceDrawer.open")
+            .ToArray();
+        await Assert.That(openInvocations.Length).IsGreaterThanOrEqualTo(1);
         await Assert.That(cut.FindAll("[data-test='journey-row']").Count).IsEqualTo(rowCount);
         await Assert.That(cut.Markup).Contains("Ledger timeline");
+    }
+
+    [Test]
+    public async Task Home_SkippingDecision_AdvancesReviewWithoutRemovingCard()
+    {
+        using var ctx = CreateCommandCenterContext();
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.open", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.closeAndRestoreFocus", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.focusSelector", _ => true);
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='decision-card']");
+        var before = cut.FindAll("[data-test='decision-card']").Count;
+        await Assert.That(before).IsGreaterThan(1);
+
+        await cut.Find("[data-test='review-queue-launch'] button").ClickAsync(new());
+        cut.WaitForElement("#review-session-title");
+        var firstTitle = cut.Find("#review-session-title").TextContent;
+
+        await cut.Find("[data-test='review-skip'] button").ClickAsync(new());
+        cut.WaitForAssertion(() =>
+        {
+            var nextTitle = cut.Find("#review-session-title").TextContent;
+            if (string.Equals(nextTitle, firstTitle, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Skip did not advance to another decision.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.FindAll("[data-test='decision-card']").Count).IsEqualTo(before);
+        await Assert.That(cut.Find("[data-test='decision-count']").TextContent).Contains($"{before} Decisions");
     }
 
     [Test]
