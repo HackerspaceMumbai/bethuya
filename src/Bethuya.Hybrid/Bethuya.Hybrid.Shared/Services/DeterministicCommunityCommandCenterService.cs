@@ -404,8 +404,8 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
             "Expand mentorship capacity",
             "Add 2 mentors within 21 days to clear the pairing queue.",
             ["6 mentees waiting", "Open Source Mentorship Circle producing 2.4x tech-lead outcomes"],
-            "Open Immediate Decisions",
-            "#immediate-decisions"),
+            "Open Mentorship Circle",
+            "/programs"),
         new(
             "rec-cohort",
             "Launch new contributor cohort",

@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-23] Chapter recommendation CTAs must match inbox contents
+- **What happened:** After Track Lead replaced Mentor nominations in Immediate Decisions, "Expand mentorship capacity" still linked to that inbox — organizers had no matching action for adding mentors.
+- **Root cause:** Decision-card copy was updated without retargeting chapter recommendation actions that depended on the old decision.
+- **Fix:** Point mentorship-capacity CTA at `/programs` (Mentorship Circle), not `#immediate-decisions`.
+- **Prevention:** When changing an inbox decision's meaning, grep chapter recommendations/health CTAs that deep-link into that section.
+
 ## [2026-10-23] MAUI shell must preload the same critical JS as Web App.razor
 - **What happened:** Evidence drawer / guided review worked on Blazor Web but would throw on MAUI Hybrid because `bethuyaEvidenceDrawer` was never defined.
 - **Root cause:** `evidenceDrawer.js` was added only to Web `App.razor`; MAUI `wwwroot/index.html` already preloaded other Shared RCL scripts but missed this one.

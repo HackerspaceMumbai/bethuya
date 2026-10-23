@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-23] Fix mentorship recommendation CTA mismatch
+- **Status:** done
+- **Agent/Owner:** Cursor
+- **Description:** Greptile P2 — "Expand mentorship capacity" links to Immediate Decisions, which now only has Track Lead promotions. Retarget CTA to a surface where organizers can grow mentor capacity (Programs / Mentorship Circle).
+- **Acceptance:** Recommendation action no longer points at Track Lead inbox; tests cover CTA/route alignment; CommunityCommandCenterTests pass. Do not push until asked.
+- **Completion Evidence:** `rec-mentors` CTA → "Open Mentorship Circle" `/programs`. Regression test `DeterministicProvider_MentorshipCapacityRecommendation_RoutesToProgramsNotTrackLeadInbox`. CommunityCommandCenterTests 35/35.
+
 ## [2026-10-23] Command Center V9 — PR #66 post-fix residual reviews
 - **Status:** done
 - **Agent/Owner:** Cursor

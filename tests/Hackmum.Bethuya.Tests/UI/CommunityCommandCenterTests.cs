@@ -89,6 +89,22 @@ public sealed class CommunityCommandCenterTests
     }
 
     [Test]
+    public async Task DeterministicProvider_MentorshipCapacityRecommendation_RoutesToProgramsNotTrackLeadInbox()
+    {
+        var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
+
+        var result = await service.GetAsync(CommunityRole.MentorshipLead);
+        var mentorshipCapacity = result.ChapterRecommendations.Single(item => item.RecommendationId == "rec-mentors");
+        var trackLeadDecision = result.Decisions.Single(item => item.Kind == DecisionKind.MentorNomination);
+
+        await Assert.That(mentorshipCapacity.Title).Contains("mentorship capacity", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(mentorshipCapacity.ActionRoute).IsEqualTo("/programs");
+        await Assert.That(mentorshipCapacity.ActionLabel).Contains("Mentorship Circle", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(mentorshipCapacity.ActionRoute).DoesNotContain("immediate-decisions");
+        await Assert.That(trackLeadDecision.Title).Contains("Track Lead");
+    }
+
+    [Test]
     public async Task DeterministicProvider_RoleReordersDecisionsWithoutRemovingSections()
     {
         var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
