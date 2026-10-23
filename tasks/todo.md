@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-23] Command Center V9 — PR #66 post-fix residual reviews
+- **Status:** done
+- **Agent/Owner:** Cursor
+- **Description:** Resolve remaining valid Greptile/CodeRabbit notes after e63c0a5: MAUI `evidenceDrawer.js`, Rina/Jordan decision↔Track Lead journey alignment, review-session focus return to opener, Home `_camelCase` fields, journey stage status as SR/visible text.
+- **Acceptance:** MAUI index loads evidence drawer script; mentor decision content matches Mentor→Track Lead; card-opened review restores focus to that Review button; Home private fields use `_`; stages expose status text (not aria-label alone); focused Command Center tests pass. Do not push until asked.
+- **Completion Evidence:** MAUI `index.html` loads `evidenceDrawer.js`. Decision copy + labels aligned to Mentor→Track Lead; Rina agreement test extended. Review focus returns to queue launch or card Review button. Home fields renamed `_camelCase`. Journey stages expose Completed/Current/Recommended/Upcoming text (SR for non-recommended). CommunityCommandCenterTests 34/34.
+
 ## [2026-10-21] Command Center V9 — PR #66 review must/should fixes
 - **Status:** done
 - **Agent/Owner:** Cursor

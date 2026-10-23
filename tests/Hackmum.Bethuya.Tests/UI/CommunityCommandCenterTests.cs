@@ -1,4 +1,5 @@
 using Bethuya.Hybrid.Shared.Auth;
+using Bethuya.Hybrid.Shared.Components.CommandCenter;
 using Bethuya.Hybrid.Shared.Layout;
 using Bethuya.Hybrid.Shared.Models.CommandCenter;
 using Bethuya.Hybrid.Shared.Models.Participation;
@@ -64,9 +65,15 @@ public sealed class CommunityCommandCenterTests
         var journey = result.GrowthJourneys.Single(item => item.MemberName == "Rina Shah");
         var current = journey.Stages.Single(stage => stage.Status == JourneyStageStatus.Current);
         var recommended = journey.Stages.Single(stage => stage.Status == JourneyStageStatus.Recommended);
+        var leadershipDecision = result.Decisions.Single(item => item.Kind == DecisionKind.MentorNomination);
 
         await Assert.That(signal.JourneyStages).Contains(current.Name);
         await Assert.That(signal.NextStage).IsEqualTo(recommended.Name);
+        await Assert.That(current.Name).IsEqualTo("Mentor");
+        await Assert.That(recommended.Name).IsEqualTo("Track Lead");
+        await Assert.That(leadershipDecision.Title).Contains("Track Lead");
+        await Assert.That(leadershipDecision.Summary).Contains("Rina Shah");
+        await Assert.That(leadershipDecision.Evidence.Any(item => item.Contains("Mentor → Track Lead", StringComparison.Ordinal))).IsTrue();
     }
 
     [Test]
@@ -258,6 +265,9 @@ public sealed class CommunityCommandCenterTests
 
         await cut.Find("[data-test='review-queue-launch'] button").ClickAsync(new());
         cut.WaitForElement("#review-session-title");
+        var reviewSession = cut.FindComponent<DecisionReviewSession>();
+        await Assert.That(reviewSession.Instance.ReturnFocusSelector)
+            .IsEqualTo("[data-test='review-queue-launch'] button");
         var firstTitle = cut.Find("#review-session-title").TextContent;
 
         await cut.Find("[data-test='review-skip'] button").ClickAsync(new());
@@ -272,6 +282,43 @@ public sealed class CommunityCommandCenterTests
 
         await Assert.That(cut.FindAll("[data-test='decision-card']").Count).IsEqualTo(before);
         await Assert.That(cut.Find("[data-test='decision-count']").TextContent).Contains($"{before} Decisions");
+    }
+
+    [Test]
+    public async Task Home_ReviewFromCard_ReturnsFocusToThatCardReviewButton()
+    {
+        using var ctx = CreateCommandCenterContext();
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.open", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.closeAndRestoreFocus", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.focusSelector", _ => true);
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='decision-card']");
+
+        var decisionId = cut.Find("[data-test='decision-card']").GetAttribute("data-decision-id");
+        await Assert.That(decisionId).IsNotNull();
+        await cut.Find($"[data-decision-id='{decisionId}'] [data-test='decision-review'] button")
+            .ClickAsync(new());
+        cut.WaitForElement("#review-session-title");
+
+        var reviewSession = cut.FindComponent<DecisionReviewSession>();
+        await Assert.That(reviewSession.Instance.ReturnFocusSelector)
+            .IsEqualTo($"[data-decision-id='{decisionId}'] [data-test='decision-review'] button");
+    }
+
+    [Test]
+    public async Task Home_GrowthJourneyStages_ExposeStatusTextInDom()
+    {
+        using var ctx = CreateCommandCenterContext();
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='journey-stage']");
+
+        var stages = cut.FindAll("[data-test='journey-stage']");
+        await Assert.That(stages.Any(stage => stage.TextContent.Contains("Recommended", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(stages.Any(stage => stage.TextContent.Contains("Completed", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(stages.Any(stage => stage.TextContent.Contains("Current stage", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(stages.Any(stage => stage.TextContent.Contains("Upcoming", StringComparison.Ordinal))).IsTrue();
     }
 
     [Test]

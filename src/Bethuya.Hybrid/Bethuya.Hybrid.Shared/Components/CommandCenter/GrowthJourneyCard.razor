@@ -16,14 +16,10 @@
         {
             <li class="@GetStageClass(stage.Status)"
                 data-test="journey-stage"
-                aria-label="@GetStageAccessibleLabel(stage)"
                 aria-current="@(stage.Status == JourneyStageStatus.Current ? "step" : null)">
                 <span class="pathway-node" aria-hidden="true">@GetStageMark(stage.Status)</span>
                 <span class="pathway-label">@stage.Name</span>
-                @if (stage.Status == JourneyStageStatus.Recommended)
-                {
-                    <span class="pathway-recommended">Recommended</span>
-                }
+                <span class="@GetStageStatusClass(stage.Status)">@GetStageStatusText(stage.Status)</span>
             </li>
         }
     </ol>
@@ -61,11 +57,16 @@
         _ => "○"
     };
 
-    private static string GetStageAccessibleLabel(JourneyStage stage) => stage.Status switch
+    private static string GetStageStatusText(JourneyStageStatus status) => status switch
     {
-        JourneyStageStatus.Completed => $"{stage.Name}, completed",
-        JourneyStageStatus.Current => $"{stage.Name}, current stage",
-        JourneyStageStatus.Recommended => $"{stage.Name}, recommended next",
-        _ => $"{stage.Name}, upcoming"
+        JourneyStageStatus.Completed => "Completed",
+        JourneyStageStatus.Current => "Current stage",
+        JourneyStageStatus.Recommended => "Recommended",
+        _ => "Upcoming"
     };
+
+    private static string GetStageStatusClass(JourneyStageStatus status) =>
+        status == JourneyStageStatus.Recommended
+            ? "pathway-recommended"
+            : "pathway-status sr-only";
 }

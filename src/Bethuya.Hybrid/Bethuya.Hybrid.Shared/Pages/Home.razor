@@ -11,11 +11,11 @@
 @inject ICommandCenterAudienceResolver AudienceResolver
 @inject ILogger<Home> Logger
 
-<PageTitle>@(audience?.Surface == CommandCenterSurface.Participation ? "My community journey — Bethuya" : "Community Command Center — Bethuya")</PageTitle>
+<PageTitle>@(_audience?.Surface == CommandCenterSurface.Participation ? "My community journey — Bethuya" : "Community Command Center — Bethuya")</PageTitle>
 
 <a class="skip-link" href="#home-main">Skip to main content</a>
 
-@if (requiresAuthentication)
+@if (_requiresAuthentication)
 {
     <main id="home-main" class="command-center command-center--loading">
         <div data-test="command-center-auth-required">
@@ -26,139 +26,143 @@
         </div>
     </main>
 }
-else if (isLoading)
+else if (_isLoading)
 {
     <main id="home-main" class="command-center command-center--loading">
         <div class="command-loading" data-test="loading-state" role="status">Reading community signals…</div>
     </main>
 }
-else if (errorMessage is not null)
+else if (_errorMessage is not null)
 {
     <main id="home-main" class="command-center command-center--loading">
         <div data-test="error-state">
             <BbAlert Variant="AlertVariant.Danger">
                 <BbAlertTitle>Home unavailable</BbAlertTitle>
-                <BbAlertDescription>@errorMessage</BbAlertDescription>
+                <BbAlertDescription>@_errorMessage</BbAlertDescription>
             </BbAlert>
         </div>
     </main>
 }
-else if (audience?.Surface == CommandCenterSurface.Participation && participation is not null)
+else if (_audience?.Surface == CommandCenterSurface.Participation && _participation is not null)
 {
     <main id="home-main" class="participation-shell" aria-label="Community participation home">
-        <ParticipationSurface Model="@participation"
-                              AudienceLabel="@audience.ExperienceLabel"
-                              AudienceRole="@audience.Role.ToString()" />
+        <ParticipationSurface Model="@_participation"
+                              AudienceLabel="@_audience.ExperienceLabel"
+                              AudienceRole="@_audience.Role.ToString()" />
     </main>
 }
-else if (model is not null && audience is not null)
+else if (_model is not null && _audience is not null)
 {
     <main id="home-main"
           class="command-center command-center--v9"
           aria-label="Community operations command center"
           data-test="community-command-center">
-        <StrategicInsightPanel Insight="@model.Insight" />
+        <StrategicInsightPanel Insight="@_model.Insight" />
 
-        <ImmediateDecisionsQueue Items="@decisions"
+        <ImmediateDecisionsQueue Items="@_decisions"
                                  OnPrimary="ResolveDecisionAsync"
                                  OnReview="OpenReviewForDecision"
                                  OnLaunchReviewSession="OpenReviewSession" />
 
         <header class="command-context" data-test="command-context">
             <div class="command-context__copy">
-                <p class="command-kicker">Welcome back, @audience.DisplayName</p>
-                <div class="command-audience" data-test="command-center-audience" data-audience="@audience.Role">
-                    <span class="command-audience__label">@audience.ExperienceLabel</span>
-                    <p class="command-summary">@audience.ExperienceSummary</p>
+                <p class="command-kicker">Welcome back, @_audience.DisplayName</p>
+                <div class="command-audience" data-test="command-center-audience" data-audience="@_audience.Role">
+                    <span class="command-audience__label">@_audience.ExperienceLabel</span>
+                    <p class="command-summary">@_audience.ExperienceSummary</p>
                 </div>
             </div>
             <div class="command-controls" aria-label="Command center controls">
                 <a class="notification-link" href="#immediate-decisions" data-test="notification-center" aria-label="Open immediate decisions queue">
                     <LucideIcon Name="bell" Size="17" />
-                    <span>@decisions.Count</span>
+                    <span>@_decisions.Count</span>
                 </a>
             </div>
         </header>
 
-        <ProgramsGuildsSection Programs="@model.Programs" />
+        <ProgramsGuildsSection Programs="@_model.Programs" />
 
-        <ActiveEventWorkspaces Workspaces="@model.EventWorkspaces" />
+        <ActiveEventWorkspaces Workspaces="@_model.EventWorkspaces" />
 
-        <LeadershipSignalsSection Signals="@model.LeadershipSignals" />
+        <LeadershipSignalsSection Signals="@_model.LeadershipSignals" />
 
-        <MemberGrowthJourneys Journeys="@model.GrowthJourneys"
+        <MemberGrowthJourneys Journeys="@_model.GrowthJourneys"
                               OnViewEvidence="OpenEvidenceDrawer" />
 
-        <ChapterRecommendationsSection Recommendations="@model.ChapterRecommendations" />
+        <ChapterRecommendationsSection Recommendations="@_model.ChapterRecommendations" />
 
-        <ChapterHealthSection Items="@model.ChapterHealth" />
+        <ChapterHealthSection Items="@_model.ChapterHealth" />
 
-        <DecisionReviewSession IsOpen="@reviewSessionOpen"
-                               Current="@reviewCurrent"
-                               Index="@reviewIndex"
-                               Total="@decisions.Count"
-                               ReturnFocusSelector="[data-test='review-queue-launch'] button"
+        <DecisionReviewSession IsOpen="@_reviewSessionOpen"
+                               Current="@_reviewCurrent"
+                               Index="@_reviewIndex"
+                               Total="@_decisions.Count"
+                               ReturnFocusSelector="@_reviewReturnFocusSelector"
                                OnApprove="ResolveDecisionAsync"
                                OnReject="ResolveDecisionAsync"
                                OnSkip="SkipDecisionAsync"
                                OnClose="CloseReviewSession" />
 
-        <GrowthJourneyEvidenceDrawer IsOpen="@evidenceDrawerOpen"
-                                     Journey="@selectedJourney"
-                                     ReturnFocusSelector="@evidenceReturnFocusSelector"
+        <GrowthJourneyEvidenceDrawer IsOpen="@_evidenceDrawerOpen"
+                                     Journey="@_selectedJourney"
+                                     ReturnFocusSelector="@_evidenceReturnFocusSelector"
                                      OnClosed="HandleEvidenceDrawerClosed" />
     </main>
 }
 
 @code {
+    private const string ReviewQueueFocusSelector = "[data-test='review-queue-launch'] button";
+
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
-    private Task<AuthenticationState>? processedAuthenticationStateTask;
-    private bool hasProcessedAuthenticationState;
-    private CancellationTokenSource? loadCancellation;
-    private int loadGeneration;
-    private CommandCenterAudience? audience;
-    private CommunityCommandCenter? model;
-    private CommunityParticipationHome? participation;
-    private bool isLoading = true;
-    private bool requiresAuthentication;
-    private string? errorMessage;
+    private Task<AuthenticationState>? _processedAuthenticationStateTask;
+    private bool _hasProcessedAuthenticationState;
+    private CancellationTokenSource? _loadCancellation;
+    private int _loadGeneration;
+    private CommandCenterAudience? _audience;
+    private CommunityCommandCenter? _model;
+    private CommunityParticipationHome? _participation;
+    private bool _isLoading = true;
+    private bool _requiresAuthentication;
+    private string? _errorMessage;
 
-    private List<ImmediateDecision> decisions = [];
-    private bool reviewSessionOpen;
-    private int reviewIndex;
-    private ImmediateDecision? reviewCurrent;
+    private List<ImmediateDecision> _decisions = [];
+    private bool _reviewSessionOpen;
+    private int _reviewIndex;
+    private ImmediateDecision? _reviewCurrent;
+    private string? _reviewReturnFocusSelector;
 
-    private bool evidenceDrawerOpen;
-    private GrowthJourney? selectedJourney;
-    private string? evidenceReturnFocusSelector;
+    private bool _evidenceDrawerOpen;
+    private GrowthJourney? _selectedJourney;
+    private string? _evidenceReturnFocusSelector;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (hasProcessedAuthenticationState &&
-            ReferenceEquals(AuthenticationStateTask, processedAuthenticationStateTask))
+        if (_hasProcessedAuthenticationState &&
+            ReferenceEquals(AuthenticationStateTask, _processedAuthenticationStateTask))
         {
             return;
         }
 
         var authenticationStateTask = AuthenticationStateTask;
-        processedAuthenticationStateTask = authenticationStateTask;
-        hasProcessedAuthenticationState = true;
+        _processedAuthenticationStateTask = authenticationStateTask;
+        _hasProcessedAuthenticationState = true;
         CancelCurrentLoad();
-        audience = null;
-        model = null;
-        participation = null;
-        decisions = [];
-        reviewSessionOpen = false;
-        reviewCurrent = null;
-        reviewIndex = 0;
-        evidenceDrawerOpen = false;
-        selectedJourney = null;
-        evidenceReturnFocusSelector = null;
-        errorMessage = null;
-        requiresAuthentication = false;
-        isLoading = true;
+        _audience = null;
+        _model = null;
+        _participation = null;
+        _decisions = [];
+        _reviewSessionOpen = false;
+        _reviewCurrent = null;
+        _reviewIndex = 0;
+        _reviewReturnFocusSelector = null;
+        _evidenceDrawerOpen = false;
+        _selectedJourney = null;
+        _evidenceReturnFocusSelector = null;
+        _errorMessage = null;
+        _requiresAuthentication = false;
+        _isLoading = true;
 
         var principal = authenticationStateTask is null
             ? new System.Security.Claims.ClaimsPrincipal()
@@ -170,27 +174,27 @@ else if (model is not null && audience is not null)
 
         if (principal.Identity?.IsAuthenticated != true)
         {
-            requiresAuthentication = true;
-            isLoading = false;
+            _requiresAuthentication = true;
+            _isLoading = false;
             return;
         }
 
-        requiresAuthentication = false;
-        audience = AudienceResolver.Resolve(principal);
+        _requiresAuthentication = false;
+        _audience = AudienceResolver.Resolve(principal);
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         CancelCurrentLoad();
-        var generation = loadGeneration;
+        var generation = _loadGeneration;
         using var cancellation = new CancellationTokenSource();
-        loadCancellation = cancellation;
+        _loadCancellation = cancellation;
         var cancellationToken = cancellation.Token;
-        var currentAudience = audience;
+        var currentAudience = _audience;
 
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
 
         var role = currentAudience?.Role ?? CommunityRole.CommunityMember;
 
@@ -202,26 +206,26 @@ else if (model is not null && audience is not null)
                     role,
                     currentAudience.DisplayName,
                     cancellationToken);
-                if (generation != loadGeneration)
+                if (generation != _loadGeneration)
                 {
                     return;
                 }
 
-                model = null;
-                decisions = [];
-                participation = loadedParticipation;
+                _model = null;
+                _decisions = [];
+                _participation = loadedParticipation;
             }
             else
             {
                 var loadedModel = await CommandCenterService.GetAsync(role, cancellationToken: cancellationToken);
-                if (generation != loadGeneration)
+                if (generation != _loadGeneration)
                 {
                     return;
                 }
 
-                participation = null;
-                model = loadedModel;
-                decisions = [.. loadedModel.Decisions];
+                _participation = null;
+                _model = loadedModel;
+                _decisions = [.. loadedModel.Decisions];
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -229,55 +233,58 @@ else if (model is not null && audience is not null)
         }
         catch (Exception ex)
         {
-            if (generation == loadGeneration)
+            if (generation == _loadGeneration)
             {
                 Logger.LogError(
                     ex,
                     "Unexpected error loading the Homepage projection for surface {Surface} and role {Role}",
                     currentAudience?.Surface,
                     role);
-                errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
+                _errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
             }
         }
         finally
         {
-            if (generation == loadGeneration)
+            if (generation == _loadGeneration)
             {
-                loadCancellation = null;
-                isLoading = false;
+                _loadCancellation = null;
+                _isLoading = false;
             }
         }
     }
 
     private void OpenReviewSession()
     {
-        if (decisions.Count == 0)
+        if (_decisions.Count == 0)
         {
             return;
         }
 
-        reviewIndex = 0;
-        reviewCurrent = decisions[0];
-        reviewSessionOpen = true;
+        _reviewIndex = 0;
+        _reviewCurrent = _decisions[0];
+        _reviewReturnFocusSelector = ReviewQueueFocusSelector;
+        _reviewSessionOpen = true;
     }
 
     private void OpenReviewForDecision(ImmediateDecision decision)
     {
-        var index = decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
+        var index = _decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
         if (index < 0)
         {
             return;
         }
 
-        reviewIndex = index;
-        reviewCurrent = decisions[index];
-        reviewSessionOpen = true;
+        _reviewIndex = index;
+        _reviewCurrent = _decisions[index];
+        _reviewReturnFocusSelector = $"[data-decision-id='{decision.DecisionId}'] [data-test='decision-review'] button";
+        _reviewSessionOpen = true;
     }
 
     private void CloseReviewSession()
     {
-        reviewSessionOpen = false;
-        reviewCurrent = null;
+        _reviewSessionOpen = false;
+        _reviewCurrent = null;
+        _reviewReturnFocusSelector = null;
     }
 
     private Task ResolveDecisionAsync(ImmediateDecision decision) =>
@@ -285,65 +292,65 @@ else if (model is not null && audience is not null)
 
     private Task SkipDecisionAsync(ImmediateDecision decision)
     {
-        var index = decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
-        if (index < 0 || !reviewSessionOpen || decisions.Count == 0)
+        var index = _decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
+        if (index < 0 || !_reviewSessionOpen || _decisions.Count == 0)
         {
             return Task.CompletedTask;
         }
 
         // Skip advances without resolving — the decision stays pending for later HITL review.
-        reviewIndex = (index + 1) % decisions.Count;
-        reviewCurrent = decisions[reviewIndex];
+        _reviewIndex = (index + 1) % _decisions.Count;
+        _reviewCurrent = _decisions[_reviewIndex];
         return Task.CompletedTask;
     }
 
     private Task RemoveDecisionAsync(ImmediateDecision decision, bool advanceReview)
     {
-        var index = decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
+        var index = _decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
         if (index < 0)
         {
             return Task.CompletedTask;
         }
 
         // Queue owns the leave animation; Home only mutates the list once.
-        decisions.RemoveAt(index);
+        _decisions.RemoveAt(index);
 
-        if (!advanceReview || !reviewSessionOpen)
+        if (!advanceReview || !_reviewSessionOpen)
         {
             return Task.CompletedTask;
         }
 
-        if (decisions.Count == 0)
+        if (_decisions.Count == 0)
         {
             CloseReviewSession();
             return Task.CompletedTask;
         }
 
-        reviewIndex = Math.Clamp(reviewIndex, 0, decisions.Count - 1);
-        reviewCurrent = decisions[reviewIndex];
+        _reviewIndex = Math.Clamp(_reviewIndex, 0, _decisions.Count - 1);
+        _reviewCurrent = _decisions[_reviewIndex];
         return Task.CompletedTask;
     }
 
     private void OpenEvidenceDrawer(GrowthJourney journey)
     {
-        selectedJourney = journey;
-        evidenceReturnFocusSelector = $"[data-evidence-trigger='{journey.MemberId}']";
-        evidenceDrawerOpen = true;
+        _selectedJourney = journey;
+        _evidenceReturnFocusSelector = $"[data-evidence-trigger='{journey.MemberId}']";
+        _evidenceDrawerOpen = true;
     }
 
     private void HandleEvidenceDrawerClosed()
     {
-        evidenceDrawerOpen = false;
-        selectedJourney = null;
-        evidenceReturnFocusSelector = null;
+        _evidenceDrawerOpen = false;
+        _selectedJourney = null;
+        _evidenceReturnFocusSelector = null;
     }
 
     private void CancelCurrentLoad()
     {
-        loadGeneration++;
-        loadCancellation?.Cancel();
-        loadCancellation?.Dispose();
-        loadCancellation = null;
+        _loadGeneration++;
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadCancellation = null;
     }
 
     /// <inheritdoc />

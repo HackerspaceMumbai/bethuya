@@ -102,11 +102,11 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
             new(
                 "dec-mentor-01",
                 DecisionKind.MentorNomination,
-                "2 Mentor Nominations Ready",
-                "Rina Shah and Jordan Blake meet sustained contribution thresholds for mentor roles.",
-                ["Mentored informally across 3 workshops", "Sustained contributions for 8 months", "Passport pathway: Volunteer → Mentor"],
+                "2 Track Lead Nominations Ready",
+                "Rina Shah and Jordan Blake meet sustained contribution thresholds for Track Lead roles.",
+                ["Mentored informally across 3 workshops", "Sustained contributions for 8 months", "Passport pathway: Mentor → Track Lead"],
                 "Nominate",
-                "Mentor candidate pool"),
+                "Track Lead candidate pool"),
             new(
                 "dec-sponsor-01",
                 DecisionKind.SponsorApproval,
@@ -404,7 +404,7 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
             "Expand mentorship capacity",
             "Add 2 mentors within 21 days to clear the pairing queue.",
             ["6 mentees waiting", "Open Source Mentorship Circle producing 2.4x tech-lead outcomes"],
-            "Review Mentor Nominations",
+            "Open Immediate Decisions",
             "#immediate-decisions"),
         new(
             "rec-cohort",

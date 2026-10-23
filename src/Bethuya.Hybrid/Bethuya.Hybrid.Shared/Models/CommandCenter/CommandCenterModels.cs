@@ -45,7 +45,7 @@ public enum DecisionKind
     /// <summary>Confirm a speaker is ready to present.</summary>
     SpeakerConfirmation,
 
-    /// <summary>Nominate a member into a mentorship role.</summary>
+    /// <summary>Nominate a mentor-pipeline member for the next leadership stage (e.g. Mentor → Track Lead).</summary>
     MentorNomination,
 
     /// <summary>Approve or reject a sponsor engagement.</summary>

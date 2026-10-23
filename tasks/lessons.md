@@ -16,6 +16,18 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-23] MAUI shell must preload the same critical JS as Web App.razor
+- **What happened:** Evidence drawer / guided review worked on Blazor Web but would throw on MAUI Hybrid because `bethuyaEvidenceDrawer` was never defined.
+- **Root cause:** `evidenceDrawer.js` was added only to Web `App.razor`; MAUI `wwwroot/index.html` already preloaded other Shared RCL scripts but missed this one.
+- **Fix:** Load `_content/Bethuya.Hybrid.Shared/js/evidenceDrawer.js` in MAUI `index.html` alongside the other global scripts.
+- **Prevention:** When adding a preloaded InteractiveServer script to Web `App.razor`, mirror it in MAUI `wwwroot/index.html` in the same change.
+
+## [2026-10-23] Leadership decision copy must match journey/signal stages
+- **What happened:** Rina’s signal/journey said Mentor → Track Lead while the Immediate Decision still claimed Mentor nominations with Volunteer → Mentor evidence.
+- **Root cause:** Signal/journey consistency was fixed without updating the related aggregate decision card.
+- **Fix:** Align mentor-pipeline decision title/summary/evidence to Track Lead and assert decision↔journey agreement in tests.
+- **Prevention:** When changing a member’s recommended stage, update every Command Center surface that names that transition (signals, journeys, decisions, CTAs).
+
 ## [2026-10-21] Community Graph view query must react to LocationChanged
 - **What happened:** Insights links with `?view=ledger|topology` only applied on first load; subsequent query-only navigations kept the old tab.
 - **Root cause:** `ApplyViewQuery` ran only in `OnInitializedAsync`, which does not re-run when Blazor reuses the page.
