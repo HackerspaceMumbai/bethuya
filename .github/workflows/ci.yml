@@ -46,14 +46,19 @@ jobs:
     needs: build-and-test
 
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+      postgres:
+        image: postgres:16
         env:
-          SA_PASSWORD: "BethuyaCI-Dev2025"
-          ACCEPT_EULA: "Y"
-          MSSQL_PID: Developer
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: "BethuyaCI-Dev2025"
+          POSTGRES_DB: BethuyaE2EDb
         ports:
-          - 1433:1433
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d BethuyaE2EDb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout
@@ -76,42 +81,11 @@ jobs:
       - name: Install Playwright browsers
         run: pwsh tests/Hackmum.Bethuya.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
-      - name: Wait for SQL Server
-        run: |
-          echo "Waiting for SQL Server to accept connections..."
-          SQLCMD=""
-          if [ -f /opt/mssql-tools18/bin/sqlcmd ]; then
-            SQLCMD="/opt/mssql-tools18/bin/sqlcmd -C"
-          elif [ -f /opt/mssql-tools/bin/sqlcmd ]; then
-            SQLCMD="/opt/mssql-tools/bin/sqlcmd"
-          fi
-          if [ -z "$SQLCMD" ]; then
-            echo "sqlcmd not found — falling back to nc + sleep..."
-            for i in $(seq 1 30); do
-              if nc -z -w 1 localhost 1433 2>/dev/null; then
-                echo "Port 1433 open — sleeping 15s for SQL Server to initialise..."
-                sleep 15
-                break
-              fi
-              echo "Attempt $i/30 — retrying in 3s..."
-              sleep 3
-            done
-          else
-            for i in $(seq 1 30); do
-              if $SQLCMD -S localhost,1433 -U sa -P "BethuyaCI-Dev2025" -Q "SELECT 1" -l 3 > /dev/null 2>&1; then
-                echo "SQL Server is accepting connections."
-                break
-              fi
-              echo "Attempt $i/30 — retrying in 3s..."
-              sleep 3
-            done
-          fi
-
       - name: Create E2E database schema
         env:
           ASPNETCORE_ENVIRONMENT: Development
           DOTNET_ENVIRONMENT: Development
-          ConnectionStrings__BethuyaDb: "Server=localhost,1433;Database=BethuyaE2EDb;User Id=sa;Password=BethuyaCI-Dev2025;TrustServerCertificate=True;Encrypt=False"
+          ConnectionStrings__BethuyaDb: "Host=localhost;Port=5432;Database=BethuyaE2EDb;Username=postgres;Password=BethuyaCI-Dev2025"
         run: |
           dotnet run --project src/Bethuya.MigrationService/Bethuya.MigrationService.csproj \
             --no-build --no-launch-profile --configuration Release
@@ -119,7 +93,7 @@ jobs:
       - name: Start backend API
         env:
           ASPNETCORE_ENVIRONMENT: Development
-          ConnectionStrings__BethuyaDb: "Server=localhost,1433;Database=BethuyaE2EDb;User Id=sa;Password=BethuyaCI-Dev2025;TrustServerCertificate=True;Encrypt=False"
+          ConnectionStrings__BethuyaDb: "Host=localhost;Port=5432;Database=BethuyaE2EDb;Username=postgres;Password=BethuyaCI-Dev2025"
         run: |
           dotnet run --project src/Hackmum.Bethuya.Backend/Hackmum.Bethuya.Backend.csproj \
             --no-build --no-launch-profile --configuration Release \

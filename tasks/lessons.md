@@ -2,6 +2,12 @@
 
 Every mistake, unexpected discovery, or incorrect assumption is recorded here to prevent recurrence.
 
+## [2026-10-24] E2E database service must match the configured EF provider
+- **What happened:** The Playwright E2E job provisioned SQL Server and passed a SQL Server connection string to an API registered with Aspire's Npgsql provider. Startup failed with `Couldn't set encrypt` before the API health check could pass.
+- **Root cause:** The CI service and connection string were copied from a SQL Server setup even though `AddBethuyaInfrastructure` and the migration service use PostgreSQL.
+- **Fix:** Provision PostgreSQL in the E2E job, wait on its `pg_isready` health check, and use a PostgreSQL connection string for both schema creation and API startup.
+- **Prevention:** Before changing CI database fixtures, confirm the provider registered by the production service and keep the service image, health check, migration step, and connection string aligned.
+
 ## Format
 
 ```

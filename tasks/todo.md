@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-10-24] Align E2E CI database service with PostgreSQL backend
+- **Status:** done
+- **Agent/Owner:** Codex
+- **Description:** Fix the Playwright E2E workflow, which provisions SQL Server and supplies its connection string to a backend configured for PostgreSQL/Npgsql.
+- **Acceptance:** E2E CI provisions PostgreSQL and uses a PostgreSQL connection string for migration and backend startup; failure root cause and prevention are recorded in lessons.md.
+- **Completion Evidence:** E2E service changed to PostgreSQL 16 with a `pg_isready` health check; migration and backend use a PostgreSQL connection string. Full Release solution build succeeded, migrations completed against PostgreSQL, and backend `/health` returned HTTP 200.
+
 ## [2026-10-23] Fix mentorship recommendation CTA mismatch
 - **Status:** done
 - **Agent/Owner:** Cursor
