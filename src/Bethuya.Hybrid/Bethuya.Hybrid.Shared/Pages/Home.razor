@@ -11,11 +11,11 @@
 @inject ICommandCenterAudienceResolver AudienceResolver
 @inject ILogger<Home> Logger
 
-<PageTitle>@(audience?.Surface == CommandCenterSurface.Participation ? "My community journey — Bethuya" : "Community Command Center — Bethuya")</PageTitle>
+<PageTitle>@(_audience?.Surface == CommandCenterSurface.Participation ? "My community journey — Bethuya" : "Community Command Center — Bethuya")</PageTitle>
 
 <a class="skip-link" href="#home-main">Skip to main content</a>
 
-@if (requiresAuthentication)
+@if (_requiresAuthentication)
 {
     <main id="home-main" class="command-center command-center--loading">
         <div data-test="command-center-auth-required">
@@ -26,163 +26,143 @@
         </div>
     </main>
 }
-else if (isLoading)
+else if (_isLoading)
 {
     <main id="home-main" class="command-center command-center--loading">
         <div class="command-loading" data-test="loading-state" role="status">Reading community signals…</div>
     </main>
 }
-else if (errorMessage is not null)
+else if (_errorMessage is not null)
 {
     <main id="home-main" class="command-center command-center--loading">
         <div data-test="error-state">
             <BbAlert Variant="AlertVariant.Danger">
                 <BbAlertTitle>Home unavailable</BbAlertTitle>
-                <BbAlertDescription>@errorMessage</BbAlertDescription>
+                <BbAlertDescription>@_errorMessage</BbAlertDescription>
             </BbAlert>
         </div>
     </main>
 }
-else if (audience?.Surface == CommandCenterSurface.Participation && participation is not null)
+else if (_audience?.Surface == CommandCenterSurface.Participation && _participation is not null)
 {
     <main id="home-main" class="participation-shell" aria-label="Community participation home">
-        <ParticipationSurface Model="@participation"
-                              AudienceLabel="@audience.ExperienceLabel"
-                              AudienceRole="@audience.Role.ToString()" />
+        <ParticipationSurface Model="@_participation"
+                              AudienceLabel="@_audience.ExperienceLabel"
+                              AudienceRole="@_audience.Role.ToString()" />
     </main>
 }
-else if (model is not null && audience is not null)
+else if (_model is not null && _audience is not null)
 {
     <main id="home-main"
-          class="@($"command-center command-center--{GetModeSlug(model.EffectiveMode)}")"
+          class="command-center command-center--v9"
           aria-label="Community operations command center"
           data-test="community-command-center">
-        <header class="command-header">
-            <div class="command-header__copy">
-                <p class="command-kicker">Community operations · This week</p>
-                <h1>Welcome back, @audience.DisplayName.</h1>
-                <p class="command-subtitle">Events are moments. Communities are journeys.</p>
-                <div class="command-audience" data-test="command-center-audience" data-audience="@audience.Role">
-                    <span class="command-audience__label">@audience.ExperienceLabel</span>
-                    <p class="command-summary">@audience.ExperienceSummary</p>
+        <StrategicInsightPanel Insight="@_model.Insight" />
+
+        <ImmediateDecisionsQueue Items="@_decisions"
+                                 OnPrimary="ResolveDecisionAsync"
+                                 OnReview="OpenReviewForDecision"
+                                 OnLaunchReviewSession="OpenReviewSession" />
+
+        <header class="command-context" data-test="command-context">
+            <div class="command-context__copy">
+                <p class="command-kicker">Welcome back, @_audience.DisplayName</p>
+                <div class="command-audience" data-test="command-center-audience" data-audience="@_audience.Role">
+                    <span class="command-audience__label">@_audience.ExperienceLabel</span>
+                    <p class="command-summary">@_audience.ExperienceSummary</p>
                 </div>
             </div>
-
             <div class="command-controls" aria-label="Command center controls">
-                <a class="notification-link" href="#human-review" data-test="notification-center" aria-label="Open human review queue">
+                <a class="notification-link" href="#immediate-decisions" data-test="notification-center" aria-label="Open immediate decisions queue">
                     <LucideIcon Name="bell" Size="17" />
-                    <span>@model.Reviews.Sum(review => review.Count)</span>
+                    <span>@_decisions.Count</span>
                 </a>
             </div>
         </header>
 
-        <section class="mode-bar" aria-label="Active command center mode" data-test="mode-explanation">
-            <div class="mode-status">
-                <span class="mode-pulse" aria-hidden="true"></span>
-                <div>
-                    <strong>Currently in @model.EffectiveMode Mode</strong>
-                    <p class="mode-question" data-test="mode-question">@model.ModeQuestion</p>
-                    <p>@model.ModeReason</p>
-                </div>
-            </div>
-            <div class="mode-actions" role="group" aria-label="Select command center mode">
-                <div data-test="mode-strategic">
-                    <button type="button"
-                            class="@($"control-button {(model.EffectiveMode == CommandCenterMode.Strategic ? "control-button--active" : "")}")"
-                            aria-pressed="@(model.EffectiveMode == CommandCenterMode.Strategic ? "true" : "false")"
-                            @onclick="@(() => SelectModeAsync(CommandCenterMode.Strategic))">
-                        Strategic
-                    </button>
-                </div>
-                <div data-test="mode-event">
-                    <button type="button"
-                            class="@($"control-button {(model.EffectiveMode == CommandCenterMode.Event ? "control-button--active" : "")}")"
-                            aria-pressed="@(model.EffectiveMode == CommandCenterMode.Event ? "true" : "false")"
-                            @onclick="@(() => SelectModeAsync(CommandCenterMode.Event))">
-                        Event · Hacktoberfest
-                    </button>
-                </div>
-                <details class="mode-reasoning">
-                    <summary>View reasoning</summary>
-                    <p>Event mode is recommended when an approaching event has unresolved capacity, waitlist, volunteer, or speaker-readiness signals.</p>
-                </details>
-            </div>
-        </section>
+        <ProgramsGuildsSection Programs="@_model.Programs" />
 
-        <SnapshotStrip Metrics="@model.Snapshot"
-                       EventMode="@(model.EffectiveMode == CommandCenterMode.Event)" />
+        <ActiveEventWorkspaces Workspaces="@_model.EventWorkspaces" />
 
-        <div class="@($"command-layout command-layout--{GetModeSlug(model.EffectiveMode)}")"
-             data-test="@($"mode-layout-{GetModeSlug(model.EffectiveMode)}")">
-            <div class="command-main">
-                @if (model.EffectiveMode == CommandCenterMode.Event)
-                {
-                    <div class="mode-priority mode-priority--event" data-test="event-primary-work">
-                        <AttentionQueue Items="@model.AttentionItems" Primary="true" />
-                    </div>
-                    <ReviewQueue Items="@model.Reviews"
-                                 EventMode="true"
-                                 DataTest="pending-event-approvals" />
-                    <UpcomingTouchpointsPanel Touchpoints="@model.Touchpoints" Expanded="true" />
-                    <WeeklyInsightPanel Insight="@model.Insight" />
-                    <PeopleToWatchPanel People="@model.PeopleToWatch" />
-                }
-                else
-                {
-                    <div class="mode-priority mode-priority--strategic" data-test="strategic-primary-work">
-                        <WeeklyInsightPanel Insight="@model.Insight" />
-                        <PeopleToWatchPanel People="@model.PeopleToWatch" />
-                    </div>
-                    <AttentionQueue Items="@model.AttentionItems" />
-                    <ReviewQueue Items="@model.Reviews" />
-                    <UpcomingTouchpointsPanel Touchpoints="@model.Touchpoints" Expanded="false" />
-                }
-            </div>
-            <CommandCenterRail Reviews="@model.Reviews"
-                               Deadlines="@model.Deadlines"
-                               QuickActions="@model.QuickActions"
-                               Workspaces="@model.Workspaces"
-                               ShowApprovals="@(model.EffectiveMode != CommandCenterMode.Event)"
-                               EventMode="@(model.EffectiveMode == CommandCenterMode.Event)" />
-        </div>
+        <LeadershipSignalsSection Signals="@_model.LeadershipSignals" />
+
+        <MemberGrowthJourneys Journeys="@_model.GrowthJourneys"
+                              OnViewEvidence="OpenEvidenceDrawer" />
+
+        <ChapterRecommendationsSection Recommendations="@_model.ChapterRecommendations" />
+
+        <ChapterHealthSection Items="@_model.ChapterHealth" />
+
+        <DecisionReviewSession IsOpen="@_reviewSessionOpen"
+                               Current="@_reviewCurrent"
+                               Index="@_reviewIndex"
+                               Total="@_decisions.Count"
+                               ReturnFocusSelector="@_reviewReturnFocusSelector"
+                               OnApprove="ResolveDecisionAsync"
+                               OnReject="ResolveDecisionAsync"
+                               OnSkip="SkipDecisionAsync"
+                               OnClose="CloseReviewSession" />
+
+        <GrowthJourneyEvidenceDrawer IsOpen="@_evidenceDrawerOpen"
+                                     Journey="@_selectedJourney"
+                                     ReturnFocusSelector="@_evidenceReturnFocusSelector"
+                                     OnClosed="HandleEvidenceDrawerClosed" />
     </main>
 }
 
 @code {
+    private const string ReviewQueueFocusSelector = "[data-test='review-queue-launch'] button";
+
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
-    private Task<AuthenticationState>? processedAuthenticationStateTask;
-    private bool hasProcessedAuthenticationState;
-    private CancellationTokenSource? loadCancellation;
-    private int loadGeneration;
-    private CommandCenterAudience? audience;
-    private CommandCenterMode? modeOverride;
-    private CommunityCommandCenter? model;
-    private CommunityParticipationHome? participation;
-    private bool isLoading = true;
-    private bool requiresAuthentication;
-    private string? errorMessage;
+    private Task<AuthenticationState>? _processedAuthenticationStateTask;
+    private bool _hasProcessedAuthenticationState;
+    private CancellationTokenSource? _loadCancellation;
+    private int _loadGeneration;
+    private CommandCenterAudience? _audience;
+    private CommunityCommandCenter? _model;
+    private CommunityParticipationHome? _participation;
+    private bool _isLoading = true;
+    private bool _requiresAuthentication;
+    private string? _errorMessage;
+
+    private List<ImmediateDecision> _decisions = [];
+    private bool _reviewSessionOpen;
+    private int _reviewIndex;
+    private ImmediateDecision? _reviewCurrent;
+    private string? _reviewReturnFocusSelector;
+
+    private bool _evidenceDrawerOpen;
+    private GrowthJourney? _selectedJourney;
+    private string? _evidenceReturnFocusSelector;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (hasProcessedAuthenticationState &&
-            ReferenceEquals(AuthenticationStateTask, processedAuthenticationStateTask))
+        if (_hasProcessedAuthenticationState &&
+            ReferenceEquals(AuthenticationStateTask, _processedAuthenticationStateTask))
         {
             return;
         }
 
         var authenticationStateTask = AuthenticationStateTask;
-        processedAuthenticationStateTask = authenticationStateTask;
-        hasProcessedAuthenticationState = true;
+        _processedAuthenticationStateTask = authenticationStateTask;
+        _hasProcessedAuthenticationState = true;
         CancelCurrentLoad();
-        audience = null;
-        model = null;
-        participation = null;
-        modeOverride = null;
-        errorMessage = null;
-        requiresAuthentication = false;
-        isLoading = true;
+        _audience = null;
+        _model = null;
+        _participation = null;
+        _decisions = [];
+        _reviewSessionOpen = false;
+        _reviewCurrent = null;
+        _reviewIndex = 0;
+        _reviewReturnFocusSelector = null;
+        _evidenceDrawerOpen = false;
+        _selectedJourney = null;
+        _evidenceReturnFocusSelector = null;
+        _errorMessage = null;
+        _requiresAuthentication = false;
+        _isLoading = true;
 
         var principal = authenticationStateTask is null
             ? new System.Security.Claims.ClaimsPrincipal()
@@ -194,35 +174,27 @@ else if (model is not null && audience is not null)
 
         if (principal.Identity?.IsAuthenticated != true)
         {
-            requiresAuthentication = true;
-            isLoading = false;
+            _requiresAuthentication = true;
+            _isLoading = false;
             return;
         }
 
-        requiresAuthentication = false;
-        audience = AudienceResolver.Resolve(principal);
-        modeOverride = null;
-        await LoadAsync();
-    }
-
-    private async Task SelectModeAsync(CommandCenterMode mode)
-    {
-        modeOverride = mode;
+        _requiresAuthentication = false;
+        _audience = AudienceResolver.Resolve(principal);
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         CancelCurrentLoad();
-        var generation = loadGeneration;
+        var generation = _loadGeneration;
         using var cancellation = new CancellationTokenSource();
-        loadCancellation = cancellation;
+        _loadCancellation = cancellation;
         var cancellationToken = cancellation.Token;
-        var currentAudience = audience;
-        var currentModeOverride = modeOverride;
+        var currentAudience = _audience;
 
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
 
         var role = currentAudience?.Role ?? CommunityRole.CommunityMember;
 
@@ -234,27 +206,26 @@ else if (model is not null && audience is not null)
                     role,
                     currentAudience.DisplayName,
                     cancellationToken);
-                if (generation != loadGeneration)
+                if (generation != _loadGeneration)
                 {
                     return;
                 }
 
-                model = null;
-                participation = loadedParticipation;
+                _model = null;
+                _decisions = [];
+                _participation = loadedParticipation;
             }
             else
             {
-                var loadedModel = await CommandCenterService.GetAsync(
-                    role,
-                    currentModeOverride,
-                    cancellationToken);
-                if (generation != loadGeneration)
+                var loadedModel = await CommandCenterService.GetAsync(role, cancellationToken: cancellationToken);
+                if (generation != _loadGeneration)
                 {
                     return;
                 }
 
-                participation = null;
-                model = loadedModel;
+                _participation = null;
+                _model = loadedModel;
+                _decisions = [.. loadedModel.Decisions];
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -262,41 +233,126 @@ else if (model is not null && audience is not null)
         }
         catch (Exception ex)
         {
-            if (generation == loadGeneration)
+            if (generation == _loadGeneration)
             {
                 Logger.LogError(
                     ex,
                     "Unexpected error loading the Homepage projection for surface {Surface} and role {Role}",
                     currentAudience?.Surface,
                     role);
-                errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
+                _errorMessage = "Community signals could not be loaded. Refresh the page to try again.";
             }
         }
         finally
         {
-            if (generation == loadGeneration)
+            if (generation == _loadGeneration)
             {
-                loadCancellation = null;
-                isLoading = false;
+                _loadCancellation = null;
+                _isLoading = false;
             }
         }
     }
 
+    private void OpenReviewSession()
+    {
+        if (_decisions.Count == 0)
+        {
+            return;
+        }
+
+        _reviewIndex = 0;
+        _reviewCurrent = _decisions[0];
+        _reviewReturnFocusSelector = ReviewQueueFocusSelector;
+        _reviewSessionOpen = true;
+    }
+
+    private void OpenReviewForDecision(ImmediateDecision decision)
+    {
+        var index = _decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
+        if (index < 0)
+        {
+            return;
+        }
+
+        _reviewIndex = index;
+        _reviewCurrent = _decisions[index];
+        _reviewReturnFocusSelector = $"[data-decision-id='{decision.DecisionId}'] [data-test='decision-review'] button";
+        _reviewSessionOpen = true;
+    }
+
+    private void CloseReviewSession()
+    {
+        _reviewSessionOpen = false;
+        _reviewCurrent = null;
+        _reviewReturnFocusSelector = null;
+    }
+
+    private Task ResolveDecisionAsync(ImmediateDecision decision) =>
+        RemoveDecisionAsync(decision, advanceReview: true);
+
+    private Task SkipDecisionAsync(ImmediateDecision decision)
+    {
+        var index = _decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
+        if (index < 0 || !_reviewSessionOpen || _decisions.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        // Skip advances without resolving — the decision stays pending for later HITL review.
+        _reviewIndex = (index + 1) % _decisions.Count;
+        _reviewCurrent = _decisions[_reviewIndex];
+        return Task.CompletedTask;
+    }
+
+    private Task RemoveDecisionAsync(ImmediateDecision decision, bool advanceReview)
+    {
+        var index = _decisions.FindIndex(item => item.DecisionId == decision.DecisionId);
+        if (index < 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        // Queue owns the leave animation; Home only mutates the list once.
+        _decisions.RemoveAt(index);
+
+        if (!advanceReview || !_reviewSessionOpen)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_decisions.Count == 0)
+        {
+            CloseReviewSession();
+            return Task.CompletedTask;
+        }
+
+        _reviewIndex = Math.Clamp(_reviewIndex, 0, _decisions.Count - 1);
+        _reviewCurrent = _decisions[_reviewIndex];
+        return Task.CompletedTask;
+    }
+
+    private void OpenEvidenceDrawer(GrowthJourney journey)
+    {
+        _selectedJourney = journey;
+        _evidenceReturnFocusSelector = $"[data-evidence-trigger='{journey.MemberId}']";
+        _evidenceDrawerOpen = true;
+    }
+
+    private void HandleEvidenceDrawerClosed()
+    {
+        _evidenceDrawerOpen = false;
+        _selectedJourney = null;
+        _evidenceReturnFocusSelector = null;
+    }
+
     private void CancelCurrentLoad()
     {
-        loadGeneration++;
-        loadCancellation?.Cancel();
-        loadCancellation?.Dispose();
-        loadCancellation = null;
+        _loadGeneration++;
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadCancellation = null;
     }
 
     /// <inheritdoc />
     public void Dispose() => CancelCurrentLoad();
-
-    private static string GetModeSlug(CommandCenterMode? mode) => mode switch
-    {
-        CommandCenterMode.Strategic => "strategic",
-        CommandCenterMode.Event => "event",
-        _ => "loading"
-    };
 }

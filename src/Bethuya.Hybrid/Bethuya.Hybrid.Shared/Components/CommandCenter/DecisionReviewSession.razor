@@ -1,0 +1,120 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+<dialog @ref="_dialog"
+        class="review-session-dialog"
+        data-test="decision-review-session"
+        aria-labelledby="review-session-title"
+        @onclose="HandleNativeCloseAsync">
+    @if (Current is not null)
+    {
+        <div class="review-session">
+            <header class="review-session__header">
+                <p>Guided review · Decision @(Index + 1) of @Total</p>
+                <h2 id="review-session-title">@Current.Title</h2>
+                <p class="review-session__subject">@Current.SubjectName · @Current.Summary</p>
+            </header>
+
+            <section aria-labelledby="review-evidence-heading">
+                <h3 id="review-evidence-heading">Evidence</h3>
+                <ul class="review-session__evidence">
+                    @foreach (var proof in Current.Evidence)
+                    {
+                        <li>@proof</li>
+                    }
+                </ul>
+            </section>
+
+            <div class="review-session__actions">
+                <div data-test="review-approve">
+                    <BbButton OnClick="HandleApproveAsync" AriaLabel="@($"Approve {Current.Title}")">
+                        Approve
+                    </BbButton>
+                </div>
+                <div data-test="review-reject">
+                    <BbButton Variant="ButtonVariant.Outline" OnClick="HandleRejectAsync" AriaLabel="@($"Reject {Current.Title}")">
+                        Reject
+                    </BbButton>
+                </div>
+                <div data-test="review-skip">
+                    <BbButton Variant="ButtonVariant.Ghost" OnClick="HandleSkipAsync" AriaLabel="@($"Skip {Current.Title}")">
+                        Skip
+                    </BbButton>
+                </div>
+                <div data-test="review-close">
+                    <BbButton Variant="ButtonVariant.Ghost" OnClick="HandleCloseAsync" AriaLabel="Close guided review">
+                        Close
+                    </BbButton>
+                </div>
+            </div>
+        </div>
+    }
+</dialog>
+
+@code {
+    private ElementReference _dialog;
+    private bool _wasOpen;
+    private string? _returnFocusSelector;
+    private bool _closingFromBlazor;
+
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public ImmediateDecision? Current { get; set; }
+    [Parameter] public int Index { get; set; }
+    [Parameter] public int Total { get; set; }
+    [Parameter] public string? ReturnFocusSelector { get; set; }
+    [Parameter] public EventCallback<ImmediateDecision> OnApprove { get; set; }
+    [Parameter] public EventCallback<ImmediateDecision> OnReject { get; set; }
+    [Parameter] public EventCallback<ImmediateDecision> OnSkip { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && Current is not null && !_wasOpen)
+        {
+            _returnFocusSelector = ReturnFocusSelector;
+            _closingFromBlazor = false;
+            await Js.InvokeVoidAsync("bethuyaEvidenceDrawer.open", _dialog);
+            _wasOpen = true;
+        }
+        else if ((!IsOpen || Current is null) && _wasOpen)
+        {
+            _closingFromBlazor = true;
+            await Js.InvokeVoidAsync(
+                "bethuyaEvidenceDrawer.closeAndRestoreFocus",
+                _dialog,
+                _returnFocusSelector);
+            _wasOpen = false;
+            _closingFromBlazor = false;
+        }
+    }
+
+    private Task HandleApproveAsync() =>
+        Current is null ? Task.CompletedTask : OnApprove.InvokeAsync(Current);
+
+    private Task HandleRejectAsync() =>
+        Current is null ? Task.CompletedTask : OnReject.InvokeAsync(Current);
+
+    private Task HandleSkipAsync() =>
+        Current is null ? Task.CompletedTask : OnSkip.InvokeAsync(Current);
+
+    private Task HandleCloseAsync() => OnClose.InvokeAsync();
+
+    private async Task HandleNativeCloseAsync()
+    {
+        if (_closingFromBlazor)
+        {
+            return;
+        }
+
+        _wasOpen = false;
+        if (!string.IsNullOrWhiteSpace(_returnFocusSelector))
+        {
+            await Js.InvokeVoidAsync("bethuyaEvidenceDrawer.focusSelector", _returnFocusSelector);
+        }
+
+        await OnClose.InvokeAsync();
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

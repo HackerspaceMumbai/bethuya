@@ -1,0 +1,59 @@
+/* BB Dialog lacks a guided sequential review shell with evidence + Approve/Reject/Skip. */
+.review-session-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    width: min(36rem, calc(100% - 2rem));
+    max-height: calc(100vh - 2rem);
+    margin: auto;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--command-cream, #f4eee3);
+}
+
+.review-session-dialog::backdrop {
+    background: rgba(8, 6, 5, 0.72);
+}
+
+.review-session {
+    width: 100%;
+    display: grid;
+    gap: 1.1rem;
+    padding: 1.5rem;
+    border-radius: 0.85rem;
+    background: var(--card, #181210);
+    border: 1px solid rgba(212, 168, 48, 0.35);
+    color: var(--command-cream, #f4eee3);
+}
+
+.review-session__header p {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--command-amber, #e0ad42);
+}
+
+.review-session__header h2 {
+    margin: 0;
+    font-size: 1.35rem;
+}
+
+.review-session__subject {
+    margin: 0.4rem 0 0;
+    color: var(--command-muted, #a99b88);
+}
+
+.review-session__evidence {
+    margin: 0.4rem 0 0;
+    padding-left: 1.15rem;
+    color: var(--command-cream, #f4eee3);
+    line-height: 1.5;
+}
+
+.review-session__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}

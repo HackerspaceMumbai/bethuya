@@ -1,0 +1,180 @@
+/* BB cards lack signal-first hierarchy with high-contrast ledger evidence. */
+.leadership-signals {
+    display: grid;
+    gap: 1rem;
+}
+
+.signal-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+
+.signal-card {
+    display: grid;
+    gap: 0.7rem;
+    padding: 1.15rem;
+    border-radius: 0.8rem;
+    background: var(--command-surface, rgba(24, 18, 16, 0.78));
+    border: 1px solid rgba(212, 168, 48, 0.22);
+}
+
+.signal-card--intervention {
+    border-color: rgba(240, 111, 79, 0.45);
+}
+
+.signal-title {
+    margin: 0;
+    font-size: 1.05rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: var(--command-amber, #e0ad42);
+    line-height: 1.25;
+}
+
+.signal-person {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.signal-avatar {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    background: rgba(212, 168, 48, 0.18);
+    color: var(--command-cream, #f4eee3);
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.signal-person h3 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.1rem;
+}
+
+.signal-journey-block {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background: rgba(212, 168, 48, 0.06);
+    border: 1px solid rgba(212, 168, 48, 0.14);
+}
+
+.signal-meta-label {
+    margin: 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--command-muted, #a99b88);
+}
+
+.signal-journey {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.signal-next,
+.signal-future {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.55rem;
+    color: var(--command-cream, #f4eee3);
+    font-size: 0.88rem;
+}
+
+.signal-next span,
+.signal-future span {
+    color: var(--command-muted, #a99b88);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 650;
+}
+
+.signal-next {
+    color: var(--command-amber, #e0ad42);
+    font-weight: 700;
+}
+
+.signal-evidence__label {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 650;
+    color: var(--command-cream, #f4eee3);
+}
+
+.signal-evidence ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--command-cream, #f4eee3);
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+.signal-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 0.95rem;
+    border-radius: 0.5rem;
+    font-weight: 650;
+    text-decoration: none;
+    font-size: 0.92rem;
+}
+
+.signal-action--outline {
+    border: 1px solid var(--primary, #D4A830);
+    color: var(--primary, #D4A830);
+}
+
+.signal-action--filled {
+    background: var(--primary, #D4A830);
+    color: var(--primary-foreground, #0d0b09);
+}
+
+.signal-action:hover,
+.signal-action:focus-visible {
+    outline: 2px solid var(--ring, #D4A830);
+    outline-offset: 2px;
+}
+
+.section-heading {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.section-heading p {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.35rem;
+    font-weight: 650;
+}
+
+.section-heading--row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}

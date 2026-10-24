@@ -1,0 +1,90 @@
+/* BB has no produced-outcomes program card grid (leaders created, not session counts). */
+.programs-guilds {
+    display: grid;
+    gap: 1rem;
+}
+
+.program-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.program-card {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.95rem 1rem;
+    border-radius: 0.75rem;
+    background: var(--command-surface, rgba(24, 18, 16, 0.78));
+    border: 1px solid rgba(212, 168, 48, 0.2);
+}
+
+.program-card h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--command-cream, #f4eee3);
+}
+
+.program-tagline {
+    display: none;
+}
+
+.program-produced-label {
+    margin: 0.2rem 0 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--command-amber, #e0ad42);
+    font-weight: 700;
+}
+
+.program-outcomes {
+    margin: 0;
+    padding-left: 1rem;
+    color: var(--command-cream, #f4eee3);
+    line-height: 1.4;
+    font-size: 0.92rem;
+}
+
+.program-link {
+    margin-top: 0.35rem;
+    color: var(--command-amber, #e0ad42);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.92rem;
+}
+
+.program-link:hover,
+.program-link:focus-visible {
+    text-decoration: underline;
+    outline: none;
+}
+
+.section-heading {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.section-heading p {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.35rem;
+    font-weight: 650;
+}
+
+.section-heading--row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}

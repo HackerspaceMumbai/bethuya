@@ -110,69 +110,71 @@ public class OnboardingNavigationRenderTests
     }
 
     [Test]
-    public async Task NavMenu_AttendeeRole_HidesOrganizerTools()
+    public async Task NavMenu_AttendeeRole_HidesOrganizerSection()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
 
         var cut = ctx.RenderComponent<NavMenu>();
 
-        await Assert.That(cut.Markup).DoesNotContain("Organizer Tools");
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
         await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
         await Assert.That(cut.Markup).DoesNotContain("Attendee Curation");
     }
 
     [Test]
-    public async Task NavMenu_AnonymousUser_HidesOrganizerTools()
+    public async Task NavMenu_AnonymousUser_HidesOrganizerSection()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetNotAuthorized();
 
         var cut = ctx.RenderComponent<NavMenu>();
 
-        await Assert.That(cut.Markup).DoesNotContain("Organizer Tools");
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
         await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
         await Assert.That(cut.Markup).DoesNotContain("Attendee Curation");
     }
 
     [Test]
-    public async Task NavMenu_OrganizerRole_ShowsOrganizerTools()
+    public async Task NavMenu_OrganizerRole_ShowsOrganizerSection()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var cut = ctx.RenderComponent<NavMenu>();
 
-        await Assert.That(cut.Markup).Contains("Organizer Tools");
-        await Assert.That(cut.Markup).Contains("agent workflows");
-        await Assert.That(cut.Markup).Contains("curation");
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-command-center-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-path-finder-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-imports-link']").Count).IsEqualTo(1);
     }
 
     [Test]
-    public async Task NavMenu_CuratorRole_ShowsCurationWithoutAgentWorkflows()
+    public async Task NavMenu_CuratorRole_ShowsOrganizerWithoutPathFinderOrImports()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Curator").SetRoles(BethuyaRoles.Curator);
 
         var cut = ctx.RenderComponent<NavMenu>();
 
-        await Assert.That(cut.Markup).Contains("Organizer Tools");
-        await Assert.That(cut.Markup).Contains("agent workflows");
-        await Assert.That(cut.Markup).Contains("curation");
-        await Assert.That(cut.FindAll("[data-test='nav-opportunity-engine-link']")).IsEmpty();
-        await Assert.That(cut.FindAll("[data-test='nav-imports-link']")).IsEmpty();
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-command-center-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-path-finder-link']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='nav-imports-link']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='nav-opportunity-engine-link']").Count).IsEqualTo(0);
     }
 
     [Test]
-    public async Task NavMenu_OrganizerRole_ShowsOpportunityEngineLink()
+    public async Task NavMenu_OrganizerRole_ShowsPathFinderLink()
     {
         using var ctx = CreateContext();
         ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var cut = ctx.RenderComponent<NavMenu>();
 
-        await Assert.That(cut.Find("[data-test='nav-opportunity-engine-link']").GetAttribute("href"))
+        await Assert.That(cut.Find("[data-test='nav-path-finder-link']").GetAttribute("href"))
             .IsEqualTo("opportunities");
+        await Assert.That(cut.Find("[data-test='nav-path-finder-link']").TextContent).Contains("Path Finder");
     }
 
     [Test]
@@ -200,7 +202,7 @@ public class OnboardingNavigationRenderTests
         await Assert.That(cut.Markup).Contains("Secure profile setup");
         await Assert.That(cut.Markup).Contains("Bethuya onboarding");
         await Assert.That(cut.Markup).DoesNotContain("Dashboard");
-        await Assert.That(cut.Markup).DoesNotContain("Organizer Tools");
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
     }
 
     [Test]
@@ -218,7 +220,7 @@ public class OnboardingNavigationRenderTests
         await Assert.That(cut.Markup).Contains("Bethuya onboarding");
         await Assert.That(cut.Markup).Contains("Secure profile setup");
         await Assert.That(cut.Markup).DoesNotContain("Dashboard");
-        await Assert.That(cut.Markup).DoesNotContain("Organizer Tools");
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
         await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
         await Assert.That(cut.Markup).DoesNotContain("Attendee Curation");
         await Assert.That(primaryAction.GetAttribute("type")).IsEqualTo("submit");
@@ -241,7 +243,7 @@ public class OnboardingNavigationRenderTests
         await Assert.That(cut.Markup).Contains("Bethuya onboarding");
         await Assert.That(cut.Markup).Contains("Secure profile setup");
         await Assert.That(cut.Markup).DoesNotContain("Dashboard");
-        await Assert.That(cut.Markup).DoesNotContain("Organizer Tools");
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
         await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
         await Assert.That(cut.Markup).DoesNotContain("Attendee Curation");
         await Assert.That(primaryAction.GetAttribute("type")).IsEqualTo("submit");
@@ -270,7 +272,7 @@ public class OnboardingNavigationRenderTests
         await Assert.That(cut.Markup).Contains("Bethuya onboarding");
         await Assert.That(cut.Markup).Contains("Secure profile setup");
         await Assert.That(cut.Markup).DoesNotContain("Dashboard");
-        await Assert.That(cut.Markup).DoesNotContain("Organizer Tools");
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
         await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
         await Assert.That(cut.Markup).DoesNotContain("Attendee Curation");
         await Assert.That(primaryAction.GetAttribute("type")).IsEqualTo("button");

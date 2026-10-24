@@ -1,10 +1,13 @@
 using Bethuya.Hybrid.Shared.Auth;
+using Bethuya.Hybrid.Shared.Components.CommandCenter;
+using Bethuya.Hybrid.Shared.Layout;
 using Bethuya.Hybrid.Shared.Models.CommandCenter;
 using Bethuya.Hybrid.Shared.Models.Participation;
 using Bethuya.Hybrid.Shared.Pages;
 using Bethuya.Hybrid.Shared.Services;
 using BlazorBlueprint.Components;
 using Bunit;
+using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,92 +23,124 @@ public sealed class CommunityCommandCenterTests
     private static readonly TimeProvider EventPressureClock =
         new FixedTimeProvider(new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero));
 
+    private static readonly string[] V9Sections =
+    [
+        "strategic-insight",
+        "immediate-decisions",
+        "programs-guilds",
+        "active-event-workspaces",
+        "leadership-signals",
+        "member-growth-journeys",
+        "chapter-recommendations",
+        "chapter-health"
+    ];
+
     [Test]
-    public async Task DeterministicProvider_EventPressure_SelectsExplainableEventMode()
+    public async Task DeterministicProvider_ReturnsNineSectionProjection()
     {
         var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
 
         var result = await service.GetAsync(CommunityRole.EventOrganizer);
 
-        await Assert.That(result.RecommendedMode).IsEqualTo(CommandCenterMode.Event);
-        await Assert.That(result.ModeReason).Contains("16 days away");
-        await Assert.That(result.AttentionItems[0].Category).IsEqualTo("Event operations");
-        await Assert.That(result.Touchpoints[0].DateLabel).IsEqualTo("17 Oct");
+        await Assert.That(result.Insight.Observation).Contains("Hacktoberfest");
+        await Assert.That(result.Decisions).IsNotEmpty();
+        await Assert.That(result.Programs).IsNotEmpty();
+        await Assert.That(result.EventWorkspaces.Any(workspace => workspace.IsHero)).IsTrue();
+        await Assert.That(result.LeadershipSignals).IsNotEmpty();
+        await Assert.That(result.GrowthJourneys).IsNotEmpty();
+        await Assert.That(result.ChapterRecommendations).IsNotEmpty();
+        await Assert.That(result.ChapterHealth).IsNotEmpty();
+        await Assert.That(result.EventWorkspaces[0].Title).Contains("Hacktoberfest Mumbai");
+        await Assert.That(result.EventWorkspaces[0].Title).Contains(result.EventWorkspaces[0].DateLabel[^4..]);
+        await Assert.That(result.EventWorkspaces[0].DateLabel).Contains("2026");
     }
 
     [Test]
-    public async Task DeterministicProvider_DistantEvent_SelectsStrategicMode()
-    {
-        var service = new DeterministicCommunityCommandCenterService(
-            new FixedTimeProvider(new DateTimeOffset(2026, 7, 1, 12, 0, 0, TimeSpan.Zero)));
-
-        var result = await service.GetAsync(CommunityRole.EventOrganizer);
-
-        await Assert.That(result.RecommendedMode).IsEqualTo(CommandCenterMode.Strategic);
-        await Assert.That(result.ModeReason).Contains("strategic community priorities");
-    }
-
-    [Test]
-    public async Task DeterministicProvider_StrategicOverride_PreservesCriticalWarnings()
+    public async Task DeterministicProvider_LeadershipSignalAndJourneyAgreeForRina()
     {
         var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
 
-        var result = await service.GetAsync(CommunityRole.CommunityAdministrator, CommandCenterMode.Strategic);
+        var result = await service.GetAsync(CommunityRole.MentorshipLead);
+        var signal = result.LeadershipSignals.Single(item => item.MemberName == "Rina Shah");
+        var journey = result.GrowthJourneys.Single(item => item.MemberName == "Rina Shah");
+        var current = journey.Stages.Single(stage => stage.Status == JourneyStageStatus.Current);
+        var recommended = journey.Stages.Single(stage => stage.Status == JourneyStageStatus.Recommended);
+        var leadershipDecision = result.Decisions.Single(item => item.Kind == DecisionKind.MentorNomination);
 
-        await Assert.That(result.EffectiveMode).IsEqualTo(CommandCenterMode.Strategic);
-        await Assert.That(result.AttentionItems.Any(item => item.Severity == AttentionSeverity.Critical)).IsTrue();
+        await Assert.That(signal.JourneyStages).Contains(current.Name);
+        await Assert.That(signal.NextStage).IsEqualTo(recommended.Name);
+        await Assert.That(current.Name).IsEqualTo("Mentor");
+        await Assert.That(recommended.Name).IsEqualTo("Track Lead");
+        await Assert.That(leadershipDecision.Title).Contains("Track Lead");
+        await Assert.That(leadershipDecision.Summary).Contains("Rina Shah");
+        await Assert.That(leadershipDecision.Evidence.Any(item => item.Contains("Mentor → Track Lead", StringComparison.Ordinal))).IsTrue();
     }
 
     [Test]
-    public async Task DeterministicProvider_ModeChangesOperationalIntelligence()
+    public async Task DeterministicProvider_AdministratorInsight_UsesMentorshipNarrative()
     {
         var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
 
-        var strategic = await service.GetAsync(
-            CommunityRole.EventOrganizer,
-            CommandCenterMode.Strategic);
-        var eventOperations = await service.GetAsync(
-            CommunityRole.EventOrganizer,
-            CommandCenterMode.Event);
+        var result = await service.GetAsync(CommunityRole.CommunityAdministrator);
 
-        await Assert.That(strategic.Snapshot[0].Label).IsEqualTo("Community health");
-        await Assert.That(strategic.ModeQuestion).IsEqualTo("How is the community evolving?");
-        await Assert.That(strategic.Insight.Headline).Contains("Community");
-        await Assert.That(strategic.PeopleToWatch[0].JourneyTo).IsEqualTo("Organizer candidate");
-
-        await Assert.That(eventOperations.Snapshot[0].Label).IsEqualTo("Event readiness");
-        await Assert.That(eventOperations.ModeQuestion).IsEqualTo("Can this event succeed?");
-        await Assert.That(eventOperations.Insight.Headline).Contains("execution");
-        await Assert.That(eventOperations.PeopleToWatch[0].JourneyTo).IsEqualTo("Event lead");
-        await Assert.That(eventOperations.Reviews[0].Label).IsEqualTo("Waitlist decisions");
-        await Assert.That(eventOperations.Touchpoints[0].ReadinessLabel).IsEqualTo("82% ready");
-        await Assert.That(eventOperations.Touchpoints[0].Metrics.Single(metric => metric.Label == "Capacity").Value)
-            .IsEqualTo("150 / 160");
-        await Assert.That(eventOperations.Touchpoints[0].Metrics.Single(metric => metric.Label == "Waitlist").Value)
-            .IsEqualTo("18 waiting");
-        await Assert.That(eventOperations.Touchpoints[0].Metrics.Single(metric => metric.Label == "Volunteers").Value)
-            .IsEqualTo("12 / 14");
-        await Assert.That(eventOperations.Touchpoints[0].RiskLabel).IsEqualTo("Volunteer gap");
+        await Assert.That(result.Insight.Observation).Contains("Open Source Mentorship Circle");
+        await Assert.That(result.Insight.Risk).Contains("mentorship bottleneck");
+        await Assert.That(result.Insight.RecommendedAction).Contains("mentor");
     }
 
     [Test]
-    public async Task DeterministicProvider_TouchpointsSpanMoreThanEvents()
+    public async Task DeterministicProvider_MentorshipCapacityRecommendation_RoutesToProgramsNotTrackLeadInbox()
     {
         var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
 
-        var result = await service.GetAsync(CommunityRole.EventOrganizer);
+        var result = await service.GetAsync(CommunityRole.MentorshipLead);
+        var mentorshipCapacity = result.ChapterRecommendations.Single(item => item.RecommendationId == "rec-mentors");
+        var trackLeadDecision = result.Decisions.Single(item => item.Kind == DecisionKind.MentorNomination);
 
-        await Assert.That(result.Touchpoints.Any(touchpoint => touchpoint.Kind != TouchpointKind.Event)).IsTrue();
-        var mentorship = result.Touchpoints.Single(touchpoint => touchpoint.Kind == TouchpointKind.MentorshipSession);
-        await Assert.That(mentorship.Metrics.Select(metric => metric.Label))
-            .IsEquivalentTo(["Pairings", "Mentees waiting", "Mentors"]);
-        await Assert.That(mentorship.Metrics.Single(metric => metric.Label == "Pairings").Value)
-            .IsEqualTo("6 / 8");
-        await Assert.That(mentorship.Metrics.Single(metric => metric.Label == "Mentees waiting").Value)
-            .IsEqualTo("2");
-        await Assert.That(mentorship.Metrics.Single(metric => metric.Label == "Mentors").Value)
-            .IsEqualTo("6 / 8");
-        await Assert.That(mentorship.Metrics.Any(metric => metric.Label == "Volunteers")).IsFalse();
+        await Assert.That(mentorshipCapacity.Title).Contains("mentorship capacity", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(mentorshipCapacity.ActionRoute).IsEqualTo("/programs");
+        await Assert.That(mentorshipCapacity.ActionLabel).Contains("Mentorship Circle", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(mentorshipCapacity.ActionRoute).DoesNotContain("immediate-decisions");
+        await Assert.That(trackLeadDecision.Title).Contains("Track Lead");
+    }
+
+    [Test]
+    public async Task DeterministicProvider_RoleReordersDecisionsWithoutRemovingSections()
+    {
+        var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
+
+        var volunteer = await service.GetAsync(CommunityRole.VolunteerLead);
+        var mentor = await service.GetAsync(CommunityRole.MentorshipLead);
+
+        await Assert.That(volunteer.Decisions[0].Kind).IsEqualTo(DecisionKind.VolunteerAssignment);
+        await Assert.That(mentor.Decisions[0].Kind).IsEqualTo(DecisionKind.MentorNomination);
+        await Assert.That(volunteer.Programs.Count).IsEqualTo(mentor.Programs.Count);
+        await Assert.That(volunteer.GrowthJourneys.Count).IsEqualTo(mentor.GrowthJourneys.Count);
+    }
+
+    [Test]
+    public async Task DeterministicProvider_LeadershipSignalsExposeLedgerEvidence()
+    {
+        var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
+
+        var result = await service.GetAsync(CommunityRole.CommunityAdministrator);
+
+        await Assert.That(result.LeadershipSignals.All(signal => signal.Evidence.Count > 0)).IsTrue();
+        await Assert.That(result.LeadershipSignals.Any(signal => signal.Urgency == SignalUrgency.Intervention)).IsTrue();
+    }
+
+    [Test]
+    public async Task DeterministicProvider_GrowthJourneysHaveStableMemberIdsAndStages()
+    {
+        var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
+
+        var result = await service.GetAsync(CommunityRole.CommunityAdministrator);
+
+        await Assert.That(result.GrowthJourneys.Select(journey => journey.MemberId).Distinct().Count())
+            .IsEqualTo(result.GrowthJourneys.Count);
+        await Assert.That(result.GrowthJourneys.All(journey =>
+            journey.Stages.Any(stage => stage.Status == JourneyStageStatus.Recommended))).IsTrue();
+        await Assert.That(result.GrowthJourneys.All(journey => journey.LedgerTimeline.Count > 0)).IsTrue();
     }
 
     [Test]
@@ -137,64 +172,169 @@ public sealed class CommunityCommandCenterTests
     }
 
     [Test]
-    public async Task DeterministicProvider_PeopleToWatchStayAwarenessOnly()
-    {
-        var service = new DeterministicCommunityCommandCenterService(EventPressureClock);
-
-        var result = await service.GetAsync(CommunityRole.CommunityAdministrator);
-
-        await Assert.That(result.PeopleToWatch).IsNotEmpty();
-        await Assert.That(result.PeopleToWatch.All(person => !string.IsNullOrWhiteSpace(person.WatchReason))).IsTrue();
-    }
-
-    [Test]
-    [Arguments(CommunityRole.CommunityAdministrator, "Retention risk")]
-    [Arguments(CommunityRole.EventOrganizer, "Capacity risk")]
-    [Arguments(CommunityRole.VolunteerLead, "Coverage gap")]
-    [Arguments(CommunityRole.MentorshipLead, "Mentor supply")]
-    public async Task DeterministicProvider_EmphasisesOperatingRole(CommunityRole role, string expectedCategory)
-    {
-        var service = new DeterministicCommunityCommandCenterService(
-            new FixedTimeProvider(new DateTimeOffset(2026, 7, 1, 12, 0, 0, TimeSpan.Zero)));
-
-        var result = await service.GetAsync(role, CommandCenterMode.Strategic);
-
-        await Assert.That(result.AttentionItems[0].Category).IsEqualTo(expectedCategory);
-    }
-
-    [Test]
-    [Arguments("dev-persona-priya", "Priya", CommunityRole.VolunteerLead, "Volunteer lead", "Coverage gap")]
-    [Arguments("dev-persona-rohan", "Rohan", CommunityRole.EventOrganizer, "Event organizer", "Capacity risk")]
-    [Arguments("dev-persona-maya", "Maya", CommunityRole.MentorshipLead, "Mentorship lead", "Mentor supply")]
-    [Arguments("dev-persona-vikram", "Vikram", CommunityRole.CommunityAdministrator, "Community administrator", "Retention risk")]
-    public async Task Home_OperatingPersonasShareOneCommandCenterWithRoleAwareContent(
+    [Arguments("dev-persona-priya", "Priya", CommunityRole.VolunteerLead, "Volunteer lead")]
+    [Arguments("dev-persona-rohan", "Rohan", CommunityRole.EventOrganizer, "Event organizer")]
+    [Arguments("dev-persona-maya", "Maya", CommunityRole.MentorshipLead, "Mentorship lead")]
+    [Arguments("dev-persona-vikram", "Vikram", CommunityRole.CommunityAdministrator, "Community administrator")]
+    public async Task Home_OperatingPersonasShareOneV9CommandCenter(
         string subject,
         string name,
         CommunityRole expectedRole,
-        string expectedLabel,
-        string expectedEmphasis)
+        string expectedLabel)
     {
         using var ctx = CreateCommandCenterContext();
         var principal = CreatePrincipal(subject, name, BethuyaRoles.Attendee);
 
         var cut = RenderHome(ctx, principal);
         cut.WaitForElement("[data-test='command-center-audience']");
-        await cut.Find("[data-test='mode-strategic'] button").ClickAsync(new());
-        cut.WaitForElement("[data-test='mode-layout-strategic']");
 
         await Assert.That(cut.Find("[data-test='command-center-audience']").GetAttribute("data-audience"))
             .IsEqualTo(expectedRole.ToString());
         await Assert.That(cut.Find("[data-test='command-center-audience']").TextContent).Contains(expectedLabel);
-        await Assert.That(cut.Find("[data-test='attention-queue']").TextContent).Contains(expectedEmphasis);
 
-        // One shared command center: every operating persona renders the identical module set.
-        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll("[data-test='weekly-insight']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll("[data-test='people-to-watch']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll("[data-test='human-review-queue']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll("[data-test='upcoming-touchpoints']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll("[data-test='quick-actions']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll("[data-test^='role-']").Count).IsEqualTo(0);
+        foreach (var section in V9Sections)
+        {
+            await Assert.That(cut.FindAll($"[data-test='{section}']").Count).IsEqualTo(1);
+        }
+
+        AssertAppearsBefore(cut.Markup, "strategic-insight", "immediate-decisions");
+        AssertAppearsBefore(cut.Markup, "immediate-decisions", "command-context");
+        AssertAppearsBefore(cut.Markup, "command-context", "programs-guilds");
+        AssertAppearsBefore(cut.Markup, "programs-guilds", "active-event-workspaces");
+        AssertAppearsBefore(cut.Markup, "active-event-workspaces", "leadership-signals");
+        AssertAppearsBefore(cut.Markup, "leadership-signals", "member-growth-journeys");
+        AssertAppearsBefore(cut.Markup, "member-growth-journeys", "chapter-recommendations");
+        AssertAppearsBefore(cut.Markup, "chapter-recommendations", "chapter-health");
+
+        await Assert.That(cut.Find("[data-test='event-readiness']").TextContent).Contains("READY");
+        await Assert.That(cut.Find("[data-test='signal-journey']").TextContent).Contains("Next stage");
+        await Assert.That(cut.FindAll("[data-test='journey-pathway']").Count).IsGreaterThan(0);
+        await Assert.That(cut.Find("[data-test='decision-evidence']").TextContent).Contains("Evidence");
+        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='mode-explanation']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='quick-actions']").Count).IsEqualTo(0);
+        await Assert.That(cut.Markup).DoesNotContain("Approve All");
+        await Assert.That(cut.Markup).DoesNotContain("Resolve All");
+        await Assert.That(cut.Find("[data-test='governance-no-batch']").TextContent)
+            .Contains("human-in-the-loop");
+    }
+
+    [Test]
+    public async Task Home_ResolvingDecision_RemovesOnlyThatCard()
+    {
+        using var ctx = CreateCommandCenterContext();
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='decision-card']");
+
+        var before = cut.FindAll("[data-test='decision-card']").Count;
+        await Assert.That(before).IsGreaterThan(1);
+
+        var firstId = cut.Find("[data-test='decision-card']").GetAttribute("data-decision-id");
+        await cut.Find("[data-test='decision-primary'] button").ClickAsync(new());
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll($"[data-decision-id='{firstId}']").Count != 0)
+            {
+                throw new InvalidOperationException("Resolved decision remained in the queue.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.FindAll("[data-test='decision-card']").Count).IsEqualTo(before - 1);
+        await Assert.That(cut.FindAll("[data-test='journey-row']").Count).IsGreaterThan(0);
+    }
+
+    [Test]
+    public async Task Home_ViewEvidence_OpensDrawerWithoutUnmountingJourneyRows()
+    {
+        using var ctx = CreateCommandCenterContext();
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.open", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.close", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.focusSelector", _ => true);
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='journey-row']");
+        var rowCount = cut.FindAll("[data-test='journey-row']").Count;
+
+        await cut.Find("[data-test='view-evidence'] button").ClickAsync(new());
+        cut.WaitForElement("[data-test='growth-journey-evidence-drawer']");
+
+        var openInvocations = ctx.JSInterop.Invocations
+            .Where(invocation => invocation.Identifier == "bethuyaEvidenceDrawer.open")
+            .ToArray();
+        await Assert.That(openInvocations.Length).IsGreaterThanOrEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='journey-row']").Count).IsEqualTo(rowCount);
+        await Assert.That(cut.Markup).Contains("Ledger timeline");
+    }
+
+    [Test]
+    public async Task Home_SkippingDecision_AdvancesReviewWithoutRemovingCard()
+    {
+        using var ctx = CreateCommandCenterContext();
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.open", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.closeAndRestoreFocus", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.focusSelector", _ => true);
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='decision-card']");
+        var before = cut.FindAll("[data-test='decision-card']").Count;
+        await Assert.That(before).IsGreaterThan(1);
+
+        await cut.Find("[data-test='review-queue-launch'] button").ClickAsync(new());
+        cut.WaitForElement("#review-session-title");
+        var reviewSession = cut.FindComponent<DecisionReviewSession>();
+        await Assert.That(reviewSession.Instance.ReturnFocusSelector)
+            .IsEqualTo("[data-test='review-queue-launch'] button");
+        var firstTitle = cut.Find("#review-session-title").TextContent;
+
+        await cut.Find("[data-test='review-skip'] button").ClickAsync(new());
+        cut.WaitForAssertion(() =>
+        {
+            var nextTitle = cut.Find("#review-session-title").TextContent;
+            if (string.Equals(nextTitle, firstTitle, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Skip did not advance to another decision.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.FindAll("[data-test='decision-card']").Count).IsEqualTo(before);
+        await Assert.That(cut.Find("[data-test='decision-count']").TextContent).Contains($"{before} Decisions");
+    }
+
+    [Test]
+    public async Task Home_ReviewFromCard_ReturnsFocusToThatCardReviewButton()
+    {
+        using var ctx = CreateCommandCenterContext();
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.open", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.closeAndRestoreFocus", _ => true);
+        ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.focusSelector", _ => true);
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='decision-card']");
+
+        var decisionId = cut.Find("[data-test='decision-card']").GetAttribute("data-decision-id");
+        await Assert.That(decisionId).IsNotNull();
+        await cut.Find($"[data-decision-id='{decisionId}'] [data-test='decision-review'] button")
+            .ClickAsync(new());
+        cut.WaitForElement("#review-session-title");
+
+        var reviewSession = cut.FindComponent<DecisionReviewSession>();
+        await Assert.That(reviewSession.Instance.ReturnFocusSelector)
+            .IsEqualTo($"[data-decision-id='{decisionId}'] [data-test='decision-review'] button");
+    }
+
+    [Test]
+    public async Task Home_GrowthJourneyStages_ExposeStatusTextInDom()
+    {
+        using var ctx = CreateCommandCenterContext();
+
+        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
+        cut.WaitForElement("[data-test='journey-stage']");
+
+        var stages = cut.FindAll("[data-test='journey-stage']");
+        await Assert.That(stages.Any(stage => stage.TextContent.Contains("Recommended", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(stages.Any(stage => stage.TextContent.Contains("Completed", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(stages.Any(stage => stage.TextContent.Contains("Current stage", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(stages.Any(stage => stage.TextContent.Contains("Upcoming", StringComparison.Ordinal))).IsTrue();
     }
 
     [Test]
@@ -218,13 +358,11 @@ public sealed class CommunityCommandCenterTests
             .IsEqualTo(expectedMode);
         await Assert.That(cut.Markup).Contains(expectedLabel);
 
-        // Participation never surfaces operations modules.
         await Assert.That(cut.FindAll("[data-test='community-command-center']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='human-review-queue']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='pending-approvals']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='upcoming-deadlines']").Count).IsEqualTo(0);
+        foreach (var section in V9Sections)
+        {
+            await Assert.That(cut.FindAll($"[data-test='{section}']").Count).IsEqualTo(0);
+        }
     }
 
     [Test]
@@ -250,9 +388,8 @@ public sealed class CommunityCommandCenterTests
         var cut = RenderHome(ctx, new ClaimsPrincipal());
         cut.WaitForElement("[data-test='command-center-auth-required']");
 
-        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='quick-navigation']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='strategic-insight']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='immediate-decisions']").Count).IsEqualTo(0);
     }
 
     [Test]
@@ -264,7 +401,7 @@ public sealed class CommunityCommandCenterTests
         cut.WaitForElement("[data-test='command-center-auth-required']");
 
         await Assert.That(cut.FindAll("[data-test='loading-state']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='strategic-insight']").Count).IsEqualTo(0);
     }
 
     [Test]
@@ -272,15 +409,15 @@ public sealed class CommunityCommandCenterTests
     {
         using var ctx = CreateCommandCenterContext();
         var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
-        cut.WaitForElement("[data-test='community-snapshot']");
+        cut.WaitForElement("[data-test='strategic-insight']");
 
         cut.SetParametersAndRender(parameters => parameters
             .Add(component => component.Value, Task.FromResult(new AuthenticationState(new ClaimsPrincipal())))
             .AddChildContent<Home>());
         cut.WaitForElement("[data-test='command-center-auth-required']");
 
-        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='strategic-insight']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='immediate-decisions']").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("[data-test='command-center-audience']").Count).IsEqualTo(0);
     }
 
@@ -289,7 +426,7 @@ public sealed class CommunityCommandCenterTests
     {
         using var ctx = CreateCommandCenterContext();
         var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
-        cut.WaitForElement("[data-test='community-snapshot']");
+        cut.WaitForElement("[data-test='strategic-insight']");
         var pendingState = new TaskCompletionSource<AuthenticationState>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -297,8 +434,8 @@ public sealed class CommunityCommandCenterTests
             .Add(component => component.Value, pendingState.Task)
             .AddChildContent<Home>());
 
-        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(0);
-        await Assert.That(cut.FindAll("[data-test='attention-queue']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='strategic-insight']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='immediate-decisions']").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("[data-test='command-center-audience']").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("[data-test='loading-state']").Count).IsEqualTo(1);
 
@@ -331,7 +468,7 @@ public sealed class CommunityCommandCenterTests
                 Task.FromResult(new AuthenticationState(
                     CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin))))
             .AddChildContent<Home>());
-        cut.WaitForElement("[data-test='community-snapshot']");
+        cut.WaitForElement("[data-test='strategic-insight']");
 
         delayedParticipation.SetResult(staleParticipation);
         cut.WaitForAssertion(() =>
@@ -341,7 +478,7 @@ public sealed class CommunityCommandCenterTests
                 throw new InvalidOperationException("The stale participation load replaced the current operations surface.");
             }
         });
-        await Assert.That(cut.FindAll("[data-test='community-snapshot']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='strategic-insight']").Count).IsEqualTo(1);
         await Assert.That(cut.Find("[data-test='command-center-audience']").TextContent).Contains("Community administrator");
     }
 
@@ -376,59 +513,63 @@ public sealed class CommunityCommandCenterTests
     }
 
     [Test]
-    public async Task Home_ModeSwitchReordersPrimaryWork()
+    public async Task ProgramsPage_RendersProducedOutcomesFromSameProjection()
     {
         using var ctx = CreateCommandCenterContext();
-        var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
-        cut.WaitForElement("[data-test='mode-layout-event']");
+        ctx.Services.AddAuthorizationCore();
+        ctx.AddTestAuthorization().SetAuthorized("Vikram").SetRoles(BethuyaRoles.Organizer, BethuyaRoles.Admin);
 
-        AssertAppearsBefore(cut.Markup, "attention-queue", "pending-event-approvals");
-        AssertAppearsBefore(cut.Markup, "pending-event-approvals", "upcoming-touchpoints");
-        AssertAppearsBefore(cut.Markup, "upcoming-touchpoints", "weekly-insight");
-        await Assert.That(cut.Find("[data-test='upcoming-touchpoints']").GetAttribute("data-expanded"))
-            .IsEqualTo("true");
-        await Assert.That(cut.FindAll("[data-test='pending-approvals']").Count).IsEqualTo(0);
+        var cut = ctx.RenderComponent<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
+            .Add(component => component.Value, Task.FromResult(new AuthenticationState(
+                CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Organizer))))
+            .AddChildContent<Programs>());
+        cut.WaitForElement("[data-test='program-card']");
 
-        await cut.Find("[data-test='mode-strategic'] button").ClickAsync(new());
-        cut.WaitForElement("[data-test='mode-layout-strategic']");
-
-        AssertAppearsBefore(cut.Markup, "weekly-insight", "people-to-watch");
-        AssertAppearsBefore(cut.Markup, "people-to-watch", "attention-queue");
-        await Assert.That(cut.Find("[data-test='upcoming-touchpoints']").GetAttribute("data-expanded"))
-            .IsEqualTo("false");
-        await Assert.That(cut.FindAll("[data-test='pending-approvals']").Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-test='programs-page']")).IsNotNull();
+        await Assert.That(cut.Markup).Contains("Open Source Mentorship Circle");
+        await Assert.That(cut.Markup).Contains("Future Tech Leads");
+        await Assert.That(cut.Markup).DoesNotContain("Sessions held");
     }
 
     [Test]
-    public async Task WorkspacePreview_RendersMeaningfulDestination()
+    public async Task NavMenu_OrganizerSeesCommunityInsightsOrganizerAndPathFinder()
     {
-        using var ctx = new BunitCtx();
-        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddBlazorBlueprintComponents();
-        ctx.Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>()
-            .NavigateTo("/community-health");
+        using var ctx = CreateNavContext(BethuyaRoles.Organizer);
 
-        var cut = ctx.RenderComponent<WorkspacePreview>();
+        var cut = ctx.RenderComponent<NavMenu>();
+        cut.WaitForElement("[data-test='nav-section-organizer']");
 
-        await Assert.That(cut.Markup).Contains("Community Health");
-        await Assert.That(cut.Markup).Contains("What is available now");
-        await Assert.That(cut.Markup).Contains("What comes next");
-        await Assert.That(cut.Markup).DoesNotContain("Opportunity Engine");
+        await Assert.That(cut.FindAll("[data-test='nav-section-community']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-section-insights']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-section-my-space']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-programs-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-community-passports-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-command-center-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-path-finder-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-test='nav-path-finder-link']").GetAttribute("href")).IsEqualTo("opportunities");
+        await Assert.That(cut.FindAll("[data-test='nav-imports-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-passport-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.Find("[data-test='nav-events-link']").TextContent).Contains("Events & Gatherings");
+        AssertAppearsBefore(cut.Markup, "nav-participation-ledger-link", "nav-relationship-topology-link");
+        AssertAppearsBefore(cut.Markup, "nav-relationship-topology-link", "nav-community-graph-link");
     }
 
     [Test]
-    public async Task WorkspacePreview_IgnoresQueryAndFragmentWhenResolvingRoute()
+    public async Task NavMenu_MemberDoesNotSeeImportsDirectoryOrPathFinder()
     {
-        using var ctx = new BunitCtx();
-        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddBlazorBlueprintComponents();
-        ctx.Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>()
-            .NavigateTo("/Volunteers?ref=home#coverage");
+        using var ctx = CreateNavContext(BethuyaRoles.Attendee);
 
-        var cut = ctx.RenderComponent<WorkspacePreview>();
+        var cut = ctx.RenderComponent<NavMenu>();
+        cut.WaitForElement("[data-test='nav-section-my-space']");
 
-        await Assert.That(cut.Markup).Contains("Volunteers");
-        await Assert.That(cut.Markup).Contains("Contribution network");
+        await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='nav-imports-link']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='nav-community-passports-link']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='nav-programs-link']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='nav-path-finder-link']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-test='nav-passport-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-participation-ledger-link']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='nav-section-insights']").Count).IsEqualTo(1);
     }
 
     private static BunitCtx CreateCommandCenterContext()
@@ -440,6 +581,18 @@ public sealed class CommunityCommandCenterTests
         ctx.Services.AddSingleton<ICommunityCommandCenterService, DeterministicCommunityCommandCenterService>();
         ctx.Services.AddSingleton<ICommunityParticipationService, DeterministicCommunityParticipationService>();
         ctx.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCenterAudienceResolver>();
+        return ctx;
+    }
+
+    private static BunitCtx CreateNavContext(string role)
+    {
+        var ctx = new BunitCtx();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddBlazorBlueprintComponents();
+        ctx.Services.AddAuthorizationCore();
+        var auth = ctx.AddTestAuthorization();
+        auth.SetAuthorized("Tester");
+        auth.SetRoles(role);
         return ctx;
     }
 

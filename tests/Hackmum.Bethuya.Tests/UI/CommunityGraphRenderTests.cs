@@ -4,6 +4,7 @@ using Bunit;
 using Bunit.TestDoubles;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.ValueObjects;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
@@ -87,6 +88,62 @@ public sealed class CommunityGraphRenderTests
         context.Services.AddBlazorBlueprintComponents();
         context.AddTestAuthorization().SetAuthorized("viewer");
         return context;
+    }
+
+    [Test]
+    public async Task Graph_ViewLedgerQuery_OpensParticipationLedgerTab()
+    {
+        using var context = CreateContext();
+        var api = Substitute.For<ICommunityPassportApi>();
+        api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(Fixture());
+        context.Services.AddSingleton(api);
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo("/community-graph?view=ledger");
+
+        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        cut.WaitForElement("[data-test='passport-preview']");
+        cut.Find("[data-test='graph-node']").Click();
+
+        var tabClass = cut.Find("[data-test='passport-tab-Participation-Ledger']").GetAttribute("class") ?? "";
+        await Assert.That(tabClass.Contains("active", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(cut.Find("[data-test='passport-preview']").TextContent)
+            .Contains("Participation Ledger");
+    }
+
+    [Test]
+    public async Task Graph_NavigatingBetweenViewQueries_UpdatesActiveTab()
+    {
+        using var context = CreateContext();
+        var api = Substitute.For<ICommunityPassportApi>();
+        api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(Fixture());
+        context.Services.AddSingleton(api);
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/community-graph?view=topology");
+
+        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        cut.WaitForElement("[data-test='passport-preview']");
+
+        var relationshipsTab = cut.Find("[data-test='passport-tab-Relationships']").GetAttribute("class") ?? "";
+        await Assert.That(relationshipsTab.Contains("active", StringComparison.Ordinal)).IsTrue();
+
+        navigation.NavigateTo("/community-graph?view=ledger");
+        cut.WaitForAssertion(() =>
+        {
+            var ledgerTab = cut.Find("[data-test='passport-tab-Participation-Ledger']").GetAttribute("class") ?? "";
+            if (!ledgerTab.Contains("active", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected the Participation Ledger tab after view=ledger.");
+            }
+        });
+
+        navigation.NavigateTo("/community-graph");
+        cut.WaitForAssertion(() =>
+        {
+            var defaultTab = cut.Find("[data-test='passport-tab-Relationships']").GetAttribute("class") ?? "";
+            if (!defaultTab.Contains("active", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected Relationships tab after clearing the view query.");
+            }
+        });
     }
 
     [Test]

@@ -4,108 +4,19 @@ using System.Globalization;
 namespace Bethuya.Hybrid.Shared.Services;
 
 /// <summary>
-/// Supplies stable, rule-driven operations data until live Community Intelligence,
+/// Supplies stable, rule-driven V9 operations data until live Community Intelligence,
 /// Community Graph, and Opportunity Engine providers are available. Every operating role
-/// receives the same module set; only the content inside the modules changes.
+/// receives the same nine-section layout; role only reorders decision priority.
 /// </summary>
 public sealed class DeterministicCommunityCommandCenterService(TimeProvider timeProvider) : ICommunityCommandCenterService
 {
-    private static readonly IReadOnlyList<SnapshotMetric> StrategicSnapshot =
+    private static readonly string[] JourneyPath =
     [
-        new("Community health", "Healthy", "Steady participation across 6 active circles", "+4% this month", true),
-        new("Active participants", "428", "67% participated in the last 30 days", "+23 people", true),
-        new("Open opportunities", "18", "9 volunteer · 5 mentorship · 4 leadership", "6 need owners", false),
-        new("Retention", "74%", "38 members returned this quarter", "+7% quarter over quarter", true)
-    ];
-
-    private static readonly IReadOnlyList<SnapshotMetric> EventSnapshot =
-    [
-        new("Event readiness", "82%", "Core program ready; volunteer coverage remains open", "+9% this week", true),
-        new("Capacity", "150 / 160", "94% of attendee capacity confirmed", "10 seats remain", true),
-        new("Waitlist pressure", "18", "Decisions needed before attendee communications", "6 high-priority", false),
-        new("Volunteer coverage", "12 / 14", "Check-in and accessibility support need owners", "2 shifts open", false)
-    ];
-
-    private static readonly IReadOnlyList<PersonToWatch> StrategicPeopleToWatch =
-    [
-        new("Jordan Blake", "JB", "Coordinated logistics across three community events.", "Volunteer", "Organizer candidate", "Sustained ownership without being asked."),
-        new("Rina Shah", "RS", "Completed three consecutive workshops and answered newcomer questions.", "Contributor", "Mentor candidate", "Teaching naturally emerged from contributing."),
-        new("Priya Menon", "PM", "First contribution in four months after a quiet period.", "Returning member", "Re-engaging contributor", "Returning members need a warm, timely next step."),
-        new("Akash Kumar", "AK", "High engagement, but waitlisted for three consecutive events.", "Member", "At-risk participant", "Repeat waitlisting can quietly end a journey.")
-    ];
-
-    private static readonly IReadOnlyList<PersonToWatch> EventPeopleToWatch =
-    [
-        new("Jordan Blake", "JB", "Owns the run-of-show and has resolved three cross-team blockers.", "Volunteer", "Event lead", "Directly affects whether this event succeeds."),
-        new("Priya Menon", "PM", "Completed check-in training and can close the arrival coverage gap.", "Returning member", "Check-in lead", "One of two people who can close the coverage gap."),
-        new("Rina Shah", "RS", "Facilitated three workshops and can support the overflow room.", "Contributor", "Room host", "Reduces single-point-of-failure risk in the program."),
-        new("Akash Kumar", "AK", "Responded quickly to attendee questions in the last two events.", "Member", "Attendee support", "Can absorb help-desk load during peak arrival.")
-    ];
-
-    private static readonly IReadOnlyList<AttentionItem> AdministratorAttention =
-    [
-        new("Retention risk", "Repeat waitlisting is driving disengagement", "Akash Kumar and four others were waitlisted three times in a row.", "Review retention", "/community-health", AttentionSeverity.Required, 94),
-        new("Leadership pipeline", "Two leadership roles have no successor", "Program ownership is concentrated in three people across six circles.", "Review pipeline", "/community-graph", AttentionSeverity.Required, 90),
-        new("Health trend", "New-member second-touch rate is slipping", "Second participation within 30 days fell from 48% to 39%.", "Open health report", "/community-health", AttentionSeverity.Advisory, 84),
-        new("Community opportunity", "Six opportunities have no owner", "Unowned opportunities expire before anyone can act on them.", "Assign owners", "/opportunities", AttentionSeverity.Advisory, 78)
-    ];
-
-    private static readonly IReadOnlyList<AttentionItem> OrganizerAttention =
-    [
-        new("Capacity risk", "Hacktoberfest is at 94% of capacity", "Ten seats remain while registrations continue at twelve per day.", "Review capacity", "/events", AttentionSeverity.Required, 94),
-        new("Waitlist", "Eighteen waitlist decisions are pending", "Attendee communications are blocked until decisions are made.", "Decide waitlist", "/events", AttentionSeverity.Required, 92),
-        new("Volunteer coverage", "Two critical shifts have no owner", "Check-in and accessibility support remain unassigned.", "Assign volunteers", "/volunteers", AttentionSeverity.Required, 88),
-        new("Speaker readiness", "Two sessions are unconfirmed", "Format and AV requirements are still missing for the afternoon track.", "Confirm speakers", "/events", AttentionSeverity.Advisory, 82)
-    ];
-
-    private static readonly IReadOnlyList<AttentionItem> VolunteerLeadAttention =
-    [
-        new("Coverage gap", "Check-in has no confirmed owner", "Arrival coverage is the highest-impact unfilled role.", "Fill coverage", "/volunteers", AttentionSeverity.Required, 94),
-        new("Open shifts", "Four shifts remain unclaimed", "Accessibility support and teardown are the longest-standing gaps.", "Open shift board", "/volunteers", AttentionSeverity.Required, 88),
-        new("Recognition", "Three volunteers are overdue for recognition", "Consistent contributors have not been acknowledged this quarter.", "Recognise volunteers", "/volunteers", AttentionSeverity.Advisory, 82),
-        new("Burnout risk", "Two volunteers worked five consecutive events", "Sustained load without a break precedes most volunteer drop-off.", "Review workload", "/community-health", AttentionSeverity.Advisory, 80)
-    ];
-
-    private static readonly IReadOnlyList<AttentionItem> MentorshipLeadAttention =
-    [
-        new("Mentor supply", "Two mentor seats are blocking the cohort", "Six mentees cannot be paired until mentors are confirmed.", "Find mentors", "/mentorship", AttentionSeverity.Required, 94),
-        new("Pairing delay", "Five pairings have waited over ten days", "Pairing latency is the strongest predictor of mentee drop-off.", "Review pairings", "/mentorship", AttentionSeverity.Required, 90),
-        new("Graduation", "Three mentees are ready to graduate", "Completed milestones are awaiting a human review decision.", "Review graduations", "/mentorship", AttentionSeverity.Advisory, 84),
-        new("At-risk mentee", "Two mentees have missed consecutive sessions", "Missed sessions without follow-up usually end the pairing.", "Open mentee journeys", "/community-health", AttentionSeverity.Advisory, 80)
-    ];
-
-    private static readonly IReadOnlyList<ReviewItem> StrategicReviews =
-    [
-        new("Waitlist adjustments", 14, "Capacity-aware recommendations ready for a human decision.", "/events"),
-        new("Volunteer promotions", 3, "Contributors showing sustained organizer readiness.", "/volunteers"),
-        new("Mentor pairings", 2, "Suggested matches based on stated goals and availability.", "/mentorship"),
-        new("Outreach drafts", 5, "Re-engagement messages awaiting an organizer edit.", "/intelligence")
-    ];
-
-    private static readonly IReadOnlyList<ReviewItem> EventReviews =
-    [
-        new("Waitlist decisions", 14, "Capacity-aware recommendations ready before attendee communications.", "/events"),
-        new("Volunteer assignments", 3, "Critical check-in and accessibility shifts need approval.", "/volunteers"),
-        new("Speaker confirmations", 2, "Session changes need an organizer decision.", "/events"),
-        new("Accessibility requests", 5, "Accommodation plans are ready for human review.", "/events")
-    ];
-
-    private static readonly IReadOnlyList<DeadlineItem> Deadlines =
-    [
-        new("Hacktoberfest volunteer assignment", "Due in 2 days", "/volunteers"),
-        new("Mentorship intake closes", "Due in 4 days", "/mentorship"),
-        new("Speaker confirmation deadline", "Due in 5 days", "/events")
-    ];
-
-    private static readonly IReadOnlyList<WorkspaceLink> Workspaces =
-    [
-        new("Community Graph", "/community-graph", "network"),
-        new("Opportunity Engine", "/opportunities", "sparkles"),
-        new("Events", "/events", "calendar-days"),
-        new("Community Health", "/community-health", "heart-pulse"),
-        new("Volunteers", "/volunteers", "hand-heart"),
-        new("Mentorship", "/mentorship", "graduation-cap"),
-        new("Intelligence", "/intelligence", "brain-circuit")
+        "Participant",
+        "Volunteer",
+        "Mentor",
+        "Track Lead",
+        "Chapter Champion"
     ];
 
     /// <inheritdoc />
@@ -115,286 +26,413 @@ public sealed class DeterministicCommunityCommandCenterService(TimeProvider time
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _ = modeOverride;
 
         var today = DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
         var hacktoberfestDate = GetNextHacktoberfestDate(today);
-        var daysUntilEvent = hacktoberfestDate.DayNumber - today.DayNumber;
-        var hasEventPressure = daysUntilEvent <= 21;
-        var recommendedMode = hasEventPressure ? CommandCenterMode.Event : CommandCenterMode.Strategic;
-        var effectiveMode = modeOverride ?? recommendedMode;
-        var isEventMode = effectiveMode == CommandCenterMode.Event;
-        var modeReason = CreateModeReason(effectiveMode, recommendedMode, daysUntilEvent);
-
-        AttentionItem[] attention =
-        [
-            new(
-                "Event operations",
-                "Hacktoberfest Mumbai",
-                $"Volunteer coverage is short by two people with the event {FormatDayDistance(daysUntilEvent)}.",
-                "Assign volunteers",
-                "/volunteers",
-                hasEventPressure ? AttentionSeverity.Critical : AttentionSeverity.Advisory,
-                hasEventPressure ? 100 : 70),
-            .. GetRoleAttention(role)
-        ];
-
-        var attentionItems = attention
-            .OrderByDescending(item => isEventMode && item.Category == "Event operations")
-            .ThenByDescending(item => item.Priority)
-            .ToArray();
 
         return Task.FromResult(new CommunityCommandCenter(
             role,
-            recommendedMode,
-            effectiveMode,
-            modeReason,
-            isEventMode ? "Can this event succeed?" : "How is the community evolving?",
-            isEventMode ? EventSnapshot : StrategicSnapshot,
-            isEventMode ? CreateEventInsight(role) : CreateStrategicInsight(role),
-            CreatePeopleToWatch(role, isEventMode),
-            attentionItems,
-            isEventMode ? EventReviews : StrategicReviews,
-            CreateTouchpoints(hacktoberfestDate),
-            Deadlines,
-            CreateQuickActions(role, isEventMode),
-            Workspaces));
+            CreateInsight(role),
+            CreateDecisions(role),
+            CreatePrograms(),
+            CreateEventWorkspaces(hacktoberfestDate),
+            CreateLeadershipSignals(role),
+            CreateGrowthJourneys(),
+            CreateChapterRecommendations(),
+            CreateChapterHealth()));
     }
 
-    private static IReadOnlyList<AttentionItem> GetRoleAttention(CommunityRole role) => role switch
+    private static StrategicInsight CreateInsight(CommunityRole role) => role switch
     {
-        CommunityRole.EventOrganizer => OrganizerAttention,
-        CommunityRole.VolunteerLead => VolunteerLeadAttention,
-        CommunityRole.MentorshipLead => MentorshipLeadAttention,
-        _ => AdministratorAttention
+        CommunityRole.MentorshipLead => new(
+            "The Open Source Mentorship Circle is producing future tech leads at 2.4x the rate of event-only attendance.",
+            "Mentor capacity will be exhausted within 3 weeks if intake continues at the current pace.",
+            "Promote additional mentors from the candidate pool and expand mentor capacity for the next cohort.",
+            "Review Promotion Candidates",
+            "/programs"),
+        CommunityRole.VolunteerLead => new(
+            "Volunteer ownership is compounding: consistent shift leads convert into event leads at twice the rate of one-off helpers.",
+            "Two critical coverage gaps remain before Hacktoberfest delivery.",
+            "Assign check-in and accessibility leads from the ready volunteer pool.",
+            "Review Coverage Gaps",
+            "/volunteers"),
+        CommunityRole.EventOrganizer => new(
+            "Hacktoberfest Mumbai is converting waitlisted members into sustained contributors when admissions are timely.",
+            "Eighteen waitlist decisions are blocking attendee communications.",
+            "Review waitlist admissions with Participation Ledger evidence before the next communication window.",
+            "Review Waitlist Admissions",
+            "/events"),
+        _ => new(
+            "The Open Source Mentorship Circle is producing future tech leads at 2.4x the rate of event-only attendance.",
+            "We are reaching a mentorship bottleneck — mentor capacity will be exhausted within 3 weeks.",
+            "Review the 12 mentor candidates and expand mentor capacity before the next cohort opens.",
+            "Review Promotion Candidates",
+            "/programs")
     };
+
+    private static ImmediateDecision[] CreateDecisions(CommunityRole role)
+    {
+        ImmediateDecision[] decisions =
+        [
+            new(
+                "dec-waitlist-01",
+                DecisionKind.WaitlistAdmission,
+                "3 Waitlist Admissions Ready",
+                "Capacity-aware recommendations for Hacktoberfest Mumbai with ledger attendance history.",
+                ["Attended 4 prior events", "100% check-in history", "Volunteered once at Platform Engineering Night"],
+                "Approve",
+                "Waitlist cohort A"),
+            new(
+                "dec-speaker-01",
+                DecisionKind.SpeakerConfirmation,
+                "1 Speaker At Risk (Confirmation)",
+                "Review speaker availability for the afternoon track before attendee communications.",
+                ["Session brief submitted", "AV requirements incomplete", "Prior talk delivered at AgentCamp"],
+                "Confirm",
+                "DevFest afternoon track"),
+            new(
+                "dec-volunteer-01",
+                DecisionKind.VolunteerAssignment,
+                "1 Volunteer Role Conflict",
+                "Priya Menon is nominated for both check-in lead and accessibility support.",
+                ["Completed check-in training", "Led accessibility at 2 events", "Availability confirmed for 17 Oct"],
+                "Assign",
+                "Priya Menon"),
+            new(
+                "dec-mentor-01",
+                DecisionKind.MentorNomination,
+                "2 Track Lead Nominations Ready",
+                "Rina Shah and Jordan Blake meet sustained contribution thresholds for Track Lead roles.",
+                ["Mentored informally across 3 workshops", "Sustained contributions for 8 months", "Passport pathway: Mentor → Track Lead"],
+                "Nominate",
+                "Track Lead candidate pool"),
+            new(
+                "dec-sponsor-01",
+                DecisionKind.SponsorApproval,
+                "1 Sponsor Approval Pending",
+                "Community partner ask requires organizer review before publishing on the event workspace.",
+                ["Partner contributed venue credits last year", "No conflicting exclusivity terms", "Impact report on file"],
+                "Approve",
+                "Community partner")
+        ];
+
+        return role switch
+        {
+            CommunityRole.VolunteerLead =>
+            [
+                .. decisions.Where(d => d.Kind == DecisionKind.VolunteerAssignment),
+                .. decisions.Where(d => d.Kind != DecisionKind.VolunteerAssignment)
+            ],
+            CommunityRole.MentorshipLead =>
+            [
+                .. decisions.Where(d => d.Kind == DecisionKind.MentorNomination),
+                .. decisions.Where(d => d.Kind != DecisionKind.MentorNomination)
+            ],
+            CommunityRole.EventOrganizer =>
+            [
+                .. decisions.Where(d => d.Kind is DecisionKind.WaitlistAdmission or DecisionKind.SpeakerConfirmation),
+                .. decisions.Where(d => d.Kind is not (DecisionKind.WaitlistAdmission or DecisionKind.SpeakerConfirmation))
+            ],
+            _ => [.. decisions]
+        };
+    }
+
+    private static IReadOnlyList<CommunityProgram> CreatePrograms() =>
+    [
+        new(
+            "prog-mentorship",
+            "Open Source Mentorship Circle",
+            "Produce future tech leads through sustained pairing.",
+            ["6 Future Tech Leads", "12 Speaker Candidates", "4 Mentors graduated to Track Lead"],
+            "/programs"),
+        new(
+            "prog-maintainers",
+            "Maintainers & Contributors Guild",
+            "Grow maintainers from first-time contributors.",
+            ["3 New Maintainers", "8 Future Mentors", "2 Governance Leads"],
+            "/programs"),
+        new(
+            "prog-hosts",
+            "Chapter Hosts Pathway",
+            "Develop regional hosts from event volunteers.",
+            ["2 Regional Hosts", "1 Chapter Director", "5 Event Leads"],
+            "/programs"),
+        new(
+            "prog-speakers",
+            "Speaker Development Track",
+            "Convert workshop facilitators into conference speakers.",
+            ["7 First-time Speakers", "3 Panel Moderators", "2 Track Leads"],
+            "/programs")
+    ];
+
+    private static IReadOnlyList<EventWorkspace> CreateEventWorkspaces(DateOnly hacktoberfestDate) =>
+    [
+        new(
+            "evt-hacktoberfest",
+            $"Hacktoberfest Mumbai {hacktoberfestDate.Year}",
+            hacktoberfestDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture),
+            true,
+            92,
+            "Ready for execution",
+            [
+                "Capacity: 186 / 200",
+                "Staffing: 12 / 14 shifts filled",
+                "Speaker Confirmation: 14 / 15",
+                "Venue Readiness: Confirmed"
+            ],
+            [
+                "Verified Attendance: 120+ Evidence Signals",
+                "Leadership Candidates: 8 surfaced",
+                "Champions Surfaced: 3",
+                "Connections Formed: 47 ledger-backed"
+            ],
+            "/events",
+            "Operations active"),
+        new(
+            "evt-platform",
+            "Platform Engineering Night",
+            hacktoberfestDate.AddDays(7).ToString("dd MMM yyyy", CultureInfo.InvariantCulture),
+            false,
+            76,
+            "Operational risk detected",
+            ["Capacity: 84 / 100", "Staffing: 7 / 8", "Speakers: Confirmed"],
+            ["Leadership Candidates: 2", "Connections Formed: 12"],
+            "/events",
+            "Host coverage needed"),
+        new(
+            "evt-agentcamp",
+            "AgentCamp Mangaluru",
+            hacktoberfestDate.AddDays(16).ToString("dd MMM yyyy", CultureInfo.InvariantCulture),
+            false,
+            91,
+            "Ready for execution",
+            ["Capacity: 114 / 120", "Staffing: Full", "Speakers: Ready"],
+            ["Leadership Candidates: 4", "Champions Surfaced: 1"],
+            "/events",
+            "On track")
+    ];
+
+    private static IReadOnlyList<LeadershipSignal> CreateLeadershipSignals(CommunityRole role)
+    {
+        LeadershipSignal[] signals =
+        [
+            new(
+                "sig-maya",
+                "Emerging Chapter Champion",
+                "Maya Sen",
+                "MS",
+                ["Participant", "Volunteer", "Mentor"],
+                "Track Lead",
+                "Chapter Champion",
+                [
+                    "Mentored 12 participants",
+                    "Organized 2 workshops",
+                    "Sustained contributions for 8 months",
+                    "Delivered 3 talks"
+                ],
+                "Nominate as Chapter Champion",
+                SignalUrgency.Recommendation,
+                "/opportunities"),
+            new(
+                "sig-akash",
+                "At-Risk Contributor",
+                "Akash Kumar",
+                "AK",
+                ["Participant", "Volunteer"],
+                "Volunteer",
+                "Mentor",
+                [
+                    "Waitlisted for 3 consecutive events",
+                    "Previously volunteered twice",
+                    "Last verified attendance 4 months ago"
+                ],
+                "Send Outreach",
+                SignalUrgency.Intervention,
+                "/community-health"),
+            new(
+                "sig-jordan",
+                "High-Velocity Contributor",
+                "Jordan Blake",
+                "JB",
+                ["Participant", "Volunteer", "Mentor"],
+                "Track Lead",
+                "Chapter Champion",
+                [
+                    "Coordinated logistics across 3 events",
+                    "Resolved 3 cross-team blockers",
+                    "Mentored 4 first-time volunteers"
+                ],
+                "Approve as Track Lead",
+                SignalUrgency.Recommendation,
+                "/opportunities"),
+            new(
+                "sig-rina",
+                "Cross-Chapter Bridge",
+                "Rina Shah",
+                "RS",
+                ["Participant", "Volunteer", "Mentor"],
+                "Track Lead",
+                "Regional Host",
+                [
+                    "Facilitated workshops in 2 chapters",
+                    "Introduced 6 newcomers across communities",
+                    "Shared attendance with Mangaluru cohort"
+                ],
+                "Invite to Host Pathway",
+                SignalUrgency.Recommendation,
+                "/programs")
+        ];
+
+        var priority = role switch
+        {
+            CommunityRole.VolunteerLead => "sig-akash",
+            CommunityRole.MentorshipLead => "sig-rina",
+            CommunityRole.EventOrganizer => "sig-jordan",
+            _ => "sig-maya"
+        };
+
+        return [.. signals.OrderByDescending(s => s.SignalId == priority)];
+    }
+
+    private static IReadOnlyList<GrowthJourney> CreateGrowthJourneys() =>
+    [
+        CreateJourney(
+            "member-maya",
+            "Maya Sen",
+            "MS",
+            current: "Mentor",
+            recommended: "Track Lead",
+            recommendation: "Ready for Track Lead — evidence supports Chapter Champion path.",
+            ledger: ["Mentored 12 participants", "Organized 2 workshops", "Delivered 3 talks"],
+            programs: ["Open Source Mentorship Circle — Mentor", "Speaker Development Track — Facilitator"],
+            events: ["Hacktoberfest Mumbai 2025 — Volunteer Lead", "Platform Engineering Night — Speaker"],
+            graph: "Connected to 18 members through mentorship and shared attendance.",
+            rationale: "Sustained mentoring plus workshop ownership matches Track Lead criteria."),
+        CreateJourney(
+            "member-jordan",
+            "Jordan Blake",
+            "JB",
+            current: "Mentor",
+            recommended: "Track Lead",
+            recommendation: "Nominate for Track Lead after Hacktoberfest delivery.",
+            ledger: ["Coordinated 3 events", "Mentored 4 volunteers", "Resolved 3 blockers"],
+            programs: ["Chapter Hosts Pathway — Candidate"],
+            events: ["Hacktoberfest Mumbai 2026 — Run-of-show owner"],
+            graph: "Bridge node between volunteer leads and speaker track.",
+            rationale: "Operational ownership plus mentoring signals Track Lead readiness."),
+        CreateJourney(
+            "member-rina",
+            "Rina Shah",
+            "RS",
+            current: "Mentor",
+            recommended: "Track Lead",
+            recommendation: "Invite to Host Pathway — cross-chapter facilitation supports Track Lead.",
+            ledger: ["Facilitated workshops in 2 chapters", "Introduced 6 newcomers across communities", "Shared attendance with Mangaluru cohort"],
+            programs: ["Open Source Mentorship Circle — Mentee graduate", "Chapter Hosts Pathway — Candidate"],
+            events: ["AgentCamp Mangaluru — Room host"],
+            graph: "Cross-chapter ties with Mumbai and Mangaluru cohorts.",
+            rationale: "Teaching and cross-chapter bridging match Track Lead criteria."),
+        CreateJourney(
+            "member-akash",
+            "Akash Kumar",
+            "AK",
+            current: "Participant",
+            recommended: "Volunteer",
+            recommendation: "Offer a low-friction volunteer shift after outreach.",
+            ledger: ["Waitlisted 3 times", "Attended 2 events before waitlist streak"],
+            programs: [],
+            events: ["Platform Engineering Night — Waitlisted", "Hacktoberfest Mumbai 2026 — Waitlisted"],
+            graph: "Sparse recent connections; prior volunteer edges still present.",
+            rationale: "Repeat waitlisting precedes disengagement without a warm next step.")
+    ];
+
+    private static GrowthJourney CreateJourney(
+        string memberId,
+        string name,
+        string initials,
+        string current,
+        string recommended,
+        string recommendation,
+        IReadOnlyList<string> ledger,
+        IReadOnlyList<string> programs,
+        IReadOnlyList<string> events,
+        string graph,
+        string rationale)
+    {
+        var stages = JourneyPath.Select(stage =>
+        {
+            var currentIndex = Array.IndexOf(JourneyPath, current);
+            var recommendedIndex = Array.IndexOf(JourneyPath, recommended);
+            var stageIndex = Array.IndexOf(JourneyPath, stage);
+
+            var status = stageIndex switch
+            {
+                _ when stageIndex < currentIndex => JourneyStageStatus.Completed,
+                _ when stageIndex == currentIndex => JourneyStageStatus.Current,
+                _ when stageIndex == recommendedIndex => JourneyStageStatus.Recommended,
+                _ => JourneyStageStatus.Future
+            };
+
+            return new JourneyStage(stage, status);
+        }).ToArray();
+
+        return new GrowthJourney(
+            memberId,
+            name,
+            initials,
+            stages,
+            recommendation,
+            ledger,
+            programs,
+            events,
+            graph,
+            rationale);
+    }
+
+    private static IReadOnlyList<ChapterRecommendation> CreateChapterRecommendations() =>
+    [
+        new(
+            "rec-promote",
+            "Promote leadership candidates",
+            "Fill 2 Track Lead seats before the next quarter.",
+            ["3 members at Mentor stage with strong ledger evidence", "1 Chapter Champion nomination ready"],
+            "Open Leadership Signals",
+            "#leadership-signals"),
+        new(
+            "rec-mentors",
+            "Expand mentorship capacity",
+            "Add 2 mentors within 21 days to clear the pairing queue.",
+            ["6 mentees waiting", "Open Source Mentorship Circle producing 2.4x tech-lead outcomes"],
+            "Open Mentorship Circle",
+            "/programs"),
+        new(
+            "rec-cohort",
+            "Launch new contributor cohort",
+            "Convert 15 first-time attendees into verified volunteers.",
+            ["Hacktoberfest waitlist pressure", "Guild maintainer pipeline has open seats"],
+            "Open Programs Workspace",
+            "/programs"),
+        new(
+            "rec-pipeline",
+            "Create volunteer pipelines",
+            "Publish a check-in → accessibility → event-lead ladder.",
+            ["2 critical shifts unfilled", "High-velocity volunteers available"],
+            "Review Assignments",
+            "#immediate-decisions")
+    ];
+
+    private static IReadOnlyList<ChapterHealthItem> CreateChapterHealth() =>
+    [
+        new("health-promote", "2 leadership positions are ready for promotion.", "Mentor → Track Lead evidence is complete for Maya Sen and Jordan Blake."),
+        new("health-mentors", "2 mentors required within 21 days.", "Pairing latency is the strongest predictor of mentee drop-off."),
+        new("health-waitlist", "18 waitlist decisions need human review before communications.", "Capacity remains at 186 / 200 for Hacktoberfest Mumbai."),
+        new("health-coverage", "2 volunteer shifts still need owners.", "Check-in and accessibility are the highest-impact unfilled roles.")
+    ];
 
     private static DateOnly GetNextHacktoberfestDate(DateOnly today)
     {
         var eventDate = new DateOnly(today.Year, 10, 17);
         return eventDate < today ? eventDate.AddYears(1) : eventDate;
-    }
-
-    private static string FormatDayDistance(int daysUntilEvent) => daysUntilEvent switch
-    {
-        0 => "today",
-        1 => "1 day away",
-        _ => $"{daysUntilEvent} days away"
-    };
-
-    private static string CreateModeReason(
-        CommandCenterMode effectiveMode,
-        CommandCenterMode recommendedMode,
-        int daysUntilEvent)
-    {
-        if (effectiveMode != recommendedMode)
-        {
-            return effectiveMode == CommandCenterMode.Strategic
-                ? $"Strategic view selected manually; Hacktoberfest remains {FormatDayDistance(daysUntilEvent)}."
-                : $"Event operations selected manually with Hacktoberfest {FormatDayDistance(daysUntilEvent)}.";
-        }
-
-        return effectiveMode == CommandCenterMode.Event
-            ? $"Hacktoberfest Mumbai is {FormatDayDistance(daysUntilEvent)} and volunteer coverage remains incomplete."
-            : $"Hacktoberfest Mumbai is {daysUntilEvent} days away, so strategic community priorities remain in focus.";
-    }
-
-    private static IReadOnlyList<QuickAction> CreateQuickActions(CommunityRole role, bool isEventMode)
-    {
-        if (isEventMode)
-        {
-            return
-            [
-                new("Assign a volunteer shift", "/volunteers", "hand-heart"),
-                new("Decide waitlist entries", "/events", "list-checks"),
-                new("Message confirmed attendees", "/events", "send"),
-                new("Review accessibility requests", "/events", "accessibility")
-            ];
-        }
-
-        return role switch
-        {
-            CommunityRole.EventOrganizer =>
-            [
-                new("Draft the next event", "/events", "calendar-plus"),
-                new("Open the opportunity engine", "/opportunities", "sparkles"),
-                new("Review volunteer coverage", "/volunteers", "hand-heart")
-            ],
-            CommunityRole.VolunteerLead =>
-            [
-                new("Open the shift board", "/volunteers", "hand-heart"),
-                new("Recognise a volunteer", "/volunteers", "award"),
-                new("Review workload balance", "/community-health", "heart-pulse")
-            ],
-            CommunityRole.MentorshipLead =>
-            [
-                new("Invite a mentor", "/mentorship", "graduation-cap"),
-                new("Review pending pairings", "/mentorship", "users"),
-                new("Open mentee journeys", "/community-health", "heart-pulse")
-            ],
-            _ =>
-            [
-                new("Review community health", "/community-health", "heart-pulse"),
-                new("Open the community graph", "/community-graph", "network"),
-                new("Assign opportunity owners", "/opportunities", "sparkles")
-            ]
-        };
-    }
-
-    private static IReadOnlyList<TouchpointItem> CreateTouchpoints(DateOnly hacktoberfestDate) =>
-    [
-        new(
-            "Hacktoberfest Mumbai",
-            TouchpointKind.Event,
-            "Event",
-            hacktoberfestDate.ToString("dd MMM", CultureInfo.InvariantCulture),
-            "150 confirmed · 18 waitlisted · volunteer gap: 2",
-            "/events",
-            true,
-            "82% ready",
-            [
-                new("Capacity", "150 / 160"),
-                new("Waitlist", "18 waiting"),
-                new("Volunteers", "12 / 14")
-            ],
-            "Volunteer gap"),
-        new(
-            "Mentorship cohort kickoff",
-            TouchpointKind.MentorshipSession,
-            "Mentorship session",
-            hacktoberfestDate.AddDays(3).ToString("dd MMM", CultureInfo.InvariantCulture),
-            "6 mentees ready · 2 mentor seats open",
-            "/mentorship",
-            true,
-            "70% ready",
-            [
-                new("Pairings", "6 / 8"),
-                new("Mentees waiting", "2"),
-                new("Mentors", "6 / 8")
-            ],
-            "Mentor shortfall"),
-        new(
-            "Volunteer orientation",
-            TouchpointKind.VolunteerOrientation,
-            "Volunteer orientation",
-            hacktoberfestDate.AddDays(5).ToString("dd MMM", CultureInfo.InvariantCulture),
-            "11 registered · check-in training required",
-            "/volunteers",
-            false,
-            "88% ready",
-            [
-                new("Registered", "11 / 14"),
-                new("Training pending", "3"),
-                new("Facilitators", "2 / 2")
-            ],
-            "On track"),
-        new(
-            "Platform Engineering Night",
-            TouchpointKind.Event,
-            "Event",
-            hacktoberfestDate.AddDays(7).ToString("dd MMM", CultureInfo.InvariantCulture),
-            "84 confirmed · volunteer gap: 1",
-            "/events",
-            true,
-            "76% ready",
-            [
-                new("Capacity", "84 / 100"),
-                new("Waitlist", "9 waiting"),
-                new("Volunteers", "7 / 8")
-            ],
-            "Host coverage"),
-        new(
-            "Community health working group",
-            TouchpointKind.WorkingGroup,
-            "Working group",
-            hacktoberfestDate.AddDays(12).ToString("dd MMM", CultureInfo.InvariantCulture),
-            "Retention review · 5 standing members",
-            "/community-health",
-            false,
-            "95% ready",
-            [
-                new("Members", "5 / 6"),
-                new("Agenda items", "4"),
-                new("Owners confirmed", "4 / 4")
-            ],
-            "On track"),
-        new(
-            "AgentCamp Mangaluru",
-            TouchpointKind.Event,
-            "Event",
-            hacktoberfestDate.AddDays(16).ToString("dd MMM", CultureInfo.InvariantCulture),
-            "Capacity at 95% · speaker lineup ready",
-            "/events",
-            false,
-            "91% ready",
-            [
-                new("Capacity", "114 / 120"),
-                new("Waitlist", "4 waiting"),
-                new("Volunteers", "10 / 10")
-            ],
-            "On track")
-    ];
-
-    private static WeeklyInsight CreateStrategicInsight(CommunityRole role)
-    {
-        var (headline, opening) = role switch
-        {
-            CommunityRole.EventOrganizer => (
-                "Community participation is widening beyond events",
-                "Recent events are converting attendees into recurring contributors."),
-            CommunityRole.VolunteerLead => (
-                "Volunteer leadership is compounding",
-                "Three contributors are showing the consistency needed for greater responsibility."),
-            CommunityRole.MentorshipLead => (
-                "Mentorship demand is outpacing supply",
-                "Participation is growing steadily, but two mentor seats are blocking new pairings."),
-            _ => (
-                "Community momentum is becoming leadership",
-                "Volunteer participation continues to accelerate while previously inactive members re-engage.")
-        };
-
-        return new WeeklyInsight(
-            "Community insight of the week",
-            headline,
-            [opening, "Three contributors appear ready for increased responsibility.", "Two previously inactive members have re-engaged."],
-            ["Participation history", "Volunteer activity", "Mentorship activity", "Community relationships", "Contribution history"]);
-    }
-
-    private static WeeklyInsight CreateEventInsight(CommunityRole role)
-    {
-        var (headline, opening) = role switch
-        {
-            CommunityRole.VolunteerLead => (
-                "Event execution depends on two coverage decisions",
-                "Check-in and accessibility support are the only critical volunteer gaps."),
-            CommunityRole.MentorshipLead => (
-                "Event execution can create new mentor pathways",
-                "Four experienced contributors can be paired with first-time volunteers during delivery."),
-            CommunityRole.CommunityAdministrator => (
-                "Event execution risk is concentrated, not systemic",
-                "Capacity is healthy; volunteer coverage and waitlist decisions need intervention."),
-            _ => (
-                "Event execution is recoverable with two decisions",
-                "Volunteer ownership and waitlist approvals are the remaining critical path.")
-        };
-
-        return new WeeklyInsight(
-            "Event intelligence brief",
-            headline,
-            [opening, "Attendee demand remains strong with ten seats still available.", "Three emerging contributors can directly improve event readiness."],
-            ["Registration velocity", "Waitlist history", "Volunteer shifts", "Session readiness", "Attendee support requests"]);
-    }
-
-    private static IReadOnlyList<PersonToWatch> CreatePeopleToWatch(CommunityRole role, bool isEventMode)
-    {
-        var people = isEventMode ? EventPeopleToWatch : StrategicPeopleToWatch;
-        var priorityName = role switch
-        {
-            CommunityRole.EventOrganizer => "Jordan Blake",
-            CommunityRole.VolunteerLead => "Priya Menon",
-            CommunityRole.MentorshipLead => "Rina Shah",
-            _ => "Akash Kumar"
-        };
-
-        return [.. people.OrderByDescending(person => person.Name == priorityName)];
     }
 }

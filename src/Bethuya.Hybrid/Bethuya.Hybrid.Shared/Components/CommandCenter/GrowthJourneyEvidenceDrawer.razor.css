@@ -1,0 +1,70 @@
+/* Native dialog slide-over — BB Dialog is centered modal, not a side drawer. */
+.evidence-drawer {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(28rem, 100vw);
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0;
+    padding: 1.25rem 1.35rem 2rem;
+    border: none;
+    border-left: 1px solid rgba(212, 168, 48, 0.35);
+    background: var(--card, #181210);
+    color: var(--command-cream, #f4eee3);
+    overflow-y: auto;
+}
+
+.evidence-drawer::backdrop {
+    background: rgba(8, 6, 5, 0.55);
+}
+
+.evidence-drawer__close-form {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.evidence-drawer__close {
+    background: none;
+    border: 1px solid rgba(212, 168, 48, 0.35);
+    color: var(--command-cream, #f4eee3);
+    border-radius: 0.45rem;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+}
+
+.evidence-drawer__header p {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--command-amber, #e0ad42);
+}
+
+.evidence-drawer__header h2 {
+    margin: 0;
+    font-size: 1.35rem;
+}
+
+.evidence-drawer__rationale,
+.evidence-drawer p,
+.evidence-drawer li {
+    color: var(--command-cream, #f4eee3);
+    line-height: 1.5;
+}
+
+.evidence-drawer h3 {
+    margin: 1.1rem 0 0.4rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--command-muted, #a99b88);
+}
+
+.evidence-drawer ul {
+    margin: 0;
+    padding-left: 1.1rem;
+}
+
+.evidence-empty {
+    color: var(--command-muted, #a99b88);
+}

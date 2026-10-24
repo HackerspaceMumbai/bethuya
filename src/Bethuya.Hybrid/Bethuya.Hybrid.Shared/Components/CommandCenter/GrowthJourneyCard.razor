@@ -1,0 +1,72 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<article class="journey-card"
+         data-test="journey-row"
+         data-member-id="@Journey.MemberId">
+    <div class="journey-member">
+        <span class="journey-avatar" aria-hidden="true">@Journey.MemberInitials</span>
+        <div>
+            <h3>@Journey.MemberName</h3>
+            <p class="journey-recommendation">@Journey.Recommendation</p>
+        </div>
+    </div>
+
+    <ol class="journey-pathway" aria-label="@($"{Journey.MemberName} growth pathway")" data-test="journey-pathway">
+        @foreach (var stage in Journey.Stages)
+        {
+            <li class="@GetStageClass(stage.Status)"
+                data-test="journey-stage"
+                aria-current="@(stage.Status == JourneyStageStatus.Current ? "step" : null)">
+                <span class="pathway-node" aria-hidden="true">@GetStageMark(stage.Status)</span>
+                <span class="pathway-label">@stage.Name</span>
+                <span class="@GetStageStatusClass(stage.Status)">@GetStageStatusText(stage.Status)</span>
+            </li>
+        }
+    </ol>
+
+    <div data-test="view-evidence">
+        <button type="button"
+                class="view-evidence-btn"
+                data-evidence-trigger="@Journey.MemberId"
+                @onclick="HandleViewEvidenceAsync"
+                aria-label="@($"View evidence for {Journey.MemberName}")">
+            View Evidence →
+        </button>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public GrowthJourney Journey { get; set; } = default!;
+    [Parameter] public EventCallback<GrowthJourney> OnViewEvidence { get; set; }
+
+    private Task HandleViewEvidenceAsync() => OnViewEvidence.InvokeAsync(Journey);
+
+    private static string GetStageClass(JourneyStageStatus status) => status switch
+    {
+        JourneyStageStatus.Completed => "pathway-step pathway-step--completed",
+        JourneyStageStatus.Current => "pathway-step pathway-step--current",
+        JourneyStageStatus.Recommended => "pathway-step pathway-step--recommended",
+        _ => "pathway-step pathway-step--future"
+    };
+
+    private static string GetStageMark(JourneyStageStatus status) => status switch
+    {
+        JourneyStageStatus.Completed => "✓",
+        JourneyStageStatus.Current => "●",
+        JourneyStageStatus.Recommended => "←",
+        _ => "○"
+    };
+
+    private static string GetStageStatusText(JourneyStageStatus status) => status switch
+    {
+        JourneyStageStatus.Completed => "Completed",
+        JourneyStageStatus.Current => "Current stage",
+        JourneyStageStatus.Recommended => "Recommended",
+        _ => "Upcoming"
+    };
+
+    private static string GetStageStatusClass(JourneyStageStatus status) =>
+        status == JourneyStageStatus.Recommended
+            ? "pathway-recommended"
+            : "pathway-status sr-only";
+}

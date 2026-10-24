@@ -1,0 +1,43 @@
+.programs-page {
+    display: grid;
+    gap: 1.25rem;
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 1.25rem 0 3rem;
+    color: var(--foreground, #F0EAE0);
+}
+
+.programs-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--primary, #D4A830);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.92rem;
+    width: fit-content;
+}
+
+.programs-hero p {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--primary, #D4A830);
+    font-weight: 650;
+}
+
+.programs-hero h1 {
+    margin: 0.35rem 0;
+    font-size: 1.85rem;
+}
+
+.programs-purpose {
+    margin: 0 !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    color: var(--muted-foreground, #7a6a57) !important;
+    font-weight: 400 !important;
+    font-size: 1rem !important;
+    max-width: 40rem;
+}

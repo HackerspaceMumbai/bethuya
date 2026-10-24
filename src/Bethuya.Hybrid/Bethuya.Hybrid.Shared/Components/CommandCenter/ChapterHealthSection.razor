@@ -1,0 +1,34 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section class="chapter-health" aria-labelledby="chapter-health-heading" data-test="chapter-health">
+    <div class="section-heading">
+        <p>What should I do next?</p>
+        <h2 id="chapter-health-heading">Chapter Health &amp; Telemetry</h2>
+    </div>
+    <div class="health-grid">
+        @foreach (var item in Items)
+        {
+            <article @key="item.HealthId" class="health-card" data-test="chapter-health-item">
+                <h3>@item.NextAction</h3>
+                <p>@item.SupportingContext</p>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<ChapterHealthItem>? _renderedItems;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ChapterHealthItem> Items { get; set; } = [];
+
+    protected override bool ShouldRender()
+    {
+        if (ReferenceEquals(_renderedItems, Items))
+        {
+            return false;
+        }
+
+        _renderedItems = Items;
+        return true;
+    }
+}

@@ -2,11 +2,13 @@
 @page "/graph"
 @rendermode InteractiveServer
 @attribute [Authorize]
+@implements IDisposable
 @using System.Globalization
 @using Hackmum.Bethuya.Core.Models
 @using Hackmum.Bethuya.Core.ValueObjects
 @using Bethuya.Hybrid.Shared.Services
 @inject ICommunityPassportApi PassportApi
+@inject NavigationManager Navigation
 
 <PageTitle>Community Graph — Bethuya</PageTitle>
 
@@ -233,6 +235,7 @@
     private string _search = "";
     private string _mode = Modes[0];
     private string _tab = "Relationships";
+    private string? _appliedView;
     private bool _loading = true;
     private bool _error;
     private bool _showHealth = true;
@@ -245,7 +248,84 @@
         .DistinctBy(p => p.EntryId).OrderByDescending(p => p.OccurredAt).ToList();
     private List<CommunityGraphOpportunity> SelectedOpportunities => _graph?.Opportunities.Where(o => o.MemberId == _selectedNode?.Id || o.Id == _selectedNode?.Id).ToList() ?? [];
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+        ApplyViewQuery();
+        return LoadAsync();
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        _ = InvokeAsync(() =>
+        {
+            ApplyViewQuery();
+            StateHasChanged();
+        });
+
+    private void ApplyViewQuery()
+    {
+        var view = ReadViewQuery();
+        if (string.Equals(_appliedView, view, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _appliedView = view;
+        if (string.Equals(view, "ledger", StringComparison.OrdinalIgnoreCase))
+        {
+            _tab = "Participation Ledger";
+            return;
+        }
+
+        if (string.Equals(view, "topology", StringComparison.OrdinalIgnoreCase))
+        {
+            _tab = "Relationships";
+            _mode = Modes[0];
+            if (_graph is not null)
+            {
+                RebuildView();
+            }
+
+            return;
+        }
+
+        // Query removed or unknown — restore default discovery tab without forcing a reload.
+        _tab = "Relationships";
+    }
+
+    private string? ReadViewQuery()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var queryStart = relative.IndexOf('?');
+        if (queryStart < 0)
+        {
+            return null;
+        }
+
+        var query = relative[(queryStart + 1)..].Split('#')[0];
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = pair.IndexOf('=');
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            var key = Uri.UnescapeDataString(pair[..separator]);
+            if (!string.Equals(key, "view", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var value = Uri.UnescapeDataString(pair[(separator + 1)..]).Trim();
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc />
+    public void Dispose() => Navigation.LocationChanged -= HandleLocationChanged;
 
     private async Task LoadAsync()
     {

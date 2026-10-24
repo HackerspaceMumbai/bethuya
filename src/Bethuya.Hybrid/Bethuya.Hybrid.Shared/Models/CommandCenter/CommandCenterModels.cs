@@ -26,75 +26,141 @@ public enum CommunityRole
     EventParticipant
 }
 
+/// <summary>Retained for service signature compatibility; V9 no longer switches homepage layout by mode.</summary>
 public enum CommandCenterMode
 {
     Strategic,
     Event
 }
 
-public enum AttentionSeverity
+/// <summary>Kinds of human-reviewed work in the Immediate Decisions inbox.</summary>
+public enum DecisionKind
 {
-    Advisory,
-    Required,
-    Critical
+    /// <summary>Admit or defer a waitlisted registrant.</summary>
+    WaitlistAdmission,
+
+    /// <summary>Assign a volunteer to an open shift or role.</summary>
+    VolunteerAssignment,
+
+    /// <summary>Confirm a speaker is ready to present.</summary>
+    SpeakerConfirmation,
+
+    /// <summary>Nominate a mentor-pipeline member for the next leadership stage (e.g. Mentor → Track Lead).</summary>
+    MentorNomination,
+
+    /// <summary>Approve or reject a sponsor engagement.</summary>
+    SponsorApproval
 }
 
-/// <summary>Non-event touchpoints are first-class alongside events on the operations homepage.</summary>
-public enum TouchpointKind
+/// <summary>Urgency of a leadership signal recommendation.</summary>
+public enum SignalUrgency
 {
-    Event,
-    MentorshipSession,
-    VolunteerOrientation,
-    WorkingGroup
+    /// <summary>Optional advancement opportunity.</summary>
+    Recommendation,
+
+    /// <summary>Requires timely organizer intervention.</summary>
+    Intervention
 }
 
-public sealed record SnapshotMetric(string Label, string Value, string Detail, string Trend, bool IsPositive);
+/// <summary>Progress of a stage on a member growth pathway.</summary>
+public enum JourneyStageStatus
+{
+    /// <summary>Stage already completed.</summary>
+    Completed,
 
-public sealed record WeeklyInsight(
-    string Eyebrow,
-    string Headline,
-    IReadOnlyList<string> Narrative,
-    IReadOnlyList<string> Signals);
+    /// <summary>Member's current stage.</summary>
+    Current,
 
-/// <summary>Awareness-only signal about a person's trajectory. Never a task or an approval.</summary>
-public sealed record PersonToWatch(
-    string Name,
-    string Initials,
-    string Signal,
-    string JourneyFrom,
-    string JourneyTo,
-    string WatchReason);
+    /// <summary>Recommended next stage.</summary>
+    Recommended,
 
-public sealed record AttentionItem(
-    string Category,
+    /// <summary>Future stage not yet in focus.</summary>
+    Future
+}
+
+/// <summary>Narrative foresight for the Strategic Community Insight hero.</summary>
+public sealed record StrategicInsight(
+    string Observation,
+    string Risk,
+    string RecommendedAction,
+    string ActionLabel,
+    string ActionRoute);
+
+/// <summary>A single human-reviewed decision in the Immediate Decisions inbox.</summary>
+public sealed record ImmediateDecision(
+    string DecisionId,
+    DecisionKind Kind,
     string Title,
     string Summary,
-    string ActionLabel,
-    string Route,
-    AttentionSeverity Severity,
-    int Priority);
+    IReadOnlyList<string> Evidence,
+    string PrimaryVerb,
+    string SubjectName);
 
-public sealed record ReviewItem(string Label, int Count, string Summary, string Route);
+/// <summary>Program outcome card — produced leaders, not session counts.</summary>
+public sealed record CommunityProgram(
+    string ProgramId,
+    string Name,
+    string Tagline,
+    IReadOnlyList<string> ProducedOutcomes,
+    string WorkspaceRoute);
 
-public sealed record TouchpointMetric(string Label, string Value);
-
-public sealed record TouchpointItem(
+/// <summary>Operational event workspace with readiness-first health and impact lines.</summary>
+public sealed record EventWorkspace(
+    string WorkspaceId,
     string Title,
-    TouchpointKind Kind,
-    string KindLabel,
     string DateLabel,
-    string OperationalSummary,
-    string Route,
-    bool IsAtRisk,
+    bool IsHero,
+    int ReadinessPercent,
     string ReadinessLabel,
-    IReadOnlyList<TouchpointMetric> Metrics,
-    string RiskLabel);
+    IReadOnlyList<string> Operations,
+    IReadOnlyList<string> CommunityImpact,
+    string EventRoute,
+    string StatusLabel);
 
-public sealed record DeadlineItem(string Label, string DueLabel, string Route);
+/// <summary>Leadership recommendation with journey placement and ledger evidence.</summary>
+public sealed record LeadershipSignal(
+    string SignalId,
+    string SignalTitle,
+    string MemberName,
+    string MemberInitials,
+    IReadOnlyList<string> JourneyStages,
+    string NextStage,
+    string RecommendedFuture,
+    IReadOnlyList<string> Evidence,
+    string ActionLabel,
+    SignalUrgency Urgency,
+    string ActionRoute);
 
-public sealed record QuickAction(string Label, string Route, string Icon);
+/// <summary>One stage on a member growth path.</summary>
+public sealed record JourneyStage(string Name, JourneyStageStatus Status);
 
-public sealed record WorkspaceLink(string Label, string Route, string Icon);
+/// <summary>Member growth journey with evidence for the slide-over drawer.</summary>
+public sealed record GrowthJourney(
+    string MemberId,
+    string MemberName,
+    string MemberInitials,
+    IReadOnlyList<JourneyStage> Stages,
+    string Recommendation,
+    IReadOnlyList<string> LedgerTimeline,
+    IReadOnlyList<string> ProgramHistory,
+    IReadOnlyList<string> EventHistory,
+    string GraphNote,
+    string Rationale);
+
+/// <summary>Strategic chapter investment recommendation.</summary>
+public sealed record ChapterRecommendation(
+    string RecommendationId,
+    string Title,
+    string ExpectedOutcome,
+    IReadOnlyList<string> SupportingEvidence,
+    string ActionLabel,
+    string ActionRoute);
+
+/// <summary>Telemetry converted into a next action.</summary>
+public sealed record ChapterHealthItem(
+    string HealthId,
+    string NextAction,
+    string SupportingContext);
 
 /// <summary>Display context derived from an authenticated principal without granting authorization.</summary>
 public sealed record CommandCenterAudience(
@@ -104,18 +170,14 @@ public sealed record CommandCenterAudience(
     string ExperienceLabel,
     string ExperienceSummary);
 
+/// <summary>V9 Community Command Center projection — nine fixed sections for operating personas.</summary>
 public sealed record CommunityCommandCenter(
     CommunityRole Role,
-    CommandCenterMode RecommendedMode,
-    CommandCenterMode EffectiveMode,
-    string ModeReason,
-    string ModeQuestion,
-    IReadOnlyList<SnapshotMetric> Snapshot,
-    WeeklyInsight Insight,
-    IReadOnlyList<PersonToWatch> PeopleToWatch,
-    IReadOnlyList<AttentionItem> AttentionItems,
-    IReadOnlyList<ReviewItem> Reviews,
-    IReadOnlyList<TouchpointItem> Touchpoints,
-    IReadOnlyList<DeadlineItem> Deadlines,
-    IReadOnlyList<QuickAction> QuickActions,
-    IReadOnlyList<WorkspaceLink> Workspaces);
+    StrategicInsight Insight,
+    IReadOnlyList<ImmediateDecision> Decisions,
+    IReadOnlyList<CommunityProgram> Programs,
+    IReadOnlyList<EventWorkspace> EventWorkspaces,
+    IReadOnlyList<LeadershipSignal> LeadershipSignals,
+    IReadOnlyList<GrowthJourney> GrowthJourneys,
+    IReadOnlyList<ChapterRecommendation> ChapterRecommendations,
+    IReadOnlyList<ChapterHealthItem> ChapterHealth);

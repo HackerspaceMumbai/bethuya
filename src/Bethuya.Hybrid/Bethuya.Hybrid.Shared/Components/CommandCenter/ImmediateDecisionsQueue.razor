@@ -1,0 +1,73 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section id="immediate-decisions"
+         class="immediate-decisions"
+         aria-labelledby="immediate-decisions-heading"
+         data-test="immediate-decisions">
+    <div class="section-heading section-heading--row">
+        <div>
+            <p>Operational triage</p>
+            <h2 id="immediate-decisions-heading">Immediate Decisions</h2>
+        </div>
+        <p class="decision-count" data-test="decision-count" aria-live="polite">
+            @Items.Count @(Items.Count == 1 ? "Decision" : "Decisions") Requiring Review
+        </p>
+    </div>
+
+    <p class="governance-banner" data-test="governance-no-batch" role="status">
+        Batch processing disabled: AI recommendations require human-in-the-loop review.
+    </p>
+
+    <div class="decision-toolbar">
+        <div data-test="review-queue-launch">
+            <BbButton Variant="ButtonVariant.Outline"
+                      Disabled="@(Items.Count == 0)"
+                      OnClick="LaunchReviewSession"
+                      AriaLabel="@($"Review Queue ({Items.Count} Decisions)")">
+                Review Queue (@Items.Count Decisions)
+            </BbButton>
+        </div>
+    </div>
+
+    @if (Items.Count == 0)
+    {
+        <p class="decision-empty" data-test="decisions-empty">No decisions require review right now.</p>
+    }
+    else
+    {
+        <div class="decision-grid" data-test="decision-grid">
+            @foreach (var item in Items)
+            {
+                <ImmediateDecisionCard @key="item.DecisionId"
+                                       Item="item"
+                                       IsLeaving="@_leavingIds.Contains(item.DecisionId)"
+                                       OnPrimary="BeginPrimaryAsync"
+                                       OnReview="OnReview" />
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private readonly HashSet<string> _leavingIds = new(StringComparer.Ordinal);
+
+    [Parameter, EditorRequired] public IReadOnlyList<ImmediateDecision> Items { get; set; } = [];
+    [Parameter] public EventCallback<ImmediateDecision> OnPrimary { get; set; }
+    [Parameter] public EventCallback<ImmediateDecision> OnReview { get; set; }
+    [Parameter] public EventCallback OnLaunchReviewSession { get; set; }
+
+    private Task LaunchReviewSession() => OnLaunchReviewSession.InvokeAsync();
+
+    private async Task BeginPrimaryAsync(ImmediateDecision item)
+    {
+        if (!_leavingIds.Add(item.DecisionId))
+        {
+            return;
+        }
+
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(220);
+        await OnPrimary.InvokeAsync(item);
+        _leavingIds.Remove(item.DecisionId);
+    }
+}

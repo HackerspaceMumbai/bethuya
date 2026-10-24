@@ -1,0 +1,63 @@
+/* BB has no telemetry-to-next-action chapter health card grid. */
+.chapter-health {
+    display: grid;
+    gap: 1rem;
+}
+
+.health-grid {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.health-card {
+    display: grid;
+    gap: 0.45rem;
+    padding: 1.05rem 1.15rem;
+    border-radius: 0.7rem;
+    background: var(--command-surface, rgba(24, 18, 16, 0.78));
+    border: 1px solid rgba(212, 168, 48, 0.18);
+}
+
+.health-card h3 {
+    margin: 0;
+    font-size: 1.02rem;
+    color: var(--command-cream, #f4eee3);
+    line-height: 1.35;
+}
+
+.health-card p {
+    margin: 0;
+    color: var(--command-muted, #a99b88);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.section-heading {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.section-heading p {
+    margin: 0;
+    color: var(--command-amber, #e0ad42);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: var(--command-cream, #f4eee3);
+    font-size: 1.35rem;
+    font-weight: 650;
+}
+
+.section-heading--row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}

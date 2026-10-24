@@ -81,8 +81,33 @@
 
 .nav-section--bottom {
     margin-top: auto;
-    padding-top: 0.5rem;
+    padding: 0.85rem 0.65rem 1rem;
     border-top: 1px solid var(--hs-border);
+}
+
+.nav-section--bottom ::deep .login-display {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+    padding: 0.35rem 0.5rem;
+}
+
+.nav-section--bottom ::deep .login-display-name {
+    color: var(--hs-text);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.nav-section--bottom ::deep .login-display-logout,
+.nav-section--bottom ::deep .login-display-login {
+    color: var(--hs-gold);
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-decoration: none;
 }
 
 .nav-section-label {

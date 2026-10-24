@@ -1,0 +1,82 @@
+@using Bethuya.Hybrid.Shared.Models.CommandCenter
+
+<section id="leadership-signals"
+         class="leadership-signals"
+         aria-labelledby="leadership-signals-heading"
+         data-test="leadership-signals">
+    <div class="section-heading">
+        <p>Recommendation engine</p>
+        <h2 id="leadership-signals-heading">Leadership Signals</h2>
+    </div>
+    <div class="signal-grid">
+        @foreach (var row in _rows)
+        {
+            <article @key="row.Signal.SignalId"
+                     class="@($"signal-card {(row.Signal.Urgency == SignalUrgency.Intervention ? "signal-card--intervention" : "")}")"
+                     data-test="leadership-signal">
+                <p class="signal-title" data-test="signal-title">@row.Signal.SignalTitle</p>
+                <div class="signal-person">
+                    <span class="signal-avatar" aria-hidden="true">@row.Signal.MemberInitials</span>
+                    <h3>@row.Signal.MemberName</h3>
+                </div>
+                <div class="signal-journey-block" data-test="signal-journey">
+                    <p class="signal-meta-label">Journey</p>
+                    <p class="signal-journey">@row.JourneyPath</p>
+                    <p class="signal-next"><span>Next stage</span> @row.Signal.NextStage</p>
+                    <p class="signal-future"><span>Recommended future</span> @row.Signal.RecommendedFuture</p>
+                </div>
+                <div class="signal-evidence" data-test="signal-evidence">
+                    <p class="signal-evidence__label">Ledger Evidence</p>
+                    <ul>
+                        @foreach (var proof in row.Signal.Evidence)
+                        {
+                            <li>@proof</li>
+                        }
+                    </ul>
+                </div>
+                <div data-test="signal-action">
+                    @if (row.Signal.Urgency == SignalUrgency.Intervention)
+                    {
+                        <a class="signal-action signal-action--filled" href="@row.Signal.ActionRoute">@row.Signal.ActionLabel</a>
+                    }
+                    else
+                    {
+                        <a class="signal-action signal-action--outline" href="@row.Signal.ActionRoute">@row.Signal.ActionLabel</a>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<LeadershipSignal>? _boundSignals;
+    private SignalRow[] _rows = [];
+    private bool _shouldRender = true;
+
+    [Parameter, EditorRequired] public IReadOnlyList<LeadershipSignal> Signals { get; set; } = [];
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_boundSignals, Signals))
+        {
+            _shouldRender = false;
+            return;
+        }
+
+        _boundSignals = Signals;
+        var rows = new SignalRow[Signals.Count];
+        for (var i = 0; i < Signals.Count; i++)
+        {
+            var signal = Signals[i];
+            rows[i] = new SignalRow(signal, string.Join(" → ", signal.JourneyStages));
+        }
+
+        _rows = rows;
+        _shouldRender = true;
+    }
+
+    protected override bool ShouldRender() => _shouldRender;
+
+    private sealed record SignalRow(LeadershipSignal Signal, string JourneyPath);
+}

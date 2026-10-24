@@ -16,6 +16,48 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-10-23] Chapter recommendation CTAs must match inbox contents
+- **What happened:** After Track Lead replaced Mentor nominations in Immediate Decisions, "Expand mentorship capacity" still linked to that inbox — organizers had no matching action for adding mentors.
+- **Root cause:** Decision-card copy was updated without retargeting chapter recommendation actions that depended on the old decision.
+- **Fix:** Point mentorship-capacity CTA at `/programs` (Mentorship Circle), not `#immediate-decisions`.
+- **Prevention:** When changing an inbox decision's meaning, grep chapter recommendations/health CTAs that deep-link into that section.
+
+## [2026-10-23] MAUI shell must preload the same critical JS as Web App.razor
+- **What happened:** Evidence drawer / guided review worked on Blazor Web but would throw on MAUI Hybrid because `bethuyaEvidenceDrawer` was never defined.
+- **Root cause:** `evidenceDrawer.js` was added only to Web `App.razor`; MAUI `wwwroot/index.html` already preloaded other Shared RCL scripts but missed this one.
+- **Fix:** Load `_content/Bethuya.Hybrid.Shared/js/evidenceDrawer.js` in MAUI `index.html` alongside the other global scripts.
+- **Prevention:** When adding a preloaded InteractiveServer script to Web `App.razor`, mirror it in MAUI `wwwroot/index.html` in the same change.
+
+## [2026-10-23] Leadership decision copy must match journey/signal stages
+- **What happened:** Rina’s signal/journey said Mentor → Track Lead while the Immediate Decision still claimed Mentor nominations with Volunteer → Mentor evidence.
+- **Root cause:** Signal/journey consistency was fixed without updating the related aggregate decision card.
+- **Fix:** Align mentor-pipeline decision title/summary/evidence to Track Lead and assert decision↔journey agreement in tests.
+- **Prevention:** When changing a member’s recommended stage, update every Command Center surface that names that transition (signals, journeys, decisions, CTAs).
+
+## [2026-10-21] Community Graph view query must react to LocationChanged
+- **What happened:** Insights links with `?view=ledger|topology` only applied on first load; subsequent query-only navigations kept the old tab.
+- **Root cause:** `ApplyViewQuery` ran only in `OnInitializedAsync`, which does not re-run when Blazor reuses the page.
+- **Fix:** Subscribe to `Navigation.LocationChanged`, re-parse `view`, and restore the default Relationships tab when the query is cleared.
+- **Prevention:** For query-driven tabs on a shared `@page`, always handle `LocationChanged` (or `SupplyParameterFromQuery` via the router), never init-only.
+
+## [2026-10-21] Keep leave animations inside the queue, not on Home
+- **What happened:** Decision resolve on Home did `StateHasChanged` + `Task.Delay(220)` then rebuilt the list, forcing two full InteractiveServer renders of every V9 section.
+- **Root cause:** Leave-transition state lived on the page that also owns Strategic Insight and Growth Journeys.
+- **Fix:** ImmediateDecisionsQueue owns leaving IDs and the 220ms delay; Home only removes the decision once. Static sections skip re-render via `ShouldRender` when their parameter references are unchanged.
+- **Prevention:** Animate list removals in the list component; never delay on a page that hosts unrelated heavy sections.
+
+## [2026-10-21] Command Center refinement keeps Path Finder and Ledger as peer destinations
+- **What happened:** An earlier nav pass nested Participation Ledger under Community Graph framing and let Path Finder disappear into Command Center narrative.
+- **Root cause:** Graph route query params (`view=ledger|topology`) were treated as nav hierarchy instead of alternate views of one page; Path Finder was assumed redundant with Growth Journeys on Home.
+- **Fix:** Restored separate Insights links (Ledger → Topology → Graph) and a first-class Organizer → Path Finder link to `/opportunities`, without adding new Command Center sections.
+- **Prevention:** Treat route query modes as page state, not information architecture; keep Path Finder as its own organizer destination whenever Growth Journeys appear on Home.
+
+## [2026-10-20] Command Center V9 deletes unused V8 modules with the model rewrite
+- **What happened:** After replacing `CommunityCommandCenter` fields, leftover Snapshot/Rail/Review/Attention components failed the build with missing type errors.
+- **Root cause:** Those modules still referenced removed records (`SnapshotMetric`, `ReviewItem`, etc.) and were no longer composed by `Home.razor`.
+- **Fix:** Deleted the unused V8 Command Center components in the same change as the model rewrite.
+- **Prevention:** When shrinking a projection contract, grep for the removed type names and remove or rewrite every consumer before building.
+
 ## [2026-10-13] Real page routes must displace WorkspacePreview placeholders on merge
 - **What happened:** Home crashed every Blazor circuit with `InvalidOperationException: The following routes are ambiguous: 'community-graph'`.
 - **Root cause:** Community Graph PR #64 registered `@page "/community-graph"` on `CommunityGraph.razor` while the older Homepage placeholder `WorkspacePreview.razor` still claimed the same route.
