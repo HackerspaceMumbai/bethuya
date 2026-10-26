@@ -6,9 +6,9 @@
     <MauiVersion>9.0.21</MauiVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.1" />
-    <PackageVersion Include="Aspire.Hosting.Foundry" Version="13.6.1-preview.1.26506.6" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.1" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.Foundry" Version="13.6.4-preview.1.26523.11" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
@@ -55,12 +55,12 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
-    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.1" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.4" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <!-- Aspire hosting for Key Vault (AppHost) - provisions Key Vault; azd stores secret params here -->
-    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.6.1" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.6.4" />
     <!-- Aspire hosting for Keycloak (AppHost - local OIDC testing) -->
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.6.1-preview.1.26506.6" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.6.4-preview.1.26523.11" />
     <!-- ASP.NET Core TestHost for minimal-API endpoint testing -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.13" />
     <!-- Testing - TUnit (not xUnit/NUnit per project standards) -->
