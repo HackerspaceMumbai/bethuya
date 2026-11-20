@@ -1155,3 +1155,7 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## [2026-11-20] Track B explicit archive publication
 - [x] Replace lifecycle-triggered archive writes with organizer preview/confirmation, durable outbox processing, deterministic Draft PR publication, exact-path adoption, on-demand status refresh, and safe date/path validation. Full TUnit suite passed 535/535.
+
+## [2026-11-20] Refuse multiline YAML metadata values safely
+- [x] Detect block-scalar and continued/multiline forms before replacing managed values while preserving safe simple scalar behavior.
+- [x] Add focused regression tests for literal/folded block headers and related multiline forms; full TUnit project passed 551/551.

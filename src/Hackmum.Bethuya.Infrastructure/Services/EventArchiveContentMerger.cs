@@ -116,9 +116,15 @@ internal static partial class EventArchiveContentMerger
 
         if (matches.Count == 1)
         {
-            var existingValue = ScalarValueRegex().Match(lines[matches[0]]);
+            var lineIndex = matches[0];
+            var existingValue = ScalarValueRegex().Match(lines[lineIndex]);
+            var value = existingValue.Groups["value"].Value;
             if (!existingValue.Success
-                || existingValue.Groups["value"].Value.Trim() is "|" or ">" or "[]" or "{}")
+                || value.Trim() is "[]" or "{}"
+                || IsBlockScalarValue(value)
+                || HasUnterminatedQuotedScalar(value)
+                || HasUnclosedFlowCollection(value)
+                || HasIndentedContinuation(lines, lineIndex, indentation, end))
             {
                 throw new InvalidOperationException($"The existing event.yml uses an ambiguous value for managed key '{key}'; publication was refused.");
             }
@@ -141,6 +147,148 @@ internal static partial class EventArchiveContentMerger
         {
             lines.Insert(end, candidate);
         }
+    }
+
+    private static bool IsBlockScalarValue(string value)
+    {
+        var trimmedValue = value.TrimStart();
+        return trimmedValue.StartsWith('|') || trimmedValue.StartsWith('>');
+    }
+
+    private static bool HasUnterminatedQuotedScalar(string value)
+    {
+        var trimmedValue = value.TrimStart();
+        if (trimmedValue.StartsWith('"'))
+        {
+            for (var index = 1; index < trimmedValue.Length; index++)
+            {
+                if (trimmedValue[index] == '\\')
+                {
+                    index++;
+                }
+                else if (trimmedValue[index] == '"')
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if (!trimmedValue.StartsWith('\''))
+        {
+            return false;
+        }
+
+        for (var index = 1; index < trimmedValue.Length; index++)
+        {
+            if (trimmedValue[index] != '\'')
+            {
+                continue;
+            }
+
+            if (index + 1 < trimmedValue.Length && trimmedValue[index + 1] == '\'')
+            {
+                index++;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool HasUnclosedFlowCollection(string value)
+    {
+        var trimmedValue = value.TrimStart();
+        if (trimmedValue.Length == 0 || trimmedValue[0] is not ('[' or '{'))
+        {
+            return false;
+        }
+
+        var delimiters = new Stack<char>();
+        var quote = '\0';
+        for (var index = 0; index < trimmedValue.Length; index++)
+        {
+            var character = trimmedValue[index];
+            if (quote == '"')
+            {
+                if (character == '\\')
+                {
+                    index++;
+                }
+                else if (character == '"')
+                {
+                    quote = '\0';
+                }
+
+                continue;
+            }
+
+            if (quote == '\'')
+            {
+                if (character == '\'' && index + 1 < trimmedValue.Length && trimmedValue[index + 1] == '\'')
+                {
+                    index++;
+                }
+                else if (character == '\'')
+                {
+                    quote = '\0';
+                }
+
+                continue;
+            }
+
+            if (character is '"' or '\'')
+            {
+                quote = character;
+            }
+            else if (character == '#' && (index == 0 || char.IsWhiteSpace(trimmedValue[index - 1])))
+            {
+                break;
+            }
+            else if (character == '[')
+            {
+                delimiters.Push(']');
+            }
+            else if (character == '{')
+            {
+                delimiters.Push('}');
+            }
+            else if (character is ']' or '}')
+            {
+                if (delimiters.Count == 0 || delimiters.Pop() != character)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return delimiters.Count > 0 || quote != '\0';
+    }
+
+    private static bool HasIndentedContinuation(
+        List<string> lines,
+        int scalarIndex,
+        int indentation,
+        int end)
+    {
+        for (var index = scalarIndex + 1; index < end; index++)
+        {
+            var line = lines[index];
+            var trimmedLine = line.TrimStart();
+            if (trimmedLine.Length == 0 || trimmedLine.StartsWith('#'))
+            {
+                continue;
+            }
+
+            var lineIndentation = line.Length - line.TrimStart().Length;
+            return lineIndentation > indentation;
+        }
+
+        return false;
     }
 
     private static string? FindScalar(string[] lines, string key, int indentation)
