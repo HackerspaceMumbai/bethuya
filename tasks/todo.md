@@ -1152,3 +1152,6 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## [2026-10-17] Merge security restore fix into main
 - [x] Staged code review approved; final dependency restore passes with main's MessagePack 3.1.12 preserved. Prepared for merge into local main. Earlier TUnit run passed 516/516; final rerun was blocked by running backend DLL locks.
+
+## [2026-11-20] Track B explicit archive publication
+- [x] Replace lifecycle-triggered archive writes with organizer preview/confirmation, durable outbox processing, deterministic Draft PR publication, exact-path adoption, on-demand status refresh, and safe date/path validation. Full TUnit suite passed 535/535.

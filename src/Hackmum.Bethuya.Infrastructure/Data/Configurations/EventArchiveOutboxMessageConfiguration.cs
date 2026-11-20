@@ -16,6 +16,8 @@ internal sealed class EventArchiveOutboxMessageConfiguration : IEntityTypeConfig
             .HasConversion(id => id.Value, value => EventId.From(value));
         builder.Property(message => message.Destination).HasMaxLength(100).IsRequired();
         builder.Property(message => message.FolderPath).HasMaxLength(500).IsRequired();
+        builder.Property(message => message.Title).HasMaxLength(200).IsRequired();
+        builder.Property(message => message.ConfirmedBy).HasMaxLength(200).IsRequired();
         builder.Property(message => message.ReadmeMarkdown).IsRequired();
         builder.Property(message => message.MetadataJson).IsRequired();
         builder.Property(message => message.IdempotencyKey).HasMaxLength(200).IsRequired();

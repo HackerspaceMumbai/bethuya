@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Core.Enums;
+using Hackmum.Bethuya.Core.Models;
 
 namespace Hackmum.Bethuya.Core.Services;
 
@@ -35,6 +36,32 @@ public interface IEventLifecycleOrchestrator
         Guid eventId,
         string actor,
         bool overrideMissingAssets,
+        CancellationToken ct = default);
+
+    Task<EventArchivePublicationPreview> PreviewArchivePublicationAsync(
+        Guid eventId,
+        CancellationToken ct = default);
+
+    Task<EventLifecycleOperationResult> ConfirmArchivePublicationAsync(
+        Guid eventId,
+        string actor,
+        string previewToken,
+        CancellationToken ct = default);
+
+    Task<EventArchivePublicationPreview> PreviewArchiveAdoptionAsync(
+        Guid eventId,
+        string folderPath,
+        CancellationToken ct = default);
+
+    Task<EventArchiveAdoptionResult> ConfirmArchiveAdoptionAsync(
+        Guid eventId,
+        string folderPath,
+        string previewToken,
+        string actor,
+        CancellationToken ct = default);
+
+    Task<EventArchivePullRequestStatus> RefreshArchivePublicationStatusAsync(
+        Guid eventId,
         CancellationToken ct = default);
 }
 

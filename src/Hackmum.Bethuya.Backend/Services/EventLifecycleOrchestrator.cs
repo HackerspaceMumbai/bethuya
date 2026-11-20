@@ -14,7 +14,8 @@ public sealed partial class EventLifecycleOrchestrator(
     BethuyaDbContext dbContext,
     ILumaRegistrationService lumaRegistrationService,
     ITeamsNotificationService teamsNotificationService,
-    IWebCacheInvalidationService cacheInvalidationService)
+    IWebCacheInvalidationService cacheInvalidationService,
+    IGitHubEventRepository gitHubEventRepository)
     : IEventLifecycleOrchestrator
 {
     public async Task<EventLifecycleOperationResult> TransitionAsync(
@@ -29,10 +30,6 @@ public sealed partial class EventLifecycleOrchestrator(
         var evt = await LoadEventAggregateAsync(eventId, ct);
 
         evt.TransitionLifecycleTo(targetState, occurredAt);
-        if (IsPublicLifecycle(targetState))
-        {
-            await QueueArchiveProjectionAsync(evt, ct);
-        }
         await dbContext.SaveChangesAsync(ct);
 
         return ToResult(evt, $"Lifecycle transitioned to {targetState} by {actor}.");
@@ -61,14 +58,11 @@ public sealed partial class EventLifecycleOrchestrator(
         await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
-            var artifact = CreatePublicationArtifact(evt);
-            var outbox = CreateOutboxMessage(evt, artifact);
-            await AddOutboxIfMissingAsync(outbox, ct);
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
         });
 
-        return ToResult(evt, "Event published and queued for archive synchronization.");
+        return ToResult(evt, "Event published. Archive publication requires organizer confirmation.");
     }
 
     public async Task<EventLifecycleOperationResult> AlterScheduleAsync(
@@ -92,7 +86,6 @@ public sealed partial class EventLifecycleOrchestrator(
                 evt.TransitionLifecycleTo(MeetupLifecycleState.ScheduleAltered, occurredAt);
             }
 
-            await QueueArchiveProjectionAsync(evt, ct);
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
             result = ToResult(evt, $"Schedule altered by {actor}: {reason}");
@@ -119,9 +112,8 @@ public sealed partial class EventLifecycleOrchestrator(
             session.MarkPendingUpload(assetDueAt);
         }
 
-        await QueueArchiveProjectionAsync(evt, ct);
         await dbContext.SaveChangesAsync(ct);
-        return ToResult(evt, "Event completed; session assets are pending upload.");
+        return ToResult(evt, "Event completed; session assets are pending upload. Archive publication requires organizer confirmation.");
     }
 
     public async Task<EventLifecycleOperationResult> ArchiveAsync(
@@ -140,9 +132,170 @@ public sealed partial class EventLifecycleOrchestrator(
         }
 
         evt.TransitionLifecycleTo(MeetupLifecycleState.Archived, DateTimeOffset.UtcNow);
-        await QueueArchiveProjectionAsync(evt, ct);
         await dbContext.SaveChangesAsync(ct);
-        return ToResult(evt, "Event archived.");
+        return ToResult(evt, "Event archived. Archive publication requires organizer confirmation.");
+    }
+
+    public async Task<EventArchivePublicationPreview> PreviewArchivePublicationAsync(
+        Guid eventId,
+        CancellationToken ct = default)
+    {
+        var evt = await LoadEventAggregateAsync(eventId, ct);
+        EnsurePublicLifecycle(evt);
+        var folderPath = evt.ArchiveFolderPath ?? CreateArchiveFolderPath(evt);
+        await EnsureArchivePathAvailableAsync(evt, folderPath, ct);
+        var request = CreatePublicationRequest(evt, folderPath);
+        var preview = await gitHubEventRepository.PreviewEventAsync(request, ct);
+        return new(eventId, preview);
+    }
+
+    public async Task<EventLifecycleOperationResult> ConfirmArchivePublicationAsync(
+        Guid eventId,
+        string actor,
+        string previewToken,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actor);
+        ArgumentException.ThrowIfNullOrWhiteSpace(previewToken);
+        var evt = await LoadEventAggregateAsync(eventId, ct);
+        EnsurePublicLifecycle(evt);
+        var folderPath = evt.ArchiveFolderPath ?? CreateArchiveFolderPath(evt);
+        await EnsureArchivePathAvailableAsync(evt, folderPath, ct);
+        var artifact = CreatePublicationArtifact(evt, folderPath);
+        var preview = await gitHubEventRepository.PreviewEventAsync(
+            CreatePublicationRequest(evt, folderPath, artifact),
+            ct);
+        if (!string.Equals(preview.PreviewToken, previewToken, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The archive changed after preview. Review a new preview before confirming.");
+        }
+
+        if (!preview.HasChanges)
+        {
+            throw new InvalidOperationException("The archive already matches this projection; there are no changes to queue.");
+        }
+
+        var idempotencyKey = CreateIdempotencyKey(
+            Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id),
+            artifact);
+        var occurredAt = DateTimeOffset.UtcNow;
+        var alreadyQueued = false;
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
+            alreadyQueued = !await AddOutboxIfMissingAsync(CreateOutboxMessage(evt, artifact, actor), ct);
+            if (alreadyQueued)
+            {
+                return;
+            }
+
+            evt.ArchiveFolderPath = folderPath;
+            evt.ArchivePublicationStatus = EventArchivePublicationStatus.Pending;
+            evt.ArchivePublicationRequestedBy = actor;
+            evt.ArchivePublicationRequestedAt = occurredAt;
+            evt.ArchiveBranchName = null;
+            evt.ArchivePullRequestNumber = null;
+            evt.ArchivePullRequestUrl = null;
+            evt.ArchivePublicationIdempotencyKey = idempotencyKey;
+            await dbContext.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        });
+
+        if (alreadyQueued)
+        {
+            return ToResult(evt, "This archive projection is already queued or has a pull request.");
+        }
+
+        return ToResult(evt, "Archive publication queued for Draft PR creation.");
+    }
+
+    public async Task<EventArchivePublicationPreview> PreviewArchiveAdoptionAsync(
+        Guid eventId,
+        string folderPath,
+        CancellationToken ct = default)
+    {
+        var evt = await LoadEventAggregateAsync(eventId, ct);
+        ValidateArchiveFolderPath(evt, folderPath);
+        await EnsureArchivePathAvailableAsync(evt, folderPath, ct);
+        var entry = await gitHubEventRepository.GetArchiveEntryAsync(folderPath, ct)
+            ?? throw new InvalidOperationException("No archive entry exists at the specified path.");
+        ValidateAdoptionIdentity(evt, entry);
+        var preview = await gitHubEventRepository.PreviewEventWithEntryAsync(
+            CreatePublicationRequest(evt, folderPath),
+            entry,
+            ct);
+        return new(eventId, preview);
+    }
+
+    public async Task<EventArchiveAdoptionResult> ConfirmArchiveAdoptionAsync(
+        Guid eventId,
+        string folderPath,
+        string previewToken,
+        string actor,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(previewToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actor);
+        var evt = await LoadEventAggregateAsync(eventId, ct);
+        ValidateArchiveFolderPath(evt, folderPath);
+        if (evt.ArchiveFolderPath is not null
+            && !evt.ArchiveFolderPath.Equals(folderPath, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("This event already has an established archive path; archive folder moves are not supported.");
+        }
+
+        await EnsureArchivePathAvailableAsync(evt, folderPath, ct);
+        var entry = await gitHubEventRepository.GetArchiveEntryAsync(folderPath, ct)
+            ?? throw new InvalidOperationException("No archive entry exists at the specified path.");
+        ValidateAdoptionIdentity(evt, entry);
+        var preview = await gitHubEventRepository.PreviewEventWithEntryAsync(
+            CreatePublicationRequest(evt, folderPath),
+            entry,
+            ct);
+        if (!string.Equals(preview.PreviewToken, previewToken, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The archive changed after preview. Review a new preview before confirming adoption.");
+        }
+
+        var adoptedAt = evt.ArchiveAdoptedAt ?? DateTimeOffset.UtcNow;
+        evt.ArchiveFolderPath = folderPath;
+        evt.ArchiveAdoptedBy ??= actor;
+        evt.ArchiveAdoptedAt = adoptedAt;
+        evt.ArchiveSourceReadmeSha = entry.ReadmeSha;
+        evt.ArchiveSourceMetadataSha = entry.MetadataSha;
+        await dbContext.SaveChangesAsync(ct);
+        return new(eventId, folderPath, evt.ArchiveAdoptedBy, adoptedAt);
+    }
+
+    public async Task<EventArchivePullRequestStatus> RefreshArchivePublicationStatusAsync(
+        Guid eventId,
+        CancellationToken ct = default)
+    {
+        var evt = await LoadEventAggregateAsync(eventId, ct);
+        if (evt.ArchivePullRequestNumber is not { } pullRequestNumber
+            || string.IsNullOrWhiteSpace(evt.ArchiveFolderPath))
+        {
+            throw new InvalidOperationException("This event has no archive pull request to refresh.");
+        }
+
+        var status = await gitHubEventRepository.GetPublicationStatusAsync(
+            pullRequestNumber,
+            evt.ArchiveFolderPath,
+            ct);
+        evt.ArchivePullRequestUrl = status.PullRequestUrl;
+        evt.ArchivePublicationStatus = status.IsMerged
+            ? EventArchivePublicationStatus.Published
+            : status.IsClosed
+                ? EventArchivePublicationStatus.Closed
+                : EventArchivePublicationStatus.DraftPrPending;
+        if (status.IsMerged)
+        {
+            evt.GitHubFolderUrl = status.FolderUrl;
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+        return status;
     }
 
     private async Task<Event> LoadEventAggregateAsync(Guid eventId, CancellationToken ct)
@@ -152,10 +305,8 @@ public sealed partial class EventLifecycleOrchestrator(
             .FirstOrDefaultAsync(e => e.Id == eventId, ct)
             ?? throw new KeyNotFoundException($"Event {eventId} was not found.");
 
-    private static EventPublicationArtifact CreatePublicationArtifact(Event evt)
+    private static EventPublicationArtifact CreatePublicationArtifact(Event evt, string folderPath)
     {
-        var folderPath = evt.ArchiveFolderPath ?? CreateArchiveFolderPath(evt);
-        evt.ArchiveFolderPath ??= folderPath;
         var folderSlug = Path.GetFileName(folderPath);
         var sessions = evt.Agenda?.Sessions.OrderBy(s => s.Order).ToArray() ?? [];
         var readme = CreateReadme(evt, sessions);
@@ -170,6 +321,21 @@ public sealed partial class EventLifecycleOrchestrator(
         var slug = Slugify(evt.Title);
         var folderSlug = $"{localStart:yyyy-MM-dd}-{slug}-{evt.Id:N}";
         return $"events/{localStart:yyyy}/{folderSlug}";
+    }
+
+    private static EventPublicationRequest CreatePublicationRequest(
+        Event evt,
+        string folderPath,
+        EventPublicationArtifact? artifact = null)
+    {
+        artifact ??= CreatePublicationArtifact(evt, folderPath);
+        return new(
+            Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id),
+            evt.Title,
+            artifact.FolderPath,
+            artifact.ReadmeMarkdown,
+            artifact.MetadataJson,
+            CreateIdempotencyKey(Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id), artifact));
     }
 
     private static string CreateMetadataYaml(Event evt, AgendaSession[] sessions, string slug)
@@ -274,32 +440,46 @@ public sealed partial class EventLifecycleOrchestrator(
         return $"{eventId.Value:N}-{Convert.ToHexString(hash)[..16]}";
     }
 
-    private static EventArchiveOutboxMessage CreateOutboxMessage(Event evt, EventPublicationArtifact artifact)
+    private static EventArchiveOutboxMessage CreateOutboxMessage(
+        Event evt,
+        EventPublicationArtifact artifact,
+        string actor)
         => new()
         {
             EventId = Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id),
             Destination = "github-events",
             FolderPath = artifact.FolderPath,
+            Title = evt.Title,
+            ConfirmedBy = actor,
             ReadmeMarkdown = artifact.ReadmeMarkdown,
             MetadataJson = artifact.MetadataJson,
             IdempotencyKey = CreateIdempotencyKey(Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id), artifact)
         };
 
-    private async Task QueueArchiveProjectionAsync(Event evt, CancellationToken ct)
+    private async Task<bool> AddOutboxIfMissingAsync(EventArchiveOutboxMessage outbox, CancellationToken ct)
     {
-        var artifact = CreatePublicationArtifact(evt);
-        var outbox = CreateOutboxMessage(evt, artifact);
-        await AddOutboxIfMissingAsync(outbox, ct);
-    }
-
-    private async Task AddOutboxIfMissingAsync(EventArchiveOutboxMessage outbox, CancellationToken ct)
-    {
-        if (await dbContext.EventArchiveOutboxMessages.AnyAsync(message =>
+        var existing = await dbContext.EventArchiveOutboxMessages.FirstOrDefaultAsync(message =>
                 message.EventId == outbox.EventId
                 && message.Destination == outbox.Destination
-                && message.IdempotencyKey == outbox.IdempotencyKey, ct))
+                && message.IdempotencyKey == outbox.IdempotencyKey,
+            ct);
+        if (existing is not null)
         {
-            return;
+            if (string.IsNullOrEmpty(existing.ConfirmedBy))
+            {
+                existing.ConfirmedBy = outbox.ConfirmedBy;
+                existing.Title = outbox.Title;
+                existing.ProcessedAt = null;
+                existing.AttemptCount = 0;
+                existing.AvailableAt = DateTimeOffset.UtcNow;
+                existing.LockedUntil = null;
+                existing.ClaimToken = string.Empty;
+                existing.LastError = null;
+                await dbContext.SaveChangesAsync(ct);
+                return true;
+            }
+
+            return false;
         }
 
         const string savepointName = "OutboxInsert";
@@ -313,6 +493,7 @@ public sealed partial class EventLifecycleOrchestrator(
         {
             dbContext.EventArchiveOutboxMessages.Add(outbox);
             await dbContext.SaveChangesAsync(ct);
+            return true;
         }
         catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
         {
@@ -322,18 +503,96 @@ public sealed partial class EventLifecycleOrchestrator(
             }
 
             dbContext.Entry(outbox).State = EntityState.Detached;
+            return false;
         }
     }
 
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)
         => exception.GetBaseException() is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
-    private static bool IsPublicLifecycle(MeetupLifecycleState state)
-        => state is MeetupLifecycleState.Published
+    private static void EnsurePublicLifecycle(Event evt)
+    {
+        if (evt.LifecycleState is not (MeetupLifecycleState.Published
             or MeetupLifecycleState.ScheduleAltered
             or MeetupLifecycleState.Delayed
             or MeetupLifecycleState.Completed
-            or MeetupLifecycleState.Archived;
+            or MeetupLifecycleState.Archived))
+        {
+            throw new InvalidOperationException("An event must be in a public lifecycle state before archive publication can be requested.");
+        }
+    }
+
+    private async Task EnsureArchivePathAvailableAsync(Event evt, string folderPath, CancellationToken ct)
+    {
+        ValidateArchiveFolderPath(evt, folderPath);
+        if (await dbContext.Events.AnyAsync(
+                existing => existing.Id != evt.Id && existing.ArchiveFolderPath == folderPath,
+                ct))
+        {
+            throw new InvalidOperationException("Another Bethuya event already claims this archive path.");
+        }
+    }
+
+    private static void ValidateArchiveFolderPath(Event evt, string folderPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+        var match = ArchiveFolderPattern().Match(folderPath);
+        if (!match.Success)
+        {
+            throw new InvalidOperationException("Archive path must be a repository-relative events/YYYY/YYYY-MM-DD-slug path.");
+        }
+
+        var localDate = ToAsiaKolkata(evt.StartDate);
+        var pathDate = match.Groups["date"].Value;
+        if (!match.Groups["year"].Value.Equals(localDate.ToString("yyyy", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            || !pathDate.Equals(localDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Archive path '{folderPath}' does not match the event date {localDate:yyyy-MM-dd} in Asia/Kolkata. Archive folder moves are not supported; resolve the archive path manually before publication.");
+        }
+    }
+
+    private static void ValidateAdoptionIdentity(Event evt, EventArchiveEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.MetadataYaml))
+        {
+            throw new InvalidOperationException("The specified archive entry must include event.yml so its identity can be validated.");
+        }
+
+        var titles = ReadYamlScalars(entry.MetadataYaml, "title", 0);
+        var dates = ReadYamlScalars(entry.MetadataYaml, "date", 0);
+        if (titles.Length != 1
+            || dates.Length != 1
+            || !string.Equals(titles[0], evt.Title, StringComparison.Ordinal)
+            || !string.Equals(dates[0], ToAsiaKolkata(evt.StartDate).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The archive entry title or date does not exactly match this event; adoption was refused for human resolution.");
+        }
+
+        var identities = ReadYamlScalars(entry.MetadataYaml, "eventId", 2);
+        if (identities.Length > 1
+            || identities.Length == 1
+                && (!Guid.TryParse(identities[0], out var existingEventId) || existingEventId != evt.Id))
+        {
+            throw new InvalidOperationException("The archive entry identifies a different or ambiguous Bethuya event; adoption was refused.");
+        }
+    }
+
+    private static string[] ReadYamlScalars(string metadata, string key, int indentation)
+    {
+        return metadata.Split('\n')
+            .Select(line => (Line: line.TrimEnd('\r'), Match: MetadataScalarPattern().Match(line.TrimEnd('\r'))))
+            .Where(item => item.Match.Success
+                && item.Match.Groups["indent"].Value.Length == indentation
+                && item.Match.Groups["key"].Value.Equals(key, StringComparison.Ordinal))
+            .Select(item => item.Match.Groups["value"].Value.Trim())
+            .Select(value => value.Length >= 2 && value[0] == '"' && value[^1] == '"'
+                ? value[1..^1]
+                .Replace("\\\"", "\"", StringComparison.Ordinal)
+                .Replace("\\\\", "\\", StringComparison.Ordinal)
+                : value)
+            .ToArray();
+    }
 
     private static string? NormalizeHttpsUrl(string? value)
     {
@@ -356,4 +615,10 @@ public sealed partial class EventLifecycleOrchestrator(
 
     [GeneratedRegex("[^a-z0-9-]+")]
     private static partial Regex SlugUnsafeCharacters();
+
+    [GeneratedRegex("^events/(?<year>\\d{4})/(?<date>\\d{4}-\\d{2}-\\d{2})-[a-zA-Z0-9][a-zA-Z0-9-]*$")]
+    private static partial Regex ArchiveFolderPattern();
+
+    [GeneratedRegex(@"^(?<indent> *)(?<key>[A-Za-z0-9_-]+)\s*:\s*(?<value>.*)$")]
+    private static partial Regex MetadataScalarPattern();
 }

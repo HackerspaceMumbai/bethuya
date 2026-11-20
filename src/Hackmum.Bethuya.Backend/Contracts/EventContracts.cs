@@ -90,6 +90,12 @@ public sealed record ArchiveEventRequest(
     string Actor,
     bool OverrideMissingAssets = false);
 
+public sealed record ConfirmArchivePublicationRequest(string PreviewToken);
+
+public sealed record PreviewArchiveAdoptionRequest(string FolderPath);
+
+public sealed record ConfirmArchiveAdoptionRequest(string FolderPath, string PreviewToken);
+
 public sealed record EventLifecycleOperationResponse(
     Guid EventId,
     string LifecycleState,

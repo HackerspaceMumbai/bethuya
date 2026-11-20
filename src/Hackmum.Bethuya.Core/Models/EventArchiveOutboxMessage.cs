@@ -20,6 +20,12 @@ public sealed class EventArchiveOutboxMessage
     /// <summary>Gets the destination folder path for the event projection.</summary>
     public required string FolderPath { get; init; }
 
+    /// <summary>Gets the event title used in the draft publication pull request.</summary>
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Gets the authenticated organizer who explicitly confirmed this publication.</summary>
+    public string ConfirmedBy { get; set; } = string.Empty;
+
     /// <summary>Gets the rendered README content.</summary>
     public required string ReadmeMarkdown { get; init; }
 

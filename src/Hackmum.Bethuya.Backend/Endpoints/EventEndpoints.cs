@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Security.Claims;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -295,20 +297,61 @@ public static partial class EventEndpoints
             }
         });
 
-        group.MapPost("/{id:guid}/lifecycle", async (Guid id, [FromBody] EventLifecycleTransitionRequest request, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
-            await ExecuteLifecycleOperationAsync(() => orchestrator.TransitionAsync(id, request.TargetState, request.Actor, ct)));
+        group.MapPost("/{id:guid}/lifecycle", async (Guid id, [FromBody] EventLifecycleTransitionRequest request, ClaimsPrincipal user, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+        {
+            if (!TryGetActor(user, out var actor)) return Results.Unauthorized();
+            return await ExecuteLifecycleOperationAsync(() => orchestrator.TransitionAsync(id, request.TargetState, actor, ct));
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
-        group.MapPost("/{id:guid}/publish", async (Guid id, [FromBody] PublishEventRequest request, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
-            await ExecuteLifecycleOperationAsync(() => orchestrator.PublishAsync(id, request.Actor, request.RegistrationUrl, ct)));
+        group.MapPost("/{id:guid}/publish", async (Guid id, [FromBody] PublishEventRequest request, ClaimsPrincipal user, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+        {
+            if (!TryGetActor(user, out var actor)) return Results.Unauthorized();
+            return await ExecuteLifecycleOperationAsync(() => orchestrator.PublishAsync(id, actor, request.RegistrationUrl, ct));
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
-        group.MapPost("/{id:guid}/schedule-alterations", async (Guid id, [FromBody] ScheduleAlterationRequest request, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
-            await ExecuteLifecycleOperationAsync(() => orchestrator.AlterScheduleAsync(id, request.Actor, request.Reason, ct)));
+        group.MapPost("/{id:guid}/schedule-alterations", async (Guid id, [FromBody] ScheduleAlterationRequest request, ClaimsPrincipal user, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+        {
+            if (!TryGetActor(user, out var actor)) return Results.Unauthorized();
+            return await ExecuteLifecycleOperationAsync(() => orchestrator.AlterScheduleAsync(id, actor, request.Reason, ct));
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
-        group.MapPost("/{id:guid}/complete", async (Guid id, [FromBody] CompleteEventRequest request, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
-            await ExecuteLifecycleOperationAsync(() => orchestrator.CompleteAsync(id, request.Actor, request.AssetDueAt, ct)));
+        group.MapPost("/{id:guid}/complete", async (Guid id, [FromBody] CompleteEventRequest request, ClaimsPrincipal user, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+        {
+            if (!TryGetActor(user, out var actor)) return Results.Unauthorized();
+            return await ExecuteLifecycleOperationAsync(() => orchestrator.CompleteAsync(id, actor, request.AssetDueAt, ct));
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
-        group.MapPost("/{id:guid}/archive", async (Guid id, [FromBody] ArchiveEventRequest request, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
-            await ExecuteLifecycleOperationAsync(() => orchestrator.ArchiveAsync(id, request.Actor, request.OverrideMissingAssets, ct)));
+        group.MapPost("/{id:guid}/archive", async (Guid id, [FromBody] ArchiveEventRequest request, ClaimsPrincipal user, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+        {
+            if (!TryGetActor(user, out var actor)) return Results.Unauthorized();
+            return await ExecuteLifecycleOperationAsync(() => orchestrator.ArchiveAsync(id, actor, request.OverrideMissingAssets, ct));
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapGet("/{id:guid}/archive/preview", async (Guid id, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+            await ExecuteArchiveOperationAsync(() => orchestrator.PreviewArchivePublicationAsync(id, ct)))
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapPost("/{id:guid}/archive/confirm", async (Guid id, [FromBody] ConfirmArchivePublicationRequest request, ClaimsPrincipal user, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+        {
+            if (!TryGetActor(user, out var actor)) return Results.Unauthorized();
+            return await ExecuteArchiveOperationAsync(() =>
+                orchestrator.ConfirmArchivePublicationAsync(id, actor, request.PreviewToken, ct));
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapPost("/{id:guid}/archive/adoption/preview", async (Guid id, [FromBody] PreviewArchiveAdoptionRequest request, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+            await ExecuteArchiveOperationAsync(() => orchestrator.PreviewArchiveAdoptionAsync(id, request.FolderPath, ct)))
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapPost("/{id:guid}/archive/adoption/confirm", async (Guid id, [FromBody] ConfirmArchiveAdoptionRequest request, ClaimsPrincipal user, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+        {
+            if (!TryGetActor(user, out var actor)) return Results.Unauthorized();
+            return await ExecuteArchiveOperationAsync(() =>
+                orchestrator.ConfirmArchiveAdoptionAsync(id, request.FolderPath, request.PreviewToken, actor, ct));
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
+
+        group.MapPost("/{id:guid}/archive/status/refresh", async (Guid id, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
+            await ExecuteArchiveOperationAsync(() => orchestrator.RefreshArchivePublicationStatusAsync(id, ct)))
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
     }
 
     private static async Task<IResult> ExecuteLifecycleOperationAsync(
@@ -330,6 +373,35 @@ public static partial class EventEndpoints
         {
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["lifecycle"] = [ex.Message] });
         }
+    }
+
+    private static async Task<IResult> ExecuteArchiveOperationAsync<T>(Func<Task<T>> operation)
+    {
+        try
+        {
+            return Results.Ok(await operation());
+        }
+        catch (KeyNotFoundException)
+        {
+            return Results.NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["archive"] = [ex.Message] });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["archive"] = [ex.Message] });
+        }
+    }
+
+    private static bool TryGetActor(ClaimsPrincipal user, out string actor)
+    {
+        actor = user.FindFirstValue("sub")
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.Identity?.Name
+            ?? string.Empty;
+        return user.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(actor);
     }
 
     private static async Task<string?> ValidateCoverImageUrlAsync(
