@@ -26,6 +26,17 @@ public sealed class Event
     /// Gets or sets the repository-relative archive folder path used when publishing an event snapshot to the archive.
     /// </summary>
     public string? ArchiveFolderPath { get; set; }
+    public EventArchivePublicationStatus ArchivePublicationStatus { get; set; }
+    public string? ArchiveBranchName { get; set; }
+    public int? ArchivePullRequestNumber { get; set; }
+    public string? ArchivePullRequestUrl { get; set; }
+    public string? ArchivePublicationIdempotencyKey { get; set; }
+    public string? ArchivePublicationRequestedBy { get; set; }
+    public DateTimeOffset? ArchivePublicationRequestedAt { get; set; }
+    public string? ArchiveAdoptedBy { get; set; }
+    public DateTimeOffset? ArchiveAdoptedAt { get; set; }
+    public string? ArchiveSourceReadmeSha { get; set; }
+    public string? ArchiveSourceMetadataSha { get; set; }
     public string? TeamsAnnouncementMessageId { get; set; }
     public string? RegistrationUrl { get; set; }
     public DateTimeOffset? PublishedAt { get; private set; }

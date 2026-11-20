@@ -49,6 +49,32 @@ public interface IEventApi
     [Post("/api/events/{id}/archive")]
     Task<EventLifecycleOperationDto> ArchiveAsync(Guid id, [Body] ArchiveEventDto request, CancellationToken ct = default);
 
+    [Get("/api/events/{id}/archive/preview")]
+    Task<EventArchivePublicationPreviewDto> PreviewArchivePublicationAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/events/{id}/archive/confirm")]
+    Task<EventLifecycleOperationDto> ConfirmArchivePublicationAsync(
+        Guid id,
+        [Body] ConfirmArchivePublicationDto request,
+        CancellationToken ct = default);
+
+    [Post("/api/events/{id}/archive/adoption/preview")]
+    Task<EventArchivePublicationPreviewDto> PreviewArchiveAdoptionAsync(
+        Guid id,
+        [Body] PreviewArchiveAdoptionDto request,
+        CancellationToken ct = default);
+
+    [Post("/api/events/{id}/archive/adoption/confirm")]
+    Task<EventArchiveAdoptionResultDto> ConfirmArchiveAdoptionAsync(
+        Guid id,
+        [Body] ConfirmArchiveAdoptionDto request,
+        CancellationToken ct = default);
+
+    [Post("/api/events/{id}/archive/status/refresh")]
+    Task<EventArchivePullRequestStatusDto> RefreshArchivePublicationStatusAsync(
+        Guid id,
+        CancellationToken ct = default);
+
     [Post("/api/agents/recommend-dates")]
     Task<RecommendDatesResponse> RecommendDatesAsync([Body] RecommendDatesRequest request, CancellationToken ct = default);
 }
@@ -155,6 +181,37 @@ public sealed record CompleteEventDto(
 public sealed record ArchiveEventDto(
     string Actor,
     bool OverrideMissingAssets = false);
+
+public sealed record ConfirmArchivePublicationDto(string PreviewToken);
+
+public sealed record PreviewArchiveAdoptionDto(string FolderPath);
+
+public sealed record ConfirmArchiveAdoptionDto(string FolderPath, string PreviewToken);
+
+public sealed record EventArchivePublicationPreviewDto(Guid EventId, EventArchivePreviewDto Preview);
+
+public sealed record EventArchivePreviewDto(
+    string FolderPath,
+    string PreviewToken,
+    string? ExistingReadme,
+    string CandidateReadme,
+    string? ExistingMetadata,
+    string CandidateMetadata,
+    bool HasChanges);
+
+public sealed record EventArchiveAdoptionResultDto(
+    Guid EventId,
+    string FolderPath,
+    string Actor,
+    DateTimeOffset AdoptedAt);
+
+public sealed record EventArchivePullRequestStatusDto(
+    bool IsDraft,
+    bool IsMerged,
+    bool IsClosed,
+    int PullRequestNumber,
+    string PullRequestUrl,
+    string FolderUrl);
 
 public sealed record EventLifecycleOperationDto(
     Guid EventId,

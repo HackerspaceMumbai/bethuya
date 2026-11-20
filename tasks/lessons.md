@@ -935,3 +935,9 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 - In this environment parallel restore failed without diagnostics; single-node restore exposed the NuGet network restriction and actionable errors. Network-enabled restore succeeded.
 - Before merging, main already pinned MessagePack 3.1.12 and XML cryptography 10.0.13. Preserve these newer upstream fixes instead of downgrading MessagePack to the minimum patched version.
 - Merge validation encountered DLL locks from a backend running in this worktree. Preserve the running app during a Git-only merge and report the validation limit; final dependency restore passed.
+
+## 2026-11-20 - Minimal API dependency binding
+- Explicitly mark injected endpoint services with `[FromServices]` and request payloads with `[FromBody]` when adding routes to a shared endpoint group. Otherwise, apps/tests that do not register every unrelated service can infer a service parameter as a request body and fail endpoint startup before the route under test executes.
+
+## 2026-11-20 - Outbox completion atomicity
+- An EF execution strategy alone does not make multiple database operations atomic. When recording the external publication result, wrap the conditional outbox completion and event-state update in an explicit transaction inside the execution strategy, and test rollback when the event update fails.

@@ -1,4 +1,5 @@
 using System.Reflection;
+using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Core.ValueObjects;
@@ -6,6 +7,7 @@ using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -34,6 +36,7 @@ public sealed class EventArchiveOutboxProcessorTests
             EventId = eventId,
             Destination = "archive/test",
             FolderPath = "events/2026/2026-06-30-old-event-abc123",
+            ConfirmedBy = "test-organizer",
             ReadmeMarkdown = "old readme",
             MetadataJson = "{ \"version\": 1 }",
             IdempotencyKey = "old-key",
@@ -48,6 +51,7 @@ public sealed class EventArchiveOutboxProcessorTests
             EventId = eventId,
             Destination = "archive/test",
             FolderPath = "events/2026/2026-07-01-new-event-def456",
+            ConfirmedBy = "test-organizer",
             ReadmeMarkdown = "new readme",
             MetadataJson = "{ \"version\": 2 }",
             IdempotencyKey = "new-key",
@@ -68,6 +72,7 @@ public sealed class EventArchiveOutboxProcessorTests
             older.Id,
             older.EventId,
             older.FolderPath,
+            older.Title,
             older.ReadmeMarkdown,
             older.MetadataJson,
             older.IdempotencyKey,
@@ -112,6 +117,7 @@ public sealed class EventArchiveOutboxProcessorTests
             EventId = eventId,
             Destination = "archive/test",
             FolderPath = "events/2026/2026-07-01-event-def456",
+            ConfirmedBy = "test-organizer",
             ReadmeMarkdown = "latest readme",
             MetadataJson = "{ \"version\": 99 }",
             IdempotencyKey = "latest-key",
@@ -132,6 +138,7 @@ public sealed class EventArchiveOutboxProcessorTests
             message.Id,
             message.EventId,
             message.FolderPath,
+            message.Title,
             message.ReadmeMarkdown,
             message.MetadataJson,
             message.IdempotencyKey,
@@ -178,6 +185,7 @@ public sealed class EventArchiveOutboxProcessorTests
             EventId = EventId.From(Guid.NewGuid()),
             Destination = "archive/test",
             FolderPath = "events/2026/2026-07-01-event-def456",
+            ConfirmedBy = "test-organizer",
             ReadmeMarkdown = "readme",
             MetadataJson = "{ }",
             IdempotencyKey = "key",
@@ -218,6 +226,7 @@ public sealed class EventArchiveOutboxProcessorTests
             EventId = EventId.From(Guid.NewGuid()),
             Destination = "archive/test",
             FolderPath = "events/2026/2026-07-01-event-def456",
+            ConfirmedBy = "test-organizer",
             ReadmeMarkdown = "readme",
             MetadataJson = "{ }",
             IdempotencyKey = "key",
@@ -262,6 +271,7 @@ public sealed class EventArchiveOutboxProcessorTests
             EventId = eventId,
             Destination = "archive/test",
             FolderPath = "events/2026/2026-07-01-event-def456",
+            ConfirmedBy = "test-organizer",
             ReadmeMarkdown = "# Test Event",
             MetadataJson = "{ \"version\": 1 }",
             IdempotencyKey = Guid.NewGuid().ToString(),
@@ -278,14 +288,18 @@ public sealed class EventArchiveOutboxProcessorTests
         {
             Id = eventId.Value,
             Title = "Test Event 2026",
-            CreatedBy = "test-user"
+            CreatedBy = "test-user",
+            ArchivePublicationIdempotencyKey = message.IdempotencyKey
         };
         db.Events.Add(@event);
         await db.SaveChangesAsync();
 
         var publishResult = new EventPublicationResult(
             FolderUrl: "https://github.com/org/repo/tree/main/events/2026/2026-07-01-event-def456",
-            MetadataUrl: "https://github.com/org/repo/blob/main/events/2026/2026-07-01-event-def456/metadata.json");
+            MetadataUrl: "https://github.com/org/repo/blob/main/events/2026/2026-07-01-event-def456/event.yml",
+            BranchName: "bethuya/event-archive-test",
+            PullRequestNumber: 42,
+            PullRequestUrl: "https://github.com/org/repo/pull/42");
 
         var mockRepository = new MockGitHubEventRepository(publishResult);
         var scopeFactory = new TestScopeFactory(connectionString, mockRepository);
@@ -304,7 +318,7 @@ public sealed class EventArchiveOutboxProcessorTests
                 connectionString,
                 message.Id,
                 eventId,
-                publishResult.FolderUrl,
+                publishResult.PullRequestNumber,
                 cts.Token);
         }
         finally
@@ -337,14 +351,74 @@ public sealed class EventArchiveOutboxProcessorTests
         await Assert.That(completedMessage.ProcessedAt).IsNotNull();
 
         var completedEvent = await verifyDb.Events.FirstAsync(e => e.Id == eventId.Value);
-        await Assert.That(completedEvent.GitHubFolderUrl).IsEqualTo(publishResult.FolderUrl);
+        await Assert.That(completedEvent.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.DraftPrPending);
+        await Assert.That(completedEvent.ArchivePullRequestNumber).IsEqualTo(publishResult.PullRequestNumber);
+        await Assert.That(completedEvent.ArchiveBranchName).IsEqualTo(publishResult.BranchName);
+        await Assert.That(completedEvent.GitHubFolderUrl).IsNull();
+    }
+
+    [Test]
+    public async Task ProcessOneAsync_EventStateSaveFails_RollsBackOutboxCompletion()
+    {
+        var connectionString = $"Data Source=event-archive-rollback-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+        using var keeperConnection = new SqliteConnection(connectionString);
+        keeperConnection.Open();
+        await using var db = CreateSqliteDbContext(keeperConnection);
+        var eventId = EventId.From(Guid.NewGuid());
+        var message = new EventArchiveOutboxMessage
+        {
+            EventId = eventId,
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-07-01-event-def456",
+            ConfirmedBy = "test-organizer",
+            ReadmeMarkdown = "# Test Event",
+            MetadataJson = "title: Test Event",
+            IdempotencyKey = Guid.NewGuid().ToString(),
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+        };
+        db.EventArchiveOutboxMessages.Add(message);
+        db.Events.Add(new Event
+        {
+            Id = eventId.Value,
+            Title = "Test Event",
+            CreatedBy = "test-organizer",
+            ArchivePublicationIdempotencyKey = message.IdempotencyKey
+        });
+        await db.SaveChangesAsync();
+
+        var result = new EventPublicationResult(
+            "https://github.com/org/repo/tree/main/events/2026/2026-07-01-event-def456",
+            "https://github.com/org/repo/blob/main/events/2026/2026-07-01-event-def456/event.yml",
+            "bethuya/event-archive-test",
+            42,
+            "https://github.com/org/repo/pull/42");
+        var repository = new MockGitHubEventRepository(result);
+        var scopeFactory = new TestScopeFactory(
+            connectionString,
+            repository,
+            new FailEventSaveChangesInterceptor());
+        using var processor = new EventArchiveOutboxProcessor(
+            scopeFactory,
+            NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var processOneAsync = typeof(EventArchiveOutboxProcessor)
+            .GetMethod("ProcessOneAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        await (Task)processOneAsync.Invoke(processor, [CancellationToken.None])!;
+
+        await using var verifyDb = CreateSqliteQueryDbContext(connectionString);
+        var savedMessage = await verifyDb.EventArchiveOutboxMessages.FirstAsync(item => item.Id == message.Id);
+        var savedEvent = await verifyDb.Events.FirstAsync(item => item.Id == eventId.Value);
+        await Assert.That(savedMessage.ProcessedAt).IsNull();
+        await Assert.That(savedMessage.LastError).IsNotNull();
+        await Assert.That(savedEvent.ArchivePullRequestNumber).IsNull();
     }
 
     private static async Task WaitForCompletedProjectionAsync(
         string connectionString,
         EventArchiveOutboxMessageId messageId,
         EventId eventId,
-        string folderUrl,
+        int pullRequestNumber,
         CancellationToken ct)
     {
         while (true)
@@ -359,7 +433,7 @@ public sealed class EventArchiveOutboxProcessorTests
                 var eventUpdated = await db.Events
                     .AsNoTracking()
                     .AnyAsync(
-                        evt => evt.Id == eventId.Value && evt.GitHubFolderUrl == folderUrl,
+                        evt => evt.Id == eventId.Value && evt.ArchivePullRequestNumber == pullRequestNumber,
                         ct);
                 if (messageProcessed && eventUpdated)
                 {
@@ -383,6 +457,7 @@ public sealed class EventArchiveOutboxProcessorTests
             message.Id,
             message.EventId,
             message.FolderPath,
+            message.Title,
             message.ReadmeMarkdown,
             message.MetadataJson,
             message.IdempotencyKey,
@@ -436,36 +511,69 @@ public sealed class EventArchiveOutboxProcessorTests
         return new BethuyaDbContext(options);
     }
 
+    private sealed class FailEventSaveChangesInterceptor : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context?.ChangeTracker.Entries<Event>()
+                .Any(entry => entry.State == EntityState.Modified) == true)
+            {
+                throw new InvalidOperationException("Simulated event persistence failure.");
+            }
+
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
     private sealed class TestScopeFactory : IServiceScopeFactory
     {
         private readonly SqliteConnection? _connection;
         private readonly string? _connectionString;
         private readonly IGitHubEventRepository? _repository;
+        private readonly SaveChangesInterceptor? _saveChangesInterceptor;
 
-        public TestScopeFactory(SqliteConnection connection, IGitHubEventRepository? repository = null)
+        public TestScopeFactory(
+            SqliteConnection connection,
+            IGitHubEventRepository? repository = null,
+            SaveChangesInterceptor? saveChangesInterceptor = null)
         {
             _connection = connection;
             _repository = repository;
+            _saveChangesInterceptor = saveChangesInterceptor;
         }
 
-        public TestScopeFactory(string connectionString, IGitHubEventRepository? repository = null)
+        public TestScopeFactory(
+            string connectionString,
+            IGitHubEventRepository? repository = null,
+            SaveChangesInterceptor? saveChangesInterceptor = null)
         {
             _connectionString = connectionString;
             _repository = repository;
+            _saveChangesInterceptor = saveChangesInterceptor;
         }
 
         public IServiceScope CreateScope()
         {
             // Create a fresh DbContext for each scope (mimics real DI behavior)
-            var options = _connectionString is not null
-                ? new DbContextOptionsBuilder<BethuyaDbContext>()
-                    .UseSqlite(_connectionString)
-                    .Options
-                : new DbContextOptionsBuilder<BethuyaDbContext>()
-                    .UseSqlite(_connection!)
-                    .Options;
+            var optionsBuilder = new DbContextOptionsBuilder<BethuyaDbContext>();
+            if (_connectionString is not null)
+            {
+                optionsBuilder.UseSqlite(_connectionString);
+            }
+            else
+            {
+                optionsBuilder.UseSqlite(_connection!);
+            }
 
-            var db = new BethuyaDbContext(options);
+            if (_saveChangesInterceptor is not null)
+            {
+                optionsBuilder.AddInterceptors(_saveChangesInterceptor);
+            }
+
+            var db = new BethuyaDbContext(optionsBuilder.Options);
             return new TestScope(db, _repository);
         }
     }
@@ -513,5 +621,43 @@ public sealed class EventArchiveOutboxProcessorTests
             _firstPublication.TrySetResult();
             return Task.FromResult(result);
         }
+
+        public Task<EventArchiveEntry?> GetArchiveEntryAsync(string folderPath, CancellationToken ct = default)
+            => Task.FromResult<EventArchiveEntry?>(null);
+
+        public Task<EventArchivePreview> PreviewEventAsync(EventPublicationRequest request, CancellationToken ct = default)
+            => Task.FromResult(new EventArchivePreview(
+                request.FolderPath,
+                "test-preview",
+                null,
+                request.ReadmeMarkdown,
+                null,
+                request.MetadataJson,
+                true));
+
+        public Task<EventArchivePreview> PreviewEventWithEntryAsync(
+            EventPublicationRequest request,
+            EventArchiveEntry entry,
+            CancellationToken ct = default)
+            => Task.FromResult(new EventArchivePreview(
+                request.FolderPath,
+                "test-preview",
+                entry.ReadmeMarkdown,
+                request.ReadmeMarkdown,
+                entry.MetadataYaml,
+                request.MetadataJson,
+                true));
+
+        public Task<EventArchivePullRequestStatus> GetPublicationStatusAsync(
+            int pullRequestNumber,
+            string folderPath,
+            CancellationToken ct = default)
+            => Task.FromResult(new EventArchivePullRequestStatus(
+                true,
+                false,
+                false,
+                pullRequestNumber,
+                result.PullRequestUrl,
+                result.FolderUrl));
     }
 }

@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Core.Models;
+using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
@@ -72,7 +73,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
             var result = await repository.PublishEventAsync(
                 new(
                     workItem.EventId,
-                    workItem.FolderPath,
+                    workItem.Title,
                     workItem.FolderPath,
                     workItem.ReadmeMarkdown,
                     workItem.MetadataJson,
@@ -92,9 +93,11 @@ internal sealed partial class EventArchiveOutboxProcessor(
 
             await strategy.ExecuteAsync(async () =>
             {
+                await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
                 // Atomically mark the message processed only if the claim token still matches and
-                // the message is not yet processed. This prevents a stale publish from overwriting
-                // a newer claimant's completion state.
+                // update the event's PR state in the same transaction. This prevents a stale
+                // publish from overwriting a newer claimant's completion state.
                 var updatedRows = await db.EventArchiveOutboxMessages
                     .Where(item => item.Id == workItem.Id
                         && item.ClaimToken == workItem.ClaimToken
@@ -112,15 +115,20 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     return;
                 }
 
-                // Update the event's archive folder URL. This must happen after the conditional
-                // message update succeeds, within the same execution strategy transaction.
-                var evt = await db.Events.FirstOrDefaultAsync(item => item.Id == workItem.EventId.Value, ct);
+                var evt = await db.Events.FirstOrDefaultAsync(
+                    item => item.Id == workItem.EventId.Value
+                        && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey,
+                    ct);
                 if (evt is not null)
                 {
-                    evt.GitHubFolderUrl = result.FolderUrl;
+                    evt.ArchivePublicationStatus = EventArchivePublicationStatus.DraftPrPending;
+                    evt.ArchiveBranchName = result.BranchName;
+                    evt.ArchivePullRequestNumber = result.PullRequestNumber;
+                    evt.ArchivePullRequestUrl = result.PullRequestUrl;
                     await db.SaveChangesAsync(ct);
                 }
 
+                await transaction.CommitAsync(ct);
                 LogArchiveProjectionCompleted(logger, workItem.EventId, result.FolderUrl);
             });
         }
@@ -248,7 +256,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
             // AsNoTracking for performance; we'll update messages explicitly if claimed.
             var candidates = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
-                .Where(m => m.ProcessedAt == null)
+                .Where(m => m.ProcessedAt == null && m.ConfirmedBy != string.Empty)
                 .Take(100)
                 .ToListAsync(ct);
 
@@ -270,7 +278,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
             // while an older message for the same event is still pending.
             var oldestPendingByEvent = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
-                .Where(m => m.ProcessedAt == null)
+                .Where(m => m.ProcessedAt == null && m.ConfirmedBy != string.Empty)
                 .Select(m => new { m.EventId, m.CreatedAt })
                 .ToListAsync(ct);
 
@@ -328,6 +336,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 selectedMessage.Id,
                 selectedMessage.EventId,
                 selectedMessage.FolderPath,
+                selectedMessage.Title,
                 selectedMessage.ReadmeMarkdown,
                 selectedMessage.MetadataJson,
                 selectedMessage.IdempotencyKey,
@@ -413,6 +422,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
         EventArchiveOutboxMessageId Id,
         ArchiveEventId EventId,
         string FolderPath,
+        string Title,
         string ReadmeMarkdown,
         string MetadataJson,
         string IdempotencyKey,
