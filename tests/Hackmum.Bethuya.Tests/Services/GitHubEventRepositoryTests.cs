@@ -216,6 +216,60 @@ public sealed class GitHubEventRepositoryTests
     }
 
     [Test]
+    [Arguments("none")]
+    [Arguments("readme")]
+    [Arguments("unrelated-file")]
+    public async Task PublishEventAsync_NewBranchAfterMergeAndPrFailure_RetriesWithoutLosingHumanChanges(string change)
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        handler.SetBaseArchive(handler.BranchReadme!, handler.LastTreeMetadata!);
+        handler.ClosePullRequest(true, merged: true);
+        var next = await ConfirmPreviewAsync(repository, request with
+        {
+            ReadmeMarkdown = "# Updated schedule\n",
+            IdempotencyKey = "next-projection"
+        });
+        handler.FailNextPullRequestCreation = true;
+
+        await Assert.That(async () => await repository.PublishEventAsync(next))
+            .Throws<HttpRequestException>();
+        if (change != "none")
+        {
+            handler.EditBranch(change);
+        }
+        var head = handler.BranchHead;
+        var readme = handler.BranchReadme;
+        var unrelated = handler.BranchUnrelatedFile;
+        var count = handler.Requests.Count;
+
+        if (change == "none")
+        {
+            await repository.PublishEventAsync(next);
+            await repository.PublishEventAsync(next);
+            await Assert.That(handler.CreatedPullRequests).IsEqualTo(2);
+            await Assert.That(handler.CreatedPullRequestDraft).IsTrue();
+            await Assert.That(handler.BranchReadme).Contains("Updated schedule");
+        }
+        else
+        {
+            await Assert.That(async () => await repository.PublishEventAsync(next))
+                .Throws<ArchivePreviewMismatchException>();
+            await Assert.That(handler.Requests.Skip(count).All(request => request.Method == HttpMethod.Get)).IsTrue();
+            await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+        }
+
+        await Assert.That(handler.BranchHead).IsEqualTo(head);
+        await Assert.That(handler.BranchReadme).IsEqualTo(readme);
+        await Assert.That(handler.BranchUnrelatedFile).IsEqualTo(unrelated);
+        await Assert.That(handler.CreatedTreeCount).IsEqualTo(2);
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task PublishEventAsync_RetainedMergedBranch_RefusesReuseWithoutWrites()
     {
         var handler = new FakeGitHubHandler(null, null);

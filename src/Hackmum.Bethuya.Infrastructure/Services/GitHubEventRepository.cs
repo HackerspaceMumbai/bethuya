@@ -69,7 +69,8 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
     public async Task<EventPublicationResult> PublishEventAsync(EventPublicationRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (string.IsNullOrWhiteSpace(request.ConfirmedPreviewToken))
+        var confirmedPreviewToken = request.ConfirmedPreviewToken;
+        if (string.IsNullOrWhiteSpace(confirmedPreviewToken))
         {
             throw new ArchivePreviewMismatchException(
                 "This archive request has no confirmed snapshot. Re-preview the archive and confirm again before publication.");
@@ -104,7 +105,7 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
 
         var branchName = $"bethuya/event-archive-{request.EventId.Value:N}";
         var existingBranch = await GetRefAsync(settings, branchName, ct);
-        var pullRequest = await FindOpenPullRequestAsync(settings, branchName, existingBranch is not null, ct);
+        var pullRequest = await FindOpenPullRequestAsync(settings, branchName, existingBranch, confirmedPreviewToken, ct);
         EnsureDraftPullRequest(pullRequest);
         var parentSha = existingBranch?.Object.Sha ?? targetRef.Object.Sha;
         var parentCommit = await GetCommitAsync(settings, parentSha, ct);
@@ -139,11 +140,11 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
                 ct);
             var commit = await CreateCommitAsync(
                 settings,
-                $"Prepare Bethuya event archive ({request.IdempotencyKey})\nBethuya-Archive-Tree: {tree.Sha}",
+                $"Prepare Bethuya event archive ({request.IdempotencyKey})\nBethuya-Archive-Preview: {confirmedPreviewToken}\nBethuya-Archive-Tree: {tree.Sha}",
                 tree.Sha,
                 parentSha,
                 ct);
-            var currentPullRequest = await FindOpenPullRequestAsync(settings, branchName, existingBranch is not null, ct);
+            var currentPullRequest = await FindOpenPullRequestAsync(settings, branchName, existingBranch, confirmedPreviewToken, ct);
             EnsureDraftPullRequest(currentPullRequest);
             if (pullRequest is not null && currentPullRequest is null)
             {
@@ -352,7 +353,8 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
     private async Task<GitHubPullRequest?> FindOpenPullRequestAsync(
         GitHubEventRepositoryOptions settings,
         string branchName,
-        bool hasExistingBranch,
+        GitHubReference? existingBranch,
+        string confirmedPreviewToken,
         CancellationToken ct)
     {
         var head = Uri.EscapeDataString($"{settings.Owner}:{branchName}");
@@ -388,10 +390,16 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
                 "The previous archive proposal was closed without merge. Resolve that human decision and explicitly reopen it as Draft before reconfirming; Bethuya will not recreate a rejected proposal.");
         }
 
-        if (latest?.MergedAt is not null && hasExistingBranch)
+        if (latest?.MergedAt is not null && existingBranch is not null)
         {
-            throw new ArchivePreviewMismatchException(
-                "The previous archive PR was merged but its publication branch still exists. Preserve it through human review and have an organizer retire it, then re-preview and confirm; Bethuya will not reset or reuse a merged branch.");
+            var commit = await GetCommitAsync(settings, existingBranch.Object.Sha, ct);
+            if (!commit.Message.EndsWith(
+                    $"\nBethuya-Archive-Preview: {confirmedPreviewToken}\nBethuya-Archive-Tree: {commit.Tree.Sha}",
+                    StringComparison.Ordinal))
+            {
+                throw new ArchivePreviewMismatchException(
+                    "The previous archive PR was merged and the branch is not a recorded candidate for this confirmed preview. Preserve it through human review and have an organizer retire it, then re-preview and confirm; Bethuya will not reset a retained merged or human-edited branch.");
+            }
         }
 
         return latest is { State: "open" } ? latest : null;

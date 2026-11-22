@@ -6,6 +6,7 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [x] Refuse unsupported YAML mappings/keys and preserve community multiline values; validate adoption identities within the actual provenance mapping.
 - [x] Prevent retries from recreating closed proposals, refuse retained merged branches, and atomically reject stale publication-status refreshes.
 - [x] Add fake-GitHub and SQLite regressions for replay, claims, stale refresh/completion/failure, adoption and branch decisions; the full Release TUnit suite passes 605/605. Broad contract migrations remain excluded; the separately approved dependency remediation is tracked below.
+- [x] Preserve retry of a newly created publication branch after an older merged branch was retired; distinguish it by confirmed-preview/tree provenance and retain human-edit refusal. The new regression failed before the fix; all 25 adapter cases and 608/608 Release TUnit tests now pass, and the full Release build has zero warnings/errors.
 
 ## Format
 

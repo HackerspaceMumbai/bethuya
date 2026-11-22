@@ -16,6 +16,11 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-11-22] Archive retry provenance after a retired merged branch
+- **What happened:** A retained-merged guard based only on branch existence also rejected a newly created branch when its subsequent PR creation failed.
+- **Fix:** Record the confirmed preview and exact whole-tree SHA on generated commits; only that matching candidate can retry after older merged history.
+- **Prevention:** Cover post-merge PR-creation failure and intervening README or unrelated-file edits; human-edited trees must remain read-only failures.
+
 ## [2026-11-22] Preserve launch-profile semantics during Aspire 17 migration
 - **What happened:** Aspire 17 marks AddProject obsolete, so the existing warnings-as-errors build failed. Its replacement uses an options callback rather than the old nullable profile argument.
 - **Fix:** With explicit user approval, use Microsoft.NET.Sdk plus Aspire.Hosting.AppHost/Dotnet and path-based AddDotnetProject. Translate launchProfileName:null to ExcludeLaunchProfile=true; leave the migration worker's default selection intact.
