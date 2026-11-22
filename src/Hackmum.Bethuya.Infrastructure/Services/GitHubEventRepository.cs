@@ -103,10 +103,25 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
         }
 
         var branchName = $"bethuya/event-archive-{request.EventId.Value:N}";
+        var pullRequest = await FindOpenPullRequestAsync(settings, branchName, ct);
+        EnsureDraftPullRequest(pullRequest);
         var existingBranch = await GetRefAsync(settings, branchName, ct);
+        var parentSha = existingBranch?.Object.Sha ?? targetRef.Object.Sha;
+        var parentCommit = await GetCommitAsync(settings, parentSha, ct);
         var branchAlreadyMatches = false;
         if (existingBranch is not null)
         {
+            // Bind the entire tree, not just archive files: copied messages cannot hide unrelated edits.
+            if (!parentCommit.Message.EndsWith(
+                    $"\nBethuya-Archive-Tree: {parentCommit.Tree.Sha}",
+                    StringComparison.Ordinal))
+            {
+                throw new ArchivePreviewMismatchException(
+                    "The archive PR branch contains human changes or lacks recorded Bethuya tree provenance. "
+                    + "Preserve those changes through human review; after merging or closing the PR, have an organizer retire the branch, "
+                    + "then re-preview and confirm again. The branch was not changed.");
+            }
+
             var branchEntry = await GetArchiveEntryAtRefAsync(settings, request.FolderPath, existingBranch.Object.Sha, ct);
             branchAlreadyMatches = branchEntry is not null
                 && string.Equals(branchEntry.ReadmeMarkdown, preview.CandidateReadme, StringComparison.Ordinal)
@@ -115,29 +130,46 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
 
         if (!branchAlreadyMatches)
         {
-            var targetCommit = await GetCommitAsync(settings, targetRef.Object.Sha, ct);
             var tree = await CreateTreeAsync(
                 settings,
-                targetCommit.Tree.Sha,
+                parentCommit.Tree.Sha,
                 request.FolderPath,
                 preview.CandidateReadme,
                 preview.CandidateMetadata,
                 ct);
             var commit = await CreateCommitAsync(
                 settings,
-                $"Prepare Bethuya event archive ({request.IdempotencyKey})",
+                $"Prepare Bethuya event archive ({request.IdempotencyKey})\nBethuya-Archive-Tree: {tree.Sha}",
                 tree.Sha,
-                targetRef.Object.Sha,
+                parentSha,
                 ct);
+            var currentPullRequest = await FindOpenPullRequestAsync(settings, branchName, ct);
+            EnsureDraftPullRequest(currentPullRequest);
+            if (pullRequest is not null && currentPullRequest is null)
+            {
+                throw new ArchivePreviewMismatchException(
+                    "The archive Draft PR was closed during publication. Resolve its status through human review, then re-preview and confirm again.");
+            }
+
             await UpdateBranchAsync(settings, branchName, commit.Sha, existingBranch, ct);
+            pullRequest = currentPullRequest;
         }
 
-        var pullRequest = await FindOpenPullRequestAsync(settings, branchName, ct)
-            ?? await CreateDraftPullRequestAsync(settings, request, branchName, ct);
+        pullRequest ??= await CreateDraftPullRequestAsync(settings, request, branchName, ct);
 
         var folderUrl = $"https://github.com/{settings.Owner}/{settings.Repository}/tree/{settings.Branch}/{request.FolderPath}";
         var metadataUrl = $"https://github.com/{settings.Owner}/{settings.Repository}/blob/{settings.Branch}/{request.FolderPath}/event.yml";
         return new(folderUrl, metadataUrl, branchName, pullRequest.Number, pullRequest.HtmlUrl);
+    }
+
+    private static void EnsureDraftPullRequest(GitHubPullRequest? pullRequest)
+    {
+        if (pullRequest is { Draft: false })
+        {
+            throw new ArchivePreviewMismatchException(
+                "The archive PR is no longer Draft. Complete human review or explicitly return it to Draft, then re-preview and confirm again. "
+                + "Bethuya will not change a ready PR branch.");
+        }
     }
 
     public async Task<EventArchivePullRequestStatus> GetPublicationStatusAsync(
@@ -304,9 +336,16 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
         }
 
         using var updateResponse = await httpClient.PatchAsJsonAsync(
-            CreateRefUri(settings, branchName),
-            new GitHubUpdateReference(commitSha, true),
+            CreateRefUri(settings, branchName, forUpdate: true),
+            new GitHubUpdateReference(commitSha, false),
             ct);
+        if (updateResponse.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.UnprocessableEntity)
+        {
+            throw new ArchivePreviewMismatchException(
+                "GitHub refused the non-forced archive branch update; its head may have advanced concurrently. "
+                + "Review and preserve the PR branch changes, then re-preview and confirm again. No forced overwrite was attempted.");
+        }
+
         updateResponse.EnsureSuccessStatusCode();
     }
 
@@ -354,8 +393,8 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
     private static string CreateContentsUri(GitHubEventRepositoryOptions settings, string path)
         => $"/repos/{Uri.EscapeDataString(settings.Owner)}/{Uri.EscapeDataString(settings.Repository)}/contents/{Uri.EscapeDataString(path).Replace("%2F", "/", StringComparison.Ordinal)}";
 
-    private static string CreateRefUri(GitHubEventRepositoryOptions settings, string branch)
-        => $"/repos/{Uri.EscapeDataString(settings.Owner)}/{Uri.EscapeDataString(settings.Repository)}/git/ref/heads/{Uri.EscapeDataString(branch).Replace("%2F", "/", StringComparison.Ordinal)}";
+    private static string CreateRefUri(GitHubEventRepositoryOptions settings, string branch, bool forUpdate = false)
+        => $"/repos/{Uri.EscapeDataString(settings.Owner)}/{Uri.EscapeDataString(settings.Repository)}/git/{(forUpdate ? "refs" : "ref")}/heads/{Uri.EscapeDataString(branch).Replace("%2F", "/", StringComparison.Ordinal)}";
 
     private sealed record GitHubFile(string Content, string Sha);
 
@@ -366,7 +405,9 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
 
     private sealed record GitHubReference([property: JsonPropertyName("object")] GitHubGitObject Object);
     private sealed record GitHubGitObject([property: JsonPropertyName("sha")] string Sha);
-    private sealed record GitHubCommitResponse([property: JsonPropertyName("tree")] GitHubGitObject Tree);
+    private sealed record GitHubCommitResponse(
+        [property: JsonPropertyName("tree")] GitHubGitObject Tree,
+        [property: JsonPropertyName("message")] string Message);
     private sealed record GitHubTreeResponse([property: JsonPropertyName("sha")] string Sha);
     private sealed record GitHubCommit([property: JsonPropertyName("sha")] string Sha);
     private sealed record GitHubTreeRequest(

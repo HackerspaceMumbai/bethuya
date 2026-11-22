@@ -210,6 +210,164 @@ public sealed class GitHubEventRepositoryTests
     }
 
     [Test]
+    [Arguments("readme")]
+    [Arguments("unrelated-file")]
+    public async Task PublishEventAsync_HumanEditedPrBranch_RefusesWithoutLosingContent(string change)
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        handler.EditBranch(change);
+        var humanHead = handler.BranchHead;
+        var humanReadme = handler.BranchReadme;
+        var updated = await ConfirmPreviewAsync(repository, request with
+        {
+            ReadmeMarkdown = "# Changed projection\n",
+            IdempotencyKey = "changed-projection"
+        });
+        handler.Requests.Clear();
+
+        var action = async () => { await repository.PublishEventAsync(updated); };
+        var exception = await Assert.That(action).Throws<InvalidOperationException>();
+
+        await Assert.That(exception!.Message).Contains("human");
+        await Assert.That(handler.Requests.All(call => call.Method == HttpMethod.Get)).IsTrue();
+        await Assert.That(handler.BranchHead).IsEqualTo(humanHead);
+        await Assert.That(handler.BranchReadme).IsEqualTo(humanReadme);
+        if (change == "unrelated-file")
+        {
+            await Assert.That(handler.BranchUnrelatedFile).IsEqualTo("Community-owned notes");
+        }
+    }
+
+    [Test]
+    public async Task PublishEventAsync_ConcurrentPrBranchAdvance_RejectsNonFastForwardWithoutLosingContent()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        var originalReadme = handler.BranchReadme;
+        var updated = await ConfirmPreviewAsync(repository, request with
+        {
+            ReadmeMarkdown = "# Changed projection\n",
+            IdempotencyKey = "changed-projection"
+        });
+        handler.AdvanceBranchBeforeNextPatch = true;
+
+        var action = async () => { await repository.PublishEventAsync(updated); };
+        await Assert.That(action).Throws<InvalidOperationException>();
+
+        await Assert.That(handler.LastUpdateForced).IsFalse();
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(0);
+        await Assert.That(handler.BranchHead).IsEqualTo("human-commit");
+        await Assert.That(handler.BranchReadme).IsEqualTo(originalReadme);
+        await Assert.That(handler.BranchUnrelatedFile).IsEqualTo("Community-owned notes");
+    }
+
+    [Test]
+    public async Task PublishEventAsync_LegacyBranchWithoutTreeProvenance_RefusesWithoutWrites()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        handler.UseLegacyBranchHead();
+        var legacyHead = handler.BranchHead;
+        handler.Requests.Clear();
+
+        var action = async () => { await repository.PublishEventAsync(request); };
+        var exception = await Assert.That(action).Throws<InvalidOperationException>();
+
+        await Assert.That(exception!.Message).Contains("provenance");
+        await Assert.That(handler.Requests.All(call => call.Method == HttpMethod.Get)).IsTrue();
+        await Assert.That(handler.BranchHead).IsEqualTo(legacyHead);
+    }
+
+    [Test]
+    public async Task PublishEventAsync_RetryAfterSuccessfulBranchUpdateAndLostResponse_ReusesCommit()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        var observedHead = handler.BranchHead;
+        var updated = await ConfirmPreviewAsync(repository, request with
+        {
+            ReadmeMarkdown = "# Changed projection\n",
+            IdempotencyKey = "changed-projection"
+        });
+        handler.FailAfterNextBranchUpdate = true;
+
+        var firstAttempt = async () => { await repository.PublishEventAsync(updated); };
+        await Assert.That(firstAttempt).Throws<HttpRequestException>();
+        var appliedHead = handler.BranchHead;
+        var result = await repository.PublishEventAsync(updated);
+
+        await Assert.That(handler.LastCommitParent).IsEqualTo(observedHead);
+        await Assert.That(handler.BranchHead).IsEqualTo(appliedHead);
+        await Assert.That(handler.BranchReadme).Contains("Changed projection");
+        await Assert.That(handler.CreatedTreeCount).IsEqualTo(2);
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(1);
+        await Assert.That(handler.LastUpdateForced).IsFalse();
+        await Assert.That(result.PullRequestNumber).IsEqualTo(42);
+        await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task PublishEventAsync_ExistingPrMarkedReady_RefusesBeforeAnyWrite()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        var originalHead = handler.BranchHead;
+        var updated = await ConfirmPreviewAsync(repository, request with
+        {
+            ReadmeMarkdown = "# Changed projection\n",
+            IdempotencyKey = "changed-projection"
+        });
+        handler.PullRequestIsDraft = false;
+        handler.Requests.Clear();
+
+        var action = async () => { await repository.PublishEventAsync(updated); };
+        var exception = await Assert.That(action).Throws<InvalidOperationException>();
+
+        await Assert.That(exception!.Message).Contains("Draft");
+        await Assert.That(handler.Requests.All(call => call.Method == HttpMethod.Get)).IsTrue();
+        await Assert.That(handler.BranchHead).IsEqualTo(originalHead);
+    }
+
+    [Test]
+    public async Task PublishEventAsync_PrMarkedReadyDuringPreparation_RefusesBeforeRefUpdate()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        var originalHead = handler.BranchHead;
+        var updated = await ConfirmPreviewAsync(repository, request with
+        {
+            ReadmeMarkdown = "# Changed projection\n",
+            IdempotencyKey = "changed-projection"
+        });
+        handler.MarkReadyBeforeNextRefUpdate = true;
+
+        var action = async () => { await repository.PublishEventAsync(updated); };
+        await Assert.That(action).Throws<InvalidOperationException>();
+
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(0);
+        await Assert.That(handler.BranchHead).IsEqualTo(originalHead);
+    }
+
+    [Test]
     public async Task PublishEventAsync_LegacyRequestWithoutConfirmedToken_RefusesBeforeAnyGitHubRequest()
     {
         var handler = new FakeGitHubHandler(null, null);
@@ -313,10 +471,11 @@ public sealed class GitHubEventRepositoryTests
     {
         private string? _baseReadme = baseReadme;
         private string? _baseMetadata = baseMetadata;
-        private string? _branchReadme;
-        private string? _branchMetadata;
         private bool _branchExists;
         private bool _pullRequestExists;
+        private readonly Dictionary<string, FakeTree> _trees = [];
+        private readonly Dictionary<string, FakeCommit> _commits = [];
+        private string _branchHead = string.Empty;
 
         public List<(HttpMethod Method, string PathAndQuery)> Requests { get; } = [];
         public string? CreatedBranchRef { get; private set; }
@@ -327,6 +486,36 @@ public sealed class GitHubEventRepositoryTests
         public string? LastTreeReadme { get; private set; }
         public string? LastTreeMetadata { get; private set; }
         public bool FailNextPullRequestCreation { get; set; }
+        public bool PullRequestIsDraft { get; set; } = true;
+        public bool AdvanceBranchBeforeNextPatch { get; set; }
+        public bool FailAfterNextBranchUpdate { get; set; }
+        public bool MarkReadyBeforeNextRefUpdate { get; set; }
+        public string? LastCommitParent { get; private set; }
+        public bool LastUpdateForced { get; private set; }
+        public string BranchHead => _branchHead;
+        public string? BranchReadme => _trees[_commits[_branchHead].TreeSha].Readme;
+        public string? BranchUnrelatedFile => _trees[_commits[_branchHead].TreeSha].UnrelatedFile;
+
+        public void EditBranch(string change)
+        {
+            var previousCommit = _commits[_branchHead];
+            var previousTree = _trees[previousCommit.TreeSha];
+            _trees["human-tree"] = change == "readme"
+                ? previousTree with { Readme = previousTree.Readme + "\nCommunity-added PR notes\n" }
+                : previousTree with { UnrelatedFile = "Community-owned notes" };
+            // Even copying the generated commit message must not make a changed tree safe.
+            _commits["human-commit"] = new("human-tree", previousCommit.Message, _branchHead);
+            _branchHead = "human-commit";
+        }
+
+        public void UseLegacyBranchHead()
+        {
+            _commits["legacy-commit"] = _commits[_branchHead] with
+            {
+                Message = "Prepare Bethuya event archive (legacy-projection)"
+            };
+            _branchHead = "legacy-commit";
+        }
 
         public void SetBaseArchive(string readme, string metadata)
         {
@@ -343,8 +532,9 @@ public sealed class GitHubEventRepositoryTests
             if (request.Method == HttpMethod.Get && pathAndQuery.Contains("/contents/", StringComparison.Ordinal))
             {
                 var refName = GetRefName(uri);
-                var readme = refName is "main" or "base-commit" ? _baseReadme : _branchReadme;
-                var metadata = refName is "main" or "base-commit" ? _baseMetadata : _branchMetadata;
+                var branchTree = refName is "main" or "base-commit" ? null : _trees[_commits[refName].TreeSha];
+                var readme = branchTree is null ? _baseReadme : branchTree.Readme;
+                var metadata = branchTree is null ? _baseMetadata : branchTree.Metadata;
                 var content = pathAndQuery.Contains("/README.md", StringComparison.Ordinal) ? readme : metadata;
                 return Task.FromResult(content is null
                     ? new HttpResponseMessage(HttpStatusCode.NotFound)
@@ -365,12 +555,22 @@ public sealed class GitHubEventRepositoryTests
             {
                 return Task.FromResult(!_branchExists
                     ? new HttpResponseMessage(HttpStatusCode.NotFound)
-                    : JsonResponse(new { @object = new { sha = "existing-commit" } }));
+                    : JsonResponse(new { @object = new { sha = _branchHead } }));
             }
 
             if (request.Method == HttpMethod.Get && pathAndQuery.Contains("/git/commits/base-commit", StringComparison.Ordinal))
             {
                 return Task.FromResult(JsonResponse(new { tree = new { sha = "base-tree" } }));
+            }
+
+            if (request.Method == HttpMethod.Get && pathAndQuery.Contains("/git/commits/", StringComparison.Ordinal))
+            {
+                var commit = _commits[uri.Segments[^1]];
+                return Task.FromResult(JsonResponse(new
+                {
+                    tree = new { sha = commit.TreeSha },
+                    message = commit.Message
+                }));
             }
 
             if (request.Method == HttpMethod.Post && pathAndQuery.EndsWith("/git/trees", StringComparison.Ordinal))
@@ -385,14 +585,29 @@ public sealed class GitHubEventRepositoryTests
                     .GetProperty("content").GetString()!;
                 LastTreeReadme = readmeContent;
                 LastTreeMetadata = metadataContent;
-                _branchReadme = readmeContent;
-                _branchMetadata = metadataContent;
+                var baseTreeSha = document.RootElement.GetProperty("base_tree").GetString()!;
+                var unrelated = baseTreeSha == "base-tree" ? null : _trees[baseTreeSha].UnrelatedFile;
+                _trees[$"tree-{CreatedTreeCount}"] = new(readmeContent, metadataContent, unrelated);
                 return Task.FromResult(JsonResponse(new { sha = $"tree-{CreatedTreeCount}" }));
             }
 
             if (request.Method == HttpMethod.Post && pathAndQuery.EndsWith("/git/commits", StringComparison.Ordinal))
             {
-                return Task.FromResult(JsonResponse(new { sha = "new-commit" }));
+                var body = request.Content!.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
+                using var document = JsonDocument.Parse(body);
+                var sha = $"commit-{CreatedTreeCount}";
+                _commits[sha] = new(
+                    document.RootElement.GetProperty("tree").GetString()!,
+                    document.RootElement.GetProperty("message").GetString()!,
+                    document.RootElement.GetProperty("parents")[0].GetString()!);
+                LastCommitParent = _commits[sha].Parent;
+                if (MarkReadyBeforeNextRefUpdate)
+                {
+                    MarkReadyBeforeNextRefUpdate = false;
+                    PullRequestIsDraft = false;
+                }
+
+                return Task.FromResult(JsonResponse(new { sha }));
             }
 
             if (request.Method == HttpMethod.Get && pathAndQuery.Contains("/pulls?", StringComparison.Ordinal))
@@ -407,14 +622,37 @@ public sealed class GitHubEventRepositoryTests
                 var body = request.Content!.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
                 using var document = JsonDocument.Parse(body);
                 CreatedBranchRef = document.RootElement.GetProperty("ref").GetString();
+                _branchHead = document.RootElement.GetProperty("sha").GetString()!;
                 _branchExists = true;
                 return Task.FromResult(JsonResponse(new { @ref = CreatedBranchRef }));
             }
 
-            if (request.Method == HttpMethod.Patch && pathAndQuery.Contains("/git/ref/heads/bethuya/", StringComparison.Ordinal))
+            if (request.Method == HttpMethod.Patch && pathAndQuery.Contains("/git/refs/heads/bethuya/", StringComparison.Ordinal))
             {
+                var body = request.Content!.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
+                using var document = JsonDocument.Parse(body);
+                var newHead = document.RootElement.GetProperty("sha").GetString()!;
+                LastUpdateForced = document.RootElement.GetProperty("force").GetBoolean();
+                if (AdvanceBranchBeforeNextPatch)
+                {
+                    AdvanceBranchBeforeNextPatch = false;
+                    EditBranch("unrelated-file");
+                }
+
+                if (!LastUpdateForced && _commits[newHead].Parent != _branchHead)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.UnprocessableEntity));
+                }
+
+                _branchHead = newHead;
                 UpdatedBranchCount++;
                 _branchExists = true;
+                if (FailAfterNextBranchUpdate)
+                {
+                    FailAfterNextBranchUpdate = false;
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+                }
+
                 return Task.FromResult(JsonResponse(new { @ref = "refs/heads/bethuya/event-archive" }));
             }
 
@@ -444,15 +682,18 @@ public sealed class GitHubEventRepositoryTests
             return Uri.UnescapeDataString(rawValue);
         }
 
-        private static object PullRequest()
+        private object PullRequest()
             => new
             {
                 number = 42,
                 html_url = "https://github.com/HackerspaceMumbai/events/pull/42",
                 state = "open",
-                draft = true,
+                draft = PullRequestIsDraft,
                 merged_at = (DateTimeOffset?)null
             };
+
+        private sealed record FakeTree(string? Readme, string? Metadata, string? UnrelatedFile);
+        private sealed record FakeCommit(string TreeSha, string Message, string Parent);
 
         private static HttpResponseMessage JsonResponse<T>(T value)
             => new(HttpStatusCode.OK)

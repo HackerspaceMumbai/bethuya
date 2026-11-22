@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-11-22] Preserve archive Draft PR branch edits
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace forced PR-branch rewrites with fast-forward updates based on the observed PR head; refuse unconfirmed human tree edits and ready PRs with actionable resolution. Record generated tree provenance in commit messages and preserve confirmed-preview/idempotent retry safeguards.
+- **Acceptance:** Fake GitHub tests protect README and unrelated-file branch edits, reject concurrent ref advances and ready PR updates, and retain deterministic branching and retries; repository tests pass; PR #68 stays Draft.
+- **Completion Evidence:** Seven new fake-GitHub cases cover README/unrelated-file edits, non-fast-forward races, ready PRs before and during preparation, legacy heads without provenance, and retry after an applied ref update loses its response. Existing heads provide the base tree and parent; PATCH uses GitHub's `git/refs` endpoint with `force: false`. The bounded TUnit project passes 567/567, with no live archive writes.
+
 ## [2026-11-22] Bind archive publication to confirmed preview snapshot
 - **Status:** done
 - **Agent/Owner:** Copilot

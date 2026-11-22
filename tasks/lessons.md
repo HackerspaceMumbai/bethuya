@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-11-22] Preserve archive PR heads instead of forcing target-parented commits
+- **What happened:** Regenerating an archive commit from the target tree and force-updating an existing Draft PR head could discard community edits or an intervening concurrent commit.
+- **Root cause:** The deterministic branch was treated as disposable machine output, even though humans review and edit it.
+- **Fix:** Record generated whole-tree provenance, refuse human-edited or legacy heads, parent updates to the observed PR head and use non-forced ref updates. Check Draft state before preparation and again before ref mutation.
+- **Prevention:** Never force-replace human-review branches; preserve their ancestry and let GitHub reject concurrent non-fast-forward updates.
+
 ## [2026-11-22] Bind archive retries to the confirmed target snapshot
 - **What happened:** A durable archive publication could be retried after target-branch content changed, which would regenerate a different candidate than the organizer approved.
 - **Root cause:** The outbox retained the event projection but not the preview token derived from the archive files and their GitHub SHAs; preview reads also addressed the moving branch name.
