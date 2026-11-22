@@ -44,8 +44,14 @@ public static partial class EventEndpoints
                 : Results.NotFound();
         });
 
-        group.MapPost("/", async (PlanEventRequest request, IEventRepository repo, IImageUploadService imageUploadService, BethuyaDbContext dbContext, CancellationToken ct) =>
+        group.MapPost("/", async (PlanEventRequest request, ClaimsPrincipal user, IEventRepository repo, IImageUploadService imageUploadService, BethuyaDbContext dbContext, CancellationToken ct) =>
         {
+            var subject = user.GetSubject();
+            if (subject is null)
+            {
+                return Results.Unauthorized();
+            }
+
             var errors = new Dictionary<string, string[]>();
 
             if (string.IsNullOrWhiteSpace(request.Title))
@@ -65,11 +71,6 @@ public static partial class EventEndpoints
             if (request.EndDate < request.StartDate)
             {
                 errors[nameof(request.EndDate)] = ["End date must be on or after the start date."];
-            }
-
-            if (string.IsNullOrWhiteSpace(request.CreatedBy))
-            {
-                errors[nameof(request.CreatedBy)] = ["CreatedBy is required."];
             }
 
             if (!string.IsNullOrEmpty(request.Hashtag))
@@ -113,7 +114,7 @@ public static partial class EventEndpoints
                 EndDate = ToUtc(request.EndDate),
                 Location = request.Location,
                 Hashtag = string.IsNullOrEmpty(request.Hashtag) ? null : request.Hashtag,
-                CreatedBy = request.CreatedBy,
+                CreatedBy = subject.UserId,
                 Status = request.Status,
                 CoverImageUrl = request.CoverImageUrl,
                 SessionizeEventId = NormalizeOptional(request.SessionizeEventId),
@@ -143,7 +144,7 @@ public static partial class EventEndpoints
 
             var response = MapToResponse(created);
             return Results.Created($"/api/events/{created.Id}", response);
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateEventRequest request, IEventRepository repo, IImageUploadService imageUploadService, BethuyaDbContext dbContext, ILoggerFactory loggerFactory, CancellationToken ct) =>
         {
@@ -218,7 +219,7 @@ public static partial class EventEndpoints
 
             await DeletePreviousCoverImageIfChangedAsync(previousCoverImageUrl, request.CoverImageUrl, imageUploadService, logger, ct);
             return Results.Ok(MapToResponse(evt));
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapGet("/{id:guid}/fairness-targets", async (Guid id, IEventRepository repo, CancellationToken ct) =>
         {
@@ -239,7 +240,7 @@ public static partial class EventEndpoints
             evt.FairnessTargets = ToModel(request);
             await repo.UpdateAsync(evt, ct);
             return Results.Ok(ToContract(evt.FairnessTargets));
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapDelete("/{id:guid}", async (Guid id, IEventRepository repo, IImageUploadService imageUploadService, ILoggerFactory loggerFactory, CancellationToken ct) =>
         {
@@ -253,7 +254,7 @@ public static partial class EventEndpoints
             await repo.DeleteAsync(id, ct);
             await DeletePreviousCoverImageIfChangedAsync(evt.CoverImageUrl, null, imageUploadService, logger, ct);
             return Results.NoContent();
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapGet("/{id:guid}/sessionize/preview", async (Guid id, [FromServices] ISessionIngestionService ingestionService, CancellationToken ct) =>
         {
@@ -295,7 +296,7 @@ public static partial class EventEndpoints
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["sessionize"] = [ex.Message] });
             }
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/{id:guid}/lifecycle", async (Guid id, [FromBody] EventLifecycleTransitionRequest request, ClaimsPrincipal user, [FromServices] IEventLifecycleOrchestrator orchestrator, CancellationToken ct) =>
         {

@@ -16,6 +16,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-11-22] Protect event mutation endpoints
+- **Status:** in-progress
+- **Agent/Owner:** Tank
+- **Description:** Apply the existing organizer policy to the five specified event mutations and derive creation attribution from the authenticated stable subject, preserving authorized PUT behavior and public reads.
+- **Acceptance:** Endpoint tests demonstrate unauthorized requests have no side effects, organizer/admin success, stable-subject handling, and public GET compatibility; run the bounded TUnit suite and stage the task files for independent review.
+
 ## [2026-11-22] Preserve archive Draft PR branch edits
 - **Status:** done
 - **Agent/Owner:** Copilot

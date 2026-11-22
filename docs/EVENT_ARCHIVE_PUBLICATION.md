@@ -21,6 +21,10 @@ Event lifecycle change
 
 Event lifecycle and archive operations require the existing `RequireOrganizer` policy. Audit actors are taken from the authenticated identity, not from caller-supplied actor fields.
 
+The same policy protects `POST /api/events`, `PUT /api/events/{id}`, `PUT /api/events/{id}/fairness-targets`, `DELETE /api/events/{id}`, and `POST /api/events/{id}/sessionize/import`. Organizer and Admin callers remain authorized; anonymous callers receive 401 and other roles receive 403. Existing public event GET endpoints are unchanged when the optional authenticated fallback policy is disabled.
+
+Event creation retains the `CreatedBy` request field for client compatibility but ignores its value: the persisted creator comes from the authenticated `sub` or NameIdentifier claim. Missing or blank stable subjects receive 401; a display name alone is not a subject. Authorized event updates retain their existing semantics and do not add lifecycle or archive side effects.
+
 - `GET /api/events/{id}/archive/preview` reads the current archive entry and returns the candidate diff and a preview token.
 - `POST /api/events/{id}/archive/confirm` queues the reviewed candidate only if the remote entry still matches that preview.
 - `POST /api/events/{id}/archive/adoption/preview` reads the exact repository-relative path supplied by the organizer and returns its identity validation and candidate diff.
