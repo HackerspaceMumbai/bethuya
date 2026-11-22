@@ -19,7 +19,8 @@ public sealed record EventPublicationRequest(
     string FolderPath,
     string ReadmeMarkdown,
     string MetadataJson,
-    string IdempotencyKey);
+    string IdempotencyKey,
+    string? ConfirmedPreviewToken = null);
 
 /// <summary>Archive entry read from the configured repository.</summary>
 public sealed record EventArchiveEntry(

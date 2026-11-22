@@ -76,10 +76,13 @@ public sealed class EventArchiveOutboxProcessorTests
             older.ReadmeMarkdown,
             older.MetadataJson,
             older.IdempotencyKey,
+            older.ConfirmedPreviewToken ?? "test-preview-token",
             older.AttemptCount,
             older.ClaimToken);
 
-        var task = (Task)failureMethod.Invoke(processor, [workItem, new InvalidOperationException("permanent failure"), CancellationToken.None])!;
+        var task = (Task)failureMethod.Invoke(
+            processor,
+            [workItem, new InvalidOperationException("permanent failure"), CancellationToken.None, false])!;
         await task;
 
         // Clear EF cache to force fresh load from database
@@ -142,10 +145,13 @@ public sealed class EventArchiveOutboxProcessorTests
             message.ReadmeMarkdown,
             message.MetadataJson,
             message.IdempotencyKey,
+            message.ConfirmedPreviewToken ?? "test-preview-token",
             message.AttemptCount,
             message.ClaimToken);
 
-        var task = (Task)failureMethod.Invoke(processor, [workItem, new InvalidOperationException("retryable failure"), CancellationToken.None])!;
+        var task = (Task)failureMethod.Invoke(
+            processor,
+            [workItem, new InvalidOperationException("retryable failure"), CancellationToken.None, false])!;
         await task;
 
         // Clear EF cache to force fresh load from database
@@ -274,6 +280,7 @@ public sealed class EventArchiveOutboxProcessorTests
             ConfirmedBy = "test-organizer",
             ReadmeMarkdown = "# Test Event",
             MetadataJson = "{ \"version\": 1 }",
+            ConfirmedPreviewToken = "confirmed-preview-token",
             IdempotencyKey = Guid.NewGuid().ToString(),
             AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10),
@@ -337,6 +344,7 @@ public sealed class EventArchiveOutboxProcessorTests
         var publishedEventIdGuid = publishedRequest.EventId.Value;
         System.Console.WriteLine($"Published EventId from mock: {publishedEventIdGuid}, Expected: {eventId.Value}, Match: {publishedEventIdGuid == eventId.Value}");
         await Assert.That(publishedRequest.EventId).IsEqualTo(eventId);
+        await Assert.That(publishedRequest.ConfirmedPreviewToken).IsEqualTo("confirmed-preview-token");
 
         // Reload the message using a fresh DbContext to verify ProcessedAt was set.
         await using var verifyDb = CreateSqliteQueryDbContext(connectionString);
@@ -373,6 +381,7 @@ public sealed class EventArchiveOutboxProcessorTests
             ConfirmedBy = "test-organizer",
             ReadmeMarkdown = "# Test Event",
             MetadataJson = "title: Test Event",
+            ConfirmedPreviewToken = "confirmed-preview-token",
             IdempotencyKey = Guid.NewGuid().ToString(),
             AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
@@ -412,6 +421,65 @@ public sealed class EventArchiveOutboxProcessorTests
         await Assert.That(savedMessage.ProcessedAt).IsNull();
         await Assert.That(savedMessage.LastError).IsNotNull();
         await Assert.That(savedEvent.ArchivePullRequestNumber).IsNull();
+    }
+
+    [Test]
+    public async Task ProcessOneAsync_ConfirmedSnapshotMismatch_MarksPublicationFailedWithoutRetry()
+    {
+        var connectionString = $"Data Source=event-archive-snapshot-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+        using var keeperConnection = new SqliteConnection(connectionString);
+        keeperConnection.Open();
+        await using var db = CreateSqliteDbContext(keeperConnection);
+        var eventId = EventId.From(Guid.NewGuid());
+        var message = new EventArchiveOutboxMessage
+        {
+            EventId = eventId,
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-07-01-event-def456",
+            ConfirmedBy = "test-organizer",
+            ReadmeMarkdown = "# Test Event",
+            MetadataJson = "title: Test Event",
+            ConfirmedPreviewToken = "confirmed-preview-token",
+            IdempotencyKey = Guid.NewGuid().ToString(),
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+        };
+        db.EventArchiveOutboxMessages.Add(message);
+        db.Events.Add(new Event
+        {
+            Id = eventId.Value,
+            Title = "Test Event",
+            CreatedBy = "test-organizer",
+            ArchivePublicationStatus = EventArchivePublicationStatus.Pending,
+            ArchivePublicationIdempotencyKey = message.IdempotencyKey
+        });
+        await db.SaveChangesAsync();
+
+        var result = new EventPublicationResult(
+            "https://github.com/org/repo/tree/main/events/2026/2026-07-01-event-def456",
+            "https://github.com/org/repo/blob/main/events/2026/2026-07-01-event-def456/event.yml",
+            "bethuya/event-archive-test",
+            42,
+            "https://github.com/org/repo/pull/42");
+        var repository = new MockGitHubEventRepository(result)
+        {
+            PublishException = new ArchivePreviewMismatchException(
+                "The archive changed after organizer confirmation. Re-preview the archive and confirm again before publication.")
+        };
+        var processor = new EventArchiveOutboxProcessor(
+            new TestScopeFactory(connectionString, repository),
+            NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var processOneAsync = typeof(EventArchiveOutboxProcessor)
+            .GetMethod("ProcessOneAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        await (Task)processOneAsync.Invoke(processor, [CancellationToken.None])!;
+
+        await using var verifyDb = CreateSqliteQueryDbContext(connectionString);
+        var failedMessage = await verifyDb.EventArchiveOutboxMessages.FirstAsync(item => item.Id == message.Id);
+        var failedEvent = await verifyDb.Events.FirstAsync(item => item.Id == eventId.Value);
+        await Assert.That(failedMessage.ProcessedAt).IsNotNull();
+        await Assert.That(failedMessage.LastError).Contains("Re-preview the archive");
+        await Assert.That(failedEvent.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.Failed);
     }
 
     private static async Task WaitForCompletedProjectionAsync(
@@ -461,6 +529,7 @@ public sealed class EventArchiveOutboxProcessorTests
             message.ReadmeMarkdown,
             message.MetadataJson,
             message.IdempotencyKey,
+            message.ConfirmedPreviewToken ?? "test-preview-token",
             message.AttemptCount,
             message.ClaimToken)!;
     }
@@ -614,9 +683,15 @@ public sealed class EventArchiveOutboxProcessorTests
 
         public Task FirstPublication => _firstPublication.Task;
         public List<EventPublicationRequest> PublishedRequests { get; } = [];
+        public Exception? PublishException { get; init; }
 
         public Task<EventPublicationResult> PublishEventAsync(EventPublicationRequest request, CancellationToken ct = default)
         {
+            if (PublishException is not null)
+            {
+                return Task.FromException<EventPublicationResult>(PublishException);
+            }
+
             PublishedRequests.Add(request);
             _firstPublication.TrySetResult();
             return Task.FromResult(result);

@@ -29,6 +29,10 @@ Event lifecycle and archive operations require the existing `RequireOrganizer` p
 
 Preview tokens are derived from the exact candidate content and source file SHAs. A changed archive entry invalidates the token and requires another preview. Repeated confirmation of the same projection is idempotent.
 
+Confirmation persists the token with the outbox projection. Before any GitHub write, the worker reads both archive files at one target commit and verifies the confirmed token. A mismatch (or newly ambiguous content) ends that attempt as failed without automatic retry; resolve any ambiguous structure, request a new preview, and confirm again. Reconfirmation reactivates the failed item without changing its projection idempotency key. If the older confirmation is still queued or processing, a different token is rejected explicitly: wait for that attempt to finish before reconfirming. Unchanged-target retries, including a retry after branch creation but before successful PR creation, reuse matching branch files.
+
+The `EventArchiveConfirmedPreviewSnapshot` migration adds a nullable token column for compatibility with existing rows. Older confirmed requests without a token fail safely and require a fresh preview/confirmation; no token is inferred or backfilled. Apply the migration before running the updated worker, and stop older worker binaries before enabling the new safeguards.
+
 ## Archive ownership and conflicts
 
 Bethuya manages these top-level `event.yml` values: `title`, `date`, `status`, and `description`; under `bethuya`, it manages `eventId` and `projectionVersion`. Other metadata is preserved from the archive. Bethuya's README content is enclosed by `<!-- bethuya:managed:start -->` and `<!-- bethuya:managed:end -->`; content outside the markers is preserved. If the markers or managed YAML structure are ambiguous, publication stops for human resolution instead of overwriting the entry.

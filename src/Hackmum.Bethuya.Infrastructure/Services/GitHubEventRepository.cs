@@ -16,13 +16,18 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
     public async Task<EventArchiveEntry?> GetArchiveEntryAsync(string folderPath, CancellationToken ct = default)
     {
         var settings = ConfigureClient();
-        return await GetArchiveEntryAtRefAsync(settings, folderPath, settings.Branch, ct);
+        var targetRef = await GetRefAsync(settings, settings.Branch, ct)
+            ?? throw new InvalidOperationException($"Configured archive branch '{settings.Branch}' does not exist.");
+        return await GetArchiveEntryAtRefAsync(settings, folderPath, targetRef.Object.Sha, ct);
     }
 
     public async Task<EventArchivePreview> PreviewEventAsync(EventPublicationRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var entry = await GetArchiveEntryAsync(request.FolderPath, ct);
+        var settings = ConfigureClient();
+        var targetRef = await GetRefAsync(settings, settings.Branch, ct)
+            ?? throw new InvalidOperationException($"Configured archive branch '{settings.Branch}' does not exist.");
+        var entry = await GetArchiveEntryAtRefAsync(settings, request.FolderPath, targetRef.Object.Sha, ct);
         return CreatePreview(request, entry);
     }
 
@@ -64,11 +69,34 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
     public async Task<EventPublicationResult> PublishEventAsync(EventPublicationRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.ConfirmedPreviewToken))
+        {
+            throw new ArchivePreviewMismatchException(
+                "This archive request has no confirmed snapshot. Re-preview the archive and confirm again before publication.");
+        }
+
         var settings = ConfigureClient();
         var targetRef = await GetRefAsync(settings, settings.Branch, ct)
             ?? throw new InvalidOperationException($"Configured archive branch '{settings.Branch}' does not exist.");
         var entryAtTarget = await GetArchiveEntryAtRefAsync(settings, request.FolderPath, targetRef.Object.Sha, ct);
-        var preview = CreatePreview(request, entryAtTarget);
+        EventArchivePreview preview;
+        try
+        {
+            preview = CreatePreview(request, entryAtTarget);
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new ArchivePreviewMismatchException(
+                $"The archive can no longer be merged safely: {exception.Message} Resolve the archive structure, then re-preview and confirm again.",
+                exception);
+        }
+
+        if (!string.Equals(preview.PreviewToken, request.ConfirmedPreviewToken, StringComparison.Ordinal))
+        {
+            throw new ArchivePreviewMismatchException(
+                "The archive changed after organizer confirmation. Re-preview the archive and confirm again before publication.");
+        }
+
         if (!preview.HasChanges)
         {
             throw new InvalidOperationException("The archive already matches this projection; there are no changes to publish.");
@@ -79,16 +107,10 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
         var branchAlreadyMatches = false;
         if (existingBranch is not null)
         {
-            var branchEntry = await GetArchiveEntryAtRefAsync(settings, request.FolderPath, branchName, ct);
+            var branchEntry = await GetArchiveEntryAtRefAsync(settings, request.FolderPath, existingBranch.Object.Sha, ct);
             branchAlreadyMatches = branchEntry is not null
-                && string.Equals(
-                    EventArchiveContentMerger.MergeReadme(branchEntry.ReadmeMarkdown, request.ReadmeMarkdown),
-                    preview.CandidateReadme,
-                    StringComparison.Ordinal)
-                && string.Equals(
-                    EventArchiveContentMerger.MergeMetadata(branchEntry.MetadataYaml, request.MetadataJson),
-                    preview.CandidateMetadata,
-                    StringComparison.Ordinal);
+                && string.Equals(branchEntry.ReadmeMarkdown, preview.CandidateReadme, StringComparison.Ordinal)
+                && string.Equals(branchEntry.MetadataYaml, preview.CandidateMetadata, StringComparison.Ordinal);
         }
 
         if (!branchAlreadyMatches)

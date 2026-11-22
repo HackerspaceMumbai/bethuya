@@ -16,6 +16,13 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-11-22] Bind archive publication to confirmed preview snapshot
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Fix stale Draft-PR branch detection by comparing actual branch file contents, persist the organizer-confirmed preview token in the outbox, pin preview reads to one target commit, and reject stale snapshots before GitHub writes with an actionable reconfirmation path.
+- **Acceptance:** Changed projections update existing branches; unchanged retries remain idempotent; target changes after confirmation cause no branch/PR writes; reconfirmation can safely requeue the same projection; focused TUnit tests and the repository test suite pass.
+- **Completion Evidence:** Existing-branch comparisons now use actual files; retries after branch update/PR-creation failure reuse the commit. The nullable confirmed-token column was added by migration; stale snapshots become failed without retry, and explicit reconfirmation resets the failed outbox item. Different-token confirmation while pending is rejected explicitly without disturbing active claims. Preview reads use one commit SHA. `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v minimal` passed 560/560; `dotnet ef migrations has-pending-model-changes` reported no pending model changes.
+
 ## [2026-10-23] Fix mentorship recommendation CTA mismatch
 - **Status:** done
 - **Agent/Owner:** Cursor
@@ -1159,3 +1166,11 @@ All work items must be added here **before** writing code (plan-first protocol).
 ## [2026-11-20] Refuse multiline YAML metadata values safely
 - [x] Detect block-scalar and continued/multiline forms before replacing managed values while preserving safe simple scalar behavior.
 - [x] Add focused regression tests for literal/folded block headers and related multiline forms; full TUnit project passed 551/551.
+
+## [2026-11-20] Republish changed archive projections
+- [ ] Compare existing publication branch file contents directly with the current candidate so stale projections trigger an update.
+- [ ] Add fake GitHub regression coverage for a changed projection with an unchanged target and verify existing retry behavior.
+
+## [2026-11-20] Bind archive publication to confirmed content
+- [ ] Preserve the confirmed target snapshot with the durable publication request and reject changed targets before GitHub writes.
+- [ ] Read preview files from one branch-ref snapshot; test changed-target refusal and retry behavior after partial publication.

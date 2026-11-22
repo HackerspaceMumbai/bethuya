@@ -77,7 +77,8 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     workItem.FolderPath,
                     workItem.ReadmeMarkdown,
                     workItem.MetadataJson,
-                    workItem.IdempotencyKey),
+                    workItem.IdempotencyKey,
+                    workItem.ConfirmedPreviewToken),
                 publishCts.Token);
 
             await StopHeartbeatAsync(publishCts, heartbeatTask);
@@ -140,6 +141,15 @@ internal sealed partial class EventArchiveOutboxProcessor(
         {
             // The publish was deliberately cancelled because another worker reclaimed the
             // message; that worker owns the outcome, so there is nothing further to record.
+        }
+        catch (ArchivePreviewMismatchException ex)
+        {
+            if (workItem is not null && !claimLost)
+            {
+                await RecordFailureAsync(workItem, ex, ct, terminal: true);
+            }
+
+            LogArchiveProjectionFailed(logger, ex);
         }
         catch (Exception ex)
         {
@@ -340,6 +350,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 selectedMessage.ReadmeMarkdown,
                 selectedMessage.MetadataJson,
                 selectedMessage.IdempotencyKey,
+                selectedMessage.ConfirmedPreviewToken,
                 newAttemptCount,
                 claimToken);
         });
@@ -347,7 +358,11 @@ internal sealed partial class EventArchiveOutboxProcessor(
         return result;
     }
 
-    private async Task RecordFailureAsync(EventArchiveOutboxWorkItem workItem, Exception exception, CancellationToken ct)
+    private async Task RecordFailureAsync(
+        EventArchiveOutboxWorkItem workItem,
+        Exception exception,
+        CancellationToken ct,
+        bool terminal = false)
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
@@ -356,11 +371,13 @@ internal sealed partial class EventArchiveOutboxProcessor(
 
         await strategy.ExecuteAsync(async () =>
         {
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
             // Check if claim is still valid and message is not yet processed.
             var message = await db.EventArchiveOutboxMessages
                 .FirstOrDefaultAsync(item => item.Id == workItem.Id, ct);
             if (message is null || message.ProcessedAt is not null || message.ClaimToken != workItem.ClaimToken)
             {
+                await transaction.RollbackAsync(ct);
                 return;
             }
 
@@ -370,16 +387,20 @@ internal sealed partial class EventArchiveOutboxProcessor(
             var newerMessageIdValue = message.Id.Value;
             var newerCreatedAtValue = message.CreatedAt;
             
-            var allMessages = await db.EventArchiveOutboxMessages
-                .AsNoTracking()
-                .ToListAsync(ct);  // Force client evaluation
-            
-            var hasNewerProjection = allMessages.Any(m => 
-                m.EventId.Value == newerEventIdValue && 
-                m.Id.Value != newerMessageIdValue && 
-                m.CreatedAt > newerCreatedAtValue);
+            var hasNewerProjection = false;
+            if (!terminal && workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal)
+            {
+                var allMessages = await db.EventArchiveOutboxMessages
+                    .AsNoTracking()
+                    .ToListAsync(ct);  // Force client evaluation
 
-            if (workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal && hasNewerProjection)
+                hasNewerProjection = allMessages.Any(m =>
+                    m.EventId.Value == newerEventIdValue &&
+                    m.Id.Value != newerMessageIdValue &&
+                    m.CreatedAt > newerCreatedAtValue);
+            }
+
+            if (terminal || (workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal && hasNewerProjection))
             {
                 // Terminal failure with a newer projection: mark this message processed
                 // using an atomic update that checks both the claim token and processed state.
@@ -396,7 +417,20 @@ internal sealed partial class EventArchiveOutboxProcessor(
                             .SetProperty(item => item.AvailableAt, DateTimeOffset.UtcNow),
                         ct);
 
-                // Ignore if no rows updated; another worker may have reclaimed or completed the message.
+                if (terminalUpdateRows > 0)
+                {
+                    var evt = await db.Events.FirstOrDefaultAsync(
+                        item => item.Id == workItem.EventId.Value
+                            && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey,
+                        ct);
+                    if (evt is not null)
+                    {
+                        evt.ArchivePublicationStatus = EventArchivePublicationStatus.Failed;
+                        await db.SaveChangesAsync(ct);
+                    }
+                }
+
+                await transaction.CommitAsync(ct);
                 return;
             }
 
@@ -415,6 +449,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     ct);
 
             // Ignore if no rows updated; another worker may have reclaimed or completed the message.
+            await transaction.CommitAsync(ct);
         });
     }
 
@@ -426,13 +461,14 @@ internal sealed partial class EventArchiveOutboxProcessor(
         string ReadmeMarkdown,
         string MetadataJson,
         string IdempotencyKey,
+        string? ConfirmedPreviewToken,
         int AttemptCount,
         string ClaimToken);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Archive projection completed for event {EventId}; folder {FolderUrl}.")]
     private static partial void LogArchiveProjectionCompleted(ILogger logger, ArchiveEventId eventId, string folderUrl);
 
-    [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Archive projection attempt failed; the outbox message will be retried.")]
+    [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Archive projection attempt failed.")]
     private static partial void LogArchiveProjectionFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "Event archive outbox processor stopped due to cancellation.")]

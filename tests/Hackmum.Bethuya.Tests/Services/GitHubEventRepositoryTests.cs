@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Hackmum.Bethuya.Core.Models;
@@ -34,8 +35,12 @@ public sealed class GitHubEventRepositoryTests
 
         var preview = await repository.PreviewEventAsync(CreateRequest());
 
-        await Assert.That(handler.Requests.Count).IsEqualTo(2);
+        await Assert.That(handler.Requests.Count).IsEqualTo(3);
         await Assert.That(handler.Requests.All(request => request.Method == HttpMethod.Get)).IsTrue();
+        await Assert.That(handler.Requests
+            .Where(request => request.PathAndQuery.Contains("/contents/", StringComparison.Ordinal))
+            .All(request => request.PathAndQuery.Contains("?ref=base-commit", StringComparison.Ordinal)))
+            .IsTrue();
         await Assert.That(preview.CandidateReadme).Contains("A community-owned introduction.");
         await Assert.That(preview.CandidateReadme).Contains("<!-- bethuya:managed:start -->");
         await Assert.That(preview.CandidateMetadata).Contains("city: \"Mumbai\"");
@@ -50,7 +55,7 @@ public sealed class GitHubEventRepositoryTests
         var handler = new FakeGitHubHandler(null, null);
         using var client = CreateHttpClient(handler);
         var repository = CreateRepository(client);
-        var request = CreateRequest();
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
 
         var result = await repository.PublishEventAsync(request);
         var expectedBranch = $"bethuya/event-archive-{request.EventId.Value:N}";
@@ -73,7 +78,7 @@ public sealed class GitHubEventRepositoryTests
         var handler = new FakeGitHubHandler(null, null);
         using var client = CreateHttpClient(handler);
         var repository = CreateRepository(client);
-        var request = CreateRequest();
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
 
         await repository.PublishEventAsync(request);
         handler.SetBaseArchive(
@@ -102,6 +107,7 @@ public sealed class GitHubEventRepositoryTests
                 StringComparison.Ordinal),
             IdempotencyKey = "updated-projection-0123456789ABCDEF"
         };
+        updatedRequest = await ConfirmPreviewAsync(repository, updatedRequest);
         var updateResult = await repository.PublishEventAsync(updatedRequest);
 
         await Assert.That(updateResult.PullRequestNumber).IsEqualTo(42);
@@ -115,21 +121,139 @@ public sealed class GitHubEventRepositoryTests
     }
 
     [Test]
-    public async Task PublishEventAsync_RetryWithUnchangedBranch_DoesNotCreateDuplicateCommitOrPullRequest()
+    public async Task PublishEventAsync_ChangedProjectionWithUnchangedTarget_UpdatesExistingDraftBranch()
+    {
+        var handler = new FakeGitHubHandler(
+            "# Community notes\n\nA community-owned introduction.\n",
+            """
+            title: "Old title"
+            slug: "community-slug"
+            date: 2026-11-28
+            city: "Mumbai"
+            country: India
+            eventType: meetup
+            venue: "Community Hall"
+            status: upcoming
+            timezone: Asia/Kolkata
+            description: "Old description"
+            community: "Community-owned value"
+            """);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+
+        await repository.PublishEventAsync(request);
+
+        var updatedRequest = request with
+        {
+            Title = "Updated Community Summit",
+            ReadmeMarkdown = "# Updated Community Summit\nLifecycle: Published\n",
+            MetadataJson = request.MetadataJson
+                .Replace("title: \"Community Summit\"", "title: \"Updated Community Summit\"", StringComparison.Ordinal)
+                .Replace("description: \"Summit\"", "description: \"Updated summit\"", StringComparison.Ordinal),
+            IdempotencyKey = "updated-projection-0123456789ABCDEF"
+        };
+        var updatedPreview = await repository.PreviewEventAsync(updatedRequest);
+        await Assert.That(EventArchiveContentMerger.MergeReadme(handler.LastTreeReadme, updatedRequest.ReadmeMarkdown))
+            .IsEqualTo(updatedPreview.CandidateReadme);
+        await Assert.That(EventArchiveContentMerger.MergeMetadata(handler.LastTreeMetadata, updatedRequest.MetadataJson))
+            .IsEqualTo(updatedPreview.CandidateMetadata);
+        updatedRequest = await ConfirmPreviewAsync(repository, updatedRequest);
+        var updateResult = await repository.PublishEventAsync(updatedRequest);
+
+        await Assert.That(updateResult.PullRequestNumber).IsEqualTo(42);
+        await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(1);
+        await Assert.That(handler.CreatedTreeCount).IsEqualTo(2);
+        await Assert.That(handler.LastTreeReadme).Contains("Updated Community Summit");
+        await Assert.That(handler.LastTreeMetadata).Contains("title: \"Updated Community Summit\"");
+        await Assert.That(handler.LastTreeMetadata).Contains("description: \"Updated summit\"");
+    }
+
+    [Test]
+    public async Task PublishEventAsync_RetryWithUnchangedTarget_DoesNotCreateDuplicateCommitOrPullRequest()
     {
         var handler = new FakeGitHubHandler(null, null);
         using var client = CreateHttpClient(handler);
         var repository = CreateRepository(client);
-        var request = CreateRequest();
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
 
         await repository.PublishEventAsync(request);
-        handler.SetBaseArchive(handler.LastTreeReadme!, handler.LastTreeMetadata!);
 
         var retry = await repository.PublishEventAsync(request);
 
         await Assert.That(retry.PullRequestNumber).IsEqualTo(42);
         await Assert.That(handler.CreatedTreeCount).IsEqualTo(1);
         await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task PublishEventAsync_RetryAfterBranchUpdateAndPullRequestFailure_ReusesBranchCommit()
+    {
+        var handler = new FakeGitHubHandler(null, null)
+        {
+            FailNextPullRequestCreation = true
+        };
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+
+        var firstAttempt = async () => { await repository.PublishEventAsync(request); };
+        await Assert.That(firstAttempt).Throws<HttpRequestException>();
+
+        var retry = await repository.PublishEventAsync(request);
+
+        await Assert.That(retry.PullRequestNumber).IsEqualTo(42);
+        await Assert.That(handler.CreatedTreeCount).IsEqualTo(1);
+        await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task PublishEventAsync_LegacyRequestWithoutConfirmedToken_RefusesBeforeAnyGitHubRequest()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var action = async () => { await repository.PublishEventAsync(CreateRequest()); };
+
+        var exception = await Assert.That(action).Throws<ArchivePreviewMismatchException>();
+
+        await Assert.That(exception!.Message).Contains("Re-preview the archive");
+        await Assert.That(handler.Requests.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    [Arguments("readme")]
+    [Arguments("managed-metadata")]
+    [Arguments("block-metadata")]
+    public async Task PublishEventAsync_TargetChangesAfterConfirmation_RefusesBeforeAnyWrite(string change)
+    {
+        var request = CreateRequest();
+        const string originalReadme = "# Community notes\nOriginal archive note.\n";
+        var handler = new FakeGitHubHandler(originalReadme, request.MetadataJson);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var preview = await repository.PreviewEventAsync(request);
+        handler.SetBaseArchive(
+            change == "readme" ? "# Community notes\nA newly added archive note.\n" : originalReadme,
+            change switch
+            {
+                "managed-metadata" => request.MetadataJson.Replace(
+                    "title: \"Community Summit\"", "title: \"Community edit\"", StringComparison.Ordinal),
+                "block-metadata" => request.MetadataJson.Replace(
+                    "description: \"Summit\"", "description: >-\n  Community multiline edit", StringComparison.Ordinal),
+                _ => request.MetadataJson
+            });
+
+        request = request with { ConfirmedPreviewToken = preview.PreviewToken };
+        var action = async () => { await repository.PublishEventAsync(request); };
+
+        await Assert.That(action).Throws<ArchivePreviewMismatchException>();
+        await Assert.That(handler.Requests.All(call => call.Method == HttpMethod.Get)).IsTrue();
+        await Assert.That(handler.CreatedTreeCount).IsEqualTo(0);
+        await Assert.That(handler.CreatedPullRequests).IsEqualTo(0);
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(0);
     }
 
     private static EventPublicationRequest CreateRequest()
@@ -165,6 +289,14 @@ public sealed class GitHubEventRepositoryTests
             """,
             "aaaaaaaaaaaaaaaaaaaaaaaa-0123456789ABCDEF");
 
+    private static async Task<EventPublicationRequest> ConfirmPreviewAsync(
+        GitHubEventRepository repository,
+        EventPublicationRequest request)
+    {
+        var preview = await repository.PreviewEventAsync(request);
+        return request with { ConfirmedPreviewToken = preview.PreviewToken };
+    }
+
     private static GitHubEventRepository CreateRepository(HttpClient client)
         => new(client, Options.Create(new GitHubEventRepositoryOptions
         {
@@ -194,6 +326,7 @@ public sealed class GitHubEventRepositoryTests
         public int UpdatedBranchCount { get; private set; }
         public string? LastTreeReadme { get; private set; }
         public string? LastTreeMetadata { get; private set; }
+        public bool FailNextPullRequestCreation { get; set; }
 
         public void SetBaseArchive(string readme, string metadata)
         {
@@ -213,12 +346,11 @@ public sealed class GitHubEventRepositoryTests
                 var readme = refName is "main" or "base-commit" ? _baseReadme : _branchReadme;
                 var metadata = refName is "main" or "base-commit" ? _baseMetadata : _branchMetadata;
                 var content = pathAndQuery.Contains("/README.md", StringComparison.Ordinal) ? readme : metadata;
-                var sha = pathAndQuery.Contains("/README.md", StringComparison.Ordinal) ? "readme-sha" : "metadata-sha";
                 return Task.FromResult(content is null
                     ? new HttpResponseMessage(HttpStatusCode.NotFound)
                     : JsonResponse(new
                     {
-                        sha,
+                        sha = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))),
                         encoding = "base64",
                         content = Convert.ToBase64String(Encoding.UTF8.GetBytes(content))
                     }));
@@ -288,6 +420,12 @@ public sealed class GitHubEventRepositoryTests
 
             if (request.Method == HttpMethod.Post && pathAndQuery.EndsWith("/pulls", StringComparison.Ordinal))
             {
+                if (FailNextPullRequestCreation)
+                {
+                    FailNextPullRequestCreation = false;
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+                }
+
                 CreatedPullRequests++;
                 var body = request.Content!.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
                 using var document = JsonDocument.Parse(body);

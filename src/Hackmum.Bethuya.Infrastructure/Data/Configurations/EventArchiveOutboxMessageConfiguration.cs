@@ -20,6 +20,7 @@ internal sealed class EventArchiveOutboxMessageConfiguration : IEntityTypeConfig
         builder.Property(message => message.ConfirmedBy).HasMaxLength(200).IsRequired();
         builder.Property(message => message.ReadmeMarkdown).IsRequired();
         builder.Property(message => message.MetadataJson).IsRequired();
+        builder.Property(message => message.ConfirmedPreviewToken).HasMaxLength(64);
         builder.Property(message => message.IdempotencyKey).HasMaxLength(200).IsRequired();
         builder.Property(message => message.ClaimToken).HasMaxLength(32).IsRequired();
         builder.Property(message => message.LastError).HasMaxLength(4000);

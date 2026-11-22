@@ -53,6 +53,7 @@ public sealed class EventArchivePublicationOrchestratorTests
         var outbox = await db.EventArchiveOutboxMessages.ToListAsync();
         await Assert.That(outbox.Count).IsEqualTo(1);
         await Assert.That(outbox[0].ConfirmedBy).IsEqualTo("organizer-123");
+        await Assert.That(outbox[0].ConfirmedPreviewToken).IsEqualTo(preview.Preview.PreviewToken);
         await Assert.That(evt.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.Published);
         await Assert.That(evt.ArchiveBranchName).IsEqualTo("bethuya/event-archive-published");
         await Assert.That(evt.ArchivePullRequestNumber).IsEqualTo(42);
@@ -61,6 +62,78 @@ public sealed class EventArchivePublicationOrchestratorTests
         await Assert.That(evt.ArchivePublicationRequestedBy).IsEqualTo("organizer-123");
         await Assert.That(evt.ArchiveFolderPath).IsEqualTo(
             $"events/2026/2026-11-28-community-summit-{evt.Id:N}");
+    }
+
+    [Test]
+    public async Task ConfirmArchivePublicationAsync_NewSnapshotWhileStillPending_RejectsInsteadOfDiscardingConfirmation()
+    {
+        await using var db = CreateDbContext();
+        var evt = CreatePublishedEvent();
+        db.Events.Add(evt);
+        await db.SaveChangesAsync();
+
+        var currentToken = "confirmed-snapshot-1";
+        var repository = Substitute.For<IGitHubEventRepository>();
+        repository.PreviewEventAsync(Arg.Any<EventPublicationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(CreatePreview(
+                call.Arg<EventPublicationRequest>(),
+                null,
+                currentToken)));
+        var orchestrator = CreateOrchestrator(db, repository);
+        await orchestrator.ConfirmArchivePublicationAsync(evt.Id, "organizer-123", currentToken);
+        var outbox = await db.EventArchiveOutboxMessages.SingleAsync();
+        outbox.ClaimToken = "active-worker-claim";
+        outbox.LockedUntil = DateTimeOffset.UtcNow.AddMinutes(2);
+        await db.SaveChangesAsync();
+
+        currentToken = "confirmed-snapshot-2";
+        var action = async () =>
+        {
+            await orchestrator.ConfirmArchivePublicationAsync(evt.Id, "organizer-123", currentToken);
+        };
+
+        var exception = await Assert.That(action).Throws<InvalidOperationException>();
+        await Assert.That(exception!.Message).Contains("Wait for it to finish");
+        await Assert.That(outbox.ConfirmedPreviewToken).IsEqualTo("confirmed-snapshot-1");
+        await Assert.That(outbox.ClaimToken).IsEqualTo("active-worker-claim");
+        await Assert.That(outbox.ProcessedAt).IsNull();
+        await Assert.That(await db.EventArchiveOutboxMessages.CountAsync()).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ConfirmArchivePublicationAsync_ReconfirmationAfterSnapshotFailure_RefreshesQueuedToken()
+    {
+        await using var db = CreateDbContext();
+        var evt = CreatePublishedEvent();
+        db.Events.Add(evt);
+        await db.SaveChangesAsync();
+
+        var currentToken = "confirmed-snapshot-1";
+        var repository = Substitute.For<IGitHubEventRepository>();
+        repository.PreviewEventAsync(Arg.Any<EventPublicationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(CreatePreview(
+                call.Arg<EventPublicationRequest>(),
+                null,
+                currentToken)));
+        var orchestrator = CreateOrchestrator(db, repository);
+
+        var firstPreview = await orchestrator.PreviewArchivePublicationAsync(evt.Id);
+        await orchestrator.ConfirmArchivePublicationAsync(evt.Id, "organizer-123", firstPreview.Preview.PreviewToken);
+        var outbox = await db.EventArchiveOutboxMessages.SingleAsync();
+        outbox.ProcessedAt = DateTimeOffset.UtcNow;
+        outbox.LastError = "The archive changed after organizer confirmation.";
+        evt.ArchivePublicationStatus = EventArchivePublicationStatus.Failed;
+        await db.SaveChangesAsync();
+
+        currentToken = "confirmed-snapshot-2";
+        var nextPreview = await orchestrator.PreviewArchivePublicationAsync(evt.Id);
+        await orchestrator.ConfirmArchivePublicationAsync(evt.Id, "organizer-123", nextPreview.Preview.PreviewToken);
+
+        await Assert.That(outbox.ProcessedAt).IsNull();
+        await Assert.That(outbox.LastError).IsNull();
+        await Assert.That(outbox.ConfirmedPreviewToken).IsEqualTo("confirmed-snapshot-2");
+        await Assert.That(evt.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.Pending);
+        await Assert.That(await db.EventArchiveOutboxMessages.CountAsync()).IsEqualTo(1);
     }
 
     [Test]
@@ -306,10 +379,13 @@ public sealed class EventArchivePublicationOrchestratorTests
         return repository;
     }
 
-    private static EventArchivePreview CreatePreview(EventPublicationRequest request, EventArchiveEntry? entry)
+    private static EventArchivePreview CreatePreview(
+        EventPublicationRequest request,
+        EventArchiveEntry? entry,
+        string previewToken = "preview-token")
         => new(
             request.FolderPath,
-            "preview-token",
+            previewToken,
             entry?.ReadmeMarkdown,
             request.ReadmeMarkdown,
             entry?.MetadataYaml,

@@ -184,7 +184,9 @@ public sealed partial class EventLifecycleOrchestrator(
         await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
-            alreadyQueued = !await AddOutboxIfMissingAsync(CreateOutboxMessage(evt, artifact, actor), ct);
+            alreadyQueued = !await AddOutboxIfMissingAsync(
+                CreateOutboxMessage(evt, artifact, actor, preview.PreviewToken),
+                ct);
             if (alreadyQueued)
             {
                 return;
@@ -443,7 +445,8 @@ public sealed partial class EventLifecycleOrchestrator(
     private static EventArchiveOutboxMessage CreateOutboxMessage(
         Event evt,
         EventPublicationArtifact artifact,
-        string actor)
+        string actor,
+        string confirmedPreviewToken)
         => new()
         {
             EventId = Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id),
@@ -453,6 +456,7 @@ public sealed partial class EventLifecycleOrchestrator(
             ConfirmedBy = actor,
             ReadmeMarkdown = artifact.ReadmeMarkdown,
             MetadataJson = artifact.MetadataJson,
+            ConfirmedPreviewToken = confirmedPreviewToken,
             IdempotencyKey = CreateIdempotencyKey(Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id), artifact)
         };
 
@@ -465,10 +469,11 @@ public sealed partial class EventLifecycleOrchestrator(
             ct);
         if (existing is not null)
         {
-            if (string.IsNullOrEmpty(existing.ConfirmedBy))
+            if (existing.ProcessedAt is not null && existing.LastError is not null)
             {
-                existing.ConfirmedBy = outbox.ConfirmedBy;
                 existing.Title = outbox.Title;
+                existing.ConfirmedBy = outbox.ConfirmedBy;
+                existing.ConfirmedPreviewToken = outbox.ConfirmedPreviewToken;
                 existing.ProcessedAt = null;
                 existing.AttemptCount = 0;
                 existing.AvailableAt = DateTimeOffset.UtcNow;
@@ -477,6 +482,28 @@ public sealed partial class EventLifecycleOrchestrator(
                 existing.LastError = null;
                 await dbContext.SaveChangesAsync(ct);
                 return true;
+            }
+
+            if (string.IsNullOrEmpty(existing.ConfirmedBy))
+            {
+                existing.ConfirmedBy = outbox.ConfirmedBy;
+                existing.Title = outbox.Title;
+                existing.ConfirmedPreviewToken = outbox.ConfirmedPreviewToken;
+                existing.ProcessedAt = null;
+                existing.AttemptCount = 0;
+                existing.AvailableAt = DateTimeOffset.UtcNow;
+                existing.LockedUntil = null;
+                existing.ClaimToken = string.Empty;
+                existing.LastError = null;
+                await dbContext.SaveChangesAsync(ct);
+                return true;
+            }
+
+            if (existing.ProcessedAt is null
+                && !string.Equals(existing.ConfirmedPreviewToken, outbox.ConfirmedPreviewToken, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "An older archive confirmation is still queued or processing. Wait for it to finish, then re-preview and confirm again.");
             }
 
             return false;

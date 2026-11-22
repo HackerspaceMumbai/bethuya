@@ -32,6 +32,9 @@ public sealed class EventArchiveOutboxMessage
     /// <summary>Gets the serialized event metadata content.</summary>
     public required string MetadataJson { get; init; }
 
+    /// <summary>Gets the preview snapshot explicitly confirmed by the organizer.</summary>
+    public string? ConfirmedPreviewToken { get; set; }
+
     /// <summary>Gets the idempotency key for this projection.</summary>
     public required string IdempotencyKey { get; init; }
 

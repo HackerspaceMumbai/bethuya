@@ -16,6 +16,12 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-11-22] Bind archive retries to the confirmed target snapshot
+- **What happened:** A durable archive publication could be retried after target-branch content changed, which would regenerate a different candidate than the organizer approved.
+- **Root cause:** The outbox retained the event projection but not the preview token derived from the archive files and their GitHub SHAs; preview reads also addressed the moving branch name.
+- **Fix:** Persist the confirmed preview token, read both files from one resolved commit SHA, and fail stale work before writes so organizers can preview and confirm again.
+- **Prevention:** Treat a confirmed archive snapshot as part of the durable command; only retry GitHub operations automatically while the target snapshot remains unchanged.
+
 ## [2026-10-23] Chapter recommendation CTAs must match inbox contents
 - **What happened:** After Track Lead replaced Mentor nominations in Immediate Decisions, "Expand mentorship capacity" still linked to that inbox — organizers had no matching action for adding mentors.
 - **Root cause:** Decision-card copy was updated without retargeting chapter recommendation actions that depended on the old decision.
