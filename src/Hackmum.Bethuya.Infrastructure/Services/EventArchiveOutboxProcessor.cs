@@ -116,18 +116,14 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     return;
                 }
 
-                var evt = await db.Events.FirstOrDefaultAsync(
+                await db.Events.Where(
                     item => item.Id == workItem.EventId.Value
-                        && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey,
-                    ct);
-                if (evt is not null)
-                {
-                    evt.ArchivePublicationStatus = EventArchivePublicationStatus.DraftPrPending;
-                    evt.ArchiveBranchName = result.BranchName;
-                    evt.ArchivePullRequestNumber = result.PullRequestNumber;
-                    evt.ArchivePullRequestUrl = result.PullRequestUrl;
-                    await db.SaveChangesAsync(ct);
-                }
+                        && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey)
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(item => item.ArchivePublicationStatus, EventArchivePublicationStatus.DraftPrPending)
+                        .SetProperty(item => item.ArchiveBranchName, result.BranchName)
+                        .SetProperty(item => item.ArchivePullRequestNumber, result.PullRequestNumber)
+                        .SetProperty(item => item.ArchivePullRequestUrl, result.PullRequestUrl), ct);
 
                 await transaction.CommitAsync(ct);
                 LogArchiveProjectionCompleted(logger, workItem.EventId, result.FolderUrl);
@@ -374,6 +370,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             // Check if claim is still valid and message is not yet processed.
             var message = await db.EventArchiveOutboxMessages
+                .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.Id == workItem.Id, ct);
             if (message is null || message.ProcessedAt is not null || message.ClaimToken != workItem.ClaimToken)
             {
@@ -419,15 +416,11 @@ internal sealed partial class EventArchiveOutboxProcessor(
 
                 if (terminalUpdateRows > 0)
                 {
-                    var evt = await db.Events.FirstOrDefaultAsync(
+                    await db.Events.Where(
                         item => item.Id == workItem.EventId.Value
-                            && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey,
-                        ct);
-                    if (evt is not null)
-                    {
-                        evt.ArchivePublicationStatus = EventArchivePublicationStatus.Failed;
-                        await db.SaveChangesAsync(ct);
-                    }
+                            && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey)
+                        .ExecuteUpdateAsync(update => update
+                            .SetProperty(item => item.ArchivePublicationStatus, EventArchivePublicationStatus.Failed), ct);
                 }
 
                 await transaction.CommitAsync(ct);

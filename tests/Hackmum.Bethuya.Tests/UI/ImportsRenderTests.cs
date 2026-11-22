@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -18,9 +18,9 @@ public class ImportsRenderTests
     [Test]
     public async Task Render_LoadsOrganizerImportWizard()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventId = Guid.CreateVersion7();
         var eventApi = Substitute.For<IEventApi>();
@@ -62,7 +62,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         await Assert.That(cut.Markup).Contains("Import registrations or attendance");
@@ -77,9 +77,9 @@ public class ImportsRenderTests
     [Test]
     public async Task ChangingImportKind_WhenTemplateLoadFails_ClearsOldTemplateAndShowsError()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventApi = Substitute.For<IEventApi>();
         eventApi.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new List<EventDto>()));
@@ -94,7 +94,7 @@ public class ImportsRenderTests
         ctx.Services.AddLogging();
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         var templatesProperty = typeof(Imports).GetProperty("Templates", BindingFlags.Instance | BindingFlags.NonPublic)!;
         cut.WaitForState(() => ((List<ImportTemplateDto>)templatesProperty.GetValue(cut.Instance)!).Count == 1, TimeSpan.FromSeconds(5));
 
@@ -112,9 +112,9 @@ public class ImportsRenderTests
     [Test]
     public async Task Render_WithEventIdQuery_PreselectsThatEvent()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventId = Guid.CreateVersion7();
         var eventApi = Substitute.For<IEventApi>();
@@ -156,7 +156,7 @@ public class ImportsRenderTests
         var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
         navigationManager.NavigateTo(navigationManager.GetUriWithQueryParameter("eventId", eventId.ToString()));
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         var eventIdTextField = typeof(Imports).GetField("_eventIdText", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -167,9 +167,9 @@ public class ImportsRenderTests
     [Test]
     public async Task FileUpload_SelectingSecondFile_ReplacesFirstFile()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventApi = Substitute.For<IEventApi>();
         eventApi.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new List<EventDto>()));
@@ -181,7 +181,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         var inputFile = cut.FindComponent<Microsoft.AspNetCore.Components.Forms.InputFile>();
@@ -198,9 +198,9 @@ public class ImportsRenderTests
     [Test]
     public async Task Preview_WithManyValidRows_ShowsPassedResultCommitAboveTableAndPaginates()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventApi = Substitute.For<IEventApi>();
         eventApi.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new List<EventDto>()));
@@ -212,7 +212,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         const int rowCount = 106;
@@ -255,9 +255,9 @@ public class ImportsRenderTests
     [Test]
     public async Task Preview_WithErrorRows_ShowsWarningResultAndHidesCommit()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventApi = Substitute.For<IEventApi>();
         eventApi.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new List<EventDto>()));
@@ -269,7 +269,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         var batch = new ImportBatchDto(
@@ -295,9 +295,9 @@ public class ImportsRenderTests
     [Test]
     public async Task Commit_FailedBatch_ShowsFailureReasonInsteadOfSuccessMessage()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventId = Guid.CreateVersion7();
         var eventApi = Substitute.For<IEventApi>();
@@ -358,7 +358,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         // Seed a committable batch (DryRunCompleted, no errors, no prior failure reason) so the
@@ -402,9 +402,9 @@ public class ImportsRenderTests
     [Test]
     public async Task RetryPreview_LoadsPreviewAndEnablesCommit_WithoutReupload()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventId = Guid.CreateVersion7();
         var eventApi = Substitute.For<IEventApi>();
@@ -471,7 +471,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         // Simulate a batch whose preview failed to load: _batch is set (as StartDryRunAsync
@@ -493,9 +493,9 @@ public class ImportsRenderTests
     [Test]
     public async Task RetryPreview_RefreshesBatch_DisablesCommitWhenServerNowReportsErrors()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventId = Guid.CreateVersion7();
         var eventApi = Substitute.For<IEventApi>();
@@ -567,7 +567,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         // Seed a stale, error-free, committable batch as if it were fetched before the retry.
@@ -606,9 +606,9 @@ public class ImportsRenderTests
     [Test]
     public async Task StartDryRun_FailedReupload_ClearsStaleBatchAndPreviewFromPriorSuccess()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventId = Guid.CreateVersion7();
         var eventApi = Substitute.For<IEventApi>();
@@ -651,7 +651,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         // Seed a fully-committable batch + preview, as if a prior file had already gone
@@ -718,9 +718,9 @@ public class ImportsRenderTests
     [Test]
     public async Task StartDryRun_InvalidInputs_PreservesExistingBatchAndPreview()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventId = Guid.CreateVersion7();
         var eventApi = Substitute.For<IEventApi>();
@@ -763,7 +763,7 @@ public class ImportsRenderTests
         ctx.Services.AddSingleton(importApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         // Seed a fully-committable batch + preview, as if a prior file had already gone
@@ -810,9 +810,9 @@ public class ImportsRenderTests
     [Test]
     public async Task Render_WithStaleEventIdQuery_ShowsNoticeAndInlineGuardNamesMissingInputs()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var eventApi = Substitute.For<IEventApi>();
         eventApi.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new List<EventDto>
@@ -834,7 +834,7 @@ public class ImportsRenderTests
         var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
         navigationManager.NavigateTo(navigationManager.GetUriWithQueryParameter("eventId", Guid.CreateVersion7().ToString()));
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-stale-event']").Count == 1, TimeSpan.FromSeconds(5));
 
         var eventIdTextField = typeof(Imports).GetField("_eventIdText", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -853,9 +853,9 @@ public class ImportsRenderTests
     [Test]
     public async Task Render_WithStaleEventIdQueryAndSingleEvent_RequiresExplicitSelection()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
         var onlyEventId = Guid.CreateVersion7();
         var eventApi = Substitute.For<IEventApi>();
@@ -870,7 +870,7 @@ public class ImportsRenderTests
         var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
         navigationManager.NavigateTo(navigationManager.GetUriWithQueryParameter("eventId", Guid.CreateVersion7().ToString()));
 
-        var cut = ctx.RenderComponent<Imports>();
+        var cut = ctx.Render<Imports>();
         cut.WaitForState(() => cut.FindAll("[data-test='import-file-field']").Count == 1, TimeSpan.FromSeconds(5));
 
         var eventIdTextField = typeof(Imports).GetField("_eventIdText", BindingFlags.Instance | BindingFlags.NonPublic);

@@ -5,6 +5,7 @@ using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
+using Hackmum.Bethuya.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -186,6 +187,7 @@ public sealed partial class EventLifecycleOrchestrator(
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
             alreadyQueued = !await AddOutboxIfMissingAsync(
                 CreateOutboxMessage(evt, artifact, actor, preview.PreviewToken),
+                evt.ArchivePublicationIdempotencyKey,
                 ct);
             if (alreadyQueued)
             {
@@ -196,9 +198,6 @@ public sealed partial class EventLifecycleOrchestrator(
             evt.ArchivePublicationStatus = EventArchivePublicationStatus.Pending;
             evt.ArchivePublicationRequestedBy = actor;
             evt.ArchivePublicationRequestedAt = occurredAt;
-            evt.ArchiveBranchName = null;
-            evt.ArchivePullRequestNumber = null;
-            evt.ArchivePullRequestUrl = null;
             evt.ArchivePublicationIdempotencyKey = idempotencyKey;
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
@@ -241,12 +240,6 @@ public sealed partial class EventLifecycleOrchestrator(
         ArgumentException.ThrowIfNullOrWhiteSpace(actor);
         var evt = await LoadEventAggregateAsync(eventId, ct);
         ValidateArchiveFolderPath(evt, folderPath);
-        if (evt.ArchiveFolderPath is not null
-            && !evt.ArchiveFolderPath.Equals(folderPath, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("This event already has an established archive path; archive folder moves are not supported.");
-        }
-
         await EnsureArchivePathAvailableAsync(evt, folderPath, ct);
         var entry = await gitHubEventRepository.GetArchiveEntryAsync(folderPath, ct)
             ?? throw new InvalidOperationException("No archive entry exists at the specified path.");
@@ -281,22 +274,41 @@ public sealed partial class EventLifecycleOrchestrator(
             throw new InvalidOperationException("This event has no archive pull request to refresh.");
         }
 
+        var folderPath = evt.ArchiveFolderPath;
+        var publicationKey = evt.ArchivePublicationIdempotencyKey;
+        var observedStatus = evt.ArchivePublicationStatus;
         var status = await gitHubEventRepository.GetPublicationStatusAsync(
             pullRequestNumber,
-            evt.ArchiveFolderPath,
+            folderPath,
             ct);
-        evt.ArchivePullRequestUrl = status.PullRequestUrl;
-        evt.ArchivePublicationStatus = status.IsMerged
+        if (observedStatus is EventArchivePublicationStatus.Pending or EventArchivePublicationStatus.Failed)
+        {
+            // This is the last known PR, not evidence that the newly queued projection was applied.
+            return status;
+        }
+
+        var publicationStatus = status.IsMerged
             ? EventArchivePublicationStatus.Published
             : status.IsClosed
                 ? EventArchivePublicationStatus.Closed
                 : EventArchivePublicationStatus.DraftPrPending;
-        if (status.IsMerged)
+        var updated = await dbContext.Events
+            .Where(current => current.Id == eventId
+                && current.ArchivePullRequestNumber == pullRequestNumber
+                && current.ArchivePublicationIdempotencyKey == publicationKey
+                && current.ArchivePublicationStatus == observedStatus
+                && current.ArchiveFolderPath == folderPath)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(current => current.ArchivePullRequestUrl, status.PullRequestUrl)
+                .SetProperty(current => current.ArchivePublicationStatus, publicationStatus)
+                .SetProperty(current => current.GitHubFolderUrl,
+                    current => status.IsMerged ? status.FolderUrl : current.GitHubFolderUrl), ct);
+        if (updated != 1)
         {
-            evt.GitHubFolderUrl = status.FolderUrl;
+            throw new InvalidOperationException("Archive publication changed while refreshing the previous PR. Refresh the current publication instead; no stale status was saved.");
         }
 
-        await dbContext.SaveChangesAsync(ct);
+        await dbContext.Entry(evt).ReloadAsync(ct);
         return status;
     }
 
@@ -460,53 +472,19 @@ public sealed partial class EventLifecycleOrchestrator(
             IdempotencyKey = CreateIdempotencyKey(Hackmum.Bethuya.Core.ValueObjects.EventId.From(evt.Id), artifact)
         };
 
-    private async Task<bool> AddOutboxIfMissingAsync(EventArchiveOutboxMessage outbox, CancellationToken ct)
+    private async Task<bool> AddOutboxIfMissingAsync(
+        EventArchiveOutboxMessage outbox,
+        string? currentPublicationKey,
+        CancellationToken ct)
     {
-        var existing = await dbContext.EventArchiveOutboxMessages.FirstOrDefaultAsync(message =>
+        var existing = await dbContext.EventArchiveOutboxMessages.AsNoTracking().FirstOrDefaultAsync(message =>
                 message.EventId == outbox.EventId
                 && message.Destination == outbox.Destination
                 && message.IdempotencyKey == outbox.IdempotencyKey,
             ct);
         if (existing is not null)
         {
-            if (existing.ProcessedAt is not null && existing.LastError is not null)
-            {
-                existing.Title = outbox.Title;
-                existing.ConfirmedBy = outbox.ConfirmedBy;
-                existing.ConfirmedPreviewToken = outbox.ConfirmedPreviewToken;
-                existing.ProcessedAt = null;
-                existing.AttemptCount = 0;
-                existing.AvailableAt = DateTimeOffset.UtcNow;
-                existing.LockedUntil = null;
-                existing.ClaimToken = string.Empty;
-                existing.LastError = null;
-                await dbContext.SaveChangesAsync(ct);
-                return true;
-            }
-
-            if (string.IsNullOrEmpty(existing.ConfirmedBy))
-            {
-                existing.ConfirmedBy = outbox.ConfirmedBy;
-                existing.Title = outbox.Title;
-                existing.ConfirmedPreviewToken = outbox.ConfirmedPreviewToken;
-                existing.ProcessedAt = null;
-                existing.AttemptCount = 0;
-                existing.AvailableAt = DateTimeOffset.UtcNow;
-                existing.LockedUntil = null;
-                existing.ClaimToken = string.Empty;
-                existing.LastError = null;
-                await dbContext.SaveChangesAsync(ct);
-                return true;
-            }
-
-            if (existing.ProcessedAt is null
-                && !string.Equals(existing.ConfirmedPreviewToken, outbox.ConfirmedPreviewToken, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    "An older archive confirmation is still queued or processing. Wait for it to finish, then re-preview and confirm again.");
-            }
-
-            return false;
+            return await HandleExistingOutboxAsync(existing, outbox, currentPublicationKey, ct);
         }
 
         const string savepointName = "OutboxInsert";
@@ -530,8 +508,61 @@ public sealed partial class EventLifecycleOrchestrator(
             }
 
             dbContext.Entry(outbox).State = EntityState.Detached;
+            var winner = await dbContext.EventArchiveOutboxMessages.AsNoTracking().FirstOrDefaultAsync(message =>
+                message.EventId == outbox.EventId
+                && message.Destination == outbox.Destination
+                && message.IdempotencyKey == outbox.IdempotencyKey, ct)
+                ?? throw new InvalidOperationException("Archive confirmation conflicted without a matching outbox request. Re-preview and confirm again.", exception);
+            return await HandleExistingOutboxAsync(winner, outbox, currentPublicationKey, ct);
+        }
+    }
+
+    private async Task<bool> HandleExistingOutboxAsync(
+        EventArchiveOutboxMessage existing,
+        EventArchiveOutboxMessage outbox,
+        string? currentPublicationKey,
+        CancellationToken ct)
+    {
+        var sameSnapshot = string.Equals(existing.ConfirmedPreviewToken, outbox.ConfirmedPreviewToken, StringComparison.Ordinal);
+        var reactivate = string.IsNullOrEmpty(existing.ConfirmedBy)
+            || existing.ProcessedAt is not null
+                && (existing.LastError is not null || !sameSnapshot
+                    || !string.Equals(currentPublicationKey, outbox.IdempotencyKey, StringComparison.Ordinal));
+        if (!reactivate)
+        {
+            if (existing.ProcessedAt is null && !sameSnapshot)
+            {
+                throw new InvalidOperationException(
+                    "An older archive confirmation is still queued or processing. Wait for it to finish, then re-preview and confirm again.");
+            }
+
             return false;
         }
+
+        var now = DateTimeOffset.UtcNow;
+        var updated = await dbContext.EventArchiveOutboxMessages
+            .Where(message => message.Id == existing.Id
+                && message.ProcessedAt == existing.ProcessedAt
+                && message.ConfirmedPreviewToken == existing.ConfirmedPreviewToken
+                && message.ConfirmedBy == existing.ConfirmedBy
+                && message.ClaimToken == existing.ClaimToken)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(message => message.Title, outbox.Title)
+                .SetProperty(message => message.ConfirmedBy, outbox.ConfirmedBy)
+                .SetProperty(message => message.ConfirmedPreviewToken, outbox.ConfirmedPreviewToken)
+                .SetProperty(message => message.ProcessedAt, (DateTimeOffset?)null)
+                .SetProperty(message => message.AttemptCount, 0)
+                .SetProperty(message => message.CreatedAt, now)
+                .SetProperty(message => message.AvailableAt, now)
+                .SetProperty(message => message.LockedUntil, (DateTimeOffset?)null)
+                .SetProperty(message => message.ClaimToken, string.Empty)
+                .SetProperty(message => message.LastError, (string?)null), ct);
+        if (updated != 1)
+        {
+            throw new InvalidOperationException("Another request reactivated or claimed this archive confirmation. No snapshot was replaced; re-preview and confirm again.");
+        }
+
+        return true;
     }
 
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)
@@ -563,6 +594,11 @@ public sealed partial class EventLifecycleOrchestrator(
     private static void ValidateArchiveFolderPath(Event evt, string folderPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+        if (evt.ArchiveFolderPath is not null && !evt.ArchiveFolderPath.Equals(folderPath, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("This event already has an established archive path; archive folder moves are not supported.");
+        }
+
         var match = ArchiveFolderPattern().Match(folderPath);
         if (!match.Success)
         {
@@ -596,10 +632,9 @@ public sealed partial class EventLifecycleOrchestrator(
             throw new InvalidOperationException("The archive entry title or date does not exactly match this event; adoption was refused for human resolution.");
         }
 
-        var identities = ReadYamlScalars(entry.MetadataYaml, "eventId", 2);
-        if (identities.Length > 1
-            || identities.Length == 1
-                && (!Guid.TryParse(identities[0], out var existingEventId) || existingEventId != evt.Id))
+        var identity = EventArchiveContentMerger.ReadBethuyaEventId(entry.MetadataYaml);
+        if (identity is not null
+            && (!Guid.TryParse(identity, out var existingEventId) || existingEventId != evt.Id))
         {
             throw new InvalidOperationException("The archive entry identifies a different or ambiguous Bethuya event; adoption was refused.");
         }
@@ -643,7 +678,7 @@ public sealed partial class EventLifecycleOrchestrator(
     [GeneratedRegex("[^a-z0-9-]+")]
     private static partial Regex SlugUnsafeCharacters();
 
-    [GeneratedRegex("^events/(?<year>\\d{4})/(?<date>\\d{4}-\\d{2}-\\d{2})-[a-zA-Z0-9][a-zA-Z0-9-]*$")]
+    [GeneratedRegex("^events/(?<year>\\d{4})/(?<date>\\d{4}-\\d{2}-\\d{2})-[a-zA-Z0-9][a-zA-Z0-9-]*\\z")]
     private static partial Regex ArchiveFolderPattern();
 
     [GeneratedRegex(@"^(?<indent> *)(?<key>[A-Za-z0-9_-]+)\s*:\s*(?<value>.*)$")]

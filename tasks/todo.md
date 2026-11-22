@@ -2,6 +2,11 @@
 
 All work items must be added here **before** writing code (plan-first protocol).
 
+## [2026-11-22] Resolve archive preservation and state review defects
+- [x] Refuse unsupported YAML mappings/keys and preserve community multiline values; validate adoption identities within the actual provenance mapping.
+- [x] Prevent retries from recreating closed proposals, refuse retained merged branches, and atomically reject stale publication-status refreshes.
+- [x] Add fake-GitHub and SQLite regressions for replay, claims, stale refresh/completion/failure, adoption and branch decisions; the full Release TUnit suite passes 605/605. Broad contract migrations remain excluded; the separately approved dependency remediation is tracked below.
+
 ## Format
 
 ```
@@ -17,10 +22,11 @@ All work items must be added here **before** writing code (plan-first protocol).
 ## Active Tasks
 
 ## [2026-11-22] Protect event mutation endpoints
-- **Status:** in-progress
+- **Status:** done
 - **Agent/Owner:** Tank
 - **Description:** Apply the existing organizer policy to the five specified event mutations and derive creation attribution from the authenticated stable subject, preserving authorized PUT behavior and public reads.
 - **Acceptance:** Endpoint tests demonstrate unauthorized requests have no side effects, organizer/admin success, stable-subject handling, and public GET compatibility; run the bounded TUnit suite and stage the task files for independent review.
+- **Completion Evidence:** Tank implemented commit `39cb6cb`; Morpheus independently verified organizer policy/claims attribution, the backend build and 569/569 tests. Later archive/dependency changes preserve the matrix in the full 605/605 Release run.
 
 ## [2026-11-22] Preserve archive Draft PR branch edits
 - **Status:** done
@@ -1181,9 +1187,16 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [x] Add focused regression tests for literal/folded block headers and related multiline forms; full TUnit project passed 551/551.
 
 ## [2026-11-20] Republish changed archive projections
-- [ ] Compare existing publication branch file contents directly with the current candidate so stale projections trigger an update.
-- [ ] Add fake GitHub regression coverage for a changed projection with an unchanged target and verify existing retry behavior.
+- [x] Compare existing publication branch file contents directly with the current candidate so stale projections trigger an update.
+- [x] Add fake GitHub regression coverage for a changed projection with an unchanged target and verify existing retry behavior.
 
 ## [2026-11-20] Bind archive publication to confirmed content
-- [ ] Preserve the confirmed target snapshot with the durable publication request and reject changed targets before GitHub writes.
-- [ ] Read preview files from one branch-ref snapshot; test changed-target refusal and retry behavior after partial publication.
+- [x] Preserve the confirmed target snapshot with the durable publication request and reject changed targets before GitHub writes.
+- [x] Read preview files from one branch-ref snapshot; test changed-target refusal and retry behavior after partial publication.
+
+## [2026-11-22] Explicitly authorized package security upgrades
+- [x] Upgrade HtmlSanitizer to 11.0.26 and Aspire to 17.0.0, with required transitive minimum alignment. Preview-only Foundry/Keycloak packages remain unchanged.
+- [x] Include the explicitly approved bUnit 2.15.2 compatibility migration required by HtmlSanitizer 11, preserving all existing test assertions and TUnit. Remove the obsolete NU1608 suppression.
+- [x] Include the explicitly approved Aspire 17 AppHost SDK/API migration, preserving resource names, paths, launch-profile choices and existing configuration.
+- [x] Use latest stable .NET 10 WebAssembly servicing packages, 10.0.15; .NET 11 packages require an excluded target-framework migration.
+- [x] Normal solution restore and full Release build pass with zero warnings/errors. Release TUnit passes 605/605, zero skipped. All 17 solution projects report no vulnerable packages; no live archive writes, AppHost startup or deployment.

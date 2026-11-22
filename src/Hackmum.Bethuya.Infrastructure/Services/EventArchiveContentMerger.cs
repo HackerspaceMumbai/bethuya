@@ -2,13 +2,15 @@ using System.Text.RegularExpressions;
 
 namespace Hackmum.Bethuya.Infrastructure.Services;
 
-internal static partial class EventArchiveContentMerger
+/// <summary>Conservatively reads and merges Bethuya-owned archive content.</summary>
+public static partial class EventArchiveContentMerger
 {
     private const string ReadmeStart = "<!-- bethuya:managed:start -->";
     private const string ReadmeEnd = "<!-- bethuya:managed:end -->";
     private static readonly string[] ManagedMetadataKeys = ["title", "date", "status", "description"];
     private static readonly string[] ManagedBethuyaKeys = ["eventId", "projectionVersion"];
 
+    /// <summary>Replaces only the marked README section, preserving community content.</summary>
     public static string MergeReadme(string? existing, string managedContent)
     {
         var managed = $"{ReadmeStart}\n{managedContent.TrimEnd()}\n{ReadmeEnd}";
@@ -33,11 +35,52 @@ internal static partial class EventArchiveContentMerger
             throw new InvalidOperationException("The existing README has ambiguous Bethuya-managed section markers; publication was refused.");
         }
 
+        ValidateReadmeMarkers(existing);
         var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         managed = managed.Replace("\n", newline, StringComparison.Ordinal);
         return $"{existing[..startIndex]}{managed}{existing[(endIndex + ReadmeEnd.Length)..]}";
     }
 
+    private static void ValidateReadmeMarkers(string existing)
+    {
+        var fenceCharacter = '\0';
+        var fenceLength = 0;
+        foreach (var rawLine in existing.Split('\n'))
+        {
+            var line = rawLine.TrimEnd('\r');
+            if (line.Contains(ReadmeStart, StringComparison.Ordinal) || line.Contains(ReadmeEnd, StringComparison.Ordinal))
+            {
+                if (fenceCharacter != '\0' || line != ReadmeStart && line != ReadmeEnd)
+                {
+                    throw new InvalidOperationException("README markers must be standalone comments outside literal Markdown blocks; resolve ambiguous ownership before preview.");
+                }
+            }
+
+            var trimmed = line.TrimStart(' ');
+            if (line.Length - trimmed.Length > 3 || trimmed.Length < 3 || trimmed[0] is not ('`' or '~'))
+            {
+                continue;
+            }
+
+            var length = trimmed.TakeWhile(character => character == trimmed[0]).Count();
+            if (length < 3)
+            {
+                continue;
+            }
+
+            if (fenceCharacter == '\0')
+            {
+                fenceCharacter = trimmed[0];
+                fenceLength = length;
+            }
+            else if (trimmed[0] == fenceCharacter && length >= fenceLength && string.IsNullOrWhiteSpace(trimmed[length..]))
+            {
+                fenceCharacter = '\0';
+            }
+        }
+    }
+
+    /// <summary>Merges owned scalars and refuses unsupported mapping structures.</summary>
     public static string MergeMetadata(string? existing, string proposed)
     {
         if (string.IsNullOrEmpty(existing))
@@ -56,13 +99,8 @@ internal static partial class EventArchiveContentMerger
             SetScalar(lines, key, 0, candidate);
         }
 
-        var bethuyaSections = FindKeyLines(lines, "bethuya", 0);
-        if (bethuyaSections.Count > 1)
-        {
-            throw new InvalidOperationException("The existing event.yml has multiple bethuya sections; publication was refused.");
-        }
-
-        if (bethuyaSections.Count == 0)
+        var mapping = FindBethuyaMapping(lines);
+        if (mapping is null)
         {
             var bethuyaStart = proposedLines.ToList().FindIndex(line => IsScalarLine(line, "bethuya", 0));
             if (bethuyaStart < 0)
@@ -71,39 +109,105 @@ internal static partial class EventArchiveContentMerger
             }
 
             var append = proposedLines.Skip(bethuyaStart).Select(line => line.Replace("\n", string.Empty, StringComparison.Ordinal));
-            lines.RemoveAll(string.IsNullOrEmpty);
             lines.AddRange(append);
         }
         else
         {
-            var sectionIndex = bethuyaSections[0];
-            var sectionEnd = lines.FindIndex(sectionIndex + 1, line =>
-                !string.IsNullOrWhiteSpace(line)
-                && !line.StartsWith(' ')
-                && !line.StartsWith('#'));
-            if (sectionEnd < 0)
-            {
-                sectionEnd = lines.Count;
-            }
-
+            var section = mapping.Value;
             foreach (var key in ManagedBethuyaKeys)
             {
                 var candidate = FindScalar(proposedLines, key, 2)
                     ?? throw new InvalidOperationException($"Bethuya projection is missing provenance key '{key}'.");
-                SetScalar(lines, key, 2, candidate, sectionIndex + 1, sectionEnd);
-                sectionEnd = lines.FindIndex(sectionIndex + 1, line =>
-                    !string.IsNullOrWhiteSpace(line)
-                    && !line.StartsWith(' ')
-                    && !line.StartsWith('#'));
-                if (sectionEnd < 0)
-                {
-                    sectionEnd = lines.Count;
-                }
+                SetScalar(lines, key, section.Indentation,
+                    new string(' ', section.Indentation) + candidate.TrimStart(),
+                    section.Start, section.End);
+                section = FindBethuyaMapping(lines)
+                    ?? throw new InvalidOperationException("The Bethuya provenance mapping could not be retained.");
             }
         }
 
         return string.Join(newline, lines);
     }
+
+    /// <summary>Reads the direct provenance identity, refusing ambiguous or unsupported YAML.</summary>
+    public static string? ReadBethuyaEventId(string metadata)
+    {
+        var lines = metadata.Split('\n').Select(line => line.TrimEnd('\r')).ToList();
+        var mapping = FindBethuyaMapping(lines);
+        if (mapping is null)
+        {
+            return null;
+        }
+
+        var section = mapping.Value;
+        var matches = FindKeyLines(lines, "eventId", section.Indentation, section.Start, section.End);
+        if (matches.Count > 1)
+        {
+            throw new InvalidOperationException("The archive has duplicate Bethuya identities; adoption was refused.");
+        }
+
+        return matches.Count == 0
+            ? null
+            : ReadSimpleScalar(lines, matches[0], "eventId", section.Indentation, section.End)
+                .Trim().Trim('"', '\'');
+    }
+
+    private static (int Start, int End, int Indentation)? FindBethuyaMapping(List<string> lines)
+    {
+        ValidateMappingKeys(lines, 0, lines.Count, 0);
+        var sections = FindKeyLines(lines, "bethuya", 0);
+        if (sections.Count > 1)
+        {
+            throw new InvalidOperationException("The existing event.yml has multiple bethuya sections; publication was refused.");
+        }
+
+        if (sections.Count == 0)
+        {
+            return null;
+        }
+
+        var index = sections[0];
+        var value = ScalarValueRegex().Match(lines[index]).Groups["value"].Value.TrimStart();
+        if (value.Length != 0 && !value.StartsWith('#'))
+        {
+            throw new InvalidOperationException("The bethuya section must be a plain-key block mapping; resolve its structure before preview or adoption.");
+        }
+
+        var end = index + 1;
+        while (end < lines.Count && (IsIgnorableLine(lines[end]) || Indentation(lines[end]) > 0))
+        {
+            end++;
+        }
+
+        var firstChild = Enumerable.Range(index + 1, end - index - 1)
+            .FirstOrDefault(child => !IsIgnorableLine(lines[child]), -1);
+        var indentation = firstChild < 0 ? 2 : Indentation(lines[firstChild]);
+        ValidateMappingKeys(lines, index + 1, end, indentation);
+        return (index + 1, end, indentation);
+    }
+
+    private static void ValidateMappingKeys(List<string> lines, int start, int end, int indentation)
+    {
+        for (var index = start; index < end; index++)
+        {
+            if (IsIgnorableLine(lines[index]))
+            {
+                continue;
+            }
+
+            var actualIndentation = Indentation(lines[index]);
+            if (actualIndentation < indentation
+                || actualIndentation == indentation && !ScalarValueRegex().IsMatch(lines[index]))
+            {
+                throw new InvalidOperationException("The event.yml uses unsupported mapping keys or indentation; resolve it to a plain-key block mapping before preview or adoption.");
+            }
+        }
+    }
+
+    private static int Indentation(string line) => line.Length - line.TrimStart(' ').Length;
+
+    private static bool IsIgnorableLine(string line)
+        => string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#');
 
     private static void SetScalar(List<string> lines, string key, int indentation, string candidate, int start = 0, int end = -1)
     {
@@ -117,18 +221,7 @@ internal static partial class EventArchiveContentMerger
         if (matches.Count == 1)
         {
             var lineIndex = matches[0];
-            var existingValue = ScalarValueRegex().Match(lines[lineIndex]);
-            var value = existingValue.Groups["value"].Value;
-            if (!existingValue.Success
-                || value.Trim() is "[]" or "{}"
-                || IsBlockScalarValue(value)
-                || HasUnterminatedQuotedScalar(value)
-                || HasUnclosedFlowCollection(value)
-                || HasIndentedContinuation(lines, lineIndex, indentation, end))
-            {
-                throw new InvalidOperationException($"The existing event.yml uses an ambiguous value for managed key '{key}'; publication was refused.");
-            }
-
+            _ = ReadSimpleScalar(lines, lineIndex, key, indentation, end);
             lines[matches[0]] = candidate;
             return;
         }
@@ -147,6 +240,27 @@ internal static partial class EventArchiveContentMerger
         {
             lines.Insert(end, candidate);
         }
+    }
+
+    private static string ReadSimpleScalar(List<string> lines, int lineIndex, string key, int indentation, int end)
+    {
+        var existingValue = ScalarValueRegex().Match(lines[lineIndex]);
+        var value = existingValue.Groups["value"].Value;
+        if (!existingValue.Success
+            || value.TrimStart().StartsWith('&')
+            || value.TrimStart().StartsWith('*')
+            || value.TrimStart().StartsWith('!')
+            || value.TrimStart().StartsWith('[')
+            || value.TrimStart().StartsWith('{')
+            || IsBlockScalarValue(value)
+            || HasUnterminatedQuotedScalar(value)
+            || HasUnclosedFlowCollection(value)
+            || HasIndentedContinuation(lines, lineIndex, indentation, end))
+        {
+            throw new InvalidOperationException($"The existing event.yml uses an ambiguous value for managed key '{key}'; publication was refused.");
+        }
+
+        return value;
     }
 
     private static bool IsBlockScalarValue(string value)

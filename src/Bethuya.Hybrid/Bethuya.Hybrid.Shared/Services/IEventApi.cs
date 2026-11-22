@@ -49,27 +49,32 @@ public interface IEventApi
     [Post("/api/events/{id}/archive")]
     Task<EventLifecycleOperationDto> ArchiveAsync(Guid id, [Body] ArchiveEventDto request, CancellationToken ct = default);
 
+    /// <summary>Reads the archive and previews candidate changes without queuing or writing publication.</summary>
     [Get("/api/events/{id}/archive/preview")]
     Task<EventArchivePublicationPreviewDto> PreviewArchivePublicationAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>Confirms a current preview and durably queues its organizer-approved projection.</summary>
     [Post("/api/events/{id}/archive/confirm")]
     Task<EventLifecycleOperationDto> ConfirmArchivePublicationAsync(
         Guid id,
         [Body] ConfirmArchivePublicationDto request,
         CancellationToken ct = default);
 
+    /// <summary>Validates and previews an exact archive path without adopting or publishing it.</summary>
     [Post("/api/events/{id}/archive/adoption/preview")]
     Task<EventArchivePublicationPreviewDto> PreviewArchiveAdoptionAsync(
         Guid id,
         [Body] PreviewArchiveAdoptionDto request,
         CancellationToken ct = default);
 
+    /// <summary>Confirms adoption and records the authenticated actor and source provenance without publication.</summary>
     [Post("/api/events/{id}/archive/adoption/confirm")]
     Task<EventArchiveAdoptionResultDto> ConfirmArchiveAdoptionAsync(
         Guid id,
         [Body] ConfirmArchiveAdoptionDto request,
         CancellationToken ct = default);
 
+    /// <summary>Reads GitHub PR status on demand and saves it only for the still-current publication.</summary>
     [Post("/api/events/{id}/archive/status/refresh")]
     Task<EventArchivePullRequestStatusDto> RefreshArchivePublicationStatusAsync(
         Guid id,

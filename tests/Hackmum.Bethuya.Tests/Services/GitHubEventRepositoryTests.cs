@@ -171,6 +171,75 @@ public sealed class GitHubEventRepositoryTests
     }
 
     [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task PublishEventAsync_ClosedUnmergedProposal_RefusesRetryWithoutWrites(bool removeBranch)
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        handler.ClosePullRequest(removeBranch);
+        var requestCount = handler.Requests.Count;
+
+        await Assert.That(async () => await repository.PublishEventAsync(request))
+            .Throws<ArchivePreviewMismatchException>();
+        await Assert.That(handler.Requests.Skip(requestCount).All(request => request.Method == HttpMethod.Get))
+            .IsTrue();
+        await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+        await Assert.That(handler.CreatedTreeCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task PublishEventAsync_MergedProposalWithRetiredBranch_StartsFromTargetSnapshot()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        handler.SetBaseArchive(handler.BranchReadme!, handler.LastTreeMetadata!);
+        handler.ClosePullRequest(true, merged: true);
+        var next = await ConfirmPreviewAsync(repository, request with
+        {
+            ReadmeMarkdown = "# Updated schedule\n",
+            IdempotencyKey = "next-projection"
+        });
+
+        await repository.PublishEventAsync(next);
+
+        await Assert.That(handler.CreatedPullRequests).IsEqualTo(2);
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(0);
+        await Assert.That(handler.LastCommitParent).IsEqualTo("base-commit");
+        await Assert.That(handler.BranchReadme).Contains("Updated schedule");
+    }
+
+    [Test]
+    public async Task PublishEventAsync_RetainedMergedBranch_RefusesReuseWithoutWrites()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await repository.PublishEventAsync(request);
+        handler.SetBaseArchive(handler.BranchReadme!, handler.LastTreeMetadata!);
+        handler.ClosePullRequest(false, merged: true);
+        var next = await ConfirmPreviewAsync(repository, request with
+        {
+            ReadmeMarkdown = "# Updated schedule\n",
+            IdempotencyKey = "next-projection"
+        });
+        var count = handler.Requests.Count;
+
+        await Assert.That(async () => await repository.PublishEventAsync(next))
+            .Throws<ArchivePreviewMismatchException>();
+        await Assert.That(handler.Requests.Skip(count).All(request => request.Method == HttpMethod.Get)).IsTrue();
+        await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+        await Assert.That(handler.UpdatedBranchCount).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task PublishEventAsync_RetryWithUnchangedTarget_DoesNotCreateDuplicateCommitOrPullRequest()
     {
         var handler = new FakeGitHubHandler(null, null);
@@ -467,6 +536,25 @@ public sealed class GitHubEventRepositoryTests
     private static HttpClient CreateHttpClient(FakeGitHubHandler handler)
         => new(handler) { BaseAddress = new Uri("https://api.github.com") };
 
+    [Test]
+    public async Task PublishEventAsync_RetargetedPr_RefusesBeforeAnyWrite()
+    {
+        using var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = CreateRequest();
+        request = request with { ConfirmedPreviewToken = (await repository.PreviewEventAsync(request)).PreviewToken };
+        await repository.PublishEventAsync(request);
+        handler.PullRequestBase = "community-review";
+        handler.PullRequestIsDraft = false;
+        var writes = handler.Requests.Count(item => item.Method != HttpMethod.Get);
+
+        await Assert.That(async () => await repository.PublishEventAsync(request))
+            .Throws<ArchivePreviewMismatchException>();
+        await Assert.That(handler.Requests.Count(item => item.Method != HttpMethod.Get)).IsEqualTo(writes);
+        await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+    }
+
     private sealed class FakeGitHubHandler(string? baseReadme, string? baseMetadata) : HttpMessageHandler
     {
         private string? _baseReadme = baseReadme;
@@ -487,9 +575,12 @@ public sealed class GitHubEventRepositoryTests
         public string? LastTreeMetadata { get; private set; }
         public bool FailNextPullRequestCreation { get; set; }
         public bool PullRequestIsDraft { get; set; } = true;
+        public string PullRequestBase { get; set; } = "main";
         public bool AdvanceBranchBeforeNextPatch { get; set; }
         public bool FailAfterNextBranchUpdate { get; set; }
         public bool MarkReadyBeforeNextRefUpdate { get; set; }
+        private bool _pullRequestClosed;
+        private bool _pullRequestMerged;
         public string? LastCommitParent { get; private set; }
         public bool LastUpdateForced { get; private set; }
         public string BranchHead => _branchHead;
@@ -515,6 +606,16 @@ public sealed class GitHubEventRepositoryTests
                 Message = "Prepare Bethuya event archive (legacy-projection)"
             };
             _branchHead = "legacy-commit";
+        }
+
+        public void ClosePullRequest(bool removeBranch, bool merged = false)
+        {
+            _pullRequestClosed = true;
+            _pullRequestMerged = merged;
+            if (removeBranch)
+            {
+                _branchExists = false;
+            }
         }
 
         public void SetBaseArchive(string readme, string metadata)
@@ -613,6 +714,9 @@ public sealed class GitHubEventRepositoryTests
             if (request.Method == HttpMethod.Get && pathAndQuery.Contains("/pulls?", StringComparison.Ordinal))
             {
                 return Task.FromResult(JsonResponse(_pullRequestExists
+                    && !(pathAndQuery.Contains("state=open", StringComparison.Ordinal) && _pullRequestClosed)
+                    && (!pathAndQuery.Contains("&base=", StringComparison.Ordinal)
+                        || pathAndQuery.Contains($"&base={PullRequestBase}", StringComparison.Ordinal))
                     ? new[] { PullRequest() }
                     : []));
             }
@@ -669,6 +773,8 @@ public sealed class GitHubEventRepositoryTests
                 using var document = JsonDocument.Parse(body);
                 CreatedPullRequestDraft = document.RootElement.GetProperty("draft").GetBoolean();
                 _pullRequestExists = true;
+                _pullRequestClosed = false;
+                _pullRequestMerged = false;
                 return Task.FromResult(JsonResponse(PullRequest()));
             }
 
@@ -687,9 +793,10 @@ public sealed class GitHubEventRepositoryTests
             {
                 number = 42,
                 html_url = "https://github.com/HackerspaceMumbai/events/pull/42",
-                state = "open",
+                state = _pullRequestClosed ? "closed" : "open",
                 draft = PullRequestIsDraft,
-                merged_at = (DateTimeOffset?)null
+                @base = new { @ref = PullRequestBase },
+                merged_at = _pullRequestMerged ? DateTimeOffset.UtcNow : (DateTimeOffset?)null
             };
 
         private sealed record FakeTree(string? Readme, string? Metadata, string? UnrelatedFile);

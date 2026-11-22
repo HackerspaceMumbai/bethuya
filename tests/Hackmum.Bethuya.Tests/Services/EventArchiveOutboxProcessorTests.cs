@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Reflection;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
@@ -87,7 +88,7 @@ public sealed class EventArchiveOutboxProcessorTests
 
         // Clear EF cache to force fresh load from database
         db.ChangeTracker.Clear();
-        
+
         // Reload message from database to check updates (ExecuteUpdateAsync bypasses EF tracking)
         var olderReloaded = await db.EventArchiveOutboxMessages.FirstAsync(m => m.Id == older.Id);
 
@@ -156,7 +157,7 @@ public sealed class EventArchiveOutboxProcessorTests
 
         // Clear EF cache to force fresh load from database
         db.ChangeTracker.Clear();
-        
+
         // Reload message from database to check updates (ExecuteUpdateAsync bypasses EF tracking)
         var messageReloaded = await db.EventArchiveOutboxMessages.FirstAsync(m => m.Id == message.Id);
 
@@ -339,7 +340,7 @@ public sealed class EventArchiveOutboxProcessorTests
 
         // Verify the message was published and persisted.
         await Assert.That(mockRepository.PublishedRequests.Count).IsGreaterThanOrEqualTo(1);
-        
+
         var publishedRequest = mockRepository.PublishedRequests[0];
         var publishedEventIdGuid = publishedRequest.EventId.Value;
         System.Console.WriteLine($"Published EventId from mock: {publishedEventIdGuid}, Expected: {eventId.Value}, Match: {publishedEventIdGuid == eventId.Value}");
@@ -349,13 +350,13 @@ public sealed class EventArchiveOutboxProcessorTests
         // Reload the message using a fresh DbContext to verify ProcessedAt was set.
         await using var verifyDb = CreateSqliteQueryDbContext(connectionString);
         var completedMessage = await verifyDb.EventArchiveOutboxMessages.FirstAsync(m => m.Id == message.Id);
-        
+
         // Debug: log the state of the reloaded message
         var diagnosticInfo = $"Message after processor: Id={completedMessage.Id}, ProcessedAt={completedMessage.ProcessedAt}, " +
             $"ClaimToken={completedMessage.ClaimToken}, AttemptCount={completedMessage.AttemptCount}, " +
             $"LockedUntil={completedMessage.LockedUntil}, LastError={completedMessage.LastError}";
         System.Console.WriteLine(diagnosticInfo);
-        
+
         await Assert.That(completedMessage.ProcessedAt).IsNotNull();
 
         var completedEvent = await verifyDb.Events.FirstAsync(e => e.Id == eventId.Value);
@@ -517,6 +518,98 @@ public sealed class EventArchiveOutboxProcessorTests
         }
     }
 
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ProcessOneAsync_ConcurrentConfirmation_PreservesNewerEventState(bool terminalFailure)
+    {
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
+        var message = new EventArchiveOutboxMessage
+        {
+            EventId = EventId.From(Guid.NewGuid()),
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-07-01-event",
+            ReadmeMarkdown = "# Event",
+            MetadataJson = "title: Event",
+            ConfirmedBy = "organizer",
+            ConfirmedPreviewToken = "confirmed",
+            IdempotencyKey = "old-confirmation",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-1)
+        };
+        db.EventArchiveOutboxMessages.Add(message);
+        db.Events.Add(new Event
+        {
+            Id = message.EventId.Value,
+            Title = "Event",
+            CreatedBy = "organizer",
+            ArchivePublicationIdempotencyKey = message.IdempotencyKey,
+            ArchivePublicationStatus = EventArchivePublicationStatus.Pending
+        });
+        await db.SaveChangesAsync();
+        var repository = new MockGitHubEventRepository(new(
+            "https://github.com/org/repo/tree/main/events/2026/2026-07-01-event",
+            "https://github.com/org/repo/blob/main/events/2026/2026-07-01-event/event.yml",
+            "bethuya/event-archive-test", 42, "https://github.com/org/repo/pull/42"))
+        {
+            PublishException = terminalFailure ? new ArchivePreviewMismatchException("changed snapshot") : null
+        };
+        var interceptor = new ConfirmBeforeEventUpdateInterceptor();
+        using var processor = new EventArchiveOutboxProcessor(
+            new TestScopeFactory(connection, repository, interceptor),
+            NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var processOne = typeof(EventArchiveOutboxProcessor)
+            .GetMethod("ProcessOneAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        await (Task)processOne.Invoke(processor, [CancellationToken.None])!;
+
+        db.ChangeTracker.Clear();
+        var saved = await db.Events.SingleAsync();
+        await Assert.That(interceptor.Triggered).IsTrue();
+        await Assert.That(saved.ArchivePublicationIdempotencyKey).IsEqualTo("new-confirmation");
+        await Assert.That(saved.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.Pending);
+        await Assert.That(saved.ArchivePullRequestNumber).IsNull();
+        await Assert.That((await db.EventArchiveOutboxMessages.SingleAsync()).ProcessedAt).IsNotNull();
+    }
+
+    private sealed class ConfirmBeforeEventUpdateInterceptor : DbCommandInterceptor
+    {
+        public bool Triggered { get; private set; }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            await ConfirmAsync(command, cancellationToken);
+            return result;
+        }
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            await ConfirmAsync(command, cancellationToken);
+            return result;
+        }
+
+        private async Task ConfirmAsync(DbCommand command, CancellationToken ct)
+        {
+            if (Triggered || !command.CommandText.StartsWith("UPDATE \"Events\"", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            Triggered = true;
+            await using var confirmation = command.Connection!.CreateCommand();
+            confirmation.Transaction = command.Transaction;
+            confirmation.CommandText = """
+                            UPDATE "Events" SET "ArchivePublicationIdempotencyKey" = 'new-confirmation',
+                                "ArchivePublicationStatus" = 'Pending', "ArchivePullRequestNumber" = NULL,
+                                "ArchivePullRequestUrl" = NULL
+                            """;
+            await confirmation.ExecuteNonQueryAsync(ct);
+        }
+    }
     private static object CreateWorkItem(EventArchiveOutboxMessage message)
     {
         var workItemType = typeof(EventArchiveOutboxProcessor).GetNestedType("EventArchiveOutboxWorkItem", BindingFlags.NonPublic)!;
@@ -580,20 +673,20 @@ public sealed class EventArchiveOutboxProcessorTests
         return new BethuyaDbContext(options);
     }
 
-    private sealed class FailEventSaveChangesInterceptor : SaveChangesInterceptor
+    private sealed class FailEventSaveChangesInterceptor : DbCommandInterceptor
     {
-        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
-            DbContextEventData eventData,
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
         {
-            if (eventData.Context?.ChangeTracker.Entries<Event>()
-                .Any(entry => entry.State == EntityState.Modified) == true)
+            if (command.CommandText.StartsWith("UPDATE \"Events\"", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Simulated event persistence failure.");
             }
 
-            return base.SavingChangesAsync(eventData, result, cancellationToken);
+            return ValueTask.FromResult(result);
         }
     }
 
@@ -602,12 +695,12 @@ public sealed class EventArchiveOutboxProcessorTests
         private readonly SqliteConnection? _connection;
         private readonly string? _connectionString;
         private readonly IGitHubEventRepository? _repository;
-        private readonly SaveChangesInterceptor? _saveChangesInterceptor;
+        private readonly IInterceptor? _saveChangesInterceptor;
 
         public TestScopeFactory(
             SqliteConnection connection,
             IGitHubEventRepository? repository = null,
-            SaveChangesInterceptor? saveChangesInterceptor = null)
+            IInterceptor? saveChangesInterceptor = null)
         {
             _connection = connection;
             _repository = repository;
@@ -617,7 +710,7 @@ public sealed class EventArchiveOutboxProcessorTests
         public TestScopeFactory(
             string connectionString,
             IGitHubEventRepository? repository = null,
-            SaveChangesInterceptor? saveChangesInterceptor = null)
+            IInterceptor? saveChangesInterceptor = null)
         {
             _connectionString = connectionString;
             _repository = repository;

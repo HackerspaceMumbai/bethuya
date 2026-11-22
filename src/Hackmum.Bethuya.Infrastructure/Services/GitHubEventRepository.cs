@@ -103,9 +103,9 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
         }
 
         var branchName = $"bethuya/event-archive-{request.EventId.Value:N}";
-        var pullRequest = await FindOpenPullRequestAsync(settings, branchName, ct);
-        EnsureDraftPullRequest(pullRequest);
         var existingBranch = await GetRefAsync(settings, branchName, ct);
+        var pullRequest = await FindOpenPullRequestAsync(settings, branchName, existingBranch is not null, ct);
+        EnsureDraftPullRequest(pullRequest);
         var parentSha = existingBranch?.Object.Sha ?? targetRef.Object.Sha;
         var parentCommit = await GetCommitAsync(settings, parentSha, ct);
         var branchAlreadyMatches = false;
@@ -118,7 +118,7 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
             {
                 throw new ArchivePreviewMismatchException(
                     "The archive PR branch contains human changes or lacks recorded Bethuya tree provenance. "
-                    + "Preserve those changes through human review; after merging or closing the PR, have an organizer retire the branch, "
+                    + "Preserve those changes through human review; after merging the PR, have an organizer retire the branch, "
                     + "then re-preview and confirm again. The branch was not changed.");
             }
 
@@ -143,7 +143,7 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
                 tree.Sha,
                 parentSha,
                 ct);
-            var currentPullRequest = await FindOpenPullRequestAsync(settings, branchName, ct);
+            var currentPullRequest = await FindOpenPullRequestAsync(settings, branchName, existingBranch is not null, ct);
             EnsureDraftPullRequest(currentPullRequest);
             if (pullRequest is not null && currentPullRequest is null)
             {
@@ -352,15 +352,49 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
     private async Task<GitHubPullRequest?> FindOpenPullRequestAsync(
         GitHubEventRepositoryOptions settings,
         string branchName,
+        bool hasExistingBranch,
         CancellationToken ct)
     {
         var head = Uri.EscapeDataString($"{settings.Owner}:{branchName}");
-        var uri = $"/repos/{Uri.EscapeDataString(settings.Owner)}/{Uri.EscapeDataString(settings.Repository)}/pulls?state=open&head={head}&base={Uri.EscapeDataString(settings.Branch)}";
+        var endpoint = $"/repos/{Uri.EscapeDataString(settings.Owner)}/{Uri.EscapeDataString(settings.Repository)}/pulls";
+        using var openResponse = await httpClient.GetAsync($"{endpoint}?state=open&head={head}&per_page=2", ct);
+        openResponse.EnsureSuccessStatusCode();
+        var openPullRequests = await openResponse.Content.ReadFromJsonAsync<GitHubPullRequest[]>(cancellationToken: ct)
+            ?? throw new InvalidOperationException("GitHub returned an empty pull request list.");
+        if (openPullRequests.Length > 1
+            || openPullRequests.Any(pr => pr.Base?.Ref != settings.Branch))
+        {
+            throw new ArchivePreviewMismatchException("The archive branch has multiple or retargeted open PRs. Resolve their human review and configured target before re-previewing; the branch was not changed.");
+        }
+
+        if (openPullRequests.Length == 1)
+        {
+            return openPullRequests[0];
+        }
+
+        var uri = $"{endpoint}?state=all&head={head}&sort=created&direction=desc&per_page=1";
         using var response = await httpClient.GetAsync(uri, ct);
         response.EnsureSuccessStatusCode();
         var pullRequests = await response.Content.ReadFromJsonAsync<GitHubPullRequest[]>(cancellationToken: ct)
-            ?? [];
-        return pullRequests.FirstOrDefault();
+            ?? throw new InvalidOperationException("GitHub returned an empty pull request history.");
+        var latest = pullRequests.FirstOrDefault();
+        if (latest is { State: "open" } && latest.Base?.Ref != settings.Branch)
+        {
+            throw new ArchivePreviewMismatchException("The archive PR was retargeted during publication. Resolve its configured target through human review before reconfirming.");
+        }
+        if (latest is { State: "closed", MergedAt: null })
+        {
+            throw new ArchivePreviewMismatchException(
+                "The previous archive proposal was closed without merge. Resolve that human decision and explicitly reopen it as Draft before reconfirming; Bethuya will not recreate a rejected proposal.");
+        }
+
+        if (latest?.MergedAt is not null && hasExistingBranch)
+        {
+            throw new ArchivePreviewMismatchException(
+                "The previous archive PR was merged but its publication branch still exists. Preserve it through human review and have an organizer retire it, then re-preview and confirm; Bethuya will not reset or reuse a merged branch.");
+        }
+
+        return latest is { State: "open" } ? latest : null;
     }
 
     private async Task<GitHubPullRequest> CreateDraftPullRequestAsync(
@@ -445,5 +479,7 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
         [property: JsonPropertyName("html_url")] string HtmlUrl,
         [property: JsonPropertyName("state")] string State,
         [property: JsonPropertyName("draft")] bool Draft,
-        [property: JsonPropertyName("merged_at")] DateTimeOffset? MergedAt);
+        [property: JsonPropertyName("merged_at")] DateTimeOffset? MergedAt,
+        [property: JsonPropertyName("base")] GitHubPullRequestBase? Base);
+    private sealed record GitHubPullRequestBase([property: JsonPropertyName("ref")] string Ref);
 }

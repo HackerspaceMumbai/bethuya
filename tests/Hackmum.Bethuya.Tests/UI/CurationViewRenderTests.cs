@@ -5,8 +5,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-// Alias Bunit.TestContext to avoid collision with TUnit's own TestContext type.
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -119,7 +118,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_ShowsCurationWorkbench_AndKeepsRegistrantSummaryPrivacySafe()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -128,9 +127,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
 
         cut.WaitForAssertion(() =>
@@ -197,7 +196,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task SuggestStartingCohort_GenerateFlow_ShowsBannerAndSuggestedQueueBadges()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -206,9 +205,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
 
         cut.Find("[data-test='generate-curation-proposal-btn'] button").Click();
@@ -246,7 +245,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task SuggestStartingCohort_CanAddAndClearSuggestionsFromActionTray()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -255,9 +254,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
 
         cut.WaitForElement("[data-test='curation-registrant-card']").Click();
@@ -288,7 +287,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_ShowsImpactSuppressionMessage_WhenPreviewIsSuppressed()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -297,9 +296,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId, impactSuppressed: true)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
 
         cut.WaitForElement("[data-test='curation-registrant-card']").Click();
@@ -314,7 +313,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_HidesRedundantQueueImpactLineCopy()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -323,9 +322,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId, impactSuppressed: true)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
 
         cut.WaitForAssertion(() =>
@@ -341,7 +340,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_DoesNotCallNoHistoryPositiveCandidateStandout()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -350,9 +349,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
 
         cut.WaitForAssertion(() =>
@@ -368,7 +367,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_AttendanceEtiquette_UsesDecisionSupportReliabilityStates()
     {
-        using var unknownCtx = new BunitCtx();
+        await using var unknownCtx = new BunitCtx();
         unknownCtx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var unknownEventId = Guid.NewGuid();
@@ -377,9 +376,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(unknownEventId)));
         unknownCtx.Services.AddSingleton(unknownApi);
         unknownCtx.Services.AddBlazorBlueprintComponents();
-        unknownCtx.AddTestAuthorization();
+        unknownCtx.AddAuthorization();
 
-        var unknownCut = unknownCtx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var unknownCut = unknownCtx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, unknownEventId));
         unknownCut.WaitForElement("[data-test='curation-registrant-card']").Click();
 
@@ -392,7 +391,7 @@ public class CurationViewRenderTests
             }
         });
 
-        using var mediumCtx = new BunitCtx();
+        await using var mediumCtx = new BunitCtx();
         mediumCtx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var mediumEventId = Guid.NewGuid();
@@ -401,9 +400,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(mediumEventId, returningStandout: true, reliabilityScore: 72)));
         mediumCtx.Services.AddSingleton(mediumApi);
         mediumCtx.Services.AddBlazorBlueprintComponents();
-        mediumCtx.AddTestAuthorization();
+        mediumCtx.AddAuthorization();
 
-        var mediumCut = mediumCtx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var mediumCut = mediumCtx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, mediumEventId));
         mediumCut.WaitForElement("[data-test='curation-registrant-card']").Click();
 
@@ -416,7 +415,7 @@ public class CurationViewRenderTests
             }
         });
 
-        using var highCtx = new BunitCtx();
+        await using var highCtx = new BunitCtx();
         highCtx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var highEventId = Guid.NewGuid();
@@ -425,9 +424,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(highEventId, returningStandout: true, reliabilityScore: 100)));
         highCtx.Services.AddSingleton(highApi);
         highCtx.Services.AddBlazorBlueprintComponents();
-        highCtx.AddTestAuthorization();
+        highCtx.AddAuthorization();
 
-        var highCut = highCtx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var highCut = highCtx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, highEventId));
         highCut.WaitForElement("[data-test='curation-registrant-card']").Click();
 
@@ -444,7 +443,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_IntentInsight_UsesReadableMetricsAndSingleSummary()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -453,9 +452,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
         cut.WaitForElement("[data-test='curation-registrant-card']").Click();
 
@@ -478,7 +477,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_IntentInsight_UsesMetricSpecificInterpretationWhenSignalIsWeak()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -496,9 +495,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(modifiedDashboard));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
         cut.WaitForElement("[data-test='curation-registrant-card']").Click();
 
@@ -512,7 +511,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_Assessment_ShowsShortSignalLinesInsteadOfParagraph()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -521,9 +520,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
         cut.WaitForElement("[data-test='curation-registrant-card']").Click();
 
@@ -544,7 +543,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task ClickRegistrant_ShowsProjectionActiveMicrointeraction()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -553,9 +552,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
 
         cut.WaitForElement("[data-test='curation-registrant-card']").Click();
@@ -723,7 +722,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_CallsOrganizerMarkedReturningCandidateStandout()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -732,9 +731,9 @@ public class CurationViewRenderTests
             .Returns(Task.FromResult(CreateDashboard(eventId, returningStandout: true)));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
 
         cut.WaitForAssertion(() =>
@@ -747,7 +746,7 @@ public class CurationViewRenderTests
     [Test]
     public async Task Render_ImpactPreview_ShowsTopTwoRisksAndCollapsesRemaining()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
 
         var eventId = Guid.NewGuid();
@@ -766,9 +765,9 @@ public class CurationViewRenderTests
                 })));
         ctx.Services.AddSingleton(curationApi);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
             parameters.Add(p => p.EventId, eventId));
         cut.WaitForElement("[data-test='curation-registrant-card']").Click();
 

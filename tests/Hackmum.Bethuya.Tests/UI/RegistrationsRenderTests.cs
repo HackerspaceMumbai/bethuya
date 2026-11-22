@@ -7,7 +7,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -16,8 +16,8 @@ public class RegistrationsRenderTests
     [Test]
     public async Task Render_LoadsRegistrationsFromApi()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
 
         var eventId = Guid.Parse("019e263d-effb-7a55-86ec-170baeee3718");
         var registrationApi = Substitute.For<IRegistrationApi>();
@@ -49,7 +49,7 @@ public class RegistrationsRenderTests
         ctx.Services.AddSingleton(registrationApi);
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<Registrations>(parameters => parameters.Add(p => p.EventId, eventId));
+        var cut = ctx.Render<Registrations>(parameters => parameters.Add(p => p.EventId, eventId));
 
         cut.WaitForState(() => cut.FindAll("[data-test='registration-row']").Count == 2, TimeSpan.FromSeconds(5));
 

@@ -6,12 +6,14 @@
     <MauiVersion>9.0.21</MauiVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Dotnet" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="17.0.0" />
     <PackageVersion Include="Aspire.Hosting.Foundry" Version="13.6.4-preview.1.26523.11" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="17.0.0" />
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
     <PackageVersion Include="MessagePack" Version="3.1.12" />
     <!-- Azure Monitor / Application Insights - enabled via APPLICATIONINSIGHTS_CONNECTION_STRING env var -->
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.5.0" />
@@ -20,8 +22,8 @@
     <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="2.2.3" />
     <PackageVersion Include="MSTest.TestAdapter" Version="4.2.3" />
     <PackageVersion Include="MSTest.TestFramework" Version="4.2.3" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
@@ -35,7 +37,7 @@
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.13" />
     <PackageVersion Include="Auth0.AspNetCore.Authentication" Version="1.7.0" />
     <!-- Blazor auth components (AuthorizeView, CascadingAuthenticationState, etc.) -->
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.15" />
     <!-- Input validation -->
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <!-- Refit - typed REST client generation -->
@@ -44,21 +46,22 @@
     <PackageVersion Include="Vogen" Version="8.0.7" />
     <PackageVersion Include="BlazorBlueprint.Components" Version="3.10.2" />
     <PackageVersion Include="BlazorBlueprint.Icons.Lucide" Version="2.0.0" />
+    <PackageVersion Include="HtmlSanitizer" Version="11.0.26" />
     <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.50" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.50" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.15" />
     <!-- EF Core - Postgres (local Postgres container via Aspire for dev) -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
-    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.4" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.5" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <!-- Aspire hosting for Key Vault (AppHost) - provisions Key Vault; azd stores secret params here -->
-    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="17.0.0" />
     <!-- Aspire hosting for Keycloak (AppHost - local OIDC testing) -->
     <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.6.4-preview.1.26523.11" />
     <!-- ASP.NET Core TestHost for minimal-API endpoint testing -->
@@ -66,16 +69,14 @@
     <!-- Testing - TUnit (not xUnit/NUnit per project standards) -->
     <PackageVersion Include="TUnit" Version="1.51.0" />
     <!-- Aspire integration testing - DistributedApplicationTestingBuilder -->
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.4.2" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="17.0.0" />
     <!-- Respawn - fast DB cleanup between integration tests (Postgres adapter) -->
     <PackageVersion Include="Respawn" Version="7.0.0" />
-    <!-- bUnit component rendering tests (bunit.web = no xUnit dependency, includes TestContext) -->
-    <PackageVersion Include="bunit.web" Version="1.40.0" />
-    <!-- AngleSharp: bunit.web 1.40 requires 1.2.0 / 1.0.0-beta.154.
-         BlazorBlueprint.Components → HtmlSanitizer 9.0.892 requires AngleSharp = 0.17.1 (exact).
-         We pin to bunit's newer version; NU1608 is suppressed in the test project. -->
-    <PackageVersion Include="AngleSharp" Version="1.5.2" />
-    <PackageVersion Include="AngleSharp.Css" Version="1.0.0-beta.154" />
+    <!-- bUnit 2 supports the AngleSharp version required by HtmlSanitizer 11; TUnit remains the test runner. -->
+    <PackageVersion Include="bunit" Version="2.15.2" />
+    <!-- HtmlSanitizer 11 requires AngleSharp >= 1.10 and AngleSharp.Css >= 1.4. -->
+    <PackageVersion Include="AngleSharp" Version="1.10.5" />
+    <PackageVersion Include="AngleSharp.Css" Version="1.5.0" />
     <!-- NSubstitute - mocking for component tests -->
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <!-- E2E - Playwright for .NET -->
@@ -93,8 +94,8 @@
     <!-- Microsoft.Extensions.AI for AI provider abstraction -->
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.6.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.15" />
     <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.4.0" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.1" />

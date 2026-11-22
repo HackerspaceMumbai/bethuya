@@ -2,7 +2,7 @@ using Bethuya.Hybrid.Shared.Components.Dashboard;
 using BlazorBlueprint.Components;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -11,11 +11,11 @@ public class EventCardRenderTests
     [Test]
     public async Task EventCard_WithRegistrationCounts_ShowsLifecycleMilestones()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<EventCard>(p => p.Add(c => c.Event, new EventViewModel
+        var cut = ctx.Render<EventCard>(p => p.Add(c => c.Event, new EventViewModel
         {
             Id = Guid.CreateVersion7(),
             Title = "Dev Days Mumbai",
@@ -32,11 +32,11 @@ public class EventCardRenderTests
     [Test]
     public async Task EventCard_WithoutRegistrationCounts_HidesCounts()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
 
-        var cut = ctx.RenderComponent<EventCard>(p => p.Add(c => c.Event, new EventViewModel
+        var cut = ctx.Render<EventCard>(p => p.Add(c => c.Event, new EventViewModel
         {
             Id = Guid.CreateVersion7(),
             Title = "Public meetup",

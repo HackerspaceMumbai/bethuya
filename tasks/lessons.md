@@ -16,6 +16,21 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-11-22] Preserve launch-profile semantics during Aspire 17 migration
+- **What happened:** Aspire 17 marks AddProject obsolete, so the existing warnings-as-errors build failed. Its replacement uses an options callback rather than the old nullable profile argument.
+- **Fix:** With explicit user approval, use Microsoft.NET.Sdk plus Aspire.Hosting.AppHost/Dotnet and path-based AddDotnetProject. Translate launchProfileName:null to ExcludeLaunchProfile=true; leave the migration worker's default selection intact.
+- **Prevention:** Consult the version-specific migration guide, preserve resource configuration and verify a fresh full build after dependency changes. Do not suppress the obsolete API diagnostics.
+
+## [2026-11-22] Upgrade sanitizer and component-test dependencies together
+- **What happened:** HtmlSanitizer 11 required AngleSharp 1.10, which caused bUnit 1.40 wrappers to fail with TypeLoadException. bUnit 2 then exposed synchronous disposal of asynchronous Blueprint services.
+- **Fix:** With explicit user approval, migrate to bUnit 2.15.2's documented context, rendering and authorization APIs and asynchronously dispose component-test contexts. Remove the obsolete NU1608 suppression; preserve all test assertions and TUnit.
+- **Prevention:** Validate required transitive minimums and the full component suite after security-package upgrades, not just restore or a vulnerability scan.
+
+## [2026-11-22] Preserve archive structure and proposal decisions
+- **What happened:** Line-based YAML updates missed quoted keys and alternate provenance indentation, removed community paragraph breaks, and publication reads ignored closed proposals or concurrent reconfirmation.
+- **Fix:** Share conservative provenance parsing between merge and adoption, preserve all existing blank lines, inspect closed PR history, and atomically compare the publication identity when saving refresh results.
+- **Prevention:** Cover actual archive structures and human decision races with fake-GitHub/SQLite regressions. An initially misplaced helper caused a compiler error during this batch; check method boundaries when inserting extracted helpers.
+
 ## [2026-11-22] Preserve archive PR heads instead of forcing target-parented commits
 - **What happened:** Regenerating an archive commit from the target tree and force-updating an existing Draft PR head could discard community edits or an intervening concurrent commit.
 - **Root cause:** The deterministic branch was treated as disposable machine output, even though humans review and edit it.

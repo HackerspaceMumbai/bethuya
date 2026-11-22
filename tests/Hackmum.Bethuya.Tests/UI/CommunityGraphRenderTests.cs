@@ -15,7 +15,7 @@ public sealed class CommunityGraphRenderTests
     [Test]
     public async Task Graph_FocusIsSeparateFromSelectionAndBackRestoresOverview()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var fixture = Fixture();
         var project = new CommunityGraphNode(GraphNodeId.From("project:test"), "Project", "Portal", "");
         fixture = fixture with { Nodes = [.. fixture.Nodes, project], Relationships = [.. fixture.Relationships,
@@ -23,7 +23,7 @@ public sealed class CommunityGraphRenderTests
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(fixture);
         context.Services.AddSingleton(api);
-        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        var cut = context.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
         cut.Find("[data-test='graph-node'][aria-label^='Portal']").Click();
         await Assert.That(cut.FindAll("[data-test='graph-node']").Count).IsEqualTo(3);
         cut.Find("[data-test='graph-explore'] button").Click();
@@ -40,11 +40,11 @@ public sealed class CommunityGraphRenderTests
     [Test]
     public async Task Graph_SelectingRelationshipShowsLedgerProofAndFilteringClearsHiddenSelection()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(Fixture());
         context.Services.AddSingleton(api);
-        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        var cut = context.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
         cut.Find("[data-test='graph-edge']").Click();
         await Assert.That(cut.Find("[data-test='passport-preview']").TextContent).Contains("Checked in at Cloud Native Day");
         // Blueprint's immediate input is JS-driven; exercise its public callback here and real typing in Playwright.
@@ -56,11 +56,11 @@ public sealed class CommunityGraphRenderTests
     [Test]
     public async Task Graph_RendersEmptyAndRecoverableErrorStates()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(Task.FromException<CommunityGraphSnapshot>(new HttpRequestException()));
         context.Services.AddSingleton(api);
-        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        var cut = context.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
         cut.Find("[data-test='graph-error']");
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(new CommunityGraphSnapshot([], [], [], [], DateTimeOffset.UtcNow, false, []));
         cut.Find("[data-test='graph-retry'] button").Click();
@@ -70,36 +70,36 @@ public sealed class CommunityGraphRenderTests
     [Test]
     public async Task Graph_NodeAndKeyboardSelectionUpdatePassport()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(Fixture());
         context.Services.AddSingleton(api);
-        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        var cut = context.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
         cut.FindAll("[data-test='graph-node']").Single(n => n.TextContent.Contains("Cloud Native Day", StringComparison.Ordinal)).Click();
         await Assert.That(cut.Find("[data-test='passport-preview']").TextContent).Contains("Cloud Native Day");
         cut.Find("[data-test='graph-edge']").KeyDown("Enter");
         await Assert.That(cut.Find("[data-test='passport-preview']").TextContent).Contains("Why this relationship exists");
     }
 
-    private static Bunit.TestContext CreateContext()
+    private static Bunit.BunitContext CreateContext()
     {
-        var context = new Bunit.TestContext();
+        var context = new Bunit.BunitContext();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Services.AddBlazorBlueprintComponents();
-        context.AddTestAuthorization().SetAuthorized("viewer");
+        context.AddAuthorization().SetAuthorized("viewer");
         return context;
     }
 
     [Test]
     public async Task Graph_ViewLedgerQuery_OpensParticipationLedgerTab()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(Fixture());
         context.Services.AddSingleton(api);
         context.Services.GetRequiredService<NavigationManager>().NavigateTo("/community-graph?view=ledger");
 
-        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        var cut = context.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
         cut.WaitForElement("[data-test='passport-preview']");
         cut.Find("[data-test='graph-node']").Click();
 
@@ -112,14 +112,14 @@ public sealed class CommunityGraphRenderTests
     [Test]
     public async Task Graph_NavigatingBetweenViewQueries_UpdatesActiveTab()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(Fixture());
         context.Services.AddSingleton(api);
         var navigation = context.Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo("/community-graph?view=topology");
 
-        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        var cut = context.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
         cut.WaitForElement("[data-test='passport-preview']");
 
         var relationshipsTab = cut.Find("[data-test='passport-tab-Relationships']").GetAttribute("class") ?? "";
@@ -149,7 +149,7 @@ public sealed class CommunityGraphRenderTests
     [Test]
     public async Task Graph_MemberPassportDoesNotAttributePeerEvidenceToSelectedMember()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var fixture = Fixture();
         var owner = fixture.Nodes[0];
         var peer = new CommunityGraphNode(GraphNodeId.From("member:peer"), "Member", "Peer Member", "");
@@ -165,7 +165,7 @@ public sealed class CommunityGraphRenderTests
         var api = Substitute.For<ICommunityPassportApi>();
         api.GetGraphAsync(Arg.Any<CancellationToken>()).Returns(fixture);
         context.Services.AddSingleton(api);
-        var cut = context.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
+        var cut = context.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityGraph>();
         cut.Find("[data-test='passport-tab-Participation-Ledger'] button").Click();
         await Assert.That(cut.Find("[data-test='passport-preview']").TextContent.Contains("Peer-only", StringComparison.Ordinal)).IsFalse();
         cut.Find("[data-test='graph-edge'][aria-label*='Shared attendance']").Click();
