@@ -127,6 +127,14 @@ public static partial class EventArchiveContentMerger
             return $"</{literalTag.Groups["tag"].Value}>";
         }
 
+        var openingTag = OpeningHtmlTagRegex().Match(trimmed);
+        if (openingTag.Success && !InlineHtmlTagRegex().IsMatch(trimmed))
+        {
+            // Block and custom opening tags may continue across lines or include content after the tag.
+            // Refuse to interpret any following managed marker until a blank Markdown boundary.
+            return string.Empty;
+        }
+
         // Ambiguous/custom HTML blocks are refused until a blank line establishes a Markdown boundary.
         return StandaloneHtmlTagRegex().IsMatch(trimmed) ? string.Empty : null;
     }
@@ -539,6 +547,12 @@ public static partial class EventArchiveContentMerger
 
     [GeneratedRegex(@"^<(?<tag>script|pre|style|textarea)(?=[\s>]|$)", RegexOptions.IgnoreCase)]
     private static partial Regex LiteralHtmlTagRegex();
+
+    [GeneratedRegex(@"^<(?<tag>[A-Za-z][A-Za-z0-9:-]*)(?=[\s/>]|$)", RegexOptions.IgnoreCase)]
+    private static partial Regex OpeningHtmlTagRegex();
+
+    [GeneratedRegex(@"^<(?:a|abbr|b|bdi|bdo|br|cite|code|data|del|dfn|em|i|img|ins|kbd|mark|q|rp|rt|ruby|s|samp|small|span|strong|sub|sup|time|u|var|wbr)(?=[\s/>]|$)", RegexOptions.IgnoreCase)]
+    private static partial Regex InlineHtmlTagRegex();
 
     [GeneratedRegex(@"^</?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[^<>]*)?[ \t]*/?>[ \t]*$")]
     private static partial Regex StandaloneHtmlTagRegex();

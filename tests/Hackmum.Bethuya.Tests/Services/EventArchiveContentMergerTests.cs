@@ -160,6 +160,8 @@ public sealed class EventArchiveContentMergerTests
     [Arguments("<script>\n<!-- bethuya:managed:start -->\nCommunity example\n<!-- bethuya:managed:end -->\n</script>")]
     [Arguments("<div>\n<!-- bethuya:managed:start -->\nCommunity example\n<!-- bethuya:managed:end -->\n</div>")]
     [Arguments("<custom-example>\n<!-- bethuya:managed:start -->\nCommunity example\n<!-- bethuya:managed:end -->\n</custom-example>")]
+    [Arguments("<div>Community example\n<!-- bethuya:managed:start -->\nCommunity content\n<!-- bethuya:managed:end -->")]
+    [Arguments("<div\n class=\"community-example\">\n<!-- bethuya:managed:start -->\nCommunity content\n<!-- bethuya:managed:end -->")]
     public async Task MergeReadme_LiteralMarkers_RefusesRatherThanReplacingCommunityExample(string existing)
     {
         await Assert.That(() => EventArchiveContentMerger.MergeReadme(existing, "# New projection"))
