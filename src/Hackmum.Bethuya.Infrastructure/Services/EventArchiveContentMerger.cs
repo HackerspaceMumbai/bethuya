@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Hackmum.Bethuya.Infrastructure.Services;
@@ -45,15 +46,32 @@ public static partial class EventArchiveContentMerger
     {
         var fenceCharacter = '\0';
         var fenceLength = 0;
+        string? htmlBlockEnd = null;
         foreach (var rawLine in existing.Split('\n'))
         {
             var line = rawLine.TrimEnd('\r');
             if (line.Contains(ReadmeStart, StringComparison.Ordinal) || line.Contains(ReadmeEnd, StringComparison.Ordinal))
             {
-                if (fenceCharacter != '\0' || line != ReadmeStart && line != ReadmeEnd)
+                if (fenceCharacter != '\0' || htmlBlockEnd is not null || line != ReadmeStart && line != ReadmeEnd)
                 {
                     throw new InvalidOperationException("README markers must be standalone comments outside literal Markdown blocks; resolve ambiguous ownership before preview.");
                 }
+            }
+
+            if (htmlBlockEnd is not null)
+            {
+                if (htmlBlockEnd.Length == 0 ? string.IsNullOrWhiteSpace(line)
+                    : line.Contains(htmlBlockEnd, StringComparison.OrdinalIgnoreCase))
+                {
+                    htmlBlockEnd = null;
+                }
+                continue;
+            }
+
+            if (fenceCharacter == '\0' && FindHtmlBlockEnd(line) is { } end)
+            {
+                htmlBlockEnd = end.Length != 0 && line.Contains(end, StringComparison.OrdinalIgnoreCase) ? null : end;
+                continue;
             }
 
             var trimmed = line.TrimStart(' ');
@@ -80,6 +98,39 @@ public static partial class EventArchiveContentMerger
         }
     }
 
+    private static string? FindHtmlBlockEnd(string line)
+    {
+        var trimmed = line.TrimStart(' ');
+        if (line.Length - trimmed.Length > 3)
+        {
+            return null;
+        }
+        if (trimmed.StartsWith("<!--", StringComparison.Ordinal))
+        {
+            return "-->";
+        }
+        if (trimmed.StartsWith("<?", StringComparison.Ordinal))
+        {
+            return "?>";
+        }
+        if (trimmed.StartsWith("<![CDATA[", StringComparison.Ordinal))
+        {
+            return "]]>";
+        }
+        if (trimmed.Length > 2 && trimmed.StartsWith("<!", StringComparison.Ordinal) && char.IsAsciiLetterUpper(trimmed[2]))
+        {
+            return ">";
+        }
+        var literalTag = LiteralHtmlTagRegex().Match(trimmed);
+        if (literalTag.Success)
+        {
+            return $"</{literalTag.Groups["tag"].Value}>";
+        }
+
+        // Ambiguous/custom HTML blocks are refused until a blank line establishes a Markdown boundary.
+        return HtmlTagRegex().IsMatch(trimmed) ? string.Empty : null;
+    }
+
     /// <summary>Merges owned scalars and refuses unsupported mapping structures.</summary>
     public static string MergeMetadata(string? existing, string proposed)
     {
@@ -90,7 +141,7 @@ public static partial class EventArchiveContentMerger
 
         var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var lines = existing.Split(newline, StringSplitOptions.None).ToList();
-        var proposedLines = proposed.Split('\n');
+        var proposedLines = proposed.Split('\n').Select(line => line.TrimEnd('\r')).ToArray();
 
         foreach (var key in ManagedMetadataKeys)
         {
@@ -148,8 +199,60 @@ public static partial class EventArchiveContentMerger
 
         return matches.Count == 0
             ? null
-            : ReadSimpleScalar(lines, matches[0], "eventId", section.Indentation, section.End)
-                .Trim().Trim('"', '\'');
+            : DecodeIdentityScalar(ReadSimpleScalar(lines, matches[0], "eventId", section.Indentation, section.End));
+    }
+
+    private static string DecodeIdentityScalar(string value)
+    {
+        var quote = '\0';
+        for (var index = 0; index < value.Length; index++)
+        {
+            var character = value[index];
+            if (quote == '"' && character == '\\'
+                || quote == '\'' && character == '\'' && index + 1 < value.Length && value[index + 1] == '\'')
+            {
+                index++;
+            }
+            else if (quote != '\0')
+            {
+                if (character == quote)
+                {
+                    quote = '\0';
+                }
+            }
+            else if (character is '"' or '\'')
+            {
+                quote = character;
+            }
+            else if (character == '#' && (index == 0 || char.IsWhiteSpace(value[index - 1])))
+            {
+                value = value[..index];
+                break;
+            }
+        }
+
+        value = value.Trim();
+        if (value.StartsWith('"'))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<string>(value)
+                    ?? throw new InvalidOperationException("The Bethuya identity must be a non-null scalar.");
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidOperationException("The quoted Bethuya identity uses unsupported YAML; resolve it before preview or adoption.", exception);
+            }
+        }
+        if (!value.StartsWith('\''))
+        {
+            return value;
+        }
+        if (value.Length < 2 || !value.EndsWith('\''))
+        {
+            throw new InvalidOperationException("The Bethuya identity uses an ambiguous quoted scalar; resolve it before preview or adoption.");
+        }
+        return value[1..^1].Replace("''", "'", StringComparison.Ordinal);
     }
 
     private static (int Start, int End, int Indentation)? FindBethuyaMapping(List<string> lines)
@@ -431,6 +534,12 @@ public static partial class EventArchiveContentMerger
             && match.Groups["indent"].Value.Length == indentation
             && match.Groups["key"].Value.Equals(key, StringComparison.Ordinal);
 
-    [GeneratedRegex(@"^(?<indent> *)(?<key>[A-Za-z0-9_-]+)\s*:\s*(?<value>.*)$")]
+    [GeneratedRegex(@"^(?<indent> *)(?<key>[A-Za-z0-9_-]+)[ \t]*:(?=[ \t]|\r?$)[ \t]*(?<value>.*)$")]
     private static partial Regex ScalarValueRegex();
+
+    [GeneratedRegex(@"^<(?<tag>script|pre|style|textarea)(?=[\s>]|$)", RegexOptions.IgnoreCase)]
+    private static partial Regex LiteralHtmlTagRegex();
+
+    [GeneratedRegex(@"^</?[A-Za-z][A-Za-z0-9-]*(?=[\s/>]|$)")]
+    private static partial Regex HtmlTagRegex();
 }

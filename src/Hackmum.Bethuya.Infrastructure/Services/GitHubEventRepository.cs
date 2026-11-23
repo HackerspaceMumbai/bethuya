@@ -44,6 +44,14 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
 
     private static EventArchivePreview CreatePreview(EventPublicationRequest request, EventArchiveEntry? entry)
     {
+        if (entry?.MetadataYaml is { } metadata
+            && EventArchiveContentMerger.ReadBethuyaEventId(metadata) is { } identity
+            && (!Guid.TryParse(identity, out var archiveEventId) || archiveEventId != request.EventId.Value))
+        {
+            throw new InvalidOperationException(
+                "The archive identifies another event or an invalid Bethuya identity. Resolve ownership before preview or publication.");
+        }
+
         var candidateReadme = EventArchiveContentMerger.MergeReadme(entry?.ReadmeMarkdown, request.ReadmeMarkdown);
         var candidateMetadata = EventArchiveContentMerger.MergeMetadata(entry?.MetadataYaml, request.MetadataJson);
         var tokenInput = string.Join(

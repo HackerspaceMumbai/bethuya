@@ -33,7 +33,7 @@ public sealed class EventArchivePublicationOrchestratorTests
     [Test]
     public async Task ConfirmArchivePublicationAsync_ConfirmedPreview_QueuesOneDurableRequest()
     {
-        await using var db = CreateDbContext();
+        await using var db = CreateSqliteDbContext();
         var evt = CreatePublishedEvent();
         db.Events.Add(evt);
         await db.SaveChangesAsync();
@@ -68,7 +68,7 @@ public sealed class EventArchivePublicationOrchestratorTests
     [Test]
     public async Task ConfirmArchivePublicationAsync_NewSnapshotWhileStillPending_RejectsInsteadOfDiscardingConfirmation()
     {
-        await using var db = CreateDbContext();
+        await using var db = CreateSqliteDbContext();
         var evt = CreatePublishedEvent();
         db.Events.Add(evt);
         await db.SaveChangesAsync();
@@ -208,12 +208,12 @@ public sealed class EventArchivePublicationOrchestratorTests
     }
 
     [Test]
-    [Arguments("events/2026/2026-11-28-other-path")]
-    [Arguments("events/2026/2026-11-28-community-summit\n")]
-    public async Task PreviewArchiveAdoptionAsync_InvalidEstablishedOrTrailingPath_RefusesBeforeRemoteRead(string path)
+    [Arguments("events/2026/2026-11-28-other-path", true)]
+    [Arguments("events/2026/2026-11-28-community-summit\n", false)]
+    public async Task PreviewArchiveAdoptionAsync_InvalidEstablishedOrTrailingPath_RefusesBeforeRemoteRead(string path, bool established)
     {
         await using var db = CreateDbContext();
-        var evt = CreatePublishedEvent("events/2026/2026-11-28-community-summit");
+        var evt = CreatePublishedEvent(established ? "events/2026/2026-11-28-community-summit" : null);
         db.Events.Add(evt);
         await db.SaveChangesAsync();
         var repository = CreateRepository(CreateValidArchiveEntry());
@@ -497,6 +497,7 @@ public sealed class EventArchivePublicationOrchestratorTests
         var evt = CreatePublishedEvent("events/2026/2026-11-28-community-summit");
         evt.ArchivePullRequestNumber = 42;
         evt.ArchivePublicationIdempotencyKey = "old-projection";
+        evt.ArchivePublicationStatus = EventArchivePublicationStatus.DraftPrPending;
         db.Events.Add(evt);
         await db.SaveChangesAsync();
         var repository = CreateRepository();
@@ -509,7 +510,6 @@ public sealed class EventArchivePublicationOrchestratorTests
                 var current = await concurrentDb.Events.SingleAsync();
                 current.ArchivePublicationIdempotencyKey = changeKey ? "new-projection" : "old-projection";
                 current.ArchivePullRequestNumber = changeKey ? 42 : 43;
-                current.ArchivePublicationStatus = EventArchivePublicationStatus.Pending;
                 await concurrentDb.SaveChangesAsync();
                 return new EventArchivePullRequestStatus(
                     false, true, true, 42, "https://github.com/HackerspaceMumbai/events/pull/42", "https://github.com/archive");
@@ -519,9 +519,74 @@ public sealed class EventArchivePublicationOrchestratorTests
             await CreateOrchestrator(db, repository).RefreshArchivePublicationStatusAsync(evt.Id))
             .Throws<InvalidOperationException>();
         await db.Entry(evt).ReloadAsync();
-        await Assert.That(evt.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.Pending);
+        await Assert.That(evt.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.DraftPrPending);
         await Assert.That(evt.ArchivePullRequestUrl).IsNull();
         await Assert.That(evt.GitHubFolderUrl).IsNull();
+    }
+
+    [Test]
+    public async Task ConfirmArchivePublicationAsync_OlderPendingProjection_RejectsInsteadOfAcknowledgingItAsLatest()
+    {
+        await using var db = CreateSqliteDbContext();
+        var evt = CreatePublishedEvent();
+        db.Events.Add(evt);
+        await db.SaveChangesAsync();
+        var orchestrator = CreateOrchestrator(db, CreateRepository());
+        await orchestrator.ConfirmArchivePublicationAsync(evt.Id, "organizer-a", "preview-token");
+        evt.Description = "Projection B";
+        await db.SaveChangesAsync();
+        await orchestrator.ConfirmArchivePublicationAsync(evt.Id, "organizer-b", "preview-token");
+        var latestKey = evt.ArchivePublicationIdempotencyKey;
+        await orchestrator.ConfirmArchivePublicationAsync(evt.Id, "organizer-b", "preview-token");
+        evt.Description = null;
+        await db.SaveChangesAsync();
+
+        await Assert.That(async () => await orchestrator.ConfirmArchivePublicationAsync(
+            evt.Id, "organizer-a", "preview-token")).Throws<InvalidOperationException>();
+        await db.Entry(evt).ReloadAsync();
+        await Assert.That(evt.ArchivePublicationIdempotencyKey).IsEqualTo(latestKey);
+        await Assert.That(evt.ArchivePublicationRequestedBy).IsEqualTo("organizer-b");
+        await Assert.That(await db.EventArchiveOutboxMessages.CountAsync()).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task ConfirmArchivePublicationAsync_ConfirmationDuringPreview_RequeuesCompletedProjectionAfterNewerWork()
+    {
+        await using var db = CreateSqliteDbContext();
+        var evt = CreatePublishedEvent();
+        db.Events.Add(evt);
+        await db.SaveChangesAsync();
+        var repository = CreateRepository();
+        var orchestrator = CreateOrchestrator(db, repository);
+        await orchestrator.ConfirmArchivePublicationAsync(evt.Id, "organizer-a", "preview-token");
+        var original = await db.EventArchiveOutboxMessages.SingleAsync();
+        original.ProcessedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+        repository.PreviewEventAsync(Arg.Any<EventPublicationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                repository.PreviewEventAsync(Arg.Any<EventPublicationRequest>(), Arg.Any<CancellationToken>())
+                    .Returns(inner => Task.FromResult(CreatePreview(inner.Arg<EventPublicationRequest>(), null, "preview-token")));
+                await using var concurrentDb = new BethuyaDbContext(new DbContextOptionsBuilder<BethuyaDbContext>()
+                    .UseSqlite(db.Database.GetDbConnection()).Options);
+                var current = await concurrentDb.Events.SingleAsync();
+                current.Description = "Projection B";
+                await concurrentDb.SaveChangesAsync();
+                await CreateOrchestrator(concurrentDb, repository)
+                    .ConfirmArchivePublicationAsync(evt.Id, "organizer-b", "preview-token");
+                return CreatePreview(call.Arg<EventPublicationRequest>(), null, "preview-token");
+            });
+
+        await Assert.That(async () => await orchestrator.ConfirmArchivePublicationAsync(
+            evt.Id, "organizer-a", "preview-token")).Throws<InvalidOperationException>();
+
+        await db.Entry(original).ReloadAsync();
+        await db.Entry(evt).ReloadAsync();
+        await Assert.That(original.ProcessedAt).IsNotNull();
+        await Assert.That(evt.ArchivePublicationIdempotencyKey).IsNotEqualTo(original.IdempotencyKey);
+        await Assert.That(evt.ArchivePublicationRequestedBy).IsEqualTo("organizer-b");
+        await Assert.That(evt.Description).IsEqualTo("Projection B");
+        await Assert.That(await db.EventArchiveOutboxMessages.CountAsync()).IsEqualTo(2);
     }
 
     private static BethuyaDbContext CreateSqliteDbContext(IInterceptor? interceptor = null)

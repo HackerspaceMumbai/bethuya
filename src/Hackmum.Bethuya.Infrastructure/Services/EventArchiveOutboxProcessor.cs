@@ -120,10 +120,26 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     item => item.Id == workItem.EventId.Value
                         && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey)
                     .ExecuteUpdateAsync(update => update
-                        .SetProperty(item => item.ArchivePublicationStatus, EventArchivePublicationStatus.DraftPrPending)
-                        .SetProperty(item => item.ArchiveBranchName, result.BranchName)
-                        .SetProperty(item => item.ArchivePullRequestNumber, result.PullRequestNumber)
-                        .SetProperty(item => item.ArchivePullRequestUrl, result.PullRequestUrl), ct);
+                        .SetProperty(item => item.ArchivePublicationStatus, EventArchivePublicationStatus.DraftPrPending), ct);
+
+                // Retain successful PR discovery independently of newer pending/failed state, in confirmation order.
+                await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    UPDATE "Events"
+                    SET "ArchiveBranchName" = {result.BranchName},
+                        "ArchivePullRequestNumber" = {result.PullRequestNumber},
+                        "ArchivePullRequestUrl" = {result.PullRequestUrl}
+                    WHERE "Id" = {workItem.EventId.Value}
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM "EventArchiveOutboxMessages" AS newer
+                            JOIN "EventArchiveOutboxMessages" AS completed ON completed."Id" = {workItem.Id.Value}
+                            WHERE newer."EventId" = completed."EventId"
+                                AND newer."Id" <> completed."Id"
+                                AND newer."ProcessedAt" IS NOT NULL
+                                AND newer."LastError" IS NULL
+                                AND newer."ConfirmedPreviewToken" IS NOT NULL
+                                AND newer."CreatedAt" >= completed."CreatedAt")
+                    """, ct);
 
                 await transaction.CommitAsync(ct);
                 LogArchiveProjectionCompleted(logger, workItem.EventId, result.FolderUrl);

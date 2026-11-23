@@ -156,9 +156,60 @@ public sealed class EventArchiveContentMergerTests
     [Arguments("~~~markdown\n<!-- bethuya:managed:start -->\nCommunity example\n<!-- bethuya:managed:end -->\n~~~")]
     [Arguments("    <!-- bethuya:managed:start -->\n    Community example\n    <!-- bethuya:managed:end -->")]
     [Arguments("Example `<!-- bethuya:managed:start -->` and `<!-- bethuya:managed:end -->`.")]
+    [Arguments("<pre>\n<!-- bethuya:managed:start -->\nCommunity example\n<!-- bethuya:managed:end -->\n</pre>")]
+    [Arguments("<script>\n<!-- bethuya:managed:start -->\nCommunity example\n<!-- bethuya:managed:end -->\n</script>")]
+    [Arguments("<div>\n<!-- bethuya:managed:start -->\nCommunity example\n<!-- bethuya:managed:end -->\n</div>")]
+    [Arguments("<custom-example>\n<!-- bethuya:managed:start -->\nCommunity example\n<!-- bethuya:managed:end -->\n</custom-example>")]
     public async Task MergeReadme_LiteralMarkers_RefusesRatherThanReplacingCommunityExample(string existing)
     {
         await Assert.That(() => EventArchiveContentMerger.MergeReadme(existing, "# New projection"))
             .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    [Arguments("title:legacy: keep")]
+    [Arguments("description:community: keep")]
+    public async Task MergeMetadata_ColonInCommunityKey_RefusesWithoutReplacingIt(string key)
+    {
+        var existing = ProposedMetadata.Replace(
+            key.StartsWith("title", StringComparison.Ordinal) ? "title: \"New title\"" : "description: \"New description\"",
+            key, StringComparison.Ordinal);
+        await Assert.That(() => EventArchiveContentMerger.MergeMetadata(existing, ProposedMetadata))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task MergeReadme_MarkersAfterClosedHtmlBlock_RemainEligible()
+    {
+        const string existing = "<div>\nCommunity content\n</div>\n\n<!-- bethuya:managed:start -->\nOld projection\n<!-- bethuya:managed:end -->";
+        var merged = EventArchiveContentMerger.MergeReadme(existing, "# New projection");
+
+        await Assert.That(merged).Contains("<div>\nCommunity content\n</div>");
+        await Assert.That(merged).Contains("# New projection");
+        await Assert.That(merged).DoesNotContain("Old projection");
+    }
+
+    [Test]
+    public async Task MergeMetadata_CrlfProjection_DoesNotDuplicateCarriageReturns()
+    {
+        var metadata = ProposedMetadata.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("\n", "\r\n", StringComparison.Ordinal);
+
+        var merged = EventArchiveContentMerger.MergeMetadata(metadata, metadata);
+
+        await Assert.That(merged).IsEqualTo(metadata);
+    }
+
+    [Test]
+    [Arguments("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee # imported", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")]
+    [Arguments("\"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\" # imported", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")]
+    [Arguments("'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' # imported", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")]
+    [Arguments("'identity # literal'", "identity # literal")]
+    [Arguments("\"identity # literal\"", "identity # literal")]
+    public async Task ReadBethuyaEventId_ScalarComments_ExcludesOnlySeparatedComments(string scalar, string expected)
+    {
+        var identity = EventArchiveContentMerger.ReadBethuyaEventId($"bethuya:\n  eventId: {scalar}\n");
+
+        await Assert.That(identity).IsEqualTo(expected);
     }
 }

@@ -568,8 +568,56 @@ public sealed class EventArchiveOutboxProcessorTests
         await Assert.That(interceptor.Triggered).IsTrue();
         await Assert.That(saved.ArchivePublicationIdempotencyKey).IsEqualTo("new-confirmation");
         await Assert.That(saved.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.Pending);
-        await Assert.That(saved.ArchivePullRequestNumber).IsNull();
+        await Assert.That(saved.ArchivePullRequestNumber).IsEqualTo(terminalFailure ? null : (int?)42);
         await Assert.That((await db.EventArchiveOutboxMessages.SingleAsync()).ProcessedAt).IsNotNull();
+    }
+
+    [Test]
+    public async Task ProcessOneAsync_OlderSuccess_DoesNotReplaceNewerSuccessfulPrReference()
+    {
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
+        var eventId = EventId.From(Guid.NewGuid());
+        var older = new EventArchiveOutboxMessage
+        {
+            EventId = eventId, Destination = "archive/test", FolderPath = "events/2026/2026-07-01-event",
+            ReadmeMarkdown = "# Event", MetadataJson = "title: Event", ConfirmedBy = "organizer",
+            ConfirmedPreviewToken = "confirmed", IdempotencyKey = "older-confirmation",
+            CreatedAt = DateTimeOffset.UtcNow.AddHours(-2), AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-1)
+        };
+        db.EventArchiveOutboxMessages.AddRange(older, new EventArchiveOutboxMessage
+        {
+            EventId = eventId, Destination = "archive/test", FolderPath = older.FolderPath,
+            ReadmeMarkdown = "# New event", MetadataJson = "title: New event", ConfirmedBy = "organizer",
+            ConfirmedPreviewToken = "new-confirmed", IdempotencyKey = "newer-confirmation",
+            CreatedAt = DateTimeOffset.UtcNow.AddHours(-1), ProcessedAt = DateTimeOffset.UtcNow.AddMinutes(-1)
+        });
+        db.Events.Add(new Event
+        {
+            Id = eventId.Value, Title = "Event", CreatedBy = "organizer",
+            ArchivePublicationIdempotencyKey = "newer-confirmation",
+            ArchivePublicationStatus = EventArchivePublicationStatus.DraftPrPending,
+            ArchiveBranchName = "new-branch", ArchivePullRequestNumber = 43,
+            ArchivePullRequestUrl = "https://github.com/org/repo/pull/43"
+        });
+        await db.SaveChangesAsync();
+        var repository = new MockGitHubEventRepository(new(
+            "https://github.com/org/repo/tree/main/events/example",
+            "https://github.com/org/repo/blob/main/events/example/event.yml",
+            "old-branch", 42, "https://github.com/org/repo/pull/42"));
+        using var processor = new EventArchiveOutboxProcessor(new TestScopeFactory(connection, repository),
+            NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var processOne = typeof(EventArchiveOutboxProcessor)
+            .GetMethod("ProcessOneAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        await (Task)processOne.Invoke(processor, [CancellationToken.None])!;
+
+        db.ChangeTracker.Clear();
+        var saved = await db.Events.SingleAsync();
+        await Assert.That(saved.ArchivePullRequestNumber).IsEqualTo(43);
+        await Assert.That(saved.ArchiveBranchName).IsEqualTo("new-branch");
+        await Assert.That(saved.ArchivePublicationStatus).IsEqualTo(EventArchivePublicationStatus.DraftPrPending);
+        await Assert.That((await db.EventArchiveOutboxMessages.SingleAsync(item => item.Id == older.Id)).ProcessedAt).IsNotNull();
     }
 
     private sealed class ConfirmBeforeEventUpdateInterceptor : DbCommandInterceptor

@@ -600,13 +600,38 @@ public sealed class GitHubEventRepositoryTests
         request = request with { ConfirmedPreviewToken = (await repository.PreviewEventAsync(request)).PreviewToken };
         await repository.PublishEventAsync(request);
         handler.PullRequestBase = "community-review";
-        handler.PullRequestIsDraft = false;
         var writes = handler.Requests.Count(item => item.Method != HttpMethod.Get);
 
         await Assert.That(async () => await repository.PublishEventAsync(request))
             .Throws<ArchivePreviewMismatchException>();
         await Assert.That(handler.Requests.Count(item => item.Method != HttpMethod.Get)).IsEqualTo(writes);
         await Assert.That(handler.CreatedPullRequests).IsEqualTo(1);
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task PreviewAndPublish_ForeignArchiveIdentity_RefusesWithoutWrites(bool publish)
+    {
+        using var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        handler.SetBaseArchive("# Community notes", request.MetadataJson.Replace(
+            request.EventId.Value.ToString(), "11111111-2222-3333-4444-555555555555", StringComparison.Ordinal));
+        var count = handler.Requests.Count;
+
+        if (publish)
+        {
+            await Assert.That(async () => await repository.PublishEventAsync(request))
+                .Throws<ArchivePreviewMismatchException>();
+        }
+        else
+        {
+            await Assert.That(async () => await repository.PreviewEventAsync(request))
+                .Throws<InvalidOperationException>();
+        }
+        await Assert.That(handler.Requests.Skip(count).All(item => item.Method == HttpMethod.Get)).IsTrue();
     }
 
     private sealed class FakeGitHubHandler(string? baseReadme, string? baseMetadata) : HttpMessageHandler

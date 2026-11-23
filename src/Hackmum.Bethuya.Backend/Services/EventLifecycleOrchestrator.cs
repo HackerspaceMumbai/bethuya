@@ -184,25 +184,50 @@ public sealed partial class EventLifecycleOrchestrator(
         var strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var currentEvent = await dbContext.Events.AsNoTracking()
+                .Include(current => current.Agenda)
+                .ThenInclude(agenda => agenda!.Sessions)
+                .SingleAsync(current => current.Id == eventId, ct);
+            EnsurePublicLifecycle(currentEvent);
+            var currentFolderPath = currentEvent.ArchiveFolderPath ?? CreateArchiveFolderPath(currentEvent);
+            var currentArtifact = CreatePublicationArtifact(currentEvent, currentFolderPath);
+            var currentProjectionKey = CreateIdempotencyKey(
+                Hackmum.Bethuya.Core.ValueObjects.EventId.From(currentEvent.Id), currentArtifact);
+            if (!string.Equals(currentFolderPath, folderPath, StringComparison.Ordinal)
+                || !string.Equals(currentProjectionKey, idempotencyKey, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The event projection changed while the archive preview was being confirmed. Review a new preview before confirming.");
+            }
+
+            var currentPublicationKey = currentEvent.ArchivePublicationIdempotencyKey;
             alreadyQueued = !await AddOutboxIfMissingAsync(
                 CreateOutboxMessage(evt, artifact, actor, preview.PreviewToken),
-                evt.ArchivePublicationIdempotencyKey,
+                currentPublicationKey,
                 ct);
             if (alreadyQueued)
             {
                 return;
             }
 
-            evt.ArchiveFolderPath = folderPath;
-            evt.ArchivePublicationStatus = EventArchivePublicationStatus.Pending;
-            evt.ArchivePublicationRequestedBy = actor;
-            evt.ArchivePublicationRequestedAt = occurredAt;
-            evt.ArchivePublicationIdempotencyKey = idempotencyKey;
-            await dbContext.SaveChangesAsync(ct);
+            var updated = await dbContext.Events
+                .Where(current => current.Id == eventId
+                    && current.ArchivePublicationIdempotencyKey == currentPublicationKey)
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(current => current.ArchiveFolderPath, folderPath)
+                    .SetProperty(current => current.ArchivePublicationStatus, EventArchivePublicationStatus.Pending)
+                    .SetProperty(current => current.ArchivePublicationRequestedBy, actor)
+                    .SetProperty(current => current.ArchivePublicationRequestedAt, occurredAt)
+                    .SetProperty(current => current.ArchivePublicationIdempotencyKey, idempotencyKey), ct);
+            if (updated != 1)
+            {
+                throw new InvalidOperationException("Another archive confirmation advanced this event. Re-preview and confirm again.");
+            }
             await transaction.CommitAsync(ct);
         });
 
+        await dbContext.Entry(evt).ReloadAsync(ct);
         if (alreadyQueued)
         {
             return ToResult(evt, "This archive projection is already queued or has a pull request.");
@@ -530,7 +555,8 @@ public sealed partial class EventLifecycleOrchestrator(
                     || !string.Equals(currentPublicationKey, outbox.IdempotencyKey, StringComparison.Ordinal));
         if (!reactivate)
         {
-            if (existing.ProcessedAt is null && !sameSnapshot)
+            if (existing.ProcessedAt is null && (!sameSnapshot
+                || !string.Equals(currentPublicationKey, outbox.IdempotencyKey, StringComparison.Ordinal)))
             {
                 throw new InvalidOperationException(
                     "An older archive confirmation is still queued or processing. Wait for it to finish, then re-preview and confirm again.");
