@@ -617,19 +617,22 @@ public sealed class GitHubEventRepositoryTests
         using var client = CreateHttpClient(handler);
         var repository = CreateRepository(client);
         var request = await ConfirmPreviewAsync(repository, CreateRequest());
+        await Assert.That(request.ConfirmedPreviewToken).IsNotNull();
         handler.SetBaseArchive("# Community notes", request.MetadataJson.Replace(
             request.EventId.Value.ToString(), "11111111-2222-3333-4444-555555555555", StringComparison.Ordinal));
         var count = handler.Requests.Count;
 
         if (publish)
         {
-            await Assert.That(async () => await repository.PublishEventAsync(request))
+            var exception = await Assert.That(async () => await repository.PublishEventAsync(request))
                 .Throws<ArchivePreviewMismatchException>();
+            await Assert.That(exception!.Message).Contains("archive identifies another event");
         }
         else
         {
-            await Assert.That(async () => await repository.PreviewEventAsync(request))
+            var exception = await Assert.That(async () => await repository.PreviewEventAsync(request))
                 .Throws<InvalidOperationException>();
+            await Assert.That(exception!.Message).Contains("archive identifies another event");
         }
         await Assert.That(handler.Requests.Skip(count).All(item => item.Method == HttpMethod.Get)).IsTrue();
     }

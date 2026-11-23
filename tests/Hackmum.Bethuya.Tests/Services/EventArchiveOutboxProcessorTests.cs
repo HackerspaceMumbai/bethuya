@@ -34,6 +34,7 @@ public sealed class EventArchiveOutboxProcessorTests
         var eventId = EventId.From(Guid.NewGuid());
         var older = new EventArchiveOutboxMessage
         {
+            Id = EventArchiveOutboxMessageId.From(Guid.Parse("00000000-0000-0000-0000-000000000001")),
             EventId = eventId,
             Destination = "archive/test",
             FolderPath = "events/2026/2026-06-30-old-event-abc123",
@@ -43,12 +44,13 @@ public sealed class EventArchiveOutboxProcessorTests
             IdempotencyKey = "old-key",
             AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             AttemptCount = 8,
-            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-30),
+            CreatedAt = new DateTimeOffset(2026, 11, 28, 12, 0, 0, TimeSpan.Zero),
             ClaimToken = "old-claim"
         };
 
         var newer = new EventArchiveOutboxMessage
         {
+            Id = EventArchiveOutboxMessageId.From(Guid.Parse("00000000-0000-0000-0000-000000000002")),
             EventId = eventId,
             Destination = "archive/test",
             FolderPath = "events/2026/2026-07-01-new-event-def456",
@@ -58,7 +60,7 @@ public sealed class EventArchiveOutboxProcessorTests
             IdempotencyKey = "new-key",
             AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             AttemptCount = 0,
-            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            CreatedAt = older.CreatedAt,
             ClaimToken = "new-claim"
         };
 
@@ -173,6 +175,78 @@ public sealed class EventArchiveOutboxProcessorTests
         var claimedId = (object?)result?.GetType().GetProperty("Id")?.GetValue(result);
 
         await Assert.That(claimedId).IsNull();
+    }
+
+    /// <summary>
+    /// Ensures equal-timestamp messages for one event are claimed in stable identifier order, including
+    /// when the earlier message is leased and after it is processed.
+    /// </summary>
+    [Test]
+    public async Task ClaimNextAsync_EqualCreatedAtMessages_ClaimsInStableIdentifierOrder()
+    {
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
+        var eventId = EventId.From(Guid.NewGuid());
+        var createdAt = new DateTimeOffset(2026, 11, 28, 12, 0, 0, TimeSpan.Zero);
+        var firstId = EventArchiveOutboxMessageId.From(Guid.Parse("00000000-0000-0000-0000-000000000001"));
+        var secondId = EventArchiveOutboxMessageId.From(Guid.Parse("00000000-0000-0000-0000-000000000002"));
+        var laterMessage = new EventArchiveOutboxMessage
+        {
+            Id = secondId,
+            EventId = eventId,
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-11-28-later",
+            ConfirmedBy = "test-organizer",
+            ReadmeMarkdown = "later readme",
+            MetadataJson = "{ \"version\": 2 }",
+            IdempotencyKey = "later-key",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            CreatedAt = createdAt
+        };
+        var earlierMessage = new EventArchiveOutboxMessage
+        {
+            Id = firstId,
+            EventId = eventId,
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-11-28-earlier",
+            ConfirmedBy = "test-organizer",
+            ReadmeMarkdown = "earlier readme",
+            MetadataJson = "{ \"version\": 1 }",
+            IdempotencyKey = "earlier-key",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            CreatedAt = createdAt
+        };
+
+        db.EventArchiveOutboxMessages.AddRange(laterMessage, earlierMessage);
+        await db.SaveChangesAsync();
+
+        var processor = new EventArchiveOutboxProcessor(
+            new TestScopeFactory(connection),
+            NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var claimMethod = typeof(EventArchiveOutboxProcessor).GetMethod(
+            "ClaimNextAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        async Task<EventArchiveOutboxMessageId?> ClaimNextIdAsync()
+        {
+            var task = (Task)claimMethod.Invoke(processor, [CancellationToken.None])!;
+            await task;
+            var result = task.GetType().GetProperty("Result")!.GetValue(task);
+            var claimedId = (object?)result?.GetType().GetProperty("Id")?.GetValue(result);
+            return claimedId is EventArchiveOutboxMessageId id ? id : null;
+        }
+
+        var firstClaim = await ClaimNextIdAsync();
+        await Assert.That(firstClaim).IsEqualTo(firstId);
+        await Assert.That(await ClaimNextIdAsync()).IsNull();
+
+        db.ChangeTracker.Clear();
+        var claimedMessage = await db.EventArchiveOutboxMessages.FirstAsync(message => message.Id == firstId);
+        claimedMessage.ProcessedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        var secondClaim = await ClaimNextIdAsync();
+        await Assert.That(secondClaim).IsEqualTo(secondId);
     }
 
     /// <summary>

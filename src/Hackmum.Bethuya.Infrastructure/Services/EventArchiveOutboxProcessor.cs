@@ -138,7 +138,13 @@ internal sealed partial class EventArchiveOutboxProcessor(
                                 AND newer."ProcessedAt" IS NOT NULL
                                 AND newer."LastError" IS NULL
                                 AND newer."ConfirmedPreviewToken" IS NOT NULL
-                                AND newer."CreatedAt" >= completed."CreatedAt")
+                                AND (
+                                    newer."CreatedAt" > completed."CreatedAt"
+                                    OR (
+                                        newer."CreatedAt" = completed."CreatedAt"
+                                        AND newer."Id" > completed."Id"
+                                    )
+                                ))
                     """, ct);
 
                 await transaction.CommitAsync(ct);
@@ -273,51 +279,53 @@ internal sealed partial class EventArchiveOutboxProcessor(
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
             var now = DateTimeOffset.UtcNow;
             
-            // Fetch unprocessed messages (server-side only, simpler predicate).
-            // SQLite LINQ translation is limited, so we'll filter all other conditions on the client.
-            // AsNoTracking for performance; we'll update messages explicitly if claimed.
-            var candidates = await db.EventArchiveOutboxMessages
+            // SQLite cannot translate the DateTimeOffset availability comparisons, so load the lightweight
+            // ordering fields first and filter eligibility on the client in the database's stable ID order.
+            var orderedPending = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
                 .Where(m => m.ProcessedAt == null && m.ConfirmedBy != string.Empty)
-                .Take(100)
+                .OrderBy(m => m.Id)
+                .Select(m => new { m.EventId, m.Id, m.CreatedAt, m.AvailableAt, m.LockedUntil })
                 .ToListAsync(ct);
 
-            // Filter for available and non-locked messages, and order by creation time on the client.
-            candidates = candidates
-                .Where(m => m.AvailableAt <= now && (m.LockedUntil == null || m.LockedUntil < now))
-                .OrderBy(m => m.CreatedAt)
+            var identifierOrder = orderedPending
+                .Select((message, index) => new { message.Id, Index = index })
+                .ToDictionary(message => message.Id, message => message.Index);
+            orderedPending = orderedPending
+                .OrderBy(message => message.CreatedAt)
+                .ThenBy(message => identifierOrder[message.Id])
                 .ToList();
 
-            if (candidates.Count == 0)
+            var oldestMessageIdByEvent = orderedPending
+                .GroupBy(m => m.EventId.Value)
+                .ToDictionary(group => group.Key, group => group.First().Id);
+
+            var candidateIds = orderedPending
+                .Where(m => m.AvailableAt <= now && (m.LockedUntil == null || m.LockedUntil < now))
+                .Take(100)
+                .Select(m => m.Id)
+                .ToArray();
+            if (candidateIds.Length == 0)
             {
                 await transaction.RollbackAsync(ct);
                 result = null;
                 return;
             }
 
-            // Fetch only ordering fields once to check for ordering constraints within the transaction.
-            // This must be done within the same transaction at Serializable isolation to ensure we don't claim
-            // while an older message for the same event is still pending.
-            var oldestPendingByEvent = await db.EventArchiveOutboxMessages
+            var candidatesById = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
-                .Where(m => m.ProcessedAt == null && m.ConfirmedBy != string.Empty)
-                .Select(m => new { m.EventId, m.CreatedAt })
-                .ToListAsync(ct);
+                .Where(m => candidateIds.Contains(m.Id))
+                .ToDictionaryAsync(m => m.Id, ct);
+            var candidates = candidateIds.Select(id => candidatesById[id]).ToList();
 
-            var oldestCreatedAtByEvent = oldestPendingByEvent
-                .GroupBy(m => m.EventId.Value)
-                .ToDictionary(group => group.Key, group => group.Min(m => m.CreatedAt));
-
-            // Try each candidate in order, skipping those that have an older unprocessed message for the same event.
+            // Try each candidate in database order, skipping messages that are not oldest for their event.
             // This prevents a single event's backoff from starving other events' work and improves throughput.
             EventArchiveOutboxMessage? selectedMessage = null;
             foreach (var candidate in candidates)
             {
-                var olderExists = oldestCreatedAtByEvent[candidate.EventId.Value] < candidate.CreatedAt;
-
-                if (olderExists)
+                if (oldestMessageIdByEvent[candidate.EventId.Value] != candidate.Id)
                 {
-                    continue; // Try next candidate; this event has older pending work
+                    continue; // Try next event; this event has older pending work.
                 }
 
                 selectedMessage = candidate;
@@ -394,23 +402,29 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 return;
             }
 
-            // Check if there's a newer projection for the same event (created after this message).
+            // Check if there's a later projection for the same event using the same total order as claims.
             // Use client-side evaluation to work around Vogen value-object LINQ translation limitations.
             var newerEventIdValue = message.EventId.Value;
-            var newerMessageIdValue = message.Id.Value;
-            var newerCreatedAtValue = message.CreatedAt;
+            var messageId = message.Id;
+            var messageCreatedAt = message.CreatedAt;
             
             var hasNewerProjection = false;
             if (!terminal && workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal)
             {
                 var allMessages = await db.EventArchiveOutboxMessages
                     .AsNoTracking()
+                    .OrderBy(item => item.Id)
                     .ToListAsync(ct);  // Force client evaluation
+                var identifierOrder = allMessages
+                    .Select((item, index) => new { item.Id, Index = index })
+                    .ToDictionary(item => item.Id, item => item.Index);
 
                 hasNewerProjection = allMessages.Any(m =>
                     m.EventId.Value == newerEventIdValue &&
-                    m.Id.Value != newerMessageIdValue &&
-                    m.CreatedAt > newerCreatedAtValue);
+                    m.Id != messageId
+                    && (m.CreatedAt > messageCreatedAt
+                        || (m.CreatedAt == messageCreatedAt
+                            && identifierOrder[m.Id] > identifierOrder[messageId])));
             }
 
             if (terminal || (workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal && hasNewerProjection))

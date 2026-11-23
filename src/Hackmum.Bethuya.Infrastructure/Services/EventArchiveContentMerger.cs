@@ -128,7 +128,7 @@ public static partial class EventArchiveContentMerger
         }
 
         // Ambiguous/custom HTML blocks are refused until a blank line establishes a Markdown boundary.
-        return HtmlTagRegex().IsMatch(trimmed) ? string.Empty : null;
+        return StandaloneHtmlTagRegex().IsMatch(trimmed) ? string.Empty : null;
     }
 
     /// <summary>Merges owned scalars and refuses unsupported mapping structures.</summary>
@@ -540,6 +540,6 @@ public static partial class EventArchiveContentMerger
     [GeneratedRegex(@"^<(?<tag>script|pre|style|textarea)(?=[\s>]|$)", RegexOptions.IgnoreCase)]
     private static partial Regex LiteralHtmlTagRegex();
 
-    [GeneratedRegex(@"^</?[A-Za-z][A-Za-z0-9-]*(?=[\s/>]|$)")]
-    private static partial Regex HtmlTagRegex();
+    [GeneratedRegex(@"^</?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[^<>]*)?[ \t]*/?>[ \t]*$")]
+    private static partial Regex StandaloneHtmlTagRegex();
 }

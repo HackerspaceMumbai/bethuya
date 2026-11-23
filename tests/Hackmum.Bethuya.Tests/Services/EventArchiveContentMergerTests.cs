@@ -190,6 +190,18 @@ public sealed class EventArchiveContentMergerTests
     }
 
     [Test]
+    public async Task MergeReadme_InlineHtmlBeforeManagedMarker_PreservesCommunityContentAndReplacesProjection()
+    {
+        const string existing = "<span>Community</span>\n<!-- bethuya:managed:start -->\nOld projection\n<!-- bethuya:managed:end -->";
+
+        var merged = EventArchiveContentMerger.MergeReadme(existing, "# New projection");
+
+        await Assert.That(merged).Contains("<span>Community</span>");
+        await Assert.That(merged).Contains("# New projection");
+        await Assert.That(merged).DoesNotContain("Old projection");
+    }
+
+    [Test]
     public async Task MergeMetadata_CrlfProjection_DoesNotDuplicateCarriageReturns()
     {
         var metadata = ProposedMetadata.Replace("\r\n", "\n", StringComparison.Ordinal)
