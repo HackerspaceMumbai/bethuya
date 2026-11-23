@@ -204,6 +204,18 @@ public sealed class EventArchiveContentMergerTests
     }
 
     [Test]
+    public async Task MergeReadme_AutolinkBeforeManagedMarker_DoesNotOpenHtmlBlock()
+    {
+        const string existing = "<https://hackmum.in>\n<!-- bethuya:managed:start -->\nOld projection\n<!-- bethuya:managed:end -->";
+
+        var merged = EventArchiveContentMerger.MergeReadme(existing, "# New projection");
+
+        await Assert.That(merged).Contains("<https://hackmum.in>");
+        await Assert.That(merged).Contains("# New projection");
+        await Assert.That(merged).DoesNotContain("Old projection");
+    }
+
+    [Test]
     public async Task MergeMetadata_CrlfProjection_DoesNotDuplicateCarriageReturns()
     {
         var metadata = ProposedMetadata.Replace("\r\n", "\n", StringComparison.Ordinal)

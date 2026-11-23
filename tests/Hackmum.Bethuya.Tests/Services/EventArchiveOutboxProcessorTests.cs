@@ -249,6 +249,81 @@ public sealed class EventArchiveOutboxProcessorTests
         await Assert.That(secondClaim).IsEqualTo(secondId);
     }
 
+    [Test]
+    public async Task ClaimNextAsync_BackoffSuccessors_DoNotHideEligibleOtherEvents()
+    {
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
+        var blockedEventId = EventId.From(Guid.NewGuid());
+        var readyEventId = EventId.From(Guid.NewGuid());
+        var createdAt = new DateTimeOffset(2026, 11, 28, 12, 0, 0, TimeSpan.Zero);
+        var blockedMessageId = EventArchiveOutboxMessageId.From(Guid.Parse("00000000-0000-0000-0000-000000000001"));
+        var messages = new List<EventArchiveOutboxMessage>
+        {
+            new()
+            {
+                Id = blockedMessageId,
+                EventId = blockedEventId,
+                Destination = "archive/test",
+                FolderPath = "events/2026/blocked",
+                ConfirmedBy = "test-organizer",
+                ReadmeMarkdown = "blocked readme",
+                MetadataJson = "{ }",
+                IdempotencyKey = "blocked-key",
+                AvailableAt = DateTimeOffset.UtcNow.AddHours(1),
+                CreatedAt = createdAt
+            }
+        };
+
+        for (var index = 2; index <= 101; index++)
+        {
+            messages.Add(new EventArchiveOutboxMessage
+            {
+                Id = EventArchiveOutboxMessageId.From(Guid.Parse($"00000000-0000-0000-0000-{index:D12}")),
+                EventId = blockedEventId,
+                Destination = "archive/test",
+                FolderPath = $"events/2026/blocked-successor-{index}",
+                ConfirmedBy = "test-organizer",
+                ReadmeMarkdown = "blocked successor readme",
+                MetadataJson = "{ }",
+                IdempotencyKey = $"blocked-successor-{index}",
+                AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+                CreatedAt = createdAt
+            });
+        }
+
+        var readyMessageId = EventArchiveOutboxMessageId.From(Guid.Parse("00000000-0000-0000-0000-000000000200"));
+        messages.Add(new EventArchiveOutboxMessage
+        {
+            Id = readyMessageId,
+            EventId = readyEventId,
+            Destination = "archive/test",
+            FolderPath = "events/2026/ready",
+            ConfirmedBy = "test-organizer",
+            ReadmeMarkdown = "ready readme",
+            MetadataJson = "{ }",
+            IdempotencyKey = "ready-key",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            CreatedAt = createdAt
+        });
+
+        db.EventArchiveOutboxMessages.AddRange(messages);
+        await db.SaveChangesAsync();
+
+        var processor = new EventArchiveOutboxProcessor(
+            new TestScopeFactory(connection),
+            NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var claimMethod = typeof(EventArchiveOutboxProcessor).GetMethod(
+            "ClaimNextAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var task = (Task)claimMethod.Invoke(processor, [CancellationToken.None])!;
+        await task;
+        var result = task.GetType().GetProperty("Result")!.GetValue(task);
+        var claimedId = (object?)result?.GetType().GetProperty("Id")?.GetValue(result);
+
+        await Assert.That(claimedId).IsEqualTo(readyMessageId);
+    }
+
     /// <summary>
     /// Ensures the claim-lease heartbeat renews the lease while the claim token still matches, so a live worker's
     /// lease never lapses out from under it while it is still publishing.

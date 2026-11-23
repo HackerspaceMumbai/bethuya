@@ -301,7 +301,9 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 .ToDictionary(group => group.Key, group => group.First().Id);
 
             var candidateIds = orderedPending
-                .Where(m => m.AvailableAt <= now && (m.LockedUntil == null || m.LockedUntil < now))
+                .Where(m => oldestMessageIdByEvent[m.EventId.Value] == m.Id
+                    && m.AvailableAt <= now
+                    && (m.LockedUntil == null || m.LockedUntil < now))
                 .Take(100)
                 .Select(m => m.Id)
                 .ToArray();

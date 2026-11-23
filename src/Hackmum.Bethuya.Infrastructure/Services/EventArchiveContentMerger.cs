@@ -548,7 +548,7 @@ public static partial class EventArchiveContentMerger
     [GeneratedRegex(@"^<(?<tag>script|pre|style|textarea)(?=[\s>]|$)", RegexOptions.IgnoreCase)]
     private static partial Regex LiteralHtmlTagRegex();
 
-    [GeneratedRegex(@"^<(?<tag>[A-Za-z][A-Za-z0-9:-]*)(?=[\s/>]|$)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^<(?<tag>[A-Za-z][A-Za-z0-9-]*)(?=[\s/>]|$)", RegexOptions.IgnoreCase)]
     private static partial Regex OpeningHtmlTagRegex();
 
     [GeneratedRegex(@"^<(?:a|abbr|b|bdi|bdo|br|cite|code|data|del|dfn|em|i|img|ins|kbd|mark|q|rp|rt|ruby|s|samp|small|span|strong|sub|sup|time|u|var|wbr)(?=[\s/>]|$)", RegexOptions.IgnoreCase)]
