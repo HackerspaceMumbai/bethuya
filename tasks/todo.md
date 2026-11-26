@@ -2,6 +2,13 @@
 
 All work items must be added here **before** writing code (plan-first protocol).
 
+## [2026-11-22] Resolve archive preservation and state review defects
+- [x] Refuse unsupported YAML mappings/keys and preserve community multiline values; validate adoption identities within the actual provenance mapping.
+- [x] Prevent retries from recreating closed proposals, refuse retained merged branches, and atomically reject stale publication-status refreshes.
+- [x] Add fake-GitHub and SQLite regressions for replay, claims, stale refresh/completion/failure, adoption and branch decisions; the full Release TUnit suite passes 605/605. Broad contract migrations remain excluded; the separately approved dependency remediation is tracked below.
+- [x] Preserve retry of a newly created publication branch after an older merged branch was retired; distinguish it by confirmed-preview/tree provenance and retain human-edit refusal. The new regression failed before the fix; all 25 adapter cases and 608/608 Release TUnit tests now pass, and the full Release build has zero warnings/errors.
+- [x] Resolve newly arriving archive review findings: confirmation validates the fresh event projection inside its serializable transaction; pending historical confirmations are not acknowledged as current; markdown raw-HTML markers and ambiguous YAML keys/identity comments are handled conservatively; foreign Bethuya IDs are refused; successful PR references are ordered independently of the latest pending projection. Strengthened regression fixtures. Final Release TUnit passes 626/626 and single-node solution build has zero warnings/errors.
+
 ## Format
 
 ```
@@ -15,6 +22,27 @@ All work items must be added here **before** writing code (plan-first protocol).
 ---
 
 ## Active Tasks
+
+## [2026-11-22] Protect event mutation endpoints
+- **Status:** done
+- **Agent/Owner:** Tank
+- **Description:** Apply the existing organizer policy to the five specified event mutations and derive creation attribution from the authenticated stable subject, preserving authorized PUT behavior and public reads.
+- **Acceptance:** Endpoint tests demonstrate unauthorized requests have no side effects, organizer/admin success, stable-subject handling, and public GET compatibility; run the bounded TUnit suite and stage the task files for independent review.
+- **Completion Evidence:** Tank implemented commit `39cb6cb`; Morpheus independently verified organizer policy/claims attribution, the backend build and 569/569 tests. Later archive/dependency changes preserve the matrix in the full 605/605 Release run.
+
+## [2026-11-22] Preserve archive Draft PR branch edits
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Replace forced PR-branch rewrites with fast-forward updates based on the observed PR head; refuse unconfirmed human tree edits and ready PRs with actionable resolution. Record generated tree provenance in commit messages and preserve confirmed-preview/idempotent retry safeguards.
+- **Acceptance:** Fake GitHub tests protect README and unrelated-file branch edits, reject concurrent ref advances and ready PR updates, and retain deterministic branching and retries; repository tests pass; PR #68 stays Draft.
+- **Completion Evidence:** Seven new fake-GitHub cases cover README/unrelated-file edits, non-fast-forward races, ready PRs before and during preparation, legacy heads without provenance, and retry after an applied ref update loses its response. Existing heads provide the base tree and parent; PATCH uses GitHub's `git/refs` endpoint with `force: false`. The bounded TUnit project passes 567/567, with no live archive writes.
+
+## [2026-11-22] Bind archive publication to confirmed preview snapshot
+- **Status:** done
+- **Agent/Owner:** Copilot
+- **Description:** Fix stale Draft-PR branch detection by comparing actual branch file contents, persist the organizer-confirmed preview token in the outbox, pin preview reads to one target commit, and reject stale snapshots before GitHub writes with an actionable reconfirmation path.
+- **Acceptance:** Changed projections update existing branches; unchanged retries remain idempotent; target changes after confirmation cause no branch/PR writes; reconfirmation can safely requeue the same projection; focused TUnit tests and the repository test suite pass.
+- **Completion Evidence:** Existing-branch comparisons now use actual files; retries after branch update/PR-creation failure reuse the commit. The nullable confirmed-token column was added by migration; stale snapshots become failed without retry, and explicit reconfirmation resets the failed outbox item. Different-token confirmation while pending is rejected explicitly without disturbing active claims. Preview reads use one commit SHA. `dotnet test tests\Hackmum.Bethuya.Tests\Hackmum.Bethuya.Tests.csproj --no-restore -v minimal` passed 560/560; `dotnet ef migrations has-pending-model-changes` reported no pending model changes.
 
 ## [2026-10-23] Fix mentorship recommendation CTA mismatch
 - **Status:** done
@@ -1152,3 +1180,25 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## [2026-10-17] Merge security restore fix into main
 - [x] Staged code review approved; final dependency restore passes with main's MessagePack 3.1.12 preserved. Prepared for merge into local main. Earlier TUnit run passed 516/516; final rerun was blocked by running backend DLL locks.
+
+## [2026-11-20] Track B explicit archive publication
+- [x] Replace lifecycle-triggered archive writes with organizer preview/confirmation, durable outbox processing, deterministic Draft PR publication, exact-path adoption, on-demand status refresh, and safe date/path validation. Full TUnit suite passed 535/535.
+
+## [2026-11-20] Refuse multiline YAML metadata values safely
+- [x] Detect block-scalar and continued/multiline forms before replacing managed values while preserving safe simple scalar behavior.
+- [x] Add focused regression tests for literal/folded block headers and related multiline forms; full TUnit project passed 551/551.
+
+## [2026-11-20] Republish changed archive projections
+- [x] Compare existing publication branch file contents directly with the current candidate so stale projections trigger an update.
+- [x] Add fake GitHub regression coverage for a changed projection with an unchanged target and verify existing retry behavior.
+
+## [2026-11-20] Bind archive publication to confirmed content
+- [x] Preserve the confirmed target snapshot with the durable publication request and reject changed targets before GitHub writes.
+- [x] Read preview files from one branch-ref snapshot; test changed-target refusal and retry behavior after partial publication.
+
+## [2026-11-22] Explicitly authorized package security upgrades
+- [x] Upgrade HtmlSanitizer to 11.0.26 and Aspire to 17.0.0, with required transitive minimum alignment. Preview-only Foundry/Keycloak packages remain unchanged.
+- [x] Include the explicitly approved bUnit 2.15.2 compatibility migration required by HtmlSanitizer 11, preserving all existing test assertions and TUnit. Remove the obsolete NU1608 suppression.
+- [x] Include the explicitly approved Aspire 17 AppHost SDK/API migration, preserving resource names, paths, launch-profile choices and existing configuration.
+- [x] Use latest stable .NET 10 WebAssembly servicing packages, 10.0.15; .NET 11 packages require an excluded target-framework migration.
+- [x] Normal solution restore and full Release build pass with zero warnings/errors. Release TUnit passes 605/605, zero skipped. All 17 solution projects report no vulnerable packages; no live archive writes, AppHost startup or deployment.

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using System.Reflection;
 
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -20,10 +20,10 @@ public sealed class CommunityPassportRenderTests
     [Test]
     public async Task MemberPassport_RendersUnifiedExperienceAndPrivacyControls()
     {
-        using var ctx = CreateContext(out var api);
+        await using var ctx = CreateContext(out var api);
         api.GetExperienceAsync(Arg.Any<CancellationToken>()).Returns(BuildExperience());
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityPassport>();
+        var cut = ctx.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityPassport>();
 
         cut.WaitForAssertion(() =>
         {
@@ -67,9 +67,9 @@ public sealed class CommunityPassportRenderTests
     [Test]
     public async Task PrivacyPanel_RendersStrictFormComponents()
     {
-        using var ctx = CreateContext(out _);
+        await using var ctx = CreateContext(out _);
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Components.Passport.PassportPrivacyPanel>(
+        var cut = ctx.Render<global::Bethuya.Hybrid.Shared.Components.Passport.PassportPrivacyPanel>(
             parameters => parameters.Add(
                 panel => panel.Privacy,
                 new PassportPrivacyPreferencesDto("CommunityOnly", true, true, true, true, true, true, true, true)));
@@ -83,11 +83,11 @@ public sealed class CommunityPassportRenderTests
     [Test]
     public async Task MemberPassport_ShowsLoadingStateBeforeExperienceResolves()
     {
-        using var ctx = CreateContext(out var api);
+        await using var ctx = CreateContext(out var api);
         var completion = new TaskCompletionSource<CommunityPassportExperienceDto>();
         api.GetExperienceAsync(Arg.Any<CancellationToken>()).Returns(completion.Task);
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityPassport>();
+        var cut = ctx.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityPassport>();
 
         cut.Find("[data-test='community-passport-loading']");
         completion.SetResult(BuildExperience());
@@ -96,7 +96,7 @@ public sealed class CommunityPassportRenderTests
     [Test]
     public async Task OrganizerDirectory_RendersSearchFiltersAndMemberCards()
     {
-        using var ctx = CreateContext(out var api);
+        await using var ctx = CreateContext(out var api);
         api.GetDirectoryAsync(null, null, 0, 24, Arg.Any<CancellationToken>())
             .Returns(new CommunityPassportDirectoryDto(
                 1,
@@ -111,7 +111,7 @@ public sealed class CommunityPassportRenderTests
                         true)
                 ]));
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.CommunityPassportDirectory>();
+        var cut = ctx.Render<global::Bethuya.Hybrid.Shared.Pages.CommunityPassportDirectory>();
 
         cut.WaitForAssertion(() =>
         {
@@ -124,12 +124,12 @@ public sealed class CommunityPassportRenderTests
     [Test]
     public async Task OrganizerPassport_RendersReadOnlyViewAndChampionAction()
     {
-        using var ctx = CreateContext(out var api);
+        await using var ctx = CreateContext(out var api);
         var memberId = Guid.NewGuid();
         api.GetMemberExperienceAsync(memberId, Arg.Any<CancellationToken>())
             .Returns(BuildExperience(isOrganizer: true, memberId));
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.OrganizerCommunityPassport>(
+        var cut = ctx.Render<global::Bethuya.Hybrid.Shared.Pages.OrganizerCommunityPassport>(
             parameters => parameters.Add(page => page.MemberId, memberId));
 
         cut.WaitForAssertion(() =>
@@ -152,7 +152,7 @@ public sealed class CommunityPassportRenderTests
     [Test]
     public async Task OrganizerPassport_HidesPreviousMemberActionsWhileNextMemberLoads()
     {
-        using var ctx = CreateContext(out var api);
+        await using var ctx = CreateContext(out var api);
         var firstMemberId = Guid.NewGuid();
         var secondMemberId = Guid.NewGuid();
         var secondLoad = new TaskCompletionSource<CommunityPassportExperienceDto>();
@@ -161,12 +161,12 @@ public sealed class CommunityPassportRenderTests
         api.GetMemberExperienceAsync(secondMemberId, Arg.Any<CancellationToken>())
             .Returns(secondLoad.Task);
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.OrganizerCommunityPassport>(
+        var cut = ctx.Render<global::Bethuya.Hybrid.Shared.Pages.OrganizerCommunityPassport>(
             parameters => parameters.Add(page => page.MemberId, firstMemberId));
 
         cut.WaitForElement("[data-test='passport-award-champion-btn']");
 
-        cut.SetParametersAndRender(parameters => parameters.Add(page => page.MemberId, secondMemberId));
+        cut.Render(parameters => parameters.Add(page => page.MemberId, secondMemberId));
 
         cut.Find("[data-test='organizer-passport-loading']");
         if (cut.FindAll("[data-test='passport-award-champion-btn']").Count > 0
@@ -183,7 +183,7 @@ public sealed class CommunityPassportRenderTests
     [Test]
     public async Task OrganizerPassport_IgnoresPreviousMemberActionCompletionAfterNavigation()
     {
-        using var ctx = CreateContext(out var api);
+        await using var ctx = CreateContext(out var api);
         var firstMemberId = Guid.NewGuid();
         var secondMemberId = Guid.NewGuid();
         var awardCompletion = new TaskCompletionSource<CommunitySignalDto>();
@@ -194,7 +194,7 @@ public sealed class CommunityPassportRenderTests
         api.AwardChampionAsync(firstMemberId, Arg.Any<AwardChampionSignalDto>(), Arg.Any<CancellationToken>())
             .Returns(awardCompletion.Task);
 
-        var cut = ctx.RenderComponent<global::Bethuya.Hybrid.Shared.Pages.OrganizerCommunityPassport>(
+        var cut = ctx.Render<global::Bethuya.Hybrid.Shared.Pages.OrganizerCommunityPassport>(
             parameters => parameters.Add(page => page.MemberId, firstMemberId));
 
         cut.WaitForElement("[data-test='passport-award-champion-btn']");
@@ -205,7 +205,7 @@ public sealed class CommunityPassportRenderTests
         Task? awardTask = null;
         await cut.InvokeAsync((Action)(() => awardTask = (Task)awardMethod.Invoke(cut.Instance, null)!));
 
-        cut.SetParametersAndRender(parameters => parameters.Add(page => page.MemberId, secondMemberId));
+        cut.Render(parameters => parameters.Add(page => page.MemberId, secondMemberId));
         cut.WaitForElement("[data-test='passport-award-champion-btn']");
 
         awardCompletion.SetResult(new CommunitySignalDto(
@@ -234,7 +234,7 @@ public sealed class CommunityPassportRenderTests
         api = Substitute.For<ICommunityPassportApi>();
         ctx.Services.AddSingleton(api);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization().SetAuthorized("Passport Tester");
+        ctx.AddAuthorization().SetAuthorized("Passport Tester");
         return ctx;
     }
 

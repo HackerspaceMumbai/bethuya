@@ -1,4 +1,5 @@
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Dotnet;
 using System.Net.Http;
 using Bethuya.Hybrid.Shared.Services;
 using Refit;
@@ -8,8 +9,8 @@ namespace AppHost.Commands;
 public static class SeedCommandExtensions
 {
 
-    public static IResourceBuilder<ProjectResource> ConfigureSeedCommands(
-    this IResourceBuilder<ProjectResource> backend,
+    public static IResourceBuilder<DotnetProjectResource> ConfigureSeedCommands(
+    this IResourceBuilder<DotnetProjectResource> backend,
     EndpointReference backendHttpEndpoint)
     {
         backend.WithCommand(

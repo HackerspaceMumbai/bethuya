@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using System.Security.Claims;
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -22,10 +22,10 @@ public class NavMenuCurationRenderTests
     public async Task ImportsRouteWithEventId_OversubscribedEvent_ShowsCurationLinkForCurator()
     {
         var curationApi = CreateApi(capacity: 100, registrations: 106);
-        using var ctx = CreateContext(curationApi, BethuyaRoles.Curator);
+        await using var ctx = CreateContext(curationApi, BethuyaRoles.Curator);
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"imports?eventId={EventId}");
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
         cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-link']").Count == 1, TimeSpan.FromSeconds(5));
 
         await Assert.That(cut.Find("[data-test='nav-curation-link']").GetAttribute("href")).IsEqualTo($"curation/{EventId}");
@@ -36,10 +36,10 @@ public class NavMenuCurationRenderTests
     public async Task EventRoute_WithinCapacity_HidesCurationLinkAndExplainsWhy()
     {
         var curationApi = CreateApi(capacity: 100, registrations: 40);
-        using var ctx = CreateContext(curationApi, BethuyaRoles.Admin);
+        await using var ctx = CreateContext(curationApi, BethuyaRoles.Admin);
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"events/{EventId}/registrations");
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
         cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-not-needed']").Count == 1, TimeSpan.FromSeconds(5));
 
         await Assert.That(cut.FindAll("[data-test='nav-curation-link']")).IsEmpty();
@@ -52,10 +52,10 @@ public class NavMenuCurationRenderTests
         var curationApi = Substitute.For<ICurationApi>();
         curationApi.GetAvailabilityAsync(EventId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("backend down"));
-        using var ctx = CreateContext(curationApi, BethuyaRoles.Curator);
+        await using var ctx = CreateContext(curationApi, BethuyaRoles.Curator);
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"events/{EventId}");
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
         cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-link']").Count == 1, TimeSpan.FromSeconds(5));
 
         await Assert.That(cut.FindAll("[data-test='nav-curation-not-needed']")).IsEmpty();
@@ -79,11 +79,11 @@ public class NavMenuCurationRenderTests
                 2 => ObserveOlderResponseAsync(),
                 _ => newerResponse.Task
             });
-        using var ctx = CreateContext(curationApi, BethuyaRoles.Curator);
+        await using var ctx = CreateContext(curationApi, BethuyaRoles.Curator);
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo($"imports?eventId={EventId}");
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
         cut.WaitForState(() => cut.FindAll("[data-test='nav-curation-not-needed']").Count == 1, TimeSpan.FromSeconds(5));
 
         navigation.NavigateTo($"events/{EventId}");
@@ -110,17 +110,17 @@ public class NavMenuCurationRenderTests
     public async Task AuthenticationPending_WhenLoadIsSuperseded_OnlyCurrentLoadQueriesAvailability()
     {
         var curationApi = CreateApi(capacity: 100, registrations: 106);
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.Services.AddSingleton(curationApi);
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
         var authenticationState = new TaskCompletionSource<AuthenticationState>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo($"imports?eventId={EventId}");
 
-        var host = ctx.RenderComponent<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
+        var host = ctx.Render<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
             .Add(component => component.Value, authenticationState.Task)
             .AddChildContent<NavMenu>());
 
@@ -143,10 +143,10 @@ public class NavMenuCurationRenderTests
     public async Task EventRoute_OrganizerWithoutCuratorRole_DoesNotCheckAvailability()
     {
         var curationApi = CreateApi(capacity: 100, registrations: 106);
-        using var ctx = CreateContext(curationApi, BethuyaRoles.Organizer);
+        await using var ctx = CreateContext(curationApi, BethuyaRoles.Organizer);
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"imports?eventId={EventId}");
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
 
         await Assert.That(cut.FindAll("[data-test='nav-curation-link']")).IsEmpty();
         await Assert.That(cut.Find("[data-test='nav-imports-link']").GetAttribute("href")).IsEqualTo($"imports?eventId={EventId}");
@@ -167,7 +167,7 @@ public class NavMenuCurationRenderTests
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.Services.AddSingleton(curationApi);
-        ctx.AddTestAuthorization().SetAuthorized("Dev User").SetRoles(roles);
+        ctx.AddAuthorization().SetAuthorized("Dev User").SetRoles(roles);
         return ctx;
     }
 }

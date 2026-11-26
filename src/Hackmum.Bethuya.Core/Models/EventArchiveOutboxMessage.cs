@@ -20,11 +20,20 @@ public sealed class EventArchiveOutboxMessage
     /// <summary>Gets the destination folder path for the event projection.</summary>
     public required string FolderPath { get; init; }
 
+    /// <summary>Gets the event title used in the draft publication pull request.</summary>
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Gets the authenticated organizer who explicitly confirmed this publication.</summary>
+    public string ConfirmedBy { get; set; } = string.Empty;
+
     /// <summary>Gets the rendered README content.</summary>
     public required string ReadmeMarkdown { get; init; }
 
     /// <summary>Gets the serialized event metadata content.</summary>
     public required string MetadataJson { get; init; }
+
+    /// <summary>Gets the preview snapshot explicitly confirmed by the organizer.</summary>
+    public string? ConfirmedPreviewToken { get; set; }
 
     /// <summary>Gets the idempotency key for this projection.</summary>
     public required string IdempotencyKey { get; init; }

@@ -14,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using System.Security.Claims;
 
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -182,7 +182,7 @@ public sealed class CommunityCommandCenterTests
         CommunityRole expectedRole,
         string expectedLabel)
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         var principal = CreatePrincipal(subject, name, BethuyaRoles.Attendee);
 
         var cut = RenderHome(ctx, principal);
@@ -222,7 +222,7 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_ResolvingDecision_RemovesOnlyThatCard()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
         cut.WaitForElement("[data-test='decision-card']");
 
@@ -246,7 +246,7 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_ViewEvidence_OpensDrawerWithoutUnmountingJourneyRows()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.open", _ => true);
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.close", _ => true);
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.focusSelector", _ => true);
@@ -269,7 +269,7 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_SkippingDecision_AdvancesReviewWithoutRemovingCard()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.open", _ => true);
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.closeAndRestoreFocus", _ => true);
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.focusSelector", _ => true);
@@ -303,7 +303,7 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_ReviewFromCard_ReturnsFocusToThatCardReviewButton()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.open", _ => true);
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.closeAndRestoreFocus", _ => true);
         ctx.JSInterop.SetupVoid("bethuyaEvidenceDrawer.focusSelector", _ => true);
@@ -325,7 +325,7 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_GrowthJourneyStages_ExposeStatusTextInDom()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
 
         var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
         cut.WaitForElement("[data-test='journey-stage']");
@@ -347,7 +347,7 @@ public sealed class CommunityCommandCenterTests
         string expectedLabel,
         string expectedMode)
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
 
         var cut = RenderHome(ctx, CreatePrincipal(subject, name, BethuyaRoles.Attendee));
         cut.WaitForElement("[data-test='community-participation']");
@@ -368,7 +368,7 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_EmergingContributorSeesEarnedParticipationSections()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
 
         var cut = RenderHome(ctx, CreatePrincipal("dev-persona-farah", "Farah", BethuyaRoles.Attendee));
         cut.WaitForElement("[data-test='community-participation']");
@@ -383,7 +383,7 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_UnauthenticatedPrincipal_DoesNotExposeCommandCenterProjection()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
 
         var cut = RenderHome(ctx, new ClaimsPrincipal());
         cut.WaitForElement("[data-test='command-center-auth-required']");
@@ -395,9 +395,9 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_WithoutAuthenticationCascade_ShowsSignInRequiredState()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
 
-        var cut = ctx.RenderComponent<Home>();
+        var cut = ctx.Render<Home>();
         cut.WaitForElement("[data-test='command-center-auth-required']");
 
         await Assert.That(cut.FindAll("[data-test='loading-state']").Count).IsEqualTo(0);
@@ -407,11 +407,11 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_AuthenticationStateBecomesAnonymous_ClearsExistingProjection()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
         cut.WaitForElement("[data-test='strategic-insight']");
 
-        cut.SetParametersAndRender(parameters => parameters
+        cut.Render(parameters => parameters
             .Add(component => component.Value, Task.FromResult(new AuthenticationState(new ClaimsPrincipal())))
             .AddChildContent<Home>());
         cut.WaitForElement("[data-test='command-center-auth-required']");
@@ -424,13 +424,13 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_AuthenticationStatePending_ClearsExistingProjectionBeforeResolution()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         var cut = RenderHome(ctx, CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Admin));
         cut.WaitForElement("[data-test='strategic-insight']");
         var pendingState = new TaskCompletionSource<AuthenticationState>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
-        cut.SetParametersAndRender(parameters => parameters
+        cut.Render(parameters => parameters
             .Add(component => component.Value, pendingState.Task)
             .AddChildContent<Home>());
 
@@ -446,7 +446,7 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task Home_OlderParticipationLoadCannotOverwriteNewOperationsPrincipal()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         var staleParticipation = await new DeterministicCommunityParticipationService(EventPressureClock)
             .GetAsync(CommunityRole.EmergingContributor, "Farah");
         var delayedParticipation = new TaskCompletionSource<CommunityParticipationHome>(
@@ -462,7 +462,7 @@ public sealed class CommunityCommandCenterTests
         var cut = RenderHome(ctx, CreatePrincipal("dev-persona-farah", "Farah", BethuyaRoles.Attendee));
         cut.WaitForElement("[data-test='loading-state']");
 
-        cut.SetParametersAndRender(parameters => parameters
+        cut.Render(parameters => parameters
             .Add(
                 component => component.Value,
                 Task.FromResult(new AuthenticationState(
@@ -515,11 +515,11 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task ProgramsPage_RendersProducedOutcomesFromSameProjection()
     {
-        using var ctx = CreateCommandCenterContext();
+        await using var ctx = CreateCommandCenterContext();
         ctx.Services.AddAuthorizationCore();
-        ctx.AddTestAuthorization().SetAuthorized("Vikram").SetRoles(BethuyaRoles.Organizer, BethuyaRoles.Admin);
+        ctx.AddAuthorization().SetAuthorized("Vikram").SetRoles(BethuyaRoles.Organizer, BethuyaRoles.Admin);
 
-        var cut = ctx.RenderComponent<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
+        var cut = ctx.Render<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
             .Add(component => component.Value, Task.FromResult(new AuthenticationState(
                 CreatePrincipal("dev-persona-vikram", "Vikram", BethuyaRoles.Organizer))))
             .AddChildContent<Programs>());
@@ -534,9 +534,9 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task NavMenu_OrganizerSeesCommunityInsightsOrganizerAndPathFinder()
     {
-        using var ctx = CreateNavContext(BethuyaRoles.Organizer);
+        await using var ctx = CreateNavContext(BethuyaRoles.Organizer);
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
         cut.WaitForElement("[data-test='nav-section-organizer']");
 
         await Assert.That(cut.FindAll("[data-test='nav-section-community']").Count).IsEqualTo(1);
@@ -557,9 +557,9 @@ public sealed class CommunityCommandCenterTests
     [Test]
     public async Task NavMenu_MemberDoesNotSeeImportsDirectoryOrPathFinder()
     {
-        using var ctx = CreateNavContext(BethuyaRoles.Attendee);
+        await using var ctx = CreateNavContext(BethuyaRoles.Attendee);
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
         cut.WaitForElement("[data-test='nav-section-my-space']");
 
         await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
@@ -590,7 +590,7 @@ public sealed class CommunityCommandCenterTests
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.Services.AddAuthorizationCore();
-        var auth = ctx.AddTestAuthorization();
+        var auth = ctx.AddAuthorization();
         auth.SetAuthorized("Tester");
         auth.SetRoles(role);
         return ctx;
@@ -599,7 +599,7 @@ public sealed class CommunityCommandCenterTests
     private static IRenderedComponent<CascadingValue<Task<AuthenticationState>>> RenderHome(
         BunitCtx ctx,
         ClaimsPrincipal principal) =>
-        ctx.RenderComponent<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
+        ctx.Render<CascadingValue<Task<AuthenticationState>>>(parameters => parameters
             .Add(component => component.Value, Task.FromResult(new AuthenticationState(principal)))
             .AddChildContent<Home>());
 

@@ -4,6 +4,7 @@ using AppHost.Infrastructure;
 using AppHost.Security;
 using Azure.Provisioning.KeyVault;
 using Aspire.Hosting.Azure;
+using Aspire.Hosting.Dotnet;
 using Aspire.Hosting.Foundry;
 using Scalar.Aspire;
 
@@ -73,7 +74,7 @@ if (builder.IsLocalDevelopment())
         .WithDataVolume();
 }
 
-IResourceBuilder<ProjectResource>? plannerHosted = null;
+IResourceBuilder<DotnetProjectResource>? plannerHosted = null;
 
 var foundry = builder.AddFoundry("bethuya-foundry");
 
@@ -88,8 +89,10 @@ var foundry = builder.AddFoundry("bethuya-foundry");
             FoundryModel.OpenAI.Gpt41);
 
     plannerHosted = builder
-        .AddProject<Projects.Hackmum_Bethuya_Agents_Planner_Hosted>(
-            "planner-hosted", launchProfileName: null)
+        .AddDotnetProject(
+            "planner-hosted",
+            Path.Combine("..", "..", "src", "Hackmum.Bethuya.Agents.Planner.Hosted", "Hackmum.Bethuya.Agents.Planner.Hosted.csproj"),
+            options => options.ExcludeLaunchProfile = true)
         .WithReference(foundryProject)
         .WithReference(plannerChatModel)
         .WaitFor(plannerChatModel)
@@ -101,7 +104,9 @@ var foundry = builder.AddFoundry("bethuya-foundry");
 // The job is triggered automatically via the azure.yaml postdeploy hook after each deploy.
 // IMPORTANT: run `dotnet ef migrations add <Name> --project src/Hackmum.Bethuya.Infrastructure --startup-project src/Bethuya.MigrationService`
 // for any DbContext schema changes before deploying.
-   var migrationService = builder.AddProject<Projects.Bethuya_MigrationService>("migration-service")
+   var migrationService = builder.AddDotnetProject(
+            "migration-service",
+            Path.Combine("..", "..", "src", "Bethuya.MigrationService", "Bethuya.MigrationService.csproj"))
          .WithReference(sql)
          .WaitFor(sql)
          .PublishAsAzureContainerAppJob()
@@ -120,7 +125,10 @@ builder.EnforceProductionSecurityPolicies(
     shouldBypassOnboardingInCurrentEnvironment);
 
 
-var backend = builder.AddProject<Projects.Hackmum_Bethuya_Backend>("backend", launchProfileName: null)
+var backend = builder.AddDotnetProject(
+    "backend",
+    Path.Combine("..", "..", "src", "Hackmum.Bethuya.Backend", "Hackmum.Bethuya.Backend.csproj"),
+    options => options.ExcludeLaunchProfile = true)
     .WithHttpEndpoint(port: 8080, targetPort: 8080, isProxied: false).WithReference(sql)
     .WithEnvironment("ASPNETCORE_PREVENTHOSTINGSTARTUP", "true")
     .WaitFor(sql)
@@ -180,7 +188,10 @@ var webStaticAssetsManifest = Path.GetFullPath(Path.Combine(
     "net10.0",
     "staticwebassets.development.json"));
 
-var web = builder.AddProject<Projects.Bethuya_Hybrid_Web>("web", launchProfileName: null)
+var web = builder.AddDotnetProject(
+    "web",
+    Path.Combine("..", "..", "src", "Bethuya.Hybrid", "Bethuya.Hybrid.Web", "Bethuya.Hybrid.Web.csproj"),
+    options => options.ExcludeLaunchProfile = true)
     .WithReference(backend)
     .WaitFor(backend)
     .WithEnvironment("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true")

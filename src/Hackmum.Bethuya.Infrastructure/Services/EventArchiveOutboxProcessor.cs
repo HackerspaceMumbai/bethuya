@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Core.Models;
+using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
@@ -72,11 +73,12 @@ internal sealed partial class EventArchiveOutboxProcessor(
             var result = await repository.PublishEventAsync(
                 new(
                     workItem.EventId,
-                    workItem.FolderPath,
+                    workItem.Title,
                     workItem.FolderPath,
                     workItem.ReadmeMarkdown,
                     workItem.MetadataJson,
-                    workItem.IdempotencyKey),
+                    workItem.IdempotencyKey,
+                    workItem.ConfirmedPreviewToken),
                 publishCts.Token);
 
             await StopHeartbeatAsync(publishCts, heartbeatTask);
@@ -92,9 +94,11 @@ internal sealed partial class EventArchiveOutboxProcessor(
 
             await strategy.ExecuteAsync(async () =>
             {
+                await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
                 // Atomically mark the message processed only if the claim token still matches and
-                // the message is not yet processed. This prevents a stale publish from overwriting
-                // a newer claimant's completion state.
+                // update the event's PR state in the same transaction. This prevents a stale
+                // publish from overwriting a newer claimant's completion state.
                 var updatedRows = await db.EventArchiveOutboxMessages
                     .Where(item => item.Id == workItem.Id
                         && item.ClaimToken == workItem.ClaimToken
@@ -112,15 +116,38 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     return;
                 }
 
-                // Update the event's archive folder URL. This must happen after the conditional
-                // message update succeeds, within the same execution strategy transaction.
-                var evt = await db.Events.FirstOrDefaultAsync(item => item.Id == workItem.EventId.Value, ct);
-                if (evt is not null)
-                {
-                    evt.GitHubFolderUrl = result.FolderUrl;
-                    await db.SaveChangesAsync(ct);
-                }
+                await db.Events.Where(
+                    item => item.Id == workItem.EventId.Value
+                        && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey)
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(item => item.ArchivePublicationStatus, EventArchivePublicationStatus.DraftPrPending), ct);
 
+                // Retain successful PR discovery independently of newer pending/failed state, in confirmation order.
+                await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    UPDATE "Events"
+                    SET "ArchiveBranchName" = {result.BranchName},
+                        "ArchivePullRequestNumber" = {result.PullRequestNumber},
+                        "ArchivePullRequestUrl" = {result.PullRequestUrl}
+                    WHERE "Id" = {workItem.EventId.Value}
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM "EventArchiveOutboxMessages" AS newer
+                            JOIN "EventArchiveOutboxMessages" AS completed ON completed."Id" = {workItem.Id.Value}
+                            WHERE newer."EventId" = completed."EventId"
+                                AND newer."Id" <> completed."Id"
+                                AND newer."ProcessedAt" IS NOT NULL
+                                AND newer."LastError" IS NULL
+                                AND newer."ConfirmedPreviewToken" IS NOT NULL
+                                AND (
+                                    newer."CreatedAt" > completed."CreatedAt"
+                                    OR (
+                                        newer."CreatedAt" = completed."CreatedAt"
+                                        AND newer."Id" > completed."Id"
+                                    )
+                                ))
+                    """, ct);
+
+                await transaction.CommitAsync(ct);
                 LogArchiveProjectionCompleted(logger, workItem.EventId, result.FolderUrl);
             });
         }
@@ -132,6 +159,15 @@ internal sealed partial class EventArchiveOutboxProcessor(
         {
             // The publish was deliberately cancelled because another worker reclaimed the
             // message; that worker owns the outcome, so there is nothing further to record.
+        }
+        catch (ArchivePreviewMismatchException ex)
+        {
+            if (workItem is not null && !claimLost)
+            {
+                await RecordFailureAsync(workItem, ex, ct, terminal: true);
+            }
+
+            LogArchiveProjectionFailed(logger, ex);
         }
         catch (Exception ex)
         {
@@ -243,51 +279,55 @@ internal sealed partial class EventArchiveOutboxProcessor(
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
             var now = DateTimeOffset.UtcNow;
             
-            // Fetch unprocessed messages (server-side only, simpler predicate).
-            // SQLite LINQ translation is limited, so we'll filter all other conditions on the client.
-            // AsNoTracking for performance; we'll update messages explicitly if claimed.
-            var candidates = await db.EventArchiveOutboxMessages
+            // SQLite cannot translate the DateTimeOffset availability comparisons, so load the lightweight
+            // ordering fields first and filter eligibility on the client in the database's stable ID order.
+            var orderedPending = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
-                .Where(m => m.ProcessedAt == null)
-                .Take(100)
+                .Where(m => m.ProcessedAt == null && m.ConfirmedBy != string.Empty)
+                .OrderBy(m => m.Id)
+                .Select(m => new { m.EventId, m.Id, m.CreatedAt, m.AvailableAt, m.LockedUntil })
                 .ToListAsync(ct);
 
-            // Filter for available and non-locked messages, and order by creation time on the client.
-            candidates = candidates
-                .Where(m => m.AvailableAt <= now && (m.LockedUntil == null || m.LockedUntil < now))
-                .OrderBy(m => m.CreatedAt)
+            var identifierOrder = orderedPending
+                .Select((message, index) => new { message.Id, Index = index })
+                .ToDictionary(message => message.Id, message => message.Index);
+            orderedPending = orderedPending
+                .OrderBy(message => message.CreatedAt)
+                .ThenBy(message => identifierOrder[message.Id])
                 .ToList();
 
-            if (candidates.Count == 0)
+            var oldestMessageIdByEvent = orderedPending
+                .GroupBy(m => m.EventId.Value)
+                .ToDictionary(group => group.Key, group => group.First().Id);
+
+            var candidateIds = orderedPending
+                .Where(m => oldestMessageIdByEvent[m.EventId.Value] == m.Id
+                    && m.AvailableAt <= now
+                    && (m.LockedUntil == null || m.LockedUntil < now))
+                .Take(100)
+                .Select(m => m.Id)
+                .ToArray();
+            if (candidateIds.Length == 0)
             {
                 await transaction.RollbackAsync(ct);
                 result = null;
                 return;
             }
 
-            // Fetch only ordering fields once to check for ordering constraints within the transaction.
-            // This must be done within the same transaction at Serializable isolation to ensure we don't claim
-            // while an older message for the same event is still pending.
-            var oldestPendingByEvent = await db.EventArchiveOutboxMessages
+            var candidatesById = await db.EventArchiveOutboxMessages
                 .AsNoTracking()
-                .Where(m => m.ProcessedAt == null)
-                .Select(m => new { m.EventId, m.CreatedAt })
-                .ToListAsync(ct);
+                .Where(m => candidateIds.Contains(m.Id))
+                .ToDictionaryAsync(m => m.Id, ct);
+            var candidates = candidateIds.Select(id => candidatesById[id]).ToList();
 
-            var oldestCreatedAtByEvent = oldestPendingByEvent
-                .GroupBy(m => m.EventId.Value)
-                .ToDictionary(group => group.Key, group => group.Min(m => m.CreatedAt));
-
-            // Try each candidate in order, skipping those that have an older unprocessed message for the same event.
+            // Try each candidate in database order, skipping messages that are not oldest for their event.
             // This prevents a single event's backoff from starving other events' work and improves throughput.
             EventArchiveOutboxMessage? selectedMessage = null;
             foreach (var candidate in candidates)
             {
-                var olderExists = oldestCreatedAtByEvent[candidate.EventId.Value] < candidate.CreatedAt;
-
-                if (olderExists)
+                if (oldestMessageIdByEvent[candidate.EventId.Value] != candidate.Id)
                 {
-                    continue; // Try next candidate; this event has older pending work
+                    continue; // Try next event; this event has older pending work.
                 }
 
                 selectedMessage = candidate;
@@ -328,9 +368,11 @@ internal sealed partial class EventArchiveOutboxProcessor(
                 selectedMessage.Id,
                 selectedMessage.EventId,
                 selectedMessage.FolderPath,
+                selectedMessage.Title,
                 selectedMessage.ReadmeMarkdown,
                 selectedMessage.MetadataJson,
                 selectedMessage.IdempotencyKey,
+                selectedMessage.ConfirmedPreviewToken,
                 newAttemptCount,
                 claimToken);
         });
@@ -338,7 +380,11 @@ internal sealed partial class EventArchiveOutboxProcessor(
         return result;
     }
 
-    private async Task RecordFailureAsync(EventArchiveOutboxWorkItem workItem, Exception exception, CancellationToken ct)
+    private async Task RecordFailureAsync(
+        EventArchiveOutboxWorkItem workItem,
+        Exception exception,
+        CancellationToken ct,
+        bool terminal = false)
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
@@ -347,30 +393,43 @@ internal sealed partial class EventArchiveOutboxProcessor(
 
         await strategy.ExecuteAsync(async () =>
         {
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
             // Check if claim is still valid and message is not yet processed.
             var message = await db.EventArchiveOutboxMessages
+                .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.Id == workItem.Id, ct);
             if (message is null || message.ProcessedAt is not null || message.ClaimToken != workItem.ClaimToken)
             {
+                await transaction.RollbackAsync(ct);
                 return;
             }
 
-            // Check if there's a newer projection for the same event (created after this message).
+            // Check if there's a later projection for the same event using the same total order as claims.
             // Use client-side evaluation to work around Vogen value-object LINQ translation limitations.
             var newerEventIdValue = message.EventId.Value;
-            var newerMessageIdValue = message.Id.Value;
-            var newerCreatedAtValue = message.CreatedAt;
+            var messageId = message.Id;
+            var messageCreatedAt = message.CreatedAt;
             
-            var allMessages = await db.EventArchiveOutboxMessages
-                .AsNoTracking()
-                .ToListAsync(ct);  // Force client evaluation
-            
-            var hasNewerProjection = allMessages.Any(m => 
-                m.EventId.Value == newerEventIdValue && 
-                m.Id.Value != newerMessageIdValue && 
-                m.CreatedAt > newerCreatedAtValue);
+            var hasNewerProjection = false;
+            if (!terminal && workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal)
+            {
+                var allMessages = await db.EventArchiveOutboxMessages
+                    .AsNoTracking()
+                    .OrderBy(item => item.Id)
+                    .ToListAsync(ct);  // Force client evaluation
+                var identifierOrder = allMessages
+                    .Select((item, index) => new { item.Id, Index = index })
+                    .ToDictionary(item => item.Id, item => item.Index);
 
-            if (workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal && hasNewerProjection)
+                hasNewerProjection = allMessages.Any(m =>
+                    m.EventId.Value == newerEventIdValue &&
+                    m.Id != messageId
+                    && (m.CreatedAt > messageCreatedAt
+                        || (m.CreatedAt == messageCreatedAt
+                            && identifierOrder[m.Id] > identifierOrder[messageId])));
+            }
+
+            if (terminal || (workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal && hasNewerProjection))
             {
                 // Terminal failure with a newer projection: mark this message processed
                 // using an atomic update that checks both the claim token and processed state.
@@ -387,7 +446,16 @@ internal sealed partial class EventArchiveOutboxProcessor(
                             .SetProperty(item => item.AvailableAt, DateTimeOffset.UtcNow),
                         ct);
 
-                // Ignore if no rows updated; another worker may have reclaimed or completed the message.
+                if (terminalUpdateRows > 0)
+                {
+                    await db.Events.Where(
+                        item => item.Id == workItem.EventId.Value
+                            && item.ArchivePublicationIdempotencyKey == workItem.IdempotencyKey)
+                        .ExecuteUpdateAsync(update => update
+                            .SetProperty(item => item.ArchivePublicationStatus, EventArchivePublicationStatus.Failed), ct);
+                }
+
+                await transaction.CommitAsync(ct);
                 return;
             }
 
@@ -406,6 +474,7 @@ internal sealed partial class EventArchiveOutboxProcessor(
                     ct);
 
             // Ignore if no rows updated; another worker may have reclaimed or completed the message.
+            await transaction.CommitAsync(ct);
         });
     }
 
@@ -413,16 +482,18 @@ internal sealed partial class EventArchiveOutboxProcessor(
         EventArchiveOutboxMessageId Id,
         ArchiveEventId EventId,
         string FolderPath,
+        string Title,
         string ReadmeMarkdown,
         string MetadataJson,
         string IdempotencyKey,
+        string? ConfirmedPreviewToken,
         int AttemptCount,
         string ClaimToken);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Archive projection completed for event {EventId}; folder {FolderUrl}.")]
     private static partial void LogArchiveProjectionCompleted(ILogger logger, ArchiveEventId eventId, string folderUrl);
 
-    [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Archive projection attempt failed; the outbox message will be retried.")]
+    [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Archive projection attempt failed.")]
     private static partial void LogArchiveProjectionFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "Event archive outbox processor stopped due to cancellation.")]

@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using System.Reflection;
 
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -19,8 +19,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task Home_IncompleteMandatoryProfile_RedirectsToMandatoryRegistration()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var eventApi = Substitute.For<IEventApi>();
         eventApi.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new List<EventDto>()));
 
@@ -33,7 +33,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.AddSingleton<ICurrentUserService>(new StubCurrentUserService(isAuthenticated: true));
 
-        var cut = ctx.RenderComponent<MemberHome>();
+        var cut = ctx.Render<MemberHome>();
         await Assert.That(cut.Markup).Contains("Finish setup before you explore Bethuya");
 
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
@@ -46,8 +46,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task Home_MandatoryCompleteButSocialIncomplete_RedirectsToSocialRegistration()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var eventApi = Substitute.For<IEventApi>();
         eventApi.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new List<EventDto>()));
 
@@ -60,7 +60,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.AddSingleton<ICurrentUserService>(new StubCurrentUserService(isAuthenticated: true));
 
-        var cut = ctx.RenderComponent<MemberHome>();
+        var cut = ctx.Render<MemberHome>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
 
         cut.WaitForState(() => navigation.Uri.EndsWith("/registration/social", StringComparison.Ordinal), TimeSpan.FromSeconds(5));
@@ -73,15 +73,15 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task ProfileEntry_CompletedOnboarding_RedirectsToMandatoryEditFlow()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)));
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<Profile>();
+        var cut = ctx.Render<Profile>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
 
         cut.WaitForState(() => navigation.Uri.EndsWith("/registration/mandatory", StringComparison.Ordinal), TimeSpan.FromSeconds(5));
@@ -93,15 +93,15 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task ProfileEntry_SocialIncompleteUser_RedirectsToSocialStep()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<Profile>();
+        var cut = ctx.Render<Profile>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
 
         cut.WaitForState(() => navigation.Uri.EndsWith("/registration/social", StringComparison.Ordinal), TimeSpan.FromSeconds(5));
@@ -112,10 +112,10 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NavMenu_AttendeeRole_HidesOrganizerSection()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
 
         await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
         await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
@@ -125,10 +125,10 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NavMenu_AnonymousUser_HidesOrganizerSection()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetNotAuthorized();
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetNotAuthorized();
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
 
         await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(0);
         await Assert.That(cut.Markup).DoesNotContain("Agent Workflows");
@@ -138,10 +138,10 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NavMenu_OrganizerRole_ShowsOrganizerSection()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
 
         await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("[data-test='nav-command-center-link']").Count).IsEqualTo(1);
@@ -152,10 +152,10 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NavMenu_CuratorRole_ShowsOrganizerWithoutPathFinderOrImports()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Curator").SetRoles(BethuyaRoles.Curator);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Curator").SetRoles(BethuyaRoles.Curator);
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
 
         await Assert.That(cut.FindAll("[data-test='nav-section-organizer']").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("[data-test='nav-command-center-link']").Count).IsEqualTo(1);
@@ -167,10 +167,10 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NavMenu_OrganizerRole_ShowsPathFinderLink()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer);
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
 
         await Assert.That(cut.Find("[data-test='nav-path-finder-link']").GetAttribute("href"))
             .IsEqualTo("opportunities");
@@ -180,10 +180,10 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NavMenu_ProfileLink_TargetsProfileEntryRoute()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
 
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.Render<NavMenu>();
         var profileLink = cut.Find("[data-test='nav-profile-link']");
 
         await Assert.That(profileLink.GetAttribute("href")).IsEqualTo("profile");
@@ -192,10 +192,10 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task OnboardingLayout_UsesFocusedShellWithoutSidebarNavigation()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User").SetRoles(BethuyaRoles.Admin, BethuyaRoles.Organizer, BethuyaRoles.Curator);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User").SetRoles(BethuyaRoles.Admin, BethuyaRoles.Organizer, BethuyaRoles.Curator);
 
-        var cut = ctx.RenderComponent<OnboardingLayout>(parameters => parameters
+        var cut = ctx.Render<OnboardingLayout>(parameters => parameters
             .Add(p => p.Body, builder => builder.AddMarkupContent(0, "<div>Onboarding body</div>")));
 
         await Assert.That(cut.Markup).Contains("onboarding-shell");
@@ -208,8 +208,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task OnboardingLayout_MandatoryRoute_HidesOrganizerNavigationAndKeepsPrimaryAction()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User").SetRoles(BethuyaRoles.Admin, BethuyaRoles.Organizer);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User").SetRoles(BethuyaRoles.Admin, BethuyaRoles.Organizer);
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/mandatory");
 
@@ -231,8 +231,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task OnboardingLayout_AideRoute_HidesOrganizerNavigationAndKeepsPrimaryAction()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User").SetRoles(BethuyaRoles.Admin, BethuyaRoles.Organizer);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User").SetRoles(BethuyaRoles.Admin, BethuyaRoles.Organizer);
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/aide");
 
@@ -254,8 +254,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task OnboardingLayout_SocialRoute_HidesOrganizerNavigationAndKeepsPrimaryAction()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User").SetRoles(BethuyaRoles.Admin, BethuyaRoles.Organizer);
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User").SetRoles(BethuyaRoles.Admin, BethuyaRoles.Organizer);
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -282,15 +282,15 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NewUserProfile_ValidSubmit_SavesMandatoryProfileAndNavigatesToSocial()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.SaveMandatoryProfileAsync(Arg.Any<SaveMandatoryProfileDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<NewUserProfile>();
+        var cut = ctx.Render<NewUserProfile>();
 
         SetModelProperty(cut.Instance, "_model", "FirstName", "Dev");
         SetModelProperty(cut.Instance, "_model", "LastName", "User");
@@ -325,8 +325,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NewUserProfile_LoadingSavedData_DisablesSubmitUntilHydrated()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileSource = new TaskCompletionSource<MandatoryProfileDto>();
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetMandatoryProfileAsync(Arg.Any<CancellationToken>())
@@ -334,7 +334,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<NewUserProfile>();
+        var cut = ctx.Render<NewUserProfile>();
         var saveButton = cut.Find("[data-test='save-profile-btn']");
 
         await Assert.That(cut.Markup).Contains("Loading your saved profile details…");
@@ -378,11 +378,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NewUserProfile_PrimaryAction_IsStyledAndProminent()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<NewUserProfile>();
+        var cut = ctx.Render<NewUserProfile>();
 
         await Assert.That(cut.Markup).Contains("Step 1 of 3");
         await Assert.That(cut.Markup).Contains("profile-primary-button");
@@ -402,8 +402,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_QueryParameters_ShowConnectedAccounts()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -413,7 +413,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/social?linkedinMemberId=yrZCpj2Z12&linkedinProfileUrl=https%3A%2F%2Fwww.linkedin.com%2Fin%2Fdev-user&githubLogin=dev-user&githubProfileUrl=https%3A%2F%2Fgithub.com%2Fdev-user");
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
 
         await Assert.That(cut.Markup).Contains("Verification status:");
         await Assert.That(cut.Markup).Contains("LinkedIn ✅");
@@ -430,8 +430,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_SocialError_ShowsProviderSpecificMessageBesideSocialCards()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -441,7 +441,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/social?socialError=social-provider-not-configured&socialProvider=github");
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
 
         await Assert.That(cut.Markup).Contains("Social connection needs attention");
         await Assert.That(cut.Markup).Contains("GitHub is not configured for local onboarding yet.");
@@ -452,8 +452,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_DisconnectedState_ShowsActionDrivenCardsWithoutManualUrlInput()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -462,7 +462,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
         var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
         var saveButton = cut.Find("[data-test='save-social-btn']");
@@ -486,8 +486,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_LoadingState_DisablesEditableControlsUntilSavedStateHydrates()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
 
         var statusSource = new TaskCompletionSource<ProfileCompletionStatusDto>();
         var socialSource = new TaskCompletionSource<SocialProfileDto>();
@@ -499,7 +499,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
         var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
         var saveButton = cut.Find("[data-test='save-social-btn']");
@@ -536,8 +536,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_LoadFailure_KeepsCardsTruthfulAndDisablesActions()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -546,7 +546,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
         var gitHubButton = cut.Find("[data-test='connect-github-btn'] button");
         var saveButton = cut.Find("[data-test='save-social-btn']");
@@ -563,8 +563,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_LinkedInConnected_ShowsConnectedStatusAndConnectAction()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -573,7 +573,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
 
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
 
@@ -586,8 +586,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_LinkedInConnectedWhileGitHubPending_ShowsMixedVerificationStatus()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -596,7 +596,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
 
         await Assert.That(cut.Markup).Contains("LinkedIn ✅");
         await Assert.That(cut.Markup).Contains("GitHub ❌");
@@ -608,8 +608,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_LinkedInScopeError_ShowsActionableProviderMessage()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -619,7 +619,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("https://localhost/registration/social?socialError=social-provider-scope-not-authorized&socialProvider=linkedin");
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
 
         await Assert.That(cut.Markup).Contains("LinkedIn needs attention");
         await Assert.That(cut.Markup).Contains("Enable the \"Sign in with LinkedIn using OpenID Connect\" product");
@@ -629,8 +629,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_StudentWithGitHubOnly_CanContinueAndSave()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -641,7 +641,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
 
         await InvokeAsync(cut.Instance, "HandleContinue");
 
@@ -657,8 +657,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_LinkedInConnect_StartsWithoutManualProfileUrlEntry()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -667,7 +667,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
         var navigation = ctx.Services.GetRequiredService<NavigationManager>();
         var startingUri = navigation.Uri;
         cut.Find("[data-test='connect-linkedin-btn'] button").Click();
@@ -680,8 +680,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_EmployeeWithoutLinkedIn_ShowsRequiredError()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -690,7 +690,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
 
         await InvokeAsync(cut.Instance, "HandleContinue");
 
@@ -701,8 +701,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_ValidSubmit_SavesVerifiedProfilesAndNavigatesToAide()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
@@ -713,7 +713,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
 
         await InvokeAsync(cut.Instance, "HandleContinue");
 
@@ -733,8 +733,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task SocialProfileConnections_HydratedSavedState_RemainsStableAcrossRerender()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)));
@@ -743,7 +743,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<SocialProfileConnections>();
+        var cut = ctx.Render<SocialProfileConnections>();
         cut.Render();
 
         var linkedInButton = cut.Find("[data-test='connect-linkedin-btn'] button");
@@ -760,11 +760,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NewUserProfile_WorkingProfessionalStatus_RevealsCompanyField()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<NewUserProfile>();
+        var cut = ctx.Render<NewUserProfile>();
         SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Working Professional");
         cut.Render();
 
@@ -777,11 +777,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NewUserProfile_StudentStatus_RevealsEducationInstituteField()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<NewUserProfile>();
+        var cut = ctx.Render<NewUserProfile>();
         SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Student");
         cut.Render();
 
@@ -794,11 +794,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NewUserProfile_IndependentStatus_RevealsCompanyField()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<NewUserProfile>();
+        var cut = ctx.Render<NewUserProfile>();
         SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Independent / Freelancer");
         cut.Render();
 
@@ -809,11 +809,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NewUserProfile_AccessibilityContract_ExposesMainLandmarkHeadingAndPrimaryAction()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<NewUserProfile>();
+        var cut = ctx.Render<NewUserProfile>();
         var main = cut.Find("section[aria-label='Complete your profile']");
         var heading = cut.Find("h1");
         var primaryAction = cut.Find("[data-test='save-profile-btn']");
@@ -828,11 +828,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task NewUserProfile_RehydratedMandatoryModel_RetainsSavedValuesAcrossRerender()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<NewUserProfile>();
+        var cut = ctx.Render<NewUserProfile>();
         SetModelProperty(cut.Instance, "_model", "GovernmentPhotoIdType", "Passport");
         SetModelProperty(cut.Instance, "_model", "GovernmentIdLastFour", "1234");
         SetModelProperty(cut.Instance, "_model", "FirstName", "Dev");
@@ -868,11 +868,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task AideProfile_DisabilitySelection_RevealsDetailsField()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<AideProfile>();
+        var cut = ctx.Render<AideProfile>();
         SetModelProperty(cut.Instance, "_model", "Disability", "Physical / mobility");
         cut.Render();
 
@@ -882,11 +882,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task AideProfile_AccessibilityContract_ExposesOptionalPrimaryActionAndSkipLink()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<AideProfile>();
+        var cut = ctx.Render<AideProfile>();
         var main = cut.Find("section[aria-label='Diversity and inclusion profile']");
         var primaryAction = cut.Find("[data-test='save-aide-btn']");
         var skipLink = cut.Find("[data-test='skip-aide-link']");
@@ -901,11 +901,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task AideProfile_RendersPrivacyReassuranceSidebar()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<AideProfile>();
+        var cut = ctx.Render<AideProfile>();
 
         await Assert.That(cut.Markup).Contains("Why we ask:");
         await Assert.That(cut.Markup).Contains("To plan accessible events");
@@ -917,11 +917,11 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task AideProfile_RehydratedOptionalModel_RetainsSavedValuesAcrossRerender()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         ctx.Services.AddSingleton(Substitute.For<IProfileApi>());
 
-        var cut = ctx.RenderComponent<AideProfile>();
+        var cut = ctx.Render<AideProfile>();
         SetModelProperty(cut.Instance, "_model", "Disability", "Physical / mobility");
         SetModelProperty(cut.Instance, "_model", "DisabilityDetails", "Wheelchair ramp access and aisle seat");
         SetModelProperty(cut.Instance, "_model", "DietaryRequirements", "Vegetarian");
@@ -946,15 +946,15 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task AideProfile_EmptySubmit_SavesOptionalProfileAndNavigatesHome()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.SaveAideProfileAsync(Arg.Any<SaveAideProfileDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, true, true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)));
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<AideProfile>();
+        var cut = ctx.Render<AideProfile>();
 
         await InvokeAsync(cut.Instance, "HandleValidSubmit");
 
@@ -973,8 +973,8 @@ public class OnboardingNavigationRenderTests
     [Test]
     public async Task AideProfile_LoadingSavedData_DisablesSubmitUntilHydrated()
     {
-        using var ctx = CreateContext();
-        ctx.AddTestAuthorization().SetAuthorized("Dev User");
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
         var aideSource = new TaskCompletionSource<AideProfileDto>();
         var profileApi = Substitute.For<IProfileApi>();
         profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
@@ -984,7 +984,7 @@ public class OnboardingNavigationRenderTests
         ctx.Services.AddSingleton(profileApi);
         ctx.Services.AddSingleton(Substitute.For<IImportApi>());
 
-        var cut = ctx.RenderComponent<AideProfile>();
+        var cut = ctx.Render<AideProfile>();
         var saveButton = cut.Find("[data-test='save-aide-btn']");
 
         await Assert.That(cut.Markup).Contains("Loading your saved accessibility profile…");
@@ -1080,11 +1080,13 @@ public class OnboardingNavigationRenderTests
         }
     }
 
-    private static string JoinInputValues(IRenderedFragment cut)
+    private static string JoinInputValues<TComponent>(IRenderedComponent<TComponent> cut)
+        where TComponent : IComponent
         => string.Join("|", cut.FindAll("input")
             .Select(input => input.GetAttribute("value") ?? string.Empty));
 
-    private static string JoinTextareaValues(IRenderedFragment cut)
+    private static string JoinTextareaValues<TComponent>(IRenderedComponent<TComponent> cut)
+        where TComponent : IComponent
         => string.Join("|", cut.FindAll("textarea")
             .Select(textarea => textarea.GetAttribute("value") ?? textarea.TextContent ?? string.Empty));
 
@@ -1097,7 +1099,7 @@ public class OnboardingNavigationRenderTests
             builder.CloseComponent();
         };
 
-        return ctx.RenderComponent<MainLayout>(parameters => parameters
+        return ctx.Render<MainLayout>(parameters => parameters
             .Add<RenderFragment>(p => p.Body!, body));
     }
 
@@ -1110,7 +1112,7 @@ public class OnboardingNavigationRenderTests
             builder.CloseComponent();
         };
 
-        return ctx.RenderComponent<OnboardingLayout>(parameters => parameters
+        return ctx.Render<OnboardingLayout>(parameters => parameters
             .Add<RenderFragment>(p => p.Body!, body));
     }
 

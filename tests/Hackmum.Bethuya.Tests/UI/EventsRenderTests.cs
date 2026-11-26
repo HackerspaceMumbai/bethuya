@@ -6,7 +6,7 @@ using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -15,10 +15,10 @@ public sealed class EventsRenderTests
     [Test]
     public async Task Render_ShowsLifecycleFilterAndLifecycleBadge()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
         var eventApi = Substitute.For<IEventApi>();
         eventApi.GetAllAsync(Arg.Any<CancellationToken>())
@@ -28,7 +28,7 @@ public sealed class EventsRenderTests
             }));
         ctx.Services.AddSingleton(eventApi);
 
-        var cut = ctx.RenderComponent<Events>();
+        var cut = ctx.Render<Events>();
 
         cut.WaitForAssertion(() =>
         {

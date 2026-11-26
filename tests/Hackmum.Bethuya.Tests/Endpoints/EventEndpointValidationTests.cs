@@ -8,11 +8,13 @@ using Hackmum.Bethuya.Core.Repositories;
 using Hackmum.Bethuya.Core.Services;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NSubstitute;
 
 namespace Hackmum.Bethuya.Tests.Endpoints;
@@ -38,12 +40,18 @@ public sealed class EventEndpointValidationTests : IAsyncDisposable
             options
                 .UseInMemoryDatabase($"event-endpoint-tests-{Guid.NewGuid():N}")
                 .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
+        builder.Services.AddAuthentication("test")
+            .AddScheme<AuthenticationSchemeOptions, EventArchiveAuthorizationTests.TestAuthenticationHandler>("test", _ => { });
+        builder.AddBethuyaAuthorization();
 
         _app = builder.Build();
+        _app.UseAuthentication();
+        _app.UseAuthorization();
         _app.MapEventEndpoints();
         await _app.StartAsync();
 
         _client = _app.GetTestClient();
+        _client.DefaultRequestHeaders.Add("X-Test-Role", "Organizer");
     }
 
     [After(Test)]

@@ -8,8 +8,7 @@ using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
 using ServiceDefaults.Auth;
 
-// Alias Bunit.TestContext to avoid collision with TUnit's own TestContext type.
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -28,9 +27,9 @@ public sealed class DevPersonaToolbarRenderTests
     [Test]
     public async Task Render_WhenFeatureRegistered_ShowsToolbarAndAllSixAllowlistedPersonas()
     {
-        using var ctx = CreateAuthorizedContext(BethuyaRoles.Attendee);
+        await using var ctx = CreateAuthorizedContext(BethuyaRoles.Attendee);
 
-        var cut = ctx.RenderComponent<DevPersonaToolbar>();
+        var cut = ctx.Render<DevPersonaToolbar>();
 
         await Assert.That(cut.Markup).Contains("data-test=\"dev-persona-toolbar\"");
         await Assert.That(cut.Markup).Contains("data-test=\"persona-selector\"");
@@ -49,13 +48,13 @@ public sealed class DevPersonaToolbarRenderTests
     [Test]
     public async Task Render_WhenFeatureRegistered_ShowsActiveIdentityAndSingleRole()
     {
-        using var ctx = CreateAuthorizedContext(
+        await using var ctx = CreateAuthorizedContext(
             BethuyaRoles.Attendee,
             name: "Farah",
             email: "farah@bethuya.dev",
             sub: "dev-persona-farah");
 
-        var cut = ctx.RenderComponent<DevPersonaToolbar>();
+        var cut = ctx.Render<DevPersonaToolbar>();
 
         var activePersona = cut.Find("[data-test='active-persona']");
         await Assert.That(activePersona.TextContent).Contains("Farah");
@@ -72,7 +71,7 @@ public sealed class DevPersonaToolbarRenderTests
     [Test]
     public async Task Render_WhenFeatureRegistered_ShowsAllEffectiveRoles_ForMultiRolePersona()
     {
-        using var ctx = CreateAuthorizedContext(
+        await using var ctx = CreateAuthorizedContext(
             BethuyaRoles.Admin,
             BethuyaRoles.Organizer,
             BethuyaRoles.Curator,
@@ -81,7 +80,7 @@ public sealed class DevPersonaToolbarRenderTests
             email: "vikram@bethuya.dev",
             sub: "dev-persona-vikram");
 
-        var cut = ctx.RenderComponent<DevPersonaToolbar>();
+        var cut = ctx.Render<DevPersonaToolbar>();
 
         var activeRole = cut.Find("[data-test='active-persona-role']");
         await Assert.That(activeRole.TextContent).Contains(BethuyaRoles.Admin);
@@ -98,16 +97,16 @@ public sealed class DevPersonaToolbarRenderTests
         // header comment). Selecting a persona must therefore call
         // NavigationManager.NavigateTo(url, forceLoad: true), targeting the Layer 2 secure
         // persona endpoint with a validated local returnUrl.
-        using var ctx = CreateAuthorizedContext(BethuyaRoles.Attendee);
-        var navigationManager = ctx.Services.GetRequiredService<FakeNavigationManager>();
+        await using var ctx = CreateAuthorizedContext(BethuyaRoles.Attendee);
+        var navigationManager = ctx.Services.GetRequiredService<BunitNavigationManager>();
 
-        var cut = ctx.RenderComponent<DevPersonaToolbar>();
+        var cut = ctx.Render<DevPersonaToolbar>();
         var farahButton = cut.Find("[data-test='persona-farah']");
         farahButton.Click();
 
         await Assert.That(navigationManager.Uri).Contains("/dev/persona/Farah?returnUrl=");
 
-        // FakeNavigationManager silently accepts forceLoad: false too, so asserting only on
+        // BunitNavigationManager silently accepts forceLoad: false too, so asserting only on
         // .Uri would not catch a regression that dropped forceLoad. Assert on the recorded
         // NavigationOptions directly to prove the call site really requested a full reload.
         var lastNavigation = navigationManager.History.Last();
@@ -119,12 +118,12 @@ public sealed class DevPersonaToolbarRenderTests
     {
         // Simulates Production or a real Authentication:Provider — IDevPersonaToolbarFeature
         // is only registered by Program.cs when Provider == None AND Environment == Development.
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization().SetAuthorized("Farah").SetRoles(BethuyaRoles.Attendee);
+        ctx.AddAuthorization().SetAuthorized("Farah").SetRoles(BethuyaRoles.Attendee);
 
-        var cut = ctx.RenderComponent<DevPersonaToolbar>();
+        var cut = ctx.Render<DevPersonaToolbar>();
 
         await Assert.That(cut.Markup.Trim()).IsEmpty();
     }
@@ -148,7 +147,7 @@ public sealed class DevPersonaToolbarRenderTests
         if (thirdRole is not null) roles.Add(thirdRole);
         if (fourthRole is not null) roles.Add(fourthRole);
 
-        ctx.AddTestAuthorization()
+        ctx.AddAuthorization()
             .SetAuthorized(name)
             .SetRoles([.. roles])
             .SetClaims(

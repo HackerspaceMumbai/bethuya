@@ -6,8 +6,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-// Alias Bunit.TestContext to avoid collision with TUnit's own TestContext type.
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -24,7 +23,7 @@ public class PlanEventRenderTests
     public async Task Render_DoesNotThrow_WhenDataTestAttributesAreOnWrapperDivs()
     {
         // Arrange
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
 
         // BlazorBlueprint components call JS module imports — use Loose mode to auto-satisfy them.
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -35,12 +34,12 @@ public class PlanEventRenderTests
         ctx.Services.AddBlazorBlueprintComponents();
 
         // Provide fake auth state so any AuthorizeView/[Authorize] cascades resolve.
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
         // Act ─ if data-test were placed directly on BbTimePicker or BbDatePicker
         // (which have no CaptureUnmatchedValues), Blazor would throw an
         // InvalidOperationException here before any assertion is reached.
-        var cut = ctx.RenderComponent<PlanEvent>();
+        var cut = ctx.Render<PlanEvent>();
 
         var markup = cut.Markup;
 
@@ -56,13 +55,13 @@ public class PlanEventRenderTests
     [Test]
     public async Task Render_SuggestDatesButton_IsPresent()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         RegisterPlanEventServices(ctx);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<PlanEvent>();
+        var cut = ctx.Render<PlanEvent>();
 
         await Assert.That(cut.Markup).Contains("suggest-dates-btn");
         await Assert.That(cut.Markup).Contains("Suggest Dates");
@@ -71,13 +70,13 @@ public class PlanEventRenderTests
     [Test]
     public async Task Render_SuggestDatesSection_HasDataTestAttribute()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         RegisterPlanEventServices(ctx);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<PlanEvent>();
+        var cut = ctx.Render<PlanEvent>();
 
         await Assert.That(cut.Markup).Contains("suggest-dates-section");
     }
@@ -85,13 +84,13 @@ public class PlanEventRenderTests
     [Test]
     public async Task Render_StatusBadge_ShowsDraftByDefault()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         RegisterPlanEventServices(ctx);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<PlanEvent>();
+        var cut = ctx.Render<PlanEvent>();
 
         await Assert.That(cut.Markup).Contains("event-status-badge");
         await Assert.That(cut.Markup).Contains("Draft");
@@ -100,13 +99,13 @@ public class PlanEventRenderTests
     [Test]
     public async Task Render_DualButtons_SaveDraftAndPublishPresent()
     {
-        using var ctx = new BunitCtx();
+        await using var ctx = new BunitCtx();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         RegisterPlanEventServices(ctx);
         ctx.Services.AddBlazorBlueprintComponents();
-        ctx.AddTestAuthorization();
+        ctx.AddAuthorization();
 
-        var cut = ctx.RenderComponent<PlanEvent>();
+        var cut = ctx.Render<PlanEvent>();
 
         await Assert.That(cut.Markup).Contains("save-draft-btn");
         await Assert.That(cut.Markup).Contains("publish-event-btn");

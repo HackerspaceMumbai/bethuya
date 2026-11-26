@@ -7,7 +7,7 @@ using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
 
-using BunitCtx = Bunit.TestContext;
+using BunitCtx = Bunit.BunitContext;
 
 namespace Hackmum.Bethuya.Tests.UI;
 
@@ -57,8 +57,8 @@ public sealed class OpportunityEngineTests
     [Test]
     public async Task OpportunityEnginePage_RendersGovernanceAndCommunityNeedsByDefault()
     {
-        using var ctx = CreateContext();
-        var cut = ctx.RenderComponent<OpportunityEngine>();
+        await using var ctx = CreateContext();
+        var cut = ctx.Render<OpportunityEngine>();
 
         await Assert.That(cut.Find("[data-test='opportunity-engine']")).IsNotNull();
         await Assert.That(cut.Find("[data-test='opportunity-engine-back-link']").GetAttribute("href")).IsEqualTo("/");
@@ -81,8 +81,8 @@ public sealed class OpportunityEngineTests
     [Test]
     public async Task OpportunityEnginePage_CardsDoNotContainApproveActions()
     {
-        using var ctx = CreateContext();
-        var cut = ctx.RenderComponent<OpportunityEngine>();
+        await using var ctx = CreateContext();
+        var cut = ctx.Render<OpportunityEngine>();
 
         var cards = cut.FindAll("[data-test='member-opportunity-card']");
         await Assert.That(cards.Count).IsGreaterThan(0);
@@ -99,8 +99,8 @@ public sealed class OpportunityEngineTests
     [Test]
     public async Task OpportunityEnginePage_ApproveInviteUpdatesSelectedWorkflow()
     {
-        using var ctx = CreateContext();
-        var cut = ctx.RenderComponent<OpportunityEngine>();
+        await using var ctx = CreateContext();
+        var cut = ctx.Render<OpportunityEngine>();
 
         await Assert.That(cut.Find("[data-test='selected-opportunity-status']").TextContent)
             .Contains("Needs Review");
@@ -117,8 +117,8 @@ public sealed class OpportunityEngineTests
     [Test]
     public async Task OpportunityEnginePage_ViewMatchesSelectsLinkedOpportunity()
     {
-        using var ctx = CreateContext();
-        var cut = ctx.RenderComponent<OpportunityEngine>();
+        await using var ctx = CreateContext();
+        var cut = ctx.Render<OpportunityEngine>();
 
         cut.Find("[data-test='view-matches-action'] button").Click();
 
@@ -139,8 +139,8 @@ public sealed class OpportunityEngineTests
     [Test]
     public async Task OpportunityEnginePage_ChampionInspect_SelectsMatchingMemberOpportunity()
     {
-        using var ctx = CreateContext();
-        var cut = ctx.RenderComponent<OpportunityEngine>();
+        await using var ctx = CreateContext();
+        var cut = ctx.Render<OpportunityEngine>();
 
         cut.Find("[data-test='champion-inspect'] button").Click();
 
@@ -155,8 +155,8 @@ public sealed class OpportunityEngineTests
     [Test]
     public async Task OpportunityEnginePage_WorkspaceTab_InvokesScrollHelper()
     {
-        using var ctx = CreateContext();
-        var cut = ctx.RenderComponent<OpportunityEngine>();
+        await using var ctx = CreateContext();
+        var cut = ctx.Render<OpportunityEngine>();
 
         cut.Find("[data-test='workspace-tab-risks-interventions']").Click();
 
@@ -175,7 +175,7 @@ public sealed class OpportunityEngineTests
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddBlazorBlueprintComponents();
         ctx.Services.AddSingleton<IOpportunityEngineService, DeterministicOpportunityEngineService>();
-        ctx.AddTestAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer, BethuyaRoles.Admin);
+        ctx.AddAuthorization().SetAuthorized("Organizer").SetRoles(BethuyaRoles.Organizer, BethuyaRoles.Admin);
         return ctx;
     }
 }

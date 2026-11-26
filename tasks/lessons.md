@@ -16,6 +16,38 @@ Every mistake, unexpected discovery, or incorrect assumption is recorded here to
 
 ## Log
 
+## [2026-11-22] Archive retry provenance after a retired merged branch
+- **What happened:** A retained-merged guard based only on branch existence also rejected a newly created branch when its subsequent PR creation failed.
+- **Fix:** Record the confirmed preview and exact whole-tree SHA on generated commits; only that matching candidate can retry after older merged history.
+- **Prevention:** Cover post-merge PR-creation failure and intervening README or unrelated-file edits; human-edited trees must remain read-only failures.
+
+## [2026-11-22] Preserve launch-profile semantics during Aspire 17 migration
+- **What happened:** Aspire 17 marks AddProject obsolete, so the existing warnings-as-errors build failed. Its replacement uses an options callback rather than the old nullable profile argument.
+- **Fix:** With explicit user approval, use Microsoft.NET.Sdk plus Aspire.Hosting.AppHost/Dotnet and path-based AddDotnetProject. Translate launchProfileName:null to ExcludeLaunchProfile=true; leave the migration worker's default selection intact.
+- **Prevention:** Consult the version-specific migration guide, preserve resource configuration and verify a fresh full build after dependency changes. Do not suppress the obsolete API diagnostics.
+
+## [2026-11-22] Upgrade sanitizer and component-test dependencies together
+- **What happened:** HtmlSanitizer 11 required AngleSharp 1.10, which caused bUnit 1.40 wrappers to fail with TypeLoadException. bUnit 2 then exposed synchronous disposal of asynchronous Blueprint services.
+- **Fix:** With explicit user approval, migrate to bUnit 2.15.2's documented context, rendering and authorization APIs and asynchronously dispose component-test contexts. Remove the obsolete NU1608 suppression; preserve all test assertions and TUnit.
+- **Prevention:** Validate required transitive minimums and the full component suite after security-package upgrades, not just restore or a vulnerability scan.
+
+## [2026-11-22] Preserve archive structure and proposal decisions
+- **What happened:** Line-based YAML updates missed quoted keys and alternate provenance indentation, removed community paragraph breaks, and publication reads ignored closed proposals or concurrent reconfirmation.
+- **Fix:** Share conservative provenance parsing between merge and adoption, preserve all existing blank lines, inspect closed PR history, and atomically compare the publication identity when saving refresh results.
+- **Prevention:** Cover actual archive structures and human decision races with fake-GitHub/SQLite regressions. An initially misplaced helper caused a compiler error during this batch; check method boundaries when inserting extracted helpers.
+
+## [2026-11-22] Preserve archive PR heads instead of forcing target-parented commits
+- **What happened:** Regenerating an archive commit from the target tree and force-updating an existing Draft PR head could discard community edits or an intervening concurrent commit.
+- **Root cause:** The deterministic branch was treated as disposable machine output, even though humans review and edit it.
+- **Fix:** Record generated whole-tree provenance, refuse human-edited or legacy heads, parent updates to the observed PR head and use non-forced ref updates. Check Draft state before preparation and again before ref mutation.
+- **Prevention:** Never force-replace human-review branches; preserve their ancestry and let GitHub reject concurrent non-fast-forward updates.
+
+## [2026-11-22] Bind archive retries to the confirmed target snapshot
+- **What happened:** A durable archive publication could be retried after target-branch content changed, which would regenerate a different candidate than the organizer approved.
+- **Root cause:** The outbox retained the event projection but not the preview token derived from the archive files and their GitHub SHAs; preview reads also addressed the moving branch name.
+- **Fix:** Persist the confirmed preview token, read both files from one resolved commit SHA, and fail stale work before writes so organizers can preview and confirm again.
+- **Prevention:** Treat a confirmed archive snapshot as part of the durable command; only retry GitHub operations automatically while the target snapshot remains unchanged.
+
 ## [2026-10-23] Chapter recommendation CTAs must match inbox contents
 - **What happened:** After Track Lead replaced Mentor nominations in Immediate Decisions, "Expand mentorship capacity" still linked to that inbox — organizers had no matching action for adding mentors.
 - **Root cause:** Decision-card copy was updated without retargeting chapter recommendation actions that depended on the old decision.
@@ -935,3 +967,9 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 - In this environment parallel restore failed without diagnostics; single-node restore exposed the NuGet network restriction and actionable errors. Network-enabled restore succeeded.
 - Before merging, main already pinned MessagePack 3.1.12 and XML cryptography 10.0.13. Preserve these newer upstream fixes instead of downgrading MessagePack to the minimum patched version.
 - Merge validation encountered DLL locks from a backend running in this worktree. Preserve the running app during a Git-only merge and report the validation limit; final dependency restore passed.
+
+## 2026-11-20 - Minimal API dependency binding
+- Explicitly mark injected endpoint services with `[FromServices]` and request payloads with `[FromBody]` when adding routes to a shared endpoint group. Otherwise, apps/tests that do not register every unrelated service can infer a service parameter as a request body and fail endpoint startup before the route under test executes.
+
+## 2026-11-20 - Outbox completion atomicity
+- An EF execution strategy alone does not make multiple database operations atomic. When recording the external publication result, wrap the conditional outbox completion and event-state update in an explicit transaction inside the execution strategy, and test rollback when the event update fails.
