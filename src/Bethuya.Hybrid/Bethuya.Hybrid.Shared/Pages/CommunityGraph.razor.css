@@ -39,7 +39,7 @@
 .graph-node.member,.graph-node.event,.graph-node.project,.graph-node.community,.graph-node.chapter,.graph-node.opportunity,.graph-node.technology { color:var(--entity-color); }
 .node-symbol { display:grid; place-items:center; width:54px; height:54px; border-radius:13px; border:2px solid currentColor; background:var(--hs-card); box-shadow:0 0 0 4px var(--hs-card); font-size:23px; font-weight:700; transition:box-shadow .15s ease; }
 .graph-node.active .node-symbol { width:70px; height:70px; box-shadow:0 0 0 4px var(--entity-color),0 0 24px color-mix(in srgb, var(--entity-color) 35%, transparent); background:var(--hs-card-hover); }
-.graph-node:hover .node-symbol { box-shadow:0 0 0 4px var(--hs-border-strong),0 0 16px var(--hs-gold-25); }
+@media (hover:hover) and (pointer:fine) { .graph-node:hover .node-symbol { box-shadow:0 0 0 4px var(--hs-border-strong),0 0 16px var(--hs-gold-25); } }
 .graph-node.opportunity .node-symbol { border-style:dashed; }
 .node-label { padding:5px 9px 2px; margin-top:9px; background:var(--hs-card); color:var(--hs-text); border-radius:3px; font-size:12px; font-weight:600; line-height:1.4; }
 .node-description { font-size:10px; padding:1px 8px 4px; background:var(--hs-card); border-radius:0 0 3px 3px; }

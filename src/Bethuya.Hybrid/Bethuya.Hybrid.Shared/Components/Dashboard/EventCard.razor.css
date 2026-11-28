@@ -9,9 +9,11 @@
     padding: 0;
 }
 
-::deep .event-card:hover {
-    border-color: var(--hs-gold-60);
-    transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+    ::deep .event-card:hover {
+        border-color: var(--hs-gold-60);
+        transform: translateY(-1px);
+    }
 }
 
 ::deep .event-card-body {

@@ -1,0 +1,6 @@
+/* BB's prebuilt Tailwind stylesheet ships lg:grid-cols-3 but neither col-span-2 nor lg:col-span-2. */
+@media (min-width: 1024px) {
+    .registrations-attendees {
+        grid-column: span 2 / span 2;
+    }
+}

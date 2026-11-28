@@ -239,7 +239,14 @@
     transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }
 
-.profile-primary-button:hover:not(:disabled),
+@media (hover: hover) and (pointer: fine) {
+    .profile-primary-button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 20px 40px rgba(212, 168, 48, 0.32);
+        filter: brightness(1.03);
+    }
+}
+
 .profile-primary-button:focus-visible:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 20px 40px rgba(212, 168, 48, 0.32);

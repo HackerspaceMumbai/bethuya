@@ -6,7 +6,8 @@ window.bethuyaOpportunityEngine.scrollToSection = function (sectionId) {
         return;
     }
 
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    section.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     if (!section.hasAttribute("tabindex")) {
         section.setAttribute("tabindex", "-1");
     }

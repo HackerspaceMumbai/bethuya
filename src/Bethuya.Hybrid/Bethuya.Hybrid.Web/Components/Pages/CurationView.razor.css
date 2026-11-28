@@ -4,9 +4,11 @@
     position: fixed;
     inset: 0 0 0 var(--curation-sidebar-width);
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
     height: 100vh;
+    height: 100dvh;
     background: #111316;
     color: var(--hs-text);
     overflow: hidden;
@@ -142,7 +144,7 @@
 
 .metric-row {
     gap: 0.38rem;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: flex-start;
     min-width: 0;
 }
@@ -208,7 +210,14 @@
     box-shadow: none;
 }
 
-.metric-chip:hover,
+@media (hover: hover) and (pointer: fine) {
+    .metric-chip:hover {
+        border-color: rgba(250, 189, 0, 0.66);
+        box-shadow: 0 0 18px rgba(250, 189, 0, 0.12), inset 3px 0 0 rgba(250, 189, 0, 0.88);
+        transform: translateY(-1px);
+    }
+}
+
 .queue-item.selected {
     border-color: rgba(250, 189, 0, 0.66);
     box-shadow: 0 0 18px rgba(250, 189, 0, 0.12), inset 3px 0 0 rgba(250, 189, 0, 0.88);
@@ -1522,7 +1531,18 @@
 
 @media (max-width: 980px) {
     .curation-shell {
+        position: static;
+        height: auto;
         margin: 0;
+        overflow: visible;
+    }
+
+    .workbench-grid,
+    .workbench-grid > ::deep .queue-panel,
+    .workbench-grid > .detail-stack {
+        height: auto;
+        max-height: none;
+        overflow: visible;
     }
 
     .workbench-grid,
@@ -1556,6 +1576,11 @@
         font-size: 1.45rem;
     }
 
+    .action-tray {
+        position: sticky;
+        bottom: 0;
+    }
+
     .tray-actions > * {
         width: 100%;
     }
@@ -1564,5 +1589,15 @@
 @media (max-width: 640px) {
     .curation-shell {
         --curation-sidebar-width: 0px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .metric-chip.highlighted,
+    .metric-chip.highlighted::after,
+    .metric-chip .metric-chip-value-row.metric-value-changed,
+    .metric-chip .metric-delta.delta-changed,
+    .queue-item.selected {
+        animation: none;
     }
 }
