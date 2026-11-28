@@ -1,11 +1,11 @@
 /* BB does not provide the asymmetric command-center page grid or atmospheric page treatment. */
 .command-center {
-    --command-surface: rgba(24, 18, 16, 0.78);
-    --command-surface-raised: rgba(31, 24, 20, 0.92);
-    --command-cream: #f4eee3;
-    --command-muted: #a99b88;
-    --command-green: #72c69a;
-    --command-amber: #e0ad42;
+    --command-surface: light-dark(rgba(255, 255, 255, 0.86), rgba(24, 18, 16, 0.78));
+    --command-surface-raised: light-dark(rgba(255, 255, 255, 0.96), rgba(31, 24, 20, 0.92));
+    --command-cream: var(--hs-text, light-dark(#1c1612, #f4eee3));
+    --command-muted: var(--hs-text-muted, light-dark(#635547, #a99b88));
+    --command-green: light-dark(#1d7a4c, #72c69a);
+    --command-amber: light-dark(#9a6700, #e0ad42);
     position: relative;
     display: grid;
     gap: 1.5rem;
@@ -269,7 +269,7 @@
     margin: 0;
     padding: 0.85rem;
     color: var(--command-cream);
-    background: #17120f;
+    background: var(--hs-card, #17120f);
     border: 1px solid var(--hs-border);
     border-radius: 0.65rem;
     box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.35);

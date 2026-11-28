@@ -1,13 +1,13 @@
 /* Blazor Blueprint provides controls, not the Passport's editorial record, journey, provenance timeline, or rhythm composition. */
 .passport-shell {
     --bethuya-gold: var(--hs-gold, #d4a830);
-    --bethuya-green: #51c98b;
-    --bethuya-blue: #7f9cf5;
-    --bethuya-surface: color-mix(in srgb, var(--hs-card, #151713) 94%, #10172d 6%);
-    --bethuya-surface-raised: color-mix(in srgb, var(--bethuya-surface) 88%, white 12%);
+    --bethuya-green: light-dark(#1d7a4c, #51c98b);
+    --bethuya-blue: light-dark(#2b52b5, #7f9cf5);
+    --bethuya-surface: color-mix(in srgb, var(--hs-card, #151713) 96%, var(--hs-sidebar, #10172d) 4%);
+    --bethuya-surface-raised: var(--hs-card-hover, color-mix(in srgb, var(--bethuya-surface) 88%, white 12%));
     --bethuya-border: var(--hs-border, #34352f);
-    --bethuya-text-primary: var(--hs-foreground, #ebe7dc);
-    --bethuya-text-secondary: var(--hs-muted-foreground, #a9a394);
+    --bethuya-text-primary: var(--hs-text, #ebe7dc);
+    --bethuya-text-secondary: var(--hs-text-muted, #a9a394);
     --bethuya-gold-soft: color-mix(in srgb, var(--bethuya-gold) 10%, transparent);
     --bethuya-gold-border: color-mix(in srgb, var(--bethuya-gold) 32%, var(--bethuya-border));
     --bethuya-green-soft: color-mix(in srgb, var(--bethuya-green) 8%, transparent);
