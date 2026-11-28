@@ -75,12 +75,12 @@
     min-width: 0;
 }
 
-.profile-form-card {
+.profile-main ::deep .profile-form-card {
     background: rgba(15, 14, 12, 0.88);
     border: 1px solid rgba(212, 168, 48, 0.14);
 }
 
-.profile-form-card__content {
+.profile-main ::deep .profile-form-card__content {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -94,7 +94,7 @@
     top: 1.25rem;
 }
 
-.profile-info-card {
+.profile-sidebar ::deep .profile-info-card {
     background: rgba(15, 14, 12, 0.84);
     border: 1px solid rgba(212, 168, 48, 0.12);
 }
@@ -227,7 +227,7 @@
     line-height: 1.5;
 }
 
-.social-connection-card {
+.social-connection-grid ::deep .social-connection-card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(212, 168, 48, 0.12);
     display: flex;
@@ -251,7 +251,7 @@
     box-shadow: 0 16px 34px rgba(212, 168, 48, 0.12);
 }
 
-.social-connection-card__content {
+.social-connection-grid ::deep .social-connection-card__content {
     display: flex;
     flex-direction: column;
     align-items: flex-start;

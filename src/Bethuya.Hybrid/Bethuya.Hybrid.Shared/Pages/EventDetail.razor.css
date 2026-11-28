@@ -40,7 +40,7 @@
 }
 
 /* Agent Console card — subtle primary accent border/glow */
-.agent-console-card {
+aside ::deep .agent-console-card {
     border-color: color-mix(in oklab, var(--primary) 30%, transparent) !important;
     box-shadow:
         0 0 0 1px color-mix(in oklab, var(--primary) 8%, transparent),
@@ -145,7 +145,7 @@
 }
 
 /* Agent Reasoning right panel — accent header underline */
-.agent-reasoning-card {
+aside ::deep .agent-reasoning-card {
     border-color: color-mix(in oklab, var(--primary) 20%, transparent) !important;
 }
 

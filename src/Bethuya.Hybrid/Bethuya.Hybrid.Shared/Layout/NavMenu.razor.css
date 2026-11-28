@@ -154,7 +154,7 @@
     font-weight: 600;
 }
 
-.nav-icon {
+.nav-item ::deep .nav-icon {
     flex-shrink: 0;
     opacity: 0.75;
 }
