@@ -930,7 +930,7 @@ dotnet run --project src/Bethuya.Hybrid/Bethuya.Hybrid -f net10.0-windows10.0.19
 dotnet build src/Bethuya.Hybrid/Bethuya.Hybrid -t:Run -f net10.0-android
 
 # iOS (on macOS)
-dotnet build src/Bethuya.Hybrid/Bethuya.Hybrid -f net10.0-ios
+dotnet build src/Bethuya.Hybrid/Bethuya.Hybrid -t:Run -f net10.0-ios
 
 # macOS (MacCatalyst)
 dotnet run --project src/Bethuya.Hybrid/Bethuya.Hybrid -f net10.0-maccatalyst
