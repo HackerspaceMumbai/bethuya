@@ -359,16 +359,21 @@ aside ::deep .agent-reasoning-card {
 
 .agent-timeline-energy-meter {
     position: relative;
-    display: inline-flex;
-    align-items: end;
-    gap: 0.12rem;
-    width: 2.15rem;
-    height: 1rem;
+    display: inline-block;
+    flex-shrink: 0;
+    width: 0.55rem;
+    height: 0.55rem;
+    margin-top: 0.45rem;
+    margin-right: 1.34rem;
 }
 
 .agent-timeline-energy-meter::before,
 .agent-timeline-energy-meter::after {
     content: "";
+    position: absolute;
+    bottom: 0;
+    display: block;
+    width: 0.55rem;
 }
 
 .agent-timeline-energy-meter,
@@ -378,22 +383,13 @@ aside ::deep .agent-reasoning-card {
     background: color-mix(in oklab, var(--muted-foreground) 22%, transparent);
 }
 
-.agent-timeline-energy-meter::before,
-.agent-timeline-energy-meter::after {
-    display: block;
-    width: 0.55rem;
-}
-
-.agent-timeline-energy-meter {
-    width: 0.55rem;
-    height: 0.55rem;
-}
-
 .agent-timeline-energy-meter::before {
+    left: 0.67rem;
     height: 0.78rem;
 }
 
 .agent-timeline-energy-meter::after {
+    left: 1.34rem;
     height: 1rem;
 }
 
