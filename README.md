@@ -531,7 +531,7 @@ The objective is equitable participation, not algorithmic control.
 - **.NET 10** + **C# 14**
 - **Aspire** - orchestration, composition, service discovery, config/secrets, and the **Aspire Dashboard** for logs, traces, and health. [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/dotnet/aspire/), [\[aspire.dev\]](https://aspire.dev/dashboard/explore/)
 - **Blazor Hybrid (.NET MAUI)** - one UI targeting Android, iOS, macOS, Windows via WebView; can also share UI with Blazor Web App. [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/aspnet/core/blazor/hybrid/tutorials/maui-blazor-web-app?view=aspnetcore-10.0), [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/aspnet/core/blazor/hybrid/tutorials/maui?view=aspnetcore-10.0)
-- **API Documentation:** **Scalar** - integration for all endpoints..com/en-us/aspnet/core/blazor/hybrid/tutorials/maui?view=aspnetcore-10.0)
+- **API Documentation:** **Scalar** - integration for all endpoints.
 - **Blazor Blueprint UI** - modern, accessible Blazor component library with pre-built styles, headless primitives, and shadcn/ui theme compatibility. No Tailwind or Node.js required. [\[blazorblueprintui.com\]](https://blazorblueprintui.com/)
 - **AI Providers (routed)** - **Foundry Local** (sensitive/offline), **Ollama** (local), **Azure OpenAI** / **OpenAI** (non‑sensitive/public). Foundry Local provides an OpenAI‑compatible local runtime on Windows/macOS. [\[devblogs.m...rosoft.com\]](https://devblogs.microsoft.com/foundry/unlock-instant-on-device-ai-with-foundry-local/), [\[github.com\]](https://github.com/microsoft/Foundry-Local)
 - **Agents** - **Microsoft Agent Framework** for tool‑calling, memory, and multi‑agent workflows; works with .NET and Python. [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/agent-framework/), [\[github.com\]](https://github.com/microsoft/agent-framework)
@@ -599,9 +599,9 @@ See [blazorblueprintui.com](https://blazorblueprintui.com/) for full docs and co
 
 | Metric | Target | Verification Tool |
 | :--- | :--- | :--- |
-| **Hot Path Latency (p99)** | < 180ms @ 2,500 RPS | []NBomber / TUnit |
-| **Memory Allocation** | 0 B on Hot Path | []BenchmarkDotNet |
-| **Visual Accuracy** | 100% Match | []Playwright Visual Regression |
+| **Hot Path Latency (p99)** | < 180ms @ 2,500 RPS | [NBomber](https://nbomber.com) / TUnit |
+| **Memory Allocation** | 0 B on Hot Path | [BenchmarkDotNet](https://benchmarkdotnet.org) |
+| **Visual Accuracy** | 100% Match | [Playwright Visual Regression](https://playwright.dev/dotnet/docs/intro) |
 
 ## 🔄 Development Protocol
 
@@ -877,6 +877,7 @@ dotnet user-secrets set "Ai:Fallback"  "Ollama"
 dotnet user-secrets set "AzureOpenAI:Endpoint" "<endpoint>"
 dotnet user-secrets set "AzureOpenAI:ApiKey" "<key>"
 dotnet user-secrets set "OpenAI:ApiKey" "<key>"
+cd ../..  # Return to the repository root
 ```
 
 _(Foundry Local offers an OpenAI‑compatible API and SDKs for integration.)_ [\[github.com\]](https://github.com/microsoft/Foundry-Local)
@@ -905,6 +906,7 @@ dotnet user-secrets set "GitHubEvents:Owner" "HackerspaceMumbai"
 dotnet user-secrets set "GitHubEvents:Repository" "bethuya"
 dotnet user-secrets set "GitHubEvents:Branch" "main"
 dotnet user-secrets set "GitHubEvents:Token" "<fine-grained-token>"
+cd ../..  # Return to the repository root
 ```
 
 Do not store these values in `appsettings.json`. Hosted environments load runtime secrets from Azure Key Vault through managed identity; see `docs/security/secrets-management.md`.
@@ -924,16 +926,16 @@ No build step required. Just add the NuGet package and reference the stylesheet 
 
 ```bash
 # Windows (WinUI)
-dotnet run --project src/Hackmum.Bethuya.App -f net10.0-windows10.0.19041.0
+dotnet run --project src/Bethuya.Hybrid/Bethuya.Hybrid -f net10.0-windows10.0.19041.0
 
 # Android
-dotnet build src/Hackmum.Bethuya.App -t:Run -f net10.0-android
+dotnet build src/Bethuya.Hybrid/Bethuya.Hybrid -t:Run -f net10.0-android
 
 # iOS (on macOS)
-dotnet build src/Hackmum.Bethuya.App -f net10.0-ios
+dotnet build src/Bethuya.Hybrid/Bethuya.Hybrid -t:Run -f net10.0-ios
 
 # macOS (MacCatalyst)
-dotnet run --project src/Hackmum.Bethuya.App -f net10.0-maccatalyst
+dotnet run --project src/Bethuya.Hybrid/Bethuya.Hybrid -f net10.0-maccatalyst
 ```
 
 [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/aspnet/core/blazor/hybrid/tutorials/maui-blazor-web-app?view=aspnetcore-10.0)
