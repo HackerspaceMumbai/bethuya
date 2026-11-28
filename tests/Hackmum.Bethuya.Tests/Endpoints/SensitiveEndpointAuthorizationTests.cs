@@ -131,7 +131,7 @@ public sealed class SensitiveEndpointAuthorizationTests
     }
 
     [Test]
-    public async Task ApprovalDecision_RecordsAuthenticatedReviewer()
+    public async Task ApprovalDecision_CuratorCanApplyPendingDecision()
     {
         await using var fixture = await TestFixture.CreateAsync();
         using var client = fixture.App.GetTestClient();
@@ -141,7 +141,7 @@ public sealed class SensitiveEndpointAuthorizationTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await fixture.DecisionRepository.Received(1).UpdateAsync(
-            Arg.Is<Decision>(d => d.DecidedBy == "reviewer@example.com" && d.Status == DecisionStatus.Applied),
+            Arg.Is<Decision>(d => d.Status == DecisionStatus.Applied),
             Arg.Any<CancellationToken>());
     }
 

@@ -28,19 +28,14 @@ public sealed partial class ApprovalWorkflow(ILogger<ApprovalWorkflow> logger)
     }
 
     /// <summary>
-    /// Approves a pending decision, recording <paramref name="decidedBy"/> as the reviewer when provided.
+    /// Approves a pending decision.
     /// </summary>
-    public void Approve(Decision decision, string? reason = null, string? decidedBy = null)
+    public void Approve(Decision decision, string? reason = null)
     {
         if (decision.Status != DecisionStatus.Pending)
         {
             LogInvalidStatus(logger, decision.Id, decision.Status);
             return;
-        }
-
-        if (decidedBy is not null)
-        {
-            decision.DecidedBy = decidedBy;
         }
 
         decision.Type = DecisionType.Approve;
@@ -51,19 +46,14 @@ public sealed partial class ApprovalWorkflow(ILogger<ApprovalWorkflow> logger)
     }
 
     /// <summary>
-    /// Rejects a pending decision, recording <paramref name="decidedBy"/> as the reviewer when provided.
+    /// Rejects a pending decision.
     /// </summary>
-    public void Reject(Decision decision, string reason, string? decidedBy = null)
+    public void Reject(Decision decision, string reason)
     {
         if (decision.Status != DecisionStatus.Pending)
         {
             LogInvalidStatus(logger, decision.Id, decision.Status);
             return;
-        }
-
-        if (decidedBy is not null)
-        {
-            decision.DecidedBy = decidedBy;
         }
 
         decision.Type = DecisionType.Reject;

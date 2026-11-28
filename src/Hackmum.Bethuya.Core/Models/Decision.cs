@@ -12,7 +12,7 @@ public sealed class Decision
     public Guid EntityId { get; init; }
     public DecisionType Type { get; set; }
     public DecisionStatus Status { get; set; } = DecisionStatus.Pending;
-    public required string DecidedBy { get; set; }
+    public required string DecidedBy { get; init; }
     public string? Reason { get; set; }
     public string? Diff { get; set; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
