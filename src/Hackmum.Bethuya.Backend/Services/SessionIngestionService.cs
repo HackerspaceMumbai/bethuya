@@ -33,9 +33,17 @@ public sealed partial class SessionIngestionService(
         var normalizedSessions = await PreviewSessionizeAsync(eventId, ct);
         var strategy = dbContext.Database.CreateExecutionStrategy();
         var importedCount = 0;
+        var attempt = 0;
 
         await strategy.ExecuteAsync(async () =>
         {
+            // A retried attempt must start from committed state; rows tracked by a failed attempt
+            // would otherwise count as already imported and the retry would store nothing.
+            if (attempt++ > 0)
+            {
+                dbContext.ChangeTracker.Clear();
+            }
+
             var attemptImportedCount = 0;
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
             var evt = await dbContext.Events
@@ -44,7 +52,14 @@ public sealed partial class SessionIngestionService(
                 .FirstOrDefaultAsync(e => e.Id == eventId, ct)
                 ?? throw new KeyNotFoundException($"Event {eventId} was not found.");
 
-            evt.Agenda ??= new Agenda { EventId = evt.Id };
+            // Agenda and session ids are generated client-side, so EF would treat new rows reached
+            // through navigations as existing ones and issue UPDATEs. Mark them as added explicitly.
+            if (evt.Agenda is null)
+            {
+                evt.Agenda = new Agenda { EventId = evt.Id };
+                dbContext.Agendas.Add(evt.Agenda);
+            }
+
             var existingSourceIds = evt.Agenda.Sessions
                 .Where(s => s.Source == SessionSource.Sessionize && s.SourceSessionId is not null)
                 .Select(s => s.SourceSessionId!)
@@ -61,7 +76,9 @@ public sealed partial class SessionIngestionService(
                     continue;
                 }
 
-                evt.Agenda.Sessions.Add(ToAgendaSession(session, nextOrder++));
+                var agendaSession = ToAgendaSession(session, nextOrder++);
+                evt.Agenda.Sessions.Add(agendaSession);
+                dbContext.AgendaSessions.Add(agendaSession);
                 if (session.SourceSessionId is not null)
                 {
                     existingSourceIds.Add(session.SourceSessionId);
@@ -100,9 +117,9 @@ public sealed partial class SessionIngestionService(
             SpeakerAvatarUrl = primarySpeaker?.AvatarUrl,
             Source = session.Source,
             SourceSessionId = session.SourceSessionId,
-            ScheduledStartAt = session.PreferredStartTime,
+            ScheduledStartAt = session.PreferredStartTime?.ToUniversalTime(),
             ScheduledEndAt = session.PreferredStartTime is not null && session.Duration is not null
-                ? session.PreferredStartTime.Value.Add(session.Duration.Value)
+                ? session.PreferredStartTime.Value.Add(session.Duration.Value).ToUniversalTime()
                 : null,
             StartTime = startTime,
             EndTime = endTime,

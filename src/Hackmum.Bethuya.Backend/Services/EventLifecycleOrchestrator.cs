@@ -110,7 +110,7 @@ public sealed partial class EventLifecycleOrchestrator(
         evt.TransitionLifecycleTo(MeetupLifecycleState.Completed, occurredAt);
         foreach (var session in evt.Agenda?.Sessions ?? [])
         {
-            session.MarkPendingUpload(assetDueAt);
+            session.MarkPendingUpload(assetDueAt?.ToUniversalTime());
         }
 
         await dbContext.SaveChangesAsync(ct);

@@ -25,9 +25,15 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
     }
 
     public async Task<AttendeeInclusionSource?> GetInclusionSourceByEmailAsync(string email, CancellationToken ct = default)
-        => await db.AttendeeProfiles
+    {
+        var normalizedEmail = email.ToLowerInvariant();
+
+#pragma warning disable CA1304, CA1311, CA1862 // Npgsql translates ToLower() to lower(); ToLowerInvariant() and string.Equals(..., StringComparison) are not translatable.
+        return await db.AttendeeProfiles
             .AsNoTracking()
-            .Where(p => p.Email == email)
+            .Where(p => p.Email.ToLower() == normalizedEmail)
+            .OrderByDescending(p => p.UpdatedAt)
+            .ThenByDescending(p => p.Id)
             .Select(p => new AttendeeInclusionSource(
                 p.Neighborhood,
                 p.LanguageProficiency,
@@ -35,6 +41,8 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
                 p.SocioeconomicBackground,
                 p.GenderIdentity))
             .FirstOrDefaultAsync(ct);
+#pragma warning restore CA1304, CA1311, CA1862
+    }
 
     public async Task<IReadOnlyDictionary<string, AttendeePublicSummary>> GetPublicSummariesByEmailAsync(
         IReadOnlyCollection<string> emails,
@@ -47,13 +55,15 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
 
         var normalizedEmails = emails
             .Where(email => !string.IsNullOrWhiteSpace(email))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(email => email.ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
             .ToList();
 
+#pragma warning disable CA1304, CA1311 // Npgsql translates ToLower() to lower(); ToLowerInvariant() is not translatable.
         return await db.AttendeeProfiles
             .AsNoTracking()
-            .Where(p => normalizedEmails.Contains(p.Email))
-            .GroupBy(p => p.Email)
+            .Where(p => normalizedEmails.Contains(p.Email.ToLower()))
+            .GroupBy(p => p.Email.ToLower())
             .Select(group => group
                 .OrderByDescending(profile => profile.UpdatedAt)
                 .Select(profile => new
@@ -74,5 +84,6 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
                 item => item.Summary,
                 StringComparer.OrdinalIgnoreCase,
                 ct);
+#pragma warning restore CA1304, CA1311
     }
 }

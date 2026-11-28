@@ -293,14 +293,16 @@ public sealed class ParticipationLedgerService(
                 continue;
             }
 
+#pragma warning disable CA1304, CA1311 // Npgsql translates ToLower() to lower(); ToLowerInvariant() is not translatable.
             var identities = await db.ExternalIdentities
                 .AsNoTracking()
                 .Where(identity =>
                     identity.Provider == provider
-                    && (providerLookupKeys.Contains(identity.Subject.ToLowerInvariant())
-                        || identity.Username != null && providerLookupKeys.Contains(identity.Username.ToLowerInvariant())))
+                    && (providerLookupKeys.Contains(identity.Subject.ToLower())
+                        || identity.Username != null && providerLookupKeys.Contains(identity.Username.ToLower())))
                 .Select(identity => new IdentityLink(identity.CommunityMemberId, identity.Subject, identity.Username))
                 .ToListAsync(ct);
+#pragma warning restore CA1304, CA1311
 
             var identityLookup = BuildIdentityLookup(identities);
 

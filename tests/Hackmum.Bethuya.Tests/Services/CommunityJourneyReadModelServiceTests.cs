@@ -298,6 +298,57 @@ public sealed class CommunityJourneyReadModelServiceTests
         await Assert.That(readModel.VolunteerGrowth.CurrentWindowSignals).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task GetDashboardReadModelAsync_ToleratesMembersSharingAnEmail()
+    {
+        await using var db = CreateDbContext();
+        var passportService = new CommunityPassportService(db);
+        var now = DateTimeOffset.UtcNow;
+
+        var importedPlaceholder = new CommunityMember
+        {
+            UserId = "import:shared@example.com",
+            DisplayName = "Shared Member",
+            Email = "shared@example.com"
+        };
+        var signedInMember = new CommunityMember
+        {
+            UserId = "shared-member-oidc",
+            DisplayName = "Shared Member",
+            Email = "Shared@Example.com"
+        };
+        db.CommunityMembers.AddRange(importedPlaceholder, signedInMember);
+
+        var evt = new Event
+        {
+            Title = "Duplicate Email Event",
+            Type = EventType.Meetup,
+            Capacity = 40,
+            StartDate = now.AddDays(7),
+            EndDate = now.AddDays(7).AddHours(2),
+            CreatedBy = "organizer"
+        };
+        db.Events.Add(evt);
+        db.Registrations.Add(new Registration
+        {
+            EventId = evt.Id,
+            FullName = "Shared Member",
+            Email = "shared@example.com",
+            Status = RegistrationStatus.CheckedIn,
+            UpdatedAt = now.AddDays(-3),
+            ContributionPreferences = ["Volunteer at the venue"]
+        });
+
+        await db.SaveChangesAsync();
+        var service = new CommunityJourneyReadModelService(db, passportService);
+
+        var readModel = await service.GetDashboardReadModelAsync(lookbackDays: 90);
+
+        await Assert.That(readModel.Attendance.AttendedCount).IsEqualTo(1);
+        await Assert.That(readModel.LeadershipFunnel.VolunteerInterestedMembers).IsEqualTo(1);
+        await Assert.That(readModel.LeadershipFunnel.ActiveVolunteers).IsEqualTo(1);
+    }
+
     private static BethuyaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<BethuyaDbContext>()

@@ -134,6 +134,24 @@ public sealed class ImportRowNormalizerTests
     }
 
     [Test]
+    public async Task NormalizeAll_OccurredAtWithOffset_IsConvertedToUtc()
+    {
+        var template = CreateTemplate(ImportKind.Attendance,
+            ("Email", ImportTargetField.Email),
+            ("Check-in", ImportTargetField.OccurredAt));
+
+        var file = new ParsedImportFile(
+            ["Email", "Check-in"],
+            [new Dictionary<string, string?> { ["Email"] = "a@example.com", ["Check-in"] = "2026-11-20T18:30:00+05:30" }]);
+
+        var rows = ImportRowNormalizer.NormalizeAll(file, template);
+
+        await Assert.That(rows[0].IsValid).IsTrue();
+        await Assert.That(rows[0].OccurredAt!.Value.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(rows[0].OccurredAt!.Value).IsEqualTo(new DateTimeOffset(2026, 11, 20, 13, 0, 0, TimeSpan.Zero));
+    }
+
+    [Test]
     public async Task NormalizeAll_DuplicateEmailsInFile_FlagsBothRowsAsErrors()
     {
         var template = CreateTemplate(ImportKind.Attendance, ("Email", ImportTargetField.Email));

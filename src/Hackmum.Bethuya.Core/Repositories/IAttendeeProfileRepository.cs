@@ -15,6 +15,10 @@ public interface IAttendeeProfileRepository
     Task UpdateAsync(AttendeeProfile profile, CancellationToken ct = default);
 
     /// <summary>Returns a minimal profile projection used for inclusion-signal derivation.</summary>
+    /// <remarks>
+    /// Emails match case-insensitively. When several profiles match, the most recently updated one
+    /// wins, and ties go to the highest profile id.
+    /// </remarks>
     Task<AttendeeInclusionSource?> GetInclusionSourceByEmailAsync(string email, CancellationToken ct = default);
 
     /// <summary>Returns non-sensitive public summary fields used in organizer curation views.</summary>

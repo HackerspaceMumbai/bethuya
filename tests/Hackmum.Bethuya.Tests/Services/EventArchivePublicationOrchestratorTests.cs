@@ -13,6 +13,28 @@ namespace Hackmum.Bethuya.Tests.Services;
 public sealed class EventArchivePublicationOrchestratorTests
 {
     [Test]
+    public async Task CompleteAsync_AssetDueAtWithOffset_StoresUtc()
+    {
+        await using var db = CreateDbContext();
+        var evt = CreatePublishedEvent();
+        evt.Agenda = new Agenda
+        {
+            EventId = evt.Id,
+            Sessions = [new AgendaSession { Title = "Postgres in production", Order = 1 }]
+        };
+        db.Events.Add(evt);
+        await db.SaveChangesAsync();
+        var orchestrator = CreateOrchestrator(db, CreateRepository());
+
+        await orchestrator.CompleteAsync(evt.Id, "organizer", new DateTimeOffset(2026, 12, 19, 18, 0, 0, TimeSpan.FromHours(5.5)));
+
+        var session = await db.AgendaSessions.SingleAsync();
+        await Assert.That(session.AssetStatus).IsEqualTo(SessionAssetStatus.PendingUpload);
+        await Assert.That(session.AssetsDueAt!.Value.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(session.AssetsDueAt!.Value).IsEqualTo(new DateTimeOffset(2026, 12, 19, 12, 30, 0, TimeSpan.Zero));
+    }
+
+    [Test]
     public async Task PreviewArchivePublicationAsync_ReadOnlyPreview_DoesNotQueueOrPublish()
     {
         await using var db = CreateDbContext();

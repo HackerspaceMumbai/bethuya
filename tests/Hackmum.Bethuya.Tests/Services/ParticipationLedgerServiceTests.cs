@@ -6,6 +6,8 @@ using Hackmum.Bethuya.Core.ValueObjects;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Hackmum.Bethuya.Tests.Services;
 
@@ -187,6 +189,38 @@ public sealed class ParticipationLedgerServiceTests
         await Assert.That(result.DuplicateCount).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task WriteAsync_ResolvesExternalIdentityCaseInsensitivelyOnRelationalProvider()
+    {
+        await using var db = CreateSqliteDbContext();
+        var passportService = new CommunityPassportService(db);
+        var ledgerService = new ParticipationLedgerService(db, passportService);
+        var callerSubject = new CommunitySubjectContext("connector-caller-sql", "Connector Caller", "connector-sql@example.com");
+
+        var linkedMember = await SeedMemberWithIdentityAsync(
+            db,
+            userId: "linked-github-user",
+            email: "linked-github@example.com",
+            provider: IdentityProviderKind.GitHub,
+            subject: "GitHub:Octo-Contributor");
+
+        var writeResult = await ledgerService.WriteAsync(callerSubject, new UpsertParticipationEntriesRequest(
+        [
+            new ParticipationEntryWriteRequest(
+                Connector: ParticipationConnectorKind.GitHub,
+                ExternalMemberKey: "github:octo-contributor",
+                Activity: ParticipationActivityKind.MessageEngaged,
+                OccurredAt: new DateTimeOffset(2026, 11, 20, 10, 0, 0, TimeSpan.Zero),
+                Evidence: "Opened issue #42",
+                ProvenanceKey: "github:issue:42")
+        ]));
+
+        await Assert.That(writeResult.StoredCount).IsEqualTo(1);
+
+        var entry = await db.ParticipationLedgerEntries.SingleAsync();
+        await Assert.That(entry.CommunityMemberId).IsEqualTo(linkedMember.Id);
+    }
+
     private static async Task<CommunityMember> SeedMemberWithIdentityAsync(
         BethuyaDbContext db,
         string userId,
@@ -224,5 +258,35 @@ public sealed class ParticipationLedgerServiceTests
             .Options;
 
         return new BethuyaDbContext(options);
+    }
+
+    private static BethuyaDbContext CreateSqliteDbContext()
+    {
+        var options = new DbContextOptionsBuilder<BethuyaDbContext>()
+            .UseSqlite("Data Source=:memory:")
+            .ReplaceService<IModelCustomizer, SqliteDateTimeOffsetModelCustomizer>()
+            .Options;
+
+        var db = new BethuyaDbContext(options);
+        db.Database.OpenConnection();
+        db.Database.EnsureCreated();
+        return db;
+    }
+
+    // SQLite cannot order by DateTimeOffset, which the passport projection does, so store them as binary.
+    private sealed class SqliteDateTimeOffsetModelCustomizer(ModelCustomizerDependencies dependencies)
+        : RelationalModelCustomizer(dependencies)
+    {
+        public override void Customize(ModelBuilder modelBuilder, DbContext context)
+        {
+            base.Customize(modelBuilder, context);
+
+            foreach (var property in modelBuilder.Model.GetEntityTypes()
+                         .SelectMany(entityType => entityType.GetProperties())
+                         .Where(property => property.ClrType == typeof(DateTimeOffset) || property.ClrType == typeof(DateTimeOffset?)))
+            {
+                property.SetValueConverter(new DateTimeOffsetToBinaryConverter());
+            }
+        }
     }
 }
