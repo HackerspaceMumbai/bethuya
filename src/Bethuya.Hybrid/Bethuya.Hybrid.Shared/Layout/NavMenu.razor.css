@@ -127,7 +127,7 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    color: rgba(240, 234, 224, 0.6);
+    color: color-mix(in srgb, var(--hs-text) 68%, transparent);
     background: none;
     border: none;
     border-left: 3px solid transparent;
@@ -190,8 +190,37 @@
 }
 
 .nav-item ::deep .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-    color: white;
+    background-color: var(--hs-gold-15);
+    color: var(--hs-text);
+}
+
+.theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    margin-bottom: 0.65rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--hs-border);
+    border-radius: 8px;
+    background-color: var(--hs-card);
+    color: var(--hs-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--hs-transition), border-color var(--hs-transition), color var(--hs-transition);
+}
+
+.theme-toggle-btn:hover {
+    background-color: var(--hs-gold-15);
+    border-color: var(--hs-border-strong);
+    color: var(--hs-gold);
+}
+
+.theme-toggle-btn:focus-visible {
+    outline: 2px solid var(--hs-gold);
+    outline-offset: 2px;
 }
 
 .nav-scrollable {

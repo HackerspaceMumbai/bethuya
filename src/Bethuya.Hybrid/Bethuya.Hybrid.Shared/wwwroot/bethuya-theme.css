@@ -1,70 +1,77 @@
 /*
- * Bethuya Theme — Hackerspace Mumbai Dark Gold Design System
+ * Bethuya Theme — Hackerspace Mumbai Light & Dark Gold Design System
  * Maps Blazor Blueprint CSS variables to the Hackerspace Mumbai brand.
  *
  * BB uses Tailwind v4 @theme inline — all --color-* map to var(--*).
- * e.g. bg-primary → var(--color-primary) → var(--primary) → #D4A830
+ * e.g. bg-primary → var(--color-primary) → var(--primary)
  *
  * This file is loaded BEFORE blazorblueprint.css so the variables are
  * available when Tailwind utilities resolve.
- *
- * Dark mode is the only mode (class="dark" on <html>).
  */
 
-:root,
-.dark {
-    /* ── Brand tokens (unchanged from app.css) ── */
-    --hs-gold-hover:      #E8BE48;
+:root {
+    color-scheme: light dark;
+
+    &:has(> head > meta[name="color-scheme"][content="dark"]) {
+        color-scheme: dark;
+    }
+
+    &:has(> head > meta[name="color-scheme"][content="light"]) {
+        color-scheme: light;
+    }
+
+    /* ── Brand tokens ── */
+    --hs-gold-hover:      light-dark(#7d5c06, #E8BE48);
 
     /* ── Core palette ── */
-    --background:           #0d0b09;
-    --foreground:           #F0EAE0;
+    --background:           light-dark(#faf7f2, #0d0b09);
+    --foreground:           light-dark(#1c1612, #F0EAE0);
 
     /* ── Card / elevated surfaces ── */
-    --card:                 #181210;
-    --card-foreground:      #F0EAE0;
+    --card:                 light-dark(#ffffff, #181210);
+    --card-foreground:      light-dark(#1c1612, #F0EAE0);
 
     /* ── Popover (dialogs, dropdowns) ── */
-    --popover:              #181210;
-    --popover-foreground:   #F0EAE0;
+    --popover:              light-dark(#ffffff, #181210);
+    --popover-foreground:   light-dark(#1c1612, #F0EAE0);
 
     /* ── Primary = Hackerspace Mumbai Gold ── */
-    --primary:              #D4A830;
-    --primary-foreground:   #0d0b09;
+    --primary:              light-dark(#9a7209, #D4A830);
+    --primary-foreground:   light-dark(#ffffff, #0d0b09);
 
     /* ── Secondary (subtle surfaces) ── */
-    --secondary:            #1e1715;
-    --secondary-foreground: #F0EAE0;
+    --secondary:            light-dark(#f1ebe1, #1e1715);
+    --secondary-foreground: light-dark(#1c1612, #F0EAE0);
 
     /* ── Muted (disabled / placeholder) ── */
-    --muted:                #1e1715;
-    --muted-foreground:     #7a6a57;
+    --muted:                light-dark(#f1ebe1, #1e1715);
+    --muted-foreground:     light-dark(#635547, #9a8873);
 
     /* ── Accent (hover highlights) ── */
-    --accent:               #1e1715;
-    --accent-foreground:    #F0EAE0;
+    --accent:               light-dark(#f1ebe1, #1e1715);
+    --accent-foreground:    light-dark(#1c1612, #F0EAE0);
 
     /* ── Destructive (errors, delete) ── */
-    --destructive:          #e53e3e;
-    --destructive-foreground: #F0EAE0;
+    --destructive:            light-dark(#c53030, #e53e3e);
+    --destructive-foreground: light-dark(#ffffff, #F0EAE0);
 
     /* ── Borders, inputs, focus rings ── */
-    --border:               rgba(212, 168, 48, 0.2);
-    --input:                rgba(212, 168, 48, 0.2);
-    --ring:                 #D4A830;
+    --border:               light-dark(rgba(125, 92, 6, 0.24), rgba(212, 168, 48, 0.24));
+    --input:                light-dark(rgba(125, 92, 6, 0.24), rgba(212, 168, 48, 0.24));
+    --ring:                 light-dark(#9a7209, #D4A830);
 
     /* ── Border radius ── */
     --radius:               0.625rem;
 
     /* ── Sidebar ── */
-    --sidebar:                      #0a0807;
-    --sidebar-foreground:           #F0EAE0;
-    --sidebar-primary:              #D4A830;
-    --sidebar-primary-foreground:   #0d0b09;
-    --sidebar-accent:               #181210;
-    --sidebar-accent-foreground:    #F0EAE0;
-    --sidebar-border:               rgba(212, 168, 48, 0.2);
-    --sidebar-ring:                 #D4A830;
+    --sidebar:                      light-dark(#f3ede3, #0a0807);
+    --sidebar-foreground:           light-dark(#1c1612, #F0EAE0);
+    --sidebar-primary:              light-dark(#9a7209, #D4A830);
+    --sidebar-primary-foreground:   light-dark(#ffffff, #0d0b09);
+    --sidebar-accent:               light-dark(#e9e0d1, #181210);
+    --sidebar-accent-foreground:    light-dark(#1c1612, #F0EAE0);
+    --sidebar-border:               light-dark(rgba(125, 92, 6, 0.22), rgba(212, 168, 48, 0.2));
+    --sidebar-ring:                 light-dark(#9a7209, #D4A830);
 
     /* ── Font stack ── */
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,

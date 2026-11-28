@@ -42,7 +42,7 @@ main {
 }
 
 #blazor-error-ui {
-    background: #2d1a0e;
+    background: var(--hs-card);
     border-top: 1px solid var(--hs-border-strong);
     color: var(--hs-text);
     bottom: 0;

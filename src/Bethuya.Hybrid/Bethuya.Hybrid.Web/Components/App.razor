@@ -1,10 +1,20 @@
 ﻿@using Microsoft.Extensions.DependencyInjection
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+        try {
+            var stored = localStorage.getItem("color-scheme");
+            document.querySelector('meta[name="color-scheme"]').content = stored ?? "light dark";
+            if (stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+                document.documentElement.classList.add("dark");
+            }
+        } catch {}
+    </script>
     <base href="/" />
     <link rel="stylesheet" href="_content/Bethuya.Hybrid.Shared/bethuya-theme.css" />
     <link rel="stylesheet" href="_content/BlazorBlueprint.Components/blazorblueprint.css" />
@@ -22,6 +32,7 @@
     {
         <Bethuya.Hybrid.Web.Components.Dev.DevPersonaToolbar @rendermode="InteractiveServer" />
     }
+    <script src="_content/Bethuya.Hybrid.Shared/js/themeToggle.js"></script>
     <script src="_content/Bethuya.Hybrid.Shared/js/cloudinaryUploadGlobal.js"></script>
     <script src="_content/Bethuya.Hybrid.Shared/js/opportunityEngine.js"></script>
     <script src="_content/Bethuya.Hybrid.Shared/js/passportExport.js"></script>

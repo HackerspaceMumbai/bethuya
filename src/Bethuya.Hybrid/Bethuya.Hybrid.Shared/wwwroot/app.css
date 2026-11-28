@@ -1,17 +1,17 @@
-/* ── Hackerspace Mumbai · Dark Gold Design System ── */
+/* ── Hackerspace Mumbai · Light & Dark Gold Design System ── */
 :root {
-    --hs-bg:              #0d0b09;
-    --hs-card:            #181210;
-    --hs-card-hover:      #1e1715;
-    --hs-sidebar:         #0a0807;
-    --hs-gold:            #D4A830;
-    --hs-gold-15:         rgba(212, 168, 48, 0.15);
-    --hs-gold-25:         rgba(212, 168, 48, 0.25);
-    --hs-gold-60:         rgba(212, 168, 48, 0.6);
-    --hs-text:            #F0EAE0;
-    --hs-text-muted:      #7a6a57;
-    --hs-border:          rgba(212, 168, 48, 0.2);
-    --hs-border-strong:   rgba(212, 168, 48, 0.55);
+    --hs-bg:              light-dark(#faf7f2, #0d0b09);
+    --hs-card:            light-dark(#ffffff, #181210);
+    --hs-card-hover:      light-dark(#f1ebe1, #1e1715);
+    --hs-sidebar:         light-dark(#f3ede3, #0a0807);
+    --hs-gold:            light-dark(#9a7209, #D4A830);
+    --hs-gold-15:         light-dark(rgba(154, 114, 9, 0.12), rgba(212, 168, 48, 0.15));
+    --hs-gold-25:         light-dark(rgba(154, 114, 9, 0.22), rgba(212, 168, 48, 0.25));
+    --hs-gold-60:         light-dark(rgba(154, 114, 9, 0.55), rgba(212, 168, 48, 0.6));
+    --hs-text:            light-dark(#1c1612, #F0EAE0);
+    --hs-text-muted:      light-dark(#635547, #9a8873);
+    --hs-border:          light-dark(rgba(125, 92, 6, 0.24), rgba(212, 168, 48, 0.2));
+    --hs-border-strong:   light-dark(rgba(125, 92, 6, 0.55), rgba(212, 168, 48, 0.55));
     --hs-radius:          10px;
     --hs-transition:      0.18s ease;
 }
@@ -22,25 +22,29 @@ html, body {
     background-color: var(--hs-bg);
 }
 
+html {
+    accent-color: var(--hs-gold);
+}
+
 a, .btn-link {
     color: var(--hs-gold);
 }
 
 a:hover {
-    color: #E8BE48;
+    color: var(--hs-gold-hover, #E8BE48);
     text-decoration: underline;
 }
 
 .btn-primary {
-    color: var(--hs-bg);
+    color: var(--primary-foreground, var(--hs-bg));
     background-color: var(--hs-gold);
     border-color: var(--hs-gold);
     font-weight: 600;
 }
 
 .btn-primary:hover {
-    background-color: #E8BE48;
-    border-color: #E8BE48;
+    background-color: var(--hs-gold-hover, #E8BE48);
+    border-color: var(--hs-gold-hover, #E8BE48);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
@@ -97,4 +101,49 @@ h1:focus {
 
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
+}
+
+/* Theme toggle button state visibility (no JS required for initial render or system sync) */
+.theme-toggle-option--light {
+    display: none;
+}
+
+.theme-toggle-option--dark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle-option--light {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle-option--dark {
+    display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .theme-toggle-option--light {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .theme-toggle-option--dark {
+        display: none;
+    }
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

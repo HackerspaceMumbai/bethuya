@@ -1,13 +1,13 @@
 /* BB does not provide the multi-section operational workspace grid, sticky detail panel, or pathway/workflow steppers. */
 /* Atmosphere + page shell: BB has no Hackerspace Command Center page composition or radial brand wash. */
 .opportunity-engine {
-    --oe-surface: rgba(24, 18, 16, 0.78);
-    --oe-surface-raised: rgba(31, 24, 20, 0.92);
-    --oe-cream: #f4eee3;
-    --oe-muted: #a99b88;
-    --oe-green: #72c69a;
-    --oe-amber: #e0ad42;
-    --oe-danger: #e26d5a;
+    --oe-surface: light-dark(rgba(255, 255, 255, 0.86), rgba(24, 18, 16, 0.78));
+    --oe-surface-raised: light-dark(rgba(255, 255, 255, 0.96), rgba(31, 24, 20, 0.92));
+    --oe-cream: var(--hs-text, light-dark(#1c1612, #f4eee3));
+    --oe-muted: var(--hs-text-muted, light-dark(#635547, #a99b88));
+    --oe-green: light-dark(#1d7a4c, #72c69a);
+    --oe-amber: light-dark(#9a6700, #e0ad42);
+    --oe-danger: light-dark(#c53030, #e26d5a);
     position: relative;
     display: grid;
     gap: 1.25rem;
