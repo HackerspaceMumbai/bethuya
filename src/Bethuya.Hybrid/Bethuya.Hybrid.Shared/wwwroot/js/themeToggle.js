@@ -1,18 +1,29 @@
 (function () {
     const STORAGE_KEY = "color-scheme";
     const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
+    let memoryOverride = readStoredScheme();
 
     function getSystemScheme() {
         return darkMedia.matches ? "dark" : "light";
     }
 
-    function getStoredScheme() {
+    function readStoredScheme() {
         try {
             const value = localStorage.getItem(STORAGE_KEY);
             return value === "light" || value === "dark" ? value : null;
         } catch {
             return null;
         }
+    }
+
+    function getOverride() {
+        try {
+            const value = localStorage.getItem(STORAGE_KEY);
+            memoryOverride = value === "light" || value === "dark" ? value : null;
+        } catch {
+            // Storage blocked; keep the in-memory override.
+        }
+        return memoryOverride;
     }
 
     function applyScheme(storedScheme) {
@@ -24,38 +35,39 @@
         document.documentElement.classList.toggle("dark", effective === "dark");
     }
 
+    function setOverride(scheme) {
+        memoryOverride = scheme;
+        try {
+            if (scheme === null) {
+                localStorage.removeItem(STORAGE_KEY);
+            } else {
+                localStorage.setItem(STORAGE_KEY, scheme);
+            }
+        } catch {
+            // Storage blocked; still apply for the current session.
+        }
+        applyScheme(scheme);
+    }
+
     function toggle() {
-        const currentRendered = getStoredScheme() ?? getSystemScheme();
+        const currentRendered = getOverride() ?? getSystemScheme();
         const target = currentRendered === "dark" ? "light" : "dark";
         const system = getSystemScheme();
 
-        if (target !== system) {
-            try {
-                localStorage.setItem(STORAGE_KEY, target);
-            } catch {
-                // Storage blocked; still apply for the current session.
-            }
-            applyScheme(target);
-        } else {
-            try {
-                localStorage.removeItem(STORAGE_KEY);
-            } catch {
-                // Storage blocked; still apply for the current session.
-            }
-            applyScheme(null);
-        }
+        setOverride(target !== system ? target : null);
     }
 
     window.addEventListener("storage", function (event) {
-        if (event.key === STORAGE_KEY) {
-            applyScheme(getStoredScheme());
+        if (event.key !== STORAGE_KEY && event.key !== null) {
+            return;
         }
+        applyScheme(getOverride());
     });
 
     // Keep .dark class synced with system changes when following system default;
     // never deletes any stored override.
     darkMedia.addEventListener("change", function () {
-        if (getStoredScheme() === null) {
+        if (getOverride() === null) {
             applyScheme(null);
         }
     });
@@ -64,5 +76,5 @@
         toggle: toggle
     };
 
-    applyScheme(getStoredScheme());
+    applyScheme(getOverride());
 })();

@@ -36,7 +36,7 @@
     --popover-foreground:   light-dark(#1c1612, #F0EAE0);
 
     /* ── Primary = Hackerspace Mumbai Gold ── */
-    --primary:              light-dark(#9a7209, #D4A830);
+    --primary:              light-dark(#8c6606, #D4A830);
     --primary-foreground:   light-dark(#ffffff, #0d0b09);
 
     /* ── Secondary (subtle surfaces) ── */
@@ -58,7 +58,7 @@
     /* ── Borders, inputs, focus rings ── */
     --border:               light-dark(rgba(125, 92, 6, 0.24), rgba(212, 168, 48, 0.24));
     --input:                light-dark(rgba(125, 92, 6, 0.24), rgba(212, 168, 48, 0.24));
-    --ring:                 light-dark(#9a7209, #D4A830);
+    --ring:                 light-dark(#8c6606, #D4A830);
 
     /* ── Border radius ── */
     --radius:               0.625rem;
@@ -66,12 +66,12 @@
     /* ── Sidebar ── */
     --sidebar:                      light-dark(#f3ede3, #0a0807);
     --sidebar-foreground:           light-dark(#1c1612, #F0EAE0);
-    --sidebar-primary:              light-dark(#9a7209, #D4A830);
+    --sidebar-primary:              light-dark(#8c6606, #D4A830);
     --sidebar-primary-foreground:   light-dark(#ffffff, #0d0b09);
     --sidebar-accent:               light-dark(#e9e0d1, #181210);
     --sidebar-accent-foreground:    light-dark(#1c1612, #F0EAE0);
     --sidebar-border:               light-dark(rgba(125, 92, 6, 0.22), rgba(212, 168, 48, 0.2));
-    --sidebar-ring:                 light-dark(#9a7209, #D4A830);
+    --sidebar-ring:                 light-dark(#8c6606, #D4A830);
 
     /* ── Font stack ── */
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
