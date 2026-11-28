@@ -6,12 +6,14 @@ using Hackmum.Bethuya.Backend.Endpoints;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Planning;
 using Hackmum.Bethuya.Infrastructure.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Hackmum.Bethuya.Tests.Endpoints;
 
@@ -25,6 +27,9 @@ public sealed class PlanningCycleEndpointValidationTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        builder.Services.AddAuthentication("test")
+            .AddScheme<AuthenticationSchemeOptions, EventArchiveAuthorizationTests.TestAuthenticationHandler>("test", _ => { });
+        builder.AddBethuyaAuthorization();
         builder.Services.AddDbContext<BethuyaDbContext>(options =>
             options
                 .UseInMemoryDatabase($"planning-cycle-endpoint-tests-{Guid.NewGuid():N}")
@@ -33,10 +38,13 @@ public sealed class PlanningCycleEndpointValidationTests
         builder.Services.AddSingleton<IAgentInvoker, FakeAgentInvoker>();
 
         _app = builder.Build();
+        _app.UseAuthentication();
+        _app.UseAuthorization();
         _app.MapPlanningCycleEndpoints();
         await _app.StartAsync();
 
         _client = _app.GetTestClient();
+        _client.DefaultRequestHeaders.Add("X-Test-Role", "Organizer");
     }
 
     [After(Test)]

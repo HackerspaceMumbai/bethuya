@@ -2,10 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using Hackmum.Bethuya.Backend.Endpoints;
 using Hackmum.Bethuya.Core.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NSubstitute;
 
 namespace Hackmum.Bethuya.Tests.Endpoints;
@@ -23,13 +25,19 @@ public class ImageEndpointValidationTests : IAsyncDisposable
 
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        builder.Services.AddAuthentication("test")
+            .AddScheme<AuthenticationSchemeOptions, EventArchiveAuthorizationTests.TestAuthenticationHandler>("test", _ => { });
+        builder.AddBethuyaAuthorization();
         builder.Services.AddSingleton(_mockUploadService);
 
         _app = builder.Build();
+        _app.UseAuthentication();
+        _app.UseAuthorization();
         _app.MapImageEndpoints();
         await _app.StartAsync();
 
         _client = _app.GetTestClient();
+        _client.DefaultRequestHeaders.Add("X-Test-Role", "Organizer");
     }
 
     [After(Test)]

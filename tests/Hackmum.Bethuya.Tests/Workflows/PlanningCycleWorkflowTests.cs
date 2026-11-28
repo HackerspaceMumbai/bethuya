@@ -213,7 +213,7 @@ public sealed class PlanningCycleWorkflowTests
         return evt;
     }
 
-    private sealed class FakeAgentInvoker(
+    internal sealed class FakeAgentInvoker(
         string? responseId = null,
         string? agentName = null,
         string? agentVersionTag = null) : IAgentInvoker

@@ -2,7 +2,10 @@ using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
+using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
+using ServiceDefaults.Auth;
 using System.Security.Claims;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
@@ -29,12 +32,14 @@ public static class RegistrationEndpoints
         var group = app.MapGroup("/api/registrations").WithTags("Registrations");
 
         group.MapGet("/event/{eventId:guid}", async (Guid eventId, IRegistrationRepository repo, CancellationToken ct) =>
-            Results.Ok(await repo.GetByEventIdAsync(eventId, ct)));
+            Results.Ok(await repo.GetByEventIdAsync(eventId, ct)))
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizerOrCurator);
 
         group.MapGet("/{id:guid}", async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
             await repo.GetByIdAsync(id, ct) is { } reg
                 ? Results.Ok(reg)
-                : Results.NotFound());
+                : Results.NotFound())
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizerOrCurator);
 
         group.MapPost("/", async (
             CreateRegistrationRequest request,
@@ -86,13 +91,17 @@ public static class RegistrationEndpoints
             return Results.Created($"/api/registrations/{created.Id}", created);
         });
 
-        group.MapPost("/{id:guid}/government-id", UploadGovernmentIdAsync);
+        // The backend is called by the Web tier with a bearer token, not a browser form post,
+        // so the antiforgery metadata implied by IFormFile does not apply here.
+        group.MapPost("/{id:guid}/government-id", UploadGovernmentIdAsync)
+            .RequireAuthorization()
+            .DisableAntiforgery();
 
         group.MapDelete("/{id:guid}", async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
         {
             await repo.DeleteAsync(id, ct);
             return Results.NoContent();
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
     }
 
     private static async Task<AttendeeInclusionSource?> ResolveProfileInclusionSourceAsync(
@@ -135,6 +144,8 @@ public static class RegistrationEndpoints
         IFormFile file,
         IDataProtectionProvider dataProtectionProvider,
         IRegistrationRepository repo,
+        BethuyaDbContext db,
+        ClaimsPrincipal user,
         CancellationToken ct)
     {
         if (file is null || file.Length == 0)
@@ -158,6 +169,9 @@ public static class RegistrationEndpoints
         if (reg is null)
             return Results.NotFound();
 
+        if (!await CanUploadGovernmentIdAsync(user, reg, db, ct))
+            return Results.Forbid();
+
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);
         var payloadBytes = ms.ToArray();
@@ -175,6 +189,26 @@ public static class RegistrationEndpoints
 
         await repo.UpdateAsync(reg, ct);
         return Results.NoContent();
+    }
+
+    private static async Task<bool> CanUploadGovernmentIdAsync(
+        ClaimsPrincipal user,
+        Registration registration,
+        BethuyaDbContext db,
+        CancellationToken ct)
+    {
+        if (user.IsInRole(BethuyaRoleNames.Admin) || user.IsInRole(BethuyaRoleNames.Organizer))
+        {
+            return true;
+        }
+
+        var subject = user.GetSubject();
+        if (subject is null || registration.CommunityMemberId is not { } memberId)
+        {
+            return false;
+        }
+
+        return await db.CommunityMembers.AnyAsync(m => m.Id == memberId && m.UserId == subject.UserId, ct);
     }
 
     private static bool MatchesAllowedSignature(string extension, byte[] bytes)

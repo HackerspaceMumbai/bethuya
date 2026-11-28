@@ -1,5 +1,7 @@
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
+using ServiceDefaults.Auth;
+using System.Security.Claims;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -20,7 +22,7 @@ public static class PlanningCycleEndpoints
         {
             var cycle = await service.GetActiveCycleAsync(eventId, ct);
             return cycle is null ? Results.NotFound() : Results.Ok(cycle);
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireAttendee);
 
         group.MapPost("/events/{eventId:guid}/start", async (
             Guid eventId,
@@ -40,7 +42,7 @@ public static class PlanningCycleEndpoints
             {
                 return Results.Conflict(new { error = ex.Message });
             }
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/{cycleId:guid}/draft", async (
             Guid cycleId,
@@ -76,11 +78,12 @@ public static class PlanningCycleEndpoints
             {
                 return Results.Conflict(new { error = ex.Message });
             }
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/{cycleId:guid}/approve", async (
             Guid cycleId,
             ApprovePlannerDraftRequest request,
+            ClaimsPrincipal user,
             PlanningCycleService service,
             CancellationToken ct) =>
         {
@@ -92,17 +95,15 @@ public static class PlanningCycleEndpoints
                 });
             }
 
-            if (string.IsNullOrWhiteSpace(request.ApprovedBy))
+            var actor = user.GetSubject()?.UserId;
+            if (actor is null)
             {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    [nameof(request.ApprovedBy)] = ["approvedBy is required."]
-                });
+                return Results.Unauthorized();
             }
 
             try
             {
-                return Results.Ok(await service.ApproveDraftAsync(cycleId, request, ct));
+                return Results.Ok(await service.ApproveDraftAsync(cycleId, request with { ApprovedBy = actor }, ct));
             }
             catch (KeyNotFoundException ex)
             {
@@ -112,25 +113,24 @@ public static class PlanningCycleEndpoints
             {
                 return Results.Conflict(new { error = ex.Message });
             }
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/{cycleId:guid}/publish", async (
             Guid cycleId,
             PublishPlanningCycleRequest request,
+            ClaimsPrincipal user,
             PlanningCycleService service,
             CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(request.PublishedBy))
+            var actor = user.GetSubject()?.UserId;
+            if (actor is null)
             {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    [nameof(request.PublishedBy)] = ["publishedBy is required."]
-                });
+                return Results.Unauthorized();
             }
 
             try
             {
-                return Results.Ok(await service.PublishAsync(cycleId, request, ct));
+                return Results.Ok(await service.PublishAsync(cycleId, request with { PublishedBy = actor }, ct));
             }
             catch (KeyNotFoundException ex)
             {
@@ -140,7 +140,7 @@ public static class PlanningCycleEndpoints
             {
                 return Results.Conflict(new { error = ex.Message });
             }
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
     }
 }
 

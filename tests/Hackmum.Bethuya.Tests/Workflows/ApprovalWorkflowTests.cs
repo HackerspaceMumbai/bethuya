@@ -72,6 +72,30 @@ public class ApprovalWorkflowTests
     }
 
     [Test]
+    public async Task ApproveAndReject_RecordReviewer()
+    {
+        var approved = _workflow.CreateDecision("Agenda", Guid.NewGuid(), "requester@hackmum.org");
+        var rejected = _workflow.CreateDecision("Agenda", Guid.NewGuid(), "requester@hackmum.org");
+
+        _workflow.Approve(approved, "Looks good", "reviewer@hackmum.org");
+        _workflow.Reject(rejected, "Needs revision", "reviewer@hackmum.org");
+
+        await Assert.That(approved.DecidedBy).IsEqualTo("reviewer@hackmum.org");
+        await Assert.That(rejected.DecidedBy).IsEqualTo("reviewer@hackmum.org");
+    }
+
+    [Test]
+    public async Task Approve_AlreadyApplied_KeepsOriginalReviewer()
+    {
+        var decision = _workflow.CreateDecision("Agenda", Guid.NewGuid(), "requester@hackmum.org");
+        _workflow.Approve(decision, "First approval", "first@hackmum.org");
+
+        _workflow.Approve(decision, "Second approval", "second@hackmum.org");
+
+        await Assert.That(decision.DecidedBy).IsEqualTo("first@hackmum.org");
+    }
+
+    [Test]
     public async Task CreateDecision_WithDiff_StoresDiff()
     {
         var diff = "- Old title\n+ New title";
