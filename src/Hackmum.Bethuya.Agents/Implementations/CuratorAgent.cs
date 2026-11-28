@@ -50,7 +50,7 @@ public sealed class CuratorAgent(IAIRouter router, ILogger<CuratorAgent> logger)
         var userPrompt = $"""
             Event: {request.Event.Title} (Capacity: {request.Event.Capacity})
             Total Registrations: {request.Registrations.Count}
-            Oversubscription Ratio: {(double)request.Registrations.Count / request.Event.Capacity:F1}x
+            Oversubscription Ratio: {(double)request.Registrations.Count / Math.Max(request.Event.Capacity, 1):F1}x
             
             Diversity Targets:
             {string.Join("\n", request.Budget.DiversityTargets.Select(kv => $"  {kv.Key}: {kv.Value:P0}"))}
