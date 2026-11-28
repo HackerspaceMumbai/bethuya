@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ServiceDefaults.Auth;
 
 [assembly: InternalsVisibleTo("Hackmum.Bethuya.Tests")]
 
@@ -350,16 +351,7 @@ public static class SocialProfileConnectionExtensions
     }
 
     private static string NormalizeReturnUrl(string? returnUrl)
-    {
-        if (string.IsNullOrWhiteSpace(returnUrl))
-        {
-            return "/registration/social";
-        }
-
-        return returnUrl[0] == '/' && !returnUrl.StartsWith("//", StringComparison.Ordinal)
-            ? returnUrl
-            : "/registration/social";
-    }
+        => LocalReturnUrl.GetOrDefault(returnUrl, "/registration/social");
 
     private static string[] ResolveLinkedInScopes(SocialOAuthOptions options)
     {

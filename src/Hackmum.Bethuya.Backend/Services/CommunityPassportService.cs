@@ -220,8 +220,9 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
                 IdentityProviderKind.Platform,
                 subject.UserId,
                 subject.DisplayName,
-                profileUrl: null);
-            SyncLegacyIdentities(member, profile);
+                profileUrl: null,
+                isVerified: true);
+            await SyncLegacyIdentitiesAsync(member, profile, ct);
 
             db.CommunityMembers.Add(member);
 
@@ -243,7 +244,7 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
 
         var changed = false;
         changed |= ApplyProfileSync(member, profile, subject);
-        changed |= SyncLegacyIdentities(member, profile);
+        changed |= await SyncLegacyIdentitiesAsync(member, profile, ct);
 
         if (changed)
         {
@@ -310,7 +311,7 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
             changed = true;
         }
 
-        if (EnsureLinkedIdentity(member, IdentityProviderKind.Platform, subject.UserId, subject.DisplayName, profileUrl: null))
+        if (EnsureLinkedIdentity(member, IdentityProviderKind.Platform, subject.UserId, subject.DisplayName, profileUrl: null, isVerified: true))
         {
             changed = true;
         }
@@ -338,7 +339,9 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
         return true;
     }
 
-    private static bool SyncLegacyIdentities(CommunityMember member, AttendeeProfile? profile)
+    // Profile social ids are saved from client input, so they are linked unverified and never
+    // take over an identity that is already linked to another member.
+    private async Task<bool> SyncLegacyIdentitiesAsync(CommunityMember member, AttendeeProfile? profile, CancellationToken ct)
     {
         if (profile is null)
         {
@@ -347,27 +350,52 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
 
         var changed = false;
 
-        if (!string.IsNullOrWhiteSpace(profile.LinkedInMemberId))
+        if (!string.IsNullOrWhiteSpace(profile.LinkedInMemberId) &&
+            !await IsLinkedToAnotherMemberAsync(member, IdentityProviderKind.LinkedIn, profile.LinkedInMemberId, ct))
         {
             changed |= EnsureLinkedIdentity(
                 member,
                 IdentityProviderKind.LinkedIn,
                 profile.LinkedInMemberId,
                 profile.LinkedInMemberId,
-                profile.LinkedInProfileUrl);
+                profile.LinkedInProfileUrl,
+                isVerified: false);
         }
 
-        if (!string.IsNullOrWhiteSpace(profile.GitHubLogin))
+        if (!string.IsNullOrWhiteSpace(profile.GitHubLogin) &&
+            !await IsLinkedToAnotherMemberAsync(member, IdentityProviderKind.GitHub, profile.GitHubLogin, ct))
         {
             changed |= EnsureLinkedIdentity(
                 member,
                 IdentityProviderKind.GitHub,
                 profile.GitHubLogin,
                 profile.GitHubLogin,
-                profile.GitHubProfileUrl);
+                profile.GitHubProfileUrl,
+                isVerified: false);
         }
 
         return changed;
+    }
+
+    private async Task<bool> IsLinkedToAnotherMemberAsync(
+        CommunityMember member,
+        IdentityProviderKind provider,
+        string subject,
+        CancellationToken ct)
+    {
+        var trimmedSubject = subject.Trim();
+        if (member.ExternalIdentities.Any(existing =>
+                existing.Provider == provider &&
+                string.Equals(existing.Subject, trimmedSubject, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        var memberId = member.Id;
+        return await db.ExternalIdentities.AnyAsync(identity =>
+            identity.Provider == provider &&
+            identity.Subject == trimmedSubject &&
+            identity.CommunityMemberId != memberId, ct);
     }
 
     private static bool EnsureLinkedIdentity(
@@ -375,7 +403,8 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
         IdentityProviderKind provider,
         string subject,
         string? username,
-        string? profileUrl)
+        string? profileUrl,
+        bool isVerified)
     {
         if (string.IsNullOrWhiteSpace(subject))
         {
@@ -396,7 +425,8 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
                 Subject = trimmedSubject,
                 Username = string.IsNullOrWhiteSpace(username) ? null : username.Trim(),
                 ProfileUrl = string.IsNullOrWhiteSpace(profileUrl) ? null : profileUrl.Trim(),
-                LastVerifiedAt = DateTimeOffset.UtcNow
+                IsVerified = isVerified,
+                LastVerifiedAt = isVerified ? DateTimeOffset.UtcNow : null
             });
             return true;
         }
@@ -414,13 +444,20 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
             changed = true;
         }
 
-        if (!identity.IsVerified)
+        if (isVerified && !identity.IsVerified)
         {
             identity.IsVerified = true;
             changed = true;
         }
+        else if (!isVerified && identity.IsVerified)
+        {
+            // Rows linked from the profile before client-supplied ids were treated as unverified.
+            identity.IsVerified = false;
+            identity.LastVerifiedAt = null;
+            changed = true;
+        }
 
-        if (changed)
+        if (changed && isVerified)
         {
             identity.LastVerifiedAt = DateTimeOffset.UtcNow;
         }

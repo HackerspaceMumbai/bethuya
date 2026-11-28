@@ -703,6 +703,32 @@ public sealed class CommunityPassportPhase1Tests
         await Assert.That(html).Contains("&lt;script&gt;");
     }
 
+    [Test]
+    [Arguments("\t=1+1")]
+    [Arguments("\r=1+1")]
+    public async Task ExportArchive_NeutralizesTabAndCarriageReturnFormulaPrefixes(string displayName)
+    {
+        var passport = BuildExportFixture() with
+        {
+            Connections =
+            [
+                new PassportConnectionResponse(
+                    Guid.NewGuid(),
+                    displayName,
+                    CommunityRelationshipKind.Collaborator,
+                    "Hackerspace Mumbai",
+                    "Worked on the same project.")
+            ]
+        };
+        var bytes = new CommunityPassportExportService().BuildArchive(passport);
+        using var stream = new MemoryStream(bytes);
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+
+        var relationshipsCsv = await ReadEntryAsync(archive, "relationships.csv");
+
+        await Assert.That(relationshipsCsv).Contains($"\"'{displayName}");
+    }
+
     private static BethuyaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<BethuyaDbContext>()

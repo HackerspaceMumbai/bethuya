@@ -87,7 +87,7 @@ public sealed class CommunityPassportExportService
 
     private static string EscapeCsv(string value)
     {
-        var safeValue = value.Length > 0 && value[0] is '=' or '+' or '-' or '@'
+        var safeValue = value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
             ? $"'{value}"
             : value;
         return $"\"{safeValue.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
