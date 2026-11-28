@@ -1038,6 +1038,84 @@ public class OnboardingNavigationRenderTests
         });
     }
 
+    [Test]
+    public async Task NewUserProfile_SecondSubmitWhileSaving_IsIgnored()
+    {
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
+        var saveSource = new TaskCompletionSource<ProfileCompletionStatusDto>();
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.SaveMandatoryProfileAsync(Arg.Any<SaveMandatoryProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns(_ => saveSource.Task);
+        ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
+
+        var cut = ctx.Render<NewUserProfile>();
+        SetModelProperty(cut.Instance, "_model", "FirstName", "Dev");
+        SetModelProperty(cut.Instance, "_model", "LastName", "User");
+        SetModelProperty(cut.Instance, "_model", "Email", "dev@bethuya.local");
+        SetModelProperty(cut.Instance, "_model", "OccupationStatus", "Independent / Freelancer");
+
+        var first = await StartOnRendererAsync(cut, "HandleValidSubmit");
+        var second = await StartOnRendererAsync(cut, "HandleValidSubmit");
+        saveSource.SetResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null));
+        await Task.WhenAll(first, second);
+
+        await profileApi.Received(1).SaveMandatoryProfileAsync(Arg.Any<SaveMandatoryProfileDto>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AideProfile_SecondSubmitWhileSaving_IsIgnored()
+    {
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
+        var saveSource = new TaskCompletionSource<ProfileCompletionStatusDto>();
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.SaveAideProfileAsync(Arg.Any<SaveAideProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns(_ => saveSource.Task);
+        ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
+
+        var cut = ctx.Render<AideProfile>();
+
+        var first = await StartOnRendererAsync(cut, "HandleValidSubmit");
+        var second = await StartOnRendererAsync(cut, "HandleValidSubmit");
+        saveSource.SetResult(new ProfileCompletionStatusDto(true, true, true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
+        await Task.WhenAll(first, second);
+
+        await profileApi.Received(1).SaveAideProfileAsync(Arg.Any<SaveAideProfileDto>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SocialProfileConnections_SecondContinueWhileSaving_IsIgnoredWithoutError()
+    {
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Dev User");
+        var saveSource = new TaskCompletionSource<ProfileCompletionStatusDto>();
+        var profileApi = Substitute.For<IProfileApi>();
+        profileApi.GetCompletionStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProfileCompletionStatusDto(true, false, false, DateTimeOffset.UtcNow, null)));
+        profileApi.GetSocialProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SocialProfileDto("Student", false, true, null, null, "dev-user", "https://github.com/dev-user")));
+        profileApi.SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns(_ => saveSource.Task);
+        ctx.Services.AddSingleton(profileApi);
+        ctx.Services.AddSingleton(Substitute.For<IImportApi>());
+
+        var cut = ctx.Render<SocialProfileConnections>();
+
+        var first = await StartOnRendererAsync(cut, "HandleContinue");
+        var second = await StartOnRendererAsync(cut, "HandleContinue");
+        var errorAfterSecondClick = typeof(SocialProfileConnections)
+            .GetField("_actionErrorMessage", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(cut.Instance);
+        saveSource.SetResult(new ProfileCompletionStatusDto(true, true, false, DateTimeOffset.UtcNow, null));
+        await Task.WhenAll(first, second);
+
+        await profileApi.Received(1).SaveSocialProfileAsync(Arg.Any<SaveSocialProfileDto>(), Arg.Any<CancellationToken>());
+        await Assert.That(errorAfterSecondClick).IsNull();
+    }
+
     private static BunitCtx CreateContext()
     {
         var ctx = new BunitCtx();
@@ -1078,6 +1156,18 @@ public class OnboardingNavigationRenderTests
         {
             await task;
         }
+    }
+
+    // Starts a handler on the renderer the way a dispatched click does and returns the
+    // still-running task, so a second click can arrive before the first one finishes.
+    private static async Task<Task> StartOnRendererAsync<TComponent>(IRenderedComponent<TComponent> cut, string methodName)
+        where TComponent : IComponent
+    {
+        var method = typeof(TComponent).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Method '{methodName}' was not found.");
+        Task? pending = null;
+        await cut.InvokeAsync(() => { pending = (Task)method.Invoke(cut.Instance, null)!; });
+        return pending!;
     }
 
     private static string JoinInputValues<TComponent>(IRenderedComponent<TComponent> cut)

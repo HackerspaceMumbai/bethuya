@@ -210,6 +210,11 @@
 
     private async Task HandleValidSubmit()
     {
+        if (_isSaving)
+        {
+            return;
+        }
+
         _isSaving = true;
         _errorMessage = null;
 
