@@ -178,6 +178,65 @@ public sealed class EventArchiveOutboxProcessorTests
     }
 
     /// <summary>
+    /// Ensures the newer-projection check after exhausted retries reads only the failing event's outbox rows,
+    /// instead of loading every message (with its README and metadata payloads) for every event.
+    /// </summary>
+    [Test]
+    public async Task RecordFailureAsync_ExhaustedMessage_QueriesOnlyItsOwnEventMessages()
+    {
+        using var connection = CreateOpenSqliteConnection();
+        await using var db = CreateSqliteDbContext(connection);
+        var createdAt = new DateTimeOffset(2026, 11, 28, 12, 0, 0, TimeSpan.Zero);
+        var message = new EventArchiveOutboxMessage
+        {
+            EventId = EventId.From(Guid.NewGuid()),
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-11-28-failing-event",
+            ConfirmedBy = "test-organizer",
+            ReadmeMarkdown = "failing readme",
+            MetadataJson = "{ }",
+            IdempotencyKey = "failing-key",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            AttemptCount = 8,
+            CreatedAt = createdAt,
+            ClaimToken = "failing-claim"
+        };
+        var otherEventMessage = new EventArchiveOutboxMessage
+        {
+            EventId = EventId.From(Guid.NewGuid()),
+            Destination = "archive/test",
+            FolderPath = "events/2026/2026-11-28-other-event",
+            ConfirmedBy = "test-organizer",
+            ReadmeMarkdown = "other event readme",
+            MetadataJson = "{ }",
+            IdempotencyKey = "other-key",
+            AvailableAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            CreatedAt = createdAt.AddHours(1)
+        };
+        db.EventArchiveOutboxMessages.AddRange(message, otherEventMessage);
+        await db.SaveChangesAsync();
+
+        var recorder = new OutboxQueryRecorder();
+        var processor = new EventArchiveOutboxProcessor(
+            new TestScopeFactory(connection, saveChangesInterceptor: recorder),
+            NullLogger<EventArchiveOutboxProcessor>.Instance);
+        var failureMethod = typeof(EventArchiveOutboxProcessor).GetMethod("RecordFailureAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        await (Task)failureMethod.Invoke(
+            processor,
+            [CreateWorkItem(message), new InvalidOperationException("retryable failure"), CancellationToken.None, false])!;
+
+        db.ChangeTracker.Clear();
+        var reloaded = await db.EventArchiveOutboxMessages.FirstAsync(item => item.Id == message.Id);
+        await Assert.That(reloaded.ProcessedAt).IsNull();
+        await Assert.That(reloaded.LastError).IsEqualTo("retryable failure");
+        await Assert.That(recorder.OutboxQueries.Count).IsGreaterThanOrEqualTo(2);
+        await Assert.That(recorder.OutboxQueries.All(sql => sql.Contains("WHERE", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(recorder.OutboxQueries.Any(sql => sql.Contains("\"EventId\" =", StringComparison.Ordinal)
+            && !sql.Contains("\"ReadmeMarkdown\"", StringComparison.Ordinal))).IsTrue();
+    }
+
+    /// <summary>
     /// Ensures equal-timestamp messages for one event are claimed in stable identifier order, including
     /// when the earlier message is leased and after it is processed.
     /// </summary>
@@ -881,6 +940,26 @@ public sealed class EventArchiveOutboxProcessorTests
             if (command.CommandText.StartsWith("UPDATE \"Events\"", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Simulated event persistence failure.");
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class OutboxQueryRecorder : DbCommandInterceptor
+    {
+        public List<string> OutboxQueries { get; } = [];
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("SELECT", StringComparison.Ordinal)
+                && command.CommandText.Contains("FROM \"EventArchiveOutboxMessages\"", StringComparison.Ordinal))
+            {
+                OutboxQueries.Add(command.CommandText);
             }
 
             return ValueTask.FromResult(result);

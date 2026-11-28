@@ -405,24 +405,26 @@ internal sealed partial class EventArchiveOutboxProcessor(
             }
 
             // Check if there's a later projection for the same event using the same total order as claims.
-            // Use client-side evaluation to work around Vogen value-object LINQ translation limitations.
-            var newerEventIdValue = message.EventId.Value;
+            // Filter to this event in SQL, then compare timestamps on the client because SQLite cannot
+            // translate DateTimeOffset comparisons.
+            var messageEventId = message.EventId;
             var messageId = message.Id;
             var messageCreatedAt = message.CreatedAt;
             
             var hasNewerProjection = false;
             if (!terminal && workItem.AttemptCount >= MaxAttemptsBeforeFailureIsTerminal)
             {
-                var allMessages = await db.EventArchiveOutboxMessages
+                var eventMessages = await db.EventArchiveOutboxMessages
                     .AsNoTracking()
+                    .Where(item => item.EventId == messageEventId)
                     .OrderBy(item => item.Id)
-                    .ToListAsync(ct);  // Force client evaluation
-                var identifierOrder = allMessages
+                    .Select(item => new { item.Id, item.CreatedAt })
+                    .ToListAsync(ct);
+                var identifierOrder = eventMessages
                     .Select((item, index) => new { item.Id, Index = index })
                     .ToDictionary(item => item.Id, item => item.Index);
 
-                hasNewerProjection = allMessages.Any(m =>
-                    m.EventId.Value == newerEventIdValue &&
+                hasNewerProjection = eventMessages.Any(m =>
                     m.Id != messageId
                     && (m.CreatedAt > messageCreatedAt
                         || (m.CreatedAt == messageCreatedAt

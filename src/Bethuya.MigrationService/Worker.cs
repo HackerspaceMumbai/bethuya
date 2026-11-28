@@ -21,6 +21,13 @@ public sealed partial class MigrationWorker(
             var dbContext = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
             await EnsureSchemaAsync(dbContext, stoppingToken);
         }
+        catch
+        {
+            // The host logs the fault but still exits with code 0, which Aspire's WaitForCompletion
+            // and the Container Apps job would report as a successful migration.
+            Environment.ExitCode = 1;
+            throw;
+        }
         finally
         {
             lifetime.StopApplication();
