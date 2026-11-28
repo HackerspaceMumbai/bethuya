@@ -119,6 +119,7 @@ public sealed class CurationFairnessService
     {
         var pastAcceptedCount = history.Count(r => r.Status is RegistrationStatus.Accepted or RegistrationStatus.CheckedIn);
         var pastAttendedCount = history.Count(r => r.Status == RegistrationStatus.CheckedIn);
+        var pastWaitlistedCount = history.Count(r => r.Status == RegistrationStatus.Waitlisted);
         var isFirstTimer = pastAcceptedCount == 0;
         var hasOrganizerStandoutContribution = history.Any(r => r.InclusionSignals.OrganizerMarkedStandout);
 
@@ -145,7 +146,9 @@ public sealed class CurationFairnessService
 
         var historyLabel = isFirstTimer
             ? "No prior Bethuya attendance history"
-            : $"{pastAcceptedCount} prior approvals across community events";
+            : pastWaitlistedCount > 0
+                ? $"{pastAcceptedCount} prior approvals, {pastWaitlistedCount} waitlisted"
+                : $"{pastAcceptedCount} prior approvals across community events";
 
         return new CurationProfileSummaryResponse(
             Headline: headline,
@@ -154,6 +157,7 @@ public sealed class CurationFairnessService
             IsFirstTimer: isFirstTimer,
             PastAcceptedCount: pastAcceptedCount,
             PastAttendedCount: pastAttendedCount,
+            PastWaitlistedCount: pastWaitlistedCount,
             HasOrganizerStandoutContribution: hasOrganizerStandoutContribution,
             GitHubRepoCount: publicSummary?.GitHubRepoCount,
             IsGitHubLinked: publicSummary?.IsGitHubLinked ?? false,

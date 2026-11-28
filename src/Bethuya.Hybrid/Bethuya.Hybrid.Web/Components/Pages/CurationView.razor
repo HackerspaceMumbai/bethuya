@@ -329,6 +329,12 @@
                                                     {
                                                         <BbBadge Variant="BadgeVariant.Outline">First timer</BbBadge>
                                                     }
+                                                    @if (registrant.Profile.PastWaitlistedCount > 0)
+                                                    {
+                                                        <BbBadge Variant="BadgeVariant.Outline" data-test="waitlist-badge">
+                                                            Waitlisted @(registrant.Profile.PastWaitlistedCount)×
+                                                        </BbBadge>
+                                                    }
                                                 </div>
                                                 <p class="queue-headline">@registrant.Profile.Headline</p>
                                                 <p class="queue-organization">@registrant.Profile.Organization</p>

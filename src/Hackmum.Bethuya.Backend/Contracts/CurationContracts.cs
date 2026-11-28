@@ -62,6 +62,7 @@ public sealed record CurationProfileSummaryResponse(
     bool IsFirstTimer,
     int PastAcceptedCount,
     int PastAttendedCount,
+    int PastWaitlistedCount,
     bool HasOrganizerStandoutContribution,
     int? GitHubRepoCount,
     bool IsGitHubLinked,
