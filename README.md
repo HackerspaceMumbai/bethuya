@@ -877,6 +877,7 @@ dotnet user-secrets set "Ai:Fallback"  "Ollama"
 dotnet user-secrets set "AzureOpenAI:Endpoint" "<endpoint>"
 dotnet user-secrets set "AzureOpenAI:ApiKey" "<key>"
 dotnet user-secrets set "OpenAI:ApiKey" "<key>"
+cd ../..  # Return to the repository root
 ```
 
 _(Foundry Local offers an OpenAI‑compatible API and SDKs for integration.)_ [\[github.com\]](https://github.com/microsoft/Foundry-Local)
@@ -905,6 +906,7 @@ dotnet user-secrets set "GitHubEvents:Owner" "HackerspaceMumbai"
 dotnet user-secrets set "GitHubEvents:Repository" "bethuya"
 dotnet user-secrets set "GitHubEvents:Branch" "main"
 dotnet user-secrets set "GitHubEvents:Token" "<fine-grained-token>"
+cd ../..  # Return to the repository root
 ```
 
 Do not store these values in `appsettings.json`. Hosted environments load runtime secrets from Azure Key Vault through managed identity; see `docs/security/secrets-management.md`.
