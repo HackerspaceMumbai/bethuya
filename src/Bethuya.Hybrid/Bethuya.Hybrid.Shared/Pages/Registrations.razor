@@ -305,7 +305,7 @@
                 await createResponse.EnsureSuccessStatusCodeAsync();
                 if (createResponse.Error is not null || createResponse.Content is not { } created)
                 {
-                    _errorMessage = "We couldn't save your registration right now. Please try again.";
+                    _errorMessage = "We couldn't confirm whether your registration was saved. Refresh the page to check before submitting again.";
                     return;
                 }
 
