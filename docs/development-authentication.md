@@ -121,12 +121,10 @@ Audit / Decision record path (Hackmum.Bethuya.Core.Models.Decision)
           `decidedBy` string with no claims derivation is
           ApprovalWorkflow.CreateDecision(string decidedBy, ...), which has
           **no callers anywhere in `src/` today** — it is presently dead code,
-          not an active audit-trail weakness. The narrower, real gap is that
-          ApprovalEndpoints (`/api/approvals/**`) has no
-          `RequireAuthorization()` policy at all, so the Approve/Reject
-          actions it exposes are not role-gated even though they mutate
-          Decision.Status. This is a pre-existing characteristic being
-          documented here, not something introduced or fixed by this layer.
+          not an active audit-trail weakness.
+          ApprovalEndpoints (`/api/approvals/**`) requires the
+          RequireOrganizer policy (Organizer or Admin) for both reading
+          and mutating decisions.
 ```
 
 ## Key files

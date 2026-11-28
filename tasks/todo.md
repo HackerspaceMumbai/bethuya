@@ -23,6 +23,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-11-28] Require authorization on approval API endpoints (#70)
+- **Status:** in-progress
+- **Agent/Owner:** Ratnesh
+- **Description:** Apply the organizer policy to the `/api/approvals` route group and cover read and mutation routes with endpoint tests.
+- **Acceptance:** Anonymous callers get 401 and Attendee/Curator callers get 403 with no repository access; Organizer and Admin can read, approve and reject.
+
 ## [2026-11-22] Protect event mutation endpoints
 - **Status:** done
 - **Agent/Owner:** Tank
