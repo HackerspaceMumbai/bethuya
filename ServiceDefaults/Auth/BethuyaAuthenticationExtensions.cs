@@ -160,7 +160,7 @@ public static class BethuyaAuthenticationExtensions
         if (authOptions.Provider == AuthProviderType.None)
         {
             group.MapGet("/login", (string? returnUrl) =>
-                Results.Redirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl));
+                Results.Redirect(LocalReturnUrl.GetOrDefault(returnUrl)));
 
             group.MapPost("/logout", () => Results.Redirect("/"));
 
@@ -170,7 +170,7 @@ public static class BethuyaAuthenticationExtensions
         group.MapGet("/login", async (string? returnUrl, HttpContext context) =>
         {
             await context.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme,
-                new AuthenticationProperties { RedirectUri = returnUrl ?? "/" });
+                new AuthenticationProperties { RedirectUri = LocalReturnUrl.GetOrDefault(returnUrl) });
         });
 
         group.MapPost("/logout", async (HttpContext context) =>
