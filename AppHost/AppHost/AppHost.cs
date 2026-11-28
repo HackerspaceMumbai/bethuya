@@ -173,20 +173,9 @@ if (keyVault is not null)
         .WithRoleAssignments(keyVault, KeyVaultBuiltInRole.KeyVaultSecretsUser);
 }
 
-var webStaticAssetsManifest = Path.GetFullPath(Path.Combine(
-    AppContext.BaseDirectory,
-    "..",
-    "..",
-    "..",
-    "..",
-    "..",
-    "src",
-    "Bethuya.Hybrid",
-    "Bethuya.Hybrid.Web",
-    "obj",
-    "Debug",
-    "net10.0",
-    "staticwebassets.development.json"));
+var webStaticAssetsManifest = EnvironmentalPolicies.ResolveWebStaticAssetsManifestPath(
+    builder.AppHostDirectory,
+    EnvironmentalPolicies.ResolveBuildConfiguration());
 
 var web = builder.AddDotnetProject(
     "web",
