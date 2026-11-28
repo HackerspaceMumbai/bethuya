@@ -225,6 +225,12 @@ public sealed class CommunityPassportEndpointTests : IAsyncDisposable
         await Assert.That(draft.RequiresHumanApproval).IsTrue();
         await Assert.That(draft.IsApproved).IsFalse();
         await Assert.That(draft.Audit.InputHash).IsNotNull();
+
+        using var scope = _app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BethuyaDbContext>();
+        var persistedDecision = await db.Decisions.SingleAsync(d => d.Id == draft.DraftId);
+        using var payload = JsonDocument.Parse(persistedDecision.Diff!);
+        await Assert.That(payload.RootElement.TryGetProperty("InputSnapshot", out _)).IsTrue();
     }
 
     [Test]

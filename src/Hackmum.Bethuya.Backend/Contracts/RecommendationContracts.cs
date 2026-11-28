@@ -21,7 +21,7 @@ public sealed record ApproveRecommendationDraftRequest(
 
 /// <summary>Immutable audit record for a single agent invocation that produced a recommendation draft.</summary>
 public sealed record RecommendationAuditMetadataResponse(
-    /// <summary>SHA-256 hash of the serialised agent request payload.</summary>
+    /// <summary>SHA-256 hash of the serialised agent request and effective data snapshot.</summary>
     string InputHash,
     /// <summary>Agent-assigned response identifier for correlation with agent logs.</summary>
     string ResponseId,
