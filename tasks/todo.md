@@ -1202,3 +1202,15 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [x] Include the explicitly approved Aspire 17 AppHost SDK/API migration, preserving resource names, paths, launch-profile choices and existing configuration.
 - [x] Use latest stable .NET 10 WebAssembly servicing packages, 10.0.15; .NET 11 packages require an excluded target-framework migration.
 - [x] Normal solution restore and full Release build pass with zero warnings/errors. Release TUnit passes 605/605, zero skipped. All 17 solution projects report no vulnerable packages; no live archive writes, AppHost startup or deployment.
+
+## [2026-11-28] Fix CI red on main and secret scan validation (issue #83)
+- **Status:** done (code complete; GitHub Actions not executed locally)
+- **Agent/Owner:** Claude
+- **Description:** Pin the E2E job to ubuntu-24.04 (Playwright 1.60 lacks ubuntu26.04 Chromium support); replace the SQL Server service/wait/connection strings with PostgreSQL (Npgsql is the only DB provider) and set BETHUYA_BACKEND_URL/ASPIRE_BACKEND_URL for E2E; add top-level `permissions: contents: read` to ci.yml; move `secrets.GITLEAKS_LICENSE` out of step `if:` expressions into job `env:` in security-scan.yml. Out of scope (remains open in #83): azure-deploy gating and SHA-pinning of actions.
+- **Acceptance:** Workflow files are valid YAML and reference no SQL Server artifacts for E2E; `secrets` is never referenced in a step `if:`; ci.yml declares least-privilege permissions. Cannot run GitHub Actions locally; verification is by reading plus YAML parse.
+
+## [2026-11-28] Require authorization on approval API endpoints (issue #70)
+- **Status:** done (Release build 0 errors/0 warnings; new tests compile but could not execute: Windows Application Control blocks TUnit.Core.dll)
+- **Agent/Owner:** Claude
+- **Description:** Apply explicit policies to every `/api/approvals` route instead of relying on the opt-in global fallback: read routes require `RequireOrganizerOrCurator`, approve/reject require `RequireOrganizer`.
+- **Acceptance:** Endpoint tests cover anonymous (401), attendee (403) on read and mutation, curator read allowed and curator mutation forbidden, organizer read and mutation allowed (200), and no state change on denied mutations.
