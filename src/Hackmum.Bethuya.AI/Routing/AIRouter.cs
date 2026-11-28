@@ -14,18 +14,23 @@ public sealed partial class AIRouter(
     ILogger<AIRouter> logger) : IAIRouter
 {
     private readonly AIRoutingOptions _options = options.Value;
-    private static readonly string[] SensitiveFallbacks = ["Foundry", "Ollama", "OpenAI"];
+    private static readonly string[] SensitiveFallbacks = ["Ollama"];
     private static readonly string[] NonSensitiveFallbacks = ["Ollama", "OpenAI"];
 
     public IChatClient GetChatClient(DataSensitivity sensitivity)
     {
         foreach (var providerName in GetProviderCandidates(sensitivity))
         {
-            LogRouting(logger, sensitivity, providerName);
-
             if (!_options.Providers.TryGetValue(providerName, out var providerOptions))
             {
                 LogProviderMissing(logger, providerName);
+                continue;
+            }
+
+            // Sensitive (PII) data must never leave the device.
+            if (sensitivity == DataSensitivity.Sensitive && !providerOptions.IsLocal)
+            {
+                LogNonLocalProviderSkipped(logger, providerName);
                 continue;
             }
 
@@ -36,6 +41,7 @@ public sealed partial class AIRouter(
                 continue;
             }
 
+            LogRouting(logger, sensitivity, providerName);
             return CreateChatClient(providerName, providerOptions);
         }
 
@@ -97,6 +103,9 @@ public sealed partial class AIRouter(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Provider {Provider} not configured, skipping")]
     private static partial void LogProviderMissing(ILogger logger, string provider);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Provider {Provider} is not local and cannot receive sensitive data, skipping")]
+    private static partial void LogNonLocalProviderSkipped(ILogger logger, string provider);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Provider {Provider} missing API key, skipping")]
     private static partial void LogMissingApiKey(ILogger logger, string provider);
