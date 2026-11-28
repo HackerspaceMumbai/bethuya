@@ -599,9 +599,9 @@ See [blazorblueprintui.com](https://blazorblueprintui.com/) for full docs and co
 
 | Metric | Target | Verification Tool |
 | :--- | :--- | :--- |
-| **Hot Path Latency (p99)** | < 180ms @ 2,500 RPS | []NBomber / TUnit |
-| **Memory Allocation** | 0 B on Hot Path | []BenchmarkDotNet |
-| **Visual Accuracy** | 100% Match | []Playwright Visual Regression |
+| **Hot Path Latency (p99)** | < 180ms @ 2,500 RPS | [NBomber](https://nbomber.com) / TUnit |
+| **Memory Allocation** | 0 B on Hot Path | [BenchmarkDotNet](https://benchmarkdotnet.org) |
+| **Visual Accuracy** | 100% Match | [Playwright Visual Regression](https://playwright.dev/dotnet/docs/intro) |
 
 ## 🔄 Development Protocol
 
