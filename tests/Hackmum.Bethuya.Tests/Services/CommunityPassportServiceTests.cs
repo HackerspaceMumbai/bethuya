@@ -3,6 +3,7 @@ using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Enums;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Infrastructure.Data;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hackmum.Bethuya.Tests.Services;
@@ -177,6 +178,86 @@ public sealed class CommunityPassportServiceTests
         await Assert.That(stored.Visibility).IsEqualTo(ProfileVisibilityScope.OrganizerOnly);
         await Assert.That(stored.ShareParticipationWithOrganizers).IsFalse();
         await Assert.That(stored.IsDiscoverableToCommunity).IsFalse();
+    }
+
+    [Test]
+    public async Task EnsureMemberProvisionedAsync_SocialHandleLinkedToAnotherMember_DoesNotThrowOrMoveIdentity()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+        await using var db = CreateSqliteDbContext(connection);
+        var service = new CommunityPassportService(db);
+        var owner = new CommunitySubjectContext("user-owner", "Owner", "owner@example.com");
+        var squatter = new CommunitySubjectContext("user-squatter", "Squatter", "squatter@example.com");
+
+        await service.EnsureMemberProvisionedAsync(owner);
+
+        db.AttendeeProfiles.Add(BuildProfile(squatter.UserId, "squatter@example.com", gitHubLogin: "owner-gh", linkedInMemberId: "owner-li"));
+        await db.SaveChangesAsync();
+        await service.EnsureMemberProvisionedAsync(squatter);
+
+        db.AttendeeProfiles.Add(BuildProfile(owner.UserId, "owner@example.com", gitHubLogin: "owner-gh", linkedInMemberId: "owner-li"));
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var member = await service.EnsureMemberProvisionedAsync(owner);
+        db.ChangeTracker.Clear();
+        var memberAgain = await service.EnsureMemberProvisionedAsync(owner);
+
+        await Assert.That(member.ExternalIdentities.Select(identity => identity.Provider))
+            .IsEquivalentTo(new[] { IdentityProviderKind.Platform });
+        await Assert.That(memberAgain.ExternalIdentities.Count).IsEqualTo(1);
+
+        var squatterMember = await db.CommunityMembers.SingleAsync(existing => existing.UserId == squatter.UserId);
+        var gitHubIdentity = await db.ExternalIdentities.SingleAsync(identity =>
+            identity.Provider == IdentityProviderKind.GitHub && identity.Subject == "owner-gh");
+        await Assert.That(gitHubIdentity.CommunityMemberId).IsEqualTo(squatterMember.Id);
+    }
+
+    [Test]
+    public async Task GetPassportAsync_SocialIdentitiesFromProfile_AreNotMarkedVerified()
+    {
+        await using var db = CreateDbContext();
+        var service = new CommunityPassportService(db);
+        var subject = new CommunitySubjectContext("user-social", "Social User", "social@example.com");
+        db.AttendeeProfiles.Add(BuildProfile(subject.UserId, "social@example.com", gitHubLogin: "social-gh", linkedInMemberId: "social-li"));
+        await db.SaveChangesAsync();
+
+        await service.GetPassportAsync(subject);
+        var passport = await service.GetPassportAsync(subject);
+
+        var identities = passport.LinkedIdentities.ToDictionary(identity => identity.Provider);
+        await Assert.That(identities[IdentityProviderKind.Platform].IsVerified).IsTrue();
+        await Assert.That(identities[IdentityProviderKind.GitHub].IsVerified).IsFalse();
+        await Assert.That(identities[IdentityProviderKind.LinkedIn].IsVerified).IsFalse();
+    }
+
+    private static AttendeeProfile BuildProfile(string userId, string email, string gitHubLogin, string linkedInMemberId)
+        => new()
+        {
+            UserId = userId,
+            FirstName = "Test",
+            LastName = userId,
+            Email = email,
+            GovernmentPhotoIdType = "PAN",
+            GovernmentIdLastFour = "1234",
+            LinkedInMemberId = linkedInMemberId,
+            GitHubLogin = gitHubLogin,
+            GitHubProfileUrl = $"https://github.com/{gitHubLogin}",
+            Country = "India",
+            IsProfileComplete = true,
+            ProfileCompletedAt = DateTimeOffset.UtcNow
+        };
+
+    private static BethuyaDbContext CreateSqliteDbContext(SqliteConnection connection)
+    {
+        var options = new DbContextOptionsBuilder<BethuyaDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var db = new BethuyaDbContext(options);
+        db.Database.EnsureCreated();
+        return db;
     }
 
     private static BethuyaDbContext CreateDbContext()
