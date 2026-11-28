@@ -6,6 +6,7 @@ using Bethuya.Hybrid.Web.Auth;
 using Bethuya.Hybrid.Web.Services;
 using BlazorBlueprint.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
@@ -83,6 +84,11 @@ builder.Services.AddSingleton<ICommandCenterAudienceResolver, ClaimsCommandCente
 // Authentication — provider selected via appsettings "Authentication:Provider"
 builder.AddBethuyaWebAuthentication();
 builder.AddBethuyaAuthorization();
+
+// Bridge Blazor InteractiveServer SignalR circuit identity into IHttpClientFactory handlers
+// (where IHttpContextAccessor.HttpContext is unavailable) and synchronous ICurrentUserService.
+builder.Services.AddSingleton<ICircuitPrincipalAccessor, CircuitPrincipalAccessor>();
+builder.Services.AddScoped<CircuitHandler, BethuyaCircuitHandler>();
 
 // Resolve auth options to determine provider mode
 var authOptions = new BethuyaAuthOptions();

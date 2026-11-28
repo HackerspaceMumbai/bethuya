@@ -66,6 +66,9 @@ public sealed class DevPersonaToolbarRenderTests
         await Assert.That(activeRole.TextContent).DoesNotContain(BethuyaRoles.Admin);
         await Assert.That(activeRole.TextContent).DoesNotContain(BethuyaRoles.Organizer);
         await Assert.That(activeRole.TextContent).DoesNotContain(BethuyaRoles.Curator);
+
+        await Assert.That(cut.Find("[data-test='persona-farah']").GetAttribute("aria-current")).IsEqualTo("true");
+        await Assert.That(cut.Find("[data-test='persona-vikram']").GetAttribute("aria-current")).IsNull();
     }
 
     [Test]

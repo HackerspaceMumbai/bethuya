@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using ServiceDefaults.Auth;
 
@@ -45,13 +47,31 @@ public static class BethuyaAuthenticationExtensions
         }
 
         var services = builder.Services;
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddHttpClient(InMemoryBackendTokenStore.RefreshHttpClientName);
+        services.TryAddSingleton<IBackendTokenStore, InMemoryBackendTokenStore>();
+
         services.AddAuthentication(options =>
             {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
                 options.DefaultSignOutScheme = OpenIdConnectDefaults.AuthenticationScheme;
             })
-            .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, cookie =>
+            {
+                var existingSigningOut = cookie.Events.OnSigningOut;
+                cookie.Events.OnSigningOut = async context =>
+                {
+                    await existingSigningOut(context).ConfigureAwait(false);
+
+                    var sessionId = context.HttpContext.User.FindFirst(BackendTokenClaimTypes.TokenSessionId)?.Value;
+                    if (!string.IsNullOrWhiteSpace(sessionId))
+                    {
+                        var tokenStore = context.HttpContext.RequestServices.GetService<IBackendTokenStore>();
+                        tokenStore?.Remove(sessionId);
+                    }
+                };
+            })
             .AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, oidc =>
             {
                 ConfigureOidc(oidc, authOptions);
@@ -210,6 +230,51 @@ public static class BethuyaAuthenticationExtensions
                 ConfigureKeycloak(oidc, authOptions.Keycloak);
                 break;
         }
+
+        var existingTokenValidated = oidc.Events.OnTokenValidated;
+        oidc.Events.OnTokenValidated = async context =>
+        {
+            await existingTokenValidated(context).ConfigureAwait(false);
+
+            var accessToken = context.TokenEndpointResponse?.AccessToken;
+            if (string.IsNullOrWhiteSpace(accessToken) || context.Principal?.Identity is not ClaimsIdentity identity)
+            {
+                return;
+            }
+
+            var tokenStore = context.HttpContext.RequestServices.GetService<IBackendTokenStore>();
+            if (tokenStore is null)
+            {
+                return;
+            }
+
+            var timeProvider = context.HttpContext.RequestServices.GetService<TimeProvider>() ?? TimeProvider.System;
+            var tokenEndpoint = context.Options.Configuration?.TokenEndpoint;
+            if (string.IsNullOrWhiteSpace(tokenEndpoint) && context.Options.ConfigurationManager is not null)
+            {
+                var discovery = await context.Options.ConfigurationManager
+                    .GetConfigurationAsync(context.HttpContext.RequestAborted)
+                    .ConfigureAwait(false);
+                tokenEndpoint = discovery.TokenEndpoint;
+            }
+
+            var sessionId = Guid.NewGuid().ToString("N");
+            identity.AddClaim(new Claim(BackendTokenClaimTypes.TokenSessionId, sessionId));
+
+            var expiresAt = InMemoryBackendTokenStore.ResolveExpiry(
+                context.TokenEndpointResponse?.ExpiresIn,
+                timeProvider);
+
+            tokenStore.Store(
+                sessionId,
+                new BackendTokenEntry(
+                    AccessToken: accessToken,
+                    RefreshToken: context.TokenEndpointResponse?.RefreshToken,
+                    ExpiresAt: expiresAt,
+                    TokenEndpoint: tokenEndpoint,
+                    ClientId: context.Options.ClientId,
+                    ClientSecret: context.Options.ClientSecret));
+        };
     }
 
     private static void ConfigureEntra(OpenIdConnectOptions oidc, EntraOptions entra)

@@ -5,11 +5,14 @@ namespace Bethuya.Hybrid.Web.Auth;
 
 /// <summary>
 /// Production <see cref="ICurrentUserService"/> implementation that reads identity
-/// from the current <see cref="ClaimsPrincipal"/> via <see cref="IHttpContextAccessor"/>.
+/// from the current <see cref="ClaimsPrincipal"/> via <see cref="IHttpContextAccessor"/>
+/// or the active Blazor <c>InteractiveServer</c> circuit via <see cref="ICircuitPrincipalAccessor"/>.
 /// </summary>
-internal sealed class ClaimsCurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
+internal sealed class ClaimsCurrentUserService(
+    IHttpContextAccessor httpContextAccessor,
+    ICircuitPrincipalAccessor? circuitPrincipalAccessor = null) : ICurrentUserService
 {
-    private ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
+    private ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User ?? circuitPrincipalAccessor?.CurrentPrincipal;
 
     public string? UserId => User?.FindFirst("sub")?.Value ?? User?.FindFirst("oid")?.Value;
 

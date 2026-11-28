@@ -21,7 +21,16 @@
         <div data-test="command-center-auth-required">
             <BbAlert>
                 <BbAlertTitle>Sign in to open Bethuya</BbAlertTitle>
-                <BbAlertDescription>Your community experience is resolved from your authenticated identity.</BbAlertDescription>
+                <BbAlertDescription>
+                    Your community experience is resolved from your authenticated identity.
+                    <div class="mt-3">
+                        <a href="/authentication/login?returnUrl=%2F"
+                           class="inline-flex items-center rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-slate-950 hover:bg-amber-400"
+                           data-test="command-center-login-link">
+                            Sign in
+                        </a>
+                    </div>
+                </BbAlertDescription>
             </BbAlert>
         </div>
     </main>

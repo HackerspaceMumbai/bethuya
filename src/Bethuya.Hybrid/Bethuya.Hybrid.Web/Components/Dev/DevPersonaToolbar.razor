@@ -49,18 +49,38 @@
 
                     <BbSeparator Class="my-2" />
 
-                    <div class="flex flex-col gap-1" data-test="persona-selector">
-                        @foreach (var persona in DevelopmentPersonaCatalog.All)
-                        {
-                            <button type="button"
-                                    class="flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-amber-100 dark:hover:bg-amber-900"
-                                    data-test="@GetPersonaTestId(persona)"
-                                    @onclick="@(() => SelectPersona(persona))">
-                                <span>@persona.DisplayName</span>
-                                <span class="text-xs text-muted-foreground">@string.Join("/", persona.Roles)</span>
-                            </button>
-                        }
-                    </div>
+                    <AuthorizeView>
+                        <Authorized>
+                            <div class="flex flex-col gap-1" data-test="persona-selector">
+                                @foreach (var persona in DevelopmentPersonaCatalog.All)
+                                {
+                                    var isActive = IsActivePersona(context.User, persona);
+                                    <button type="button"
+                                            class="@GetPersonaButtonClass(isActive)"
+                                            aria-current="@(isActive ? "true" : null)"
+                                            data-test="@GetPersonaTestId(persona)"
+                                            @onclick="@(() => SelectPersona(persona))">
+                                        <span>@persona.DisplayName</span>
+                                        <span class="text-xs text-muted-foreground">@string.Join("/", persona.Roles)</span>
+                                    </button>
+                                }
+                            </div>
+                        </Authorized>
+                        <NotAuthorized>
+                            <div class="flex flex-col gap-1" data-test="persona-selector">
+                                @foreach (var persona in DevelopmentPersonaCatalog.All)
+                                {
+                                    <button type="button"
+                                            class="@GetPersonaButtonClass(isActive: false)"
+                                            data-test="@GetPersonaTestId(persona)"
+                                            @onclick="@(() => SelectPersona(persona))">
+                                        <span>@persona.DisplayName</span>
+                                        <span class="text-xs text-muted-foreground">@string.Join("/", persona.Roles)</span>
+                                    </button>
+                                }
+                            </div>
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </BbCardContent>
             </BbCard>
         }
@@ -97,6 +117,23 @@
 
     private static string GetPersonaTestId(DevelopmentPersona persona) =>
         $"persona-{persona.Key.ToLowerInvariant()}";
+
+    private static bool IsActivePersona(System.Security.Claims.ClaimsPrincipal user, DevelopmentPersona persona)
+    {
+        var claimKey = user.Claims.FirstOrDefault(c =>
+            c.Type == DevelopmentAuthenticationDefaults.PersonaClaimType &&
+            c.Issuer == DevelopmentAuthenticationDefaults.PersonaClaimIssuer)?.Value;
+        if (!string.IsNullOrWhiteSpace(claimKey))
+        {
+            return string.Equals(claimKey, persona.Key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return string.Equals(user.FindFirst("sub")?.Value, persona.Subject, StringComparison.Ordinal);
+    }
+
+    private static string GetPersonaButtonClass(bool isActive) => isActive
+        ? "flex w-full items-center justify-between rounded border border-amber-500/70 bg-amber-100/90 px-2 py-1 text-left text-sm font-semibold dark:bg-amber-900/70"
+        : "flex w-full items-center justify-between rounded border border-transparent px-2 py-1 text-left text-sm hover:bg-amber-100 dark:hover:bg-amber-900";
 
     /// <summary>
     /// Navigates (full reload) to the Layer 2 persona selection endpoint, with a validated

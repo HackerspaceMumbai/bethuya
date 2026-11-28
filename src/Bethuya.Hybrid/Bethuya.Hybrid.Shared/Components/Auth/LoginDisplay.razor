@@ -1,9 +1,16 @@
+@using Bethuya.Hybrid.Shared.Auth
 @using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject NavigationManager Navigation
 
 <AuthorizeView>
     <Authorized>
         <div class="login-display" data-test="login-display-authenticated">
-            <span class="login-display-name" data-test="user-name">@context.User.Identity?.Name</span>
+            <span class="login-display-name" data-test="user-name">@(context.User.Identity?.Name ?? context.User.FindFirst("name")?.Value ?? "Signed in")</span>
+            @if (GetRoleSummary(context.User) is { } roleSummary)
+            {
+                <span class="login-display-role" data-test="user-role">@roleSummary</span>
+            }
             <form method="post" action="/authentication/logout">
                 <button type="submit" class="login-display-logout" data-test="logout-button">Log out</button>
             </form>
@@ -11,7 +18,32 @@
     </Authorized>
     <NotAuthorized>
         <div class="login-display" data-test="login-display-anonymous">
-            <a href="/authentication/login" class="login-display-login" data-test="login-link">Log in</a>
+            <a href="@LoginUrl" class="login-display-login" data-test="login-link">Log in</a>
         </div>
     </NotAuthorized>
 </AuthorizeView>
+
+@code {
+    private static readonly string[] PlatformRoles =
+    [
+        BethuyaRoles.Admin,
+        BethuyaRoles.Organizer,
+        BethuyaRoles.Curator,
+        BethuyaRoles.Attendee,
+    ];
+
+    private string LoginUrl
+    {
+        get
+        {
+            var relativePath = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+            return $"/authentication/login?returnUrl={Uri.EscapeDataString(relativePath)}";
+        }
+    }
+
+    private static string? GetRoleSummary(ClaimsPrincipal user)
+    {
+        var matched = PlatformRoles.Where(user.IsInRole).ToArray();
+        return matched.Length > 0 ? string.Join(" · ", matched) : null;
+    }
+}
