@@ -153,9 +153,13 @@ public sealed class CommunityJourneyReadModelService(
                 : Math.Round(((double)(currentVolunteerSignals - previousVolunteerSignals) / previousVolunteerSignals) * 100d, 2));
 
         var membersByEmail = communityMembers
+            .GroupBy(member => member.Email.Trim().ToUpperInvariant(), StringComparer.Ordinal)
             .ToDictionary(
-                member => member.Email.Trim().ToUpperInvariant(),
-                member => new CommunityMemberLookup(member.Id, member.IsDiscoverableToCommunity),
+                group => group.Key,
+                group => group
+                    .OrderBy(member => member.Id.Value)
+                    .Select(member => new CommunityMemberLookup(member.Id, member.IsDiscoverableToCommunity))
+                    .First(),
                 StringComparer.Ordinal);
         var interestedMemberIds = ResolveVolunteerInterestedMemberIds(registrations, ledgerEntries, membersByEmail);
         var activeVolunteerIds = ResolveActiveVolunteerIds(currentWindowStart, now, registrations, ledgerEntries, membersByEmail);
