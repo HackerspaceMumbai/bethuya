@@ -10,12 +10,13 @@ namespace Hackmum.Bethuya.Infrastructure.Services;
 public sealed partial class PendingImageUploadCleanupService(
     IServiceScopeFactory scopeFactory,
     IOptions<CloudinaryOptions> options,
+    TimeProvider timeProvider,
     ILogger<PendingImageUploadCleanupService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var interval = TimeSpan.FromMinutes(Math.Max(options.Value.PendingUploadCleanupIntervalMinutes, 5));
-        using var timer = new PeriodicTimer(interval);
+        using var timer = new PeriodicTimer(interval, timeProvider);
 
         try
         {
@@ -32,11 +33,7 @@ public sealed partial class PendingImageUploadCleanupService(
                         LogDeletedExpiredPendingUploads(logger, cleanedCount);
                     }
                 }
-                catch (InvalidOperationException ex)
-                {
-                    LogPendingUploadCleanupIterationFailed(logger, ex);
-                }
-                catch (TimeoutException ex)
+                catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
                 {
                     LogPendingUploadCleanupIterationFailed(logger, ex);
                 }
