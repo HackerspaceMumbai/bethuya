@@ -36,6 +36,9 @@ public sealed partial class SessionIngestionService(
 
         await strategy.ExecuteAsync(async () =>
         {
+            // A retried attempt must start from committed state; rows tracked by a failed attempt
+            // would otherwise count as already imported and the retry would store nothing.
+            dbContext.ChangeTracker.Clear();
             var attemptImportedCount = 0;
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
             var evt = await dbContext.Events
