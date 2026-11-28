@@ -32,6 +32,8 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
         return await db.AttendeeProfiles
             .AsNoTracking()
             .Where(p => p.Email.ToLower() == normalizedEmail)
+            .OrderByDescending(p => p.UpdatedAt)
+            .ThenByDescending(p => p.Id)
             .Select(p => new AttendeeInclusionSource(
                 p.Neighborhood,
                 p.LanguageProficiency,

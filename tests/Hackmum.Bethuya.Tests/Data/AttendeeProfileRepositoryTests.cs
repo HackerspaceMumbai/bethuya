@@ -22,6 +22,43 @@ public sealed class AttendeeProfileRepositoryTests
     }
 
     [Test]
+    public async Task GetInclusionSourceByEmailAsync_SeveralMatches_ReturnsLatestUpdatedProfile()
+    {
+        await using var db = CreateDbContext();
+        var newer = CreateProfile("user-alice-new", "Alice@Example.com", languageProficiency: "Marathi");
+        newer.UpdatedAt = DateTimeOffset.UtcNow;
+        var older = CreateProfile("user-alice-old", "alice@example.com", languageProficiency: "English");
+        older.UpdatedAt = DateTimeOffset.UtcNow.AddDays(-30);
+        db.AttendeeProfiles.AddRange(older, newer);
+        await db.SaveChangesAsync();
+        var repository = new AttendeeProfileRepository(db);
+
+        var source = await repository.GetInclusionSourceByEmailAsync("ALICE@example.com");
+
+        await Assert.That(source!.LanguageProficiency).IsEqualTo("Marathi");
+    }
+
+    [Test]
+    public async Task GetInclusionSourceByEmailAsync_SameUpdatedAt_ReturnsHighestId()
+    {
+        await using var db = CreateDbContext();
+        var updatedAt = DateTimeOffset.UtcNow;
+        var higherId = CreateProfile("user-alice-b", "Alice@Example.com", languageProficiency: "Konkani",
+            id: Guid.Parse("00000000-0000-7000-8000-000000000002"));
+        higherId.UpdatedAt = updatedAt;
+        var lowerId = CreateProfile("user-alice-a", "alice@example.com", languageProficiency: "Hindi",
+            id: Guid.Parse("00000000-0000-7000-8000-000000000001"));
+        lowerId.UpdatedAt = updatedAt;
+        db.AttendeeProfiles.AddRange(lowerId, higherId);
+        await db.SaveChangesAsync();
+        var repository = new AttendeeProfileRepository(db);
+
+        var source = await repository.GetInclusionSourceByEmailAsync("alice@example.com");
+
+        await Assert.That(source!.LanguageProficiency).IsEqualTo("Konkani");
+    }
+
+    [Test]
     public async Task GetPublicSummariesByEmailAsync_MatchesAndGroupsEmailsCaseInsensitively()
     {
         await using var db = CreateDbContext();
@@ -44,9 +81,11 @@ public sealed class AttendeeProfileRepositoryTests
         string userId,
         string email,
         string? languageProficiency = null,
-        string? companyName = null)
+        string? companyName = null,
+        Guid? id = null)
         => new()
         {
+            Id = id ?? Guid.CreateVersion7(),
             UserId = userId,
             FirstName = "Alice",
             LastName = "Fernandes",
