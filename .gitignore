@@ -85,3 +85,8 @@ infra/
 AppHost/AppHost/manifest.json
 AppHost/AppHost/*.bicep
 
+# Local database artifacts
+*.db
+*.db-shm
+*.db-wal
+
