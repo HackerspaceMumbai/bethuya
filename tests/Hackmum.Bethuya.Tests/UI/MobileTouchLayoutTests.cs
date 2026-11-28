@@ -14,7 +14,11 @@ namespace Hackmum.Bethuya.Tests.UI;
 
 public class MobileTouchLayoutTests
 {
-    private const string HoverMediaQuery = "@media (hover: hover) and (pointer: fine)";
+    private static readonly HashSet<string> HoverMediaQueries = new(StringComparer.Ordinal)
+    {
+        "@media (hover: hover) and (pointer: fine)",
+        "@media (hover:hover) and (pointer:fine)",
+    };
 
     [Test]
     public async Task Registrations_UsesOneColumnUntilLargeScreens()
@@ -82,6 +86,17 @@ public class MobileTouchLayoutTests
         await Assert.That(appCss).Contains("font-size: 16px;");
     }
 
+    [Test]
+    public async Task HoverScanner_OnlyAcceptsTheExactFinePointerQuery()
+    {
+        const string hoverRule = "{ .card:hover { transform: translateY(-1px); } }";
+
+        await Assert.That(FindUngatedTransformHovers("@media (hover: hover) and (pointer: fine) " + hoverRule)).IsEmpty();
+        await Assert.That(FindUngatedTransformHovers("@media (hover:hover) and (pointer:fine) " + hoverRule)).IsEmpty();
+        await Assert.That(FindUngatedTransformHovers("@media (hover: hover) and (pointer: fine), (pointer: coarse) " + hoverRule))
+            .Contains(".card:hover");
+    }
+
     private static IEnumerable<string> FindUngatedTransformHovers(string css)
     {
         css = Regex.Replace(css, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
@@ -93,8 +108,7 @@ public class MobileTouchLayoutTests
             if (css[i] == '{')
             {
                 var prelude = css[start..i].Trim();
-                if (prelude.StartsWith(HoverMediaQuery, StringComparison.Ordinal)
-                    || prelude.StartsWith("@media (hover:hover) and (pointer:fine)", StringComparison.Ordinal))
+                if (HoverMediaQueries.Contains(Regex.Replace(prelude, @"\s+", " ")))
                 {
                     gatedDepths.Push(depth);
                 }
