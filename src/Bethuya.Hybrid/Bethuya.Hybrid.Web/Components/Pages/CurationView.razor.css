@@ -210,7 +210,14 @@
     box-shadow: none;
 }
 
-.metric-chip:hover,
+@media (hover: hover) and (pointer: fine) {
+    .metric-chip:hover {
+        border-color: rgba(250, 189, 0, 0.66);
+        box-shadow: 0 0 18px rgba(250, 189, 0, 0.12), inset 3px 0 0 rgba(250, 189, 0, 0.88);
+        transform: translateY(-1px);
+    }
+}
+
 .queue-item.selected {
     border-color: rgba(250, 189, 0, 0.66);
     box-shadow: 0 0 18px rgba(250, 189, 0, 0.12), inset 3px 0 0 rgba(250, 189, 0, 0.88);
