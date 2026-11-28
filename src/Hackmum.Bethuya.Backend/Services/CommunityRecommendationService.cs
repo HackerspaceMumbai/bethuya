@@ -30,6 +30,7 @@ public sealed class CommunityRecommendationService(
             draftKind: "member-growth-opportunity",
             recommendation,
             request,
+            dashboard,
             requestedBy,
             ct);
     }
@@ -45,6 +46,7 @@ public sealed class CommunityRecommendationService(
             draftKind: "weekly-community-briefing",
             recommendation,
             request,
+            dashboard,
             requestedBy,
             ct);
     }
@@ -97,13 +99,14 @@ public sealed class CommunityRecommendationService(
         string draftKind,
         RecommendationEnvelope recommendation,
         TRequest request,
+        CommunityHealthDashboardReadModelResponse dashboard,
         string requestedBy,
         CancellationToken ct)
     {
         var traceParent = AiAuditMetadata.NormalizeOptionalTraceMetadata(Activity.Current?.Id);
         var correlationId = AiAuditMetadata.NormalizeRequiredTraceMetadata(Activity.Current?.TraceId.ToString() ?? Guid.CreateVersion7().ToString("N"));
         var createdAt = DateTimeOffset.UtcNow;
-        var inputHash = AiAuditMetadata.ComputeInputHash(request);
+        var (inputHash, inputSnapshot) = RecommendationInputSnapshot.Create(request, dashboard);
 
         var draftId = Guid.CreateVersion7();
         var payload = new RecommendationDraftPayload(
@@ -120,7 +123,8 @@ public sealed class CommunityRecommendationService(
             CreatedAt: createdAt,
             ApprovedAt: null,
             ApprovedBy: null,
-            ApprovalNotes: null);
+            ApprovalNotes: null,
+            InputSnapshot: inputSnapshot);
 
         var decision = new Decision
         {
@@ -277,7 +281,8 @@ public sealed class CommunityRecommendationService(
         DateTimeOffset CreatedAt,
         DateTimeOffset? ApprovedAt,
         string? ApprovedBy,
-        string? ApprovalNotes);
+        string? ApprovalNotes,
+        JsonElement? InputSnapshot = null);
 
     private sealed record RecommendationAuditPayload(
         string InputHash,

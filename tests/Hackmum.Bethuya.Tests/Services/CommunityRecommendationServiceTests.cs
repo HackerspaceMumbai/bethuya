@@ -3,6 +3,7 @@ using System.Text.Json;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Enums;
+using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Infrastructure.Data;
 using Hackmum.Bethuya.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -59,6 +60,69 @@ public sealed class CommunityRecommendationServiceTests
         await Assert.That(approved.ApprovedAt).IsNotNull();
         await Assert.That(persistedDecision.Status).IsEqualTo(DecisionStatus.Applied);
         await Assert.That(persistedDecision.Reason).Contains("Approved by lead@hackmum.com");
+    }
+
+    [Test]
+    public async Task DraftMemberGrowthOpportunityAsync_ChangesInputHashWhenCommunityDataChanges()
+    {
+        await using var db = CreateDbContext();
+        var recommendationService = CreateService(db);
+        var request = new DraftMemberGrowthRecommendationRequest(LookbackDays: 90, RequestedBy: "organizer@test");
+
+        var initialDraft = await recommendationService.DraftMemberGrowthOpportunityAsync(
+            request,
+            requestedBy: "organizer@test");
+
+        db.CommunityMembers.Add(new CommunityMember
+        {
+            UserId = "member-growth-snapshot-user",
+            DisplayName = "Snapshot Member",
+            Email = "snapshot@test.com",
+            IsDiscoverableToCommunity = true
+        });
+        db.Registrations.Add(new Registration
+        {
+            EventId = Guid.CreateVersion7(),
+            FullName = "Snapshot Member",
+            Email = "snapshot@test.com",
+            Status = RegistrationStatus.CheckedIn,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var updatedDraft = await recommendationService.DraftMemberGrowthOpportunityAsync(
+            request,
+            requestedBy: "organizer@test");
+
+        await Assert.That(updatedDraft.Audit.InputHash).IsNotEqualTo(initialDraft.Audit.InputHash);
+
+        var approvedDraft = await recommendationService.ApproveDraftAsync(
+            updatedDraft.DraftId,
+            new ApproveRecommendationDraftRequest(ApprovedBy: "lead@hackmum.com", ApprovalNotes: "Verified snapshot"));
+
+        await Assert.That(approvedDraft.Audit.InputHash).IsEqualTo(updatedDraft.Audit.InputHash);
+
+        var persistedDecision = await db.Decisions.SingleAsync(decision => decision.Id == updatedDraft.DraftId);
+        using var payload = JsonDocument.Parse(persistedDecision.Diff!);
+        var snapshot = payload.RootElement.GetProperty("InputSnapshot");
+
+        await Assert.That(snapshot.GetProperty("Request").GetProperty("LookbackDays").GetInt32()).IsEqualTo(90);
+        await Assert.That(snapshot.GetProperty("Dashboard").GetProperty("Attendance").GetProperty("AttendedCount").GetInt32()).IsEqualTo(1);
+        await Assert.That(snapshot.GetProperty("Dashboard").GetProperty("LeadershipFunnel").GetProperty("DiscoverableMembers").GetInt32()).IsEqualTo(1);
+        await Assert.That(snapshot.GetProperty("SnapshotCapturedAtUtc").GetString()).IsNotNull();
+    }
+
+    [Test]
+    public async Task DraftWeeklyBriefingAsync_ProducesSameInputHashForIdenticalCommunityData()
+    {
+        await using var db = CreateDbContext();
+        var recommendationService = CreateService(db);
+        var request = new DraftWeeklyCommunityBriefingRequest(LookbackDays: 90, RequestedBy: "organizer@test");
+
+        var firstDraft = await recommendationService.DraftWeeklyBriefingAsync(request, requestedBy: "organizer@test");
+        var secondDraft = await recommendationService.DraftWeeklyBriefingAsync(request, requestedBy: "organizer@test");
+
+        await Assert.That(secondDraft.Audit.InputHash).IsEqualTo(firstDraft.Audit.InputHash);
     }
 
     private static CommunityRecommendationService CreateService(BethuyaDbContext db)

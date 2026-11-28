@@ -119,7 +119,7 @@ public sealed class MentorshipService(
         var discoverableMentors = await mentorRepo.GetDiscoverableMentorsAsync(request.FocusAreas, 50, ct);
 
         var recommendation = BuildMentorPairingRecommendation(dashboard, discoverableMentors, request.FocusAreas);
-        return await PersistDraftAsync(recommendation, request, requestedBy, ct);
+        return await PersistDraftAsync(recommendation, request, dashboard, discoverableMentors, requestedBy, ct);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -204,13 +204,15 @@ public sealed class MentorshipService(
     private async Task<RecommendationDraftResponse> PersistDraftAsync<TRequest>(
         RecommendationEnvelope recommendation,
         TRequest request,
+        CommunityHealthDashboardReadModelResponse dashboard,
+        IReadOnlyList<MentorProfile> discoverableMentors,
         string requestedBy,
         CancellationToken ct)
     {
         var traceParent = AiAuditMetadata.NormalizeOptionalTraceMetadata(Activity.Current?.Id);
         var correlationId = AiAuditMetadata.NormalizeRequiredTraceMetadata(
             Activity.Current?.TraceId.ToString() ?? Guid.CreateVersion7().ToString("N"));
-        var inputHash = AiAuditMetadata.ComputeInputHash(request);
+        var (inputHash, inputSnapshot) = RecommendationInputSnapshot.Create(request, dashboard, discoverableMentors);
         var createdAt = DateTimeOffset.UtcNow;
         var draftId = Guid.CreateVersion7();
 
@@ -218,6 +220,7 @@ public sealed class MentorshipService(
         {
             ["SchemaVersion"] = RecommendationSchemaVersion,
             ["Recommendation"] = System.Text.Json.JsonSerializer.SerializeToNode(recommendation),
+            ["InputSnapshot"] = System.Text.Json.JsonSerializer.SerializeToNode(inputSnapshot),
             ["Audit"] = new System.Text.Json.Nodes.JsonObject
             {
                 ["InputHash"] = inputHash,

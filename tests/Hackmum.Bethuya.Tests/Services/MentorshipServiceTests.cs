@@ -235,6 +235,35 @@ public sealed class MentorshipServiceTests
         await Assert.That(draft.Recommendation.Summary).Contains("1 discoverable mentor");
     }
 
+    [Test]
+    public async Task DraftMentorPairingSuggestionAsync_ChangesInputHashWhenMentorPoolChanges()
+    {
+        await using var db = CreateDbContext();
+        var service = CreateService(db);
+        var request = new DraftMentorPairingSuggestionRequest(LookbackDays: 90);
+
+        var initialDraft = await service.DraftMentorPairingSuggestionAsync(
+            request,
+            requestedBy: "organizer@test");
+
+        var mentor = SeedSubject("snapshot-mentor@test.com");
+        await service.OptInAsync(mentor, new MentorOptInRequest([MentorExpertiseArea.OpenSource]));
+
+        var updatedDraft = await service.DraftMentorPairingSuggestionAsync(
+            request,
+            requestedBy: "organizer@test");
+
+        await Assert.That(updatedDraft.Audit.InputHash).IsNotEqualTo(initialDraft.Audit.InputHash);
+
+        var persistedDecision = await db.Decisions.SingleAsync(d => d.Id == updatedDraft.DraftId);
+        using var payload = System.Text.Json.JsonDocument.Parse(persistedDecision.Diff!);
+        var snapshot = payload.RootElement.GetProperty("InputSnapshot");
+
+        await Assert.That(snapshot.GetProperty("Request").GetProperty("LookbackDays").GetInt32()).IsEqualTo(90);
+        await Assert.That(snapshot.GetProperty("DiscoverableMentors").GetArrayLength()).IsEqualTo(1);
+        await Assert.That(snapshot.GetProperty("Dashboard").GetProperty("LeadershipFunnel").GetProperty("DiscoverableMembers").GetInt32()).IsEqualTo(1);
+    }
+
     // ─── Availability clamping ────────────────────────────────────────────────
 
     [Test]
