@@ -303,7 +303,12 @@
                     string.IsNullOrWhiteSpace(_accessibilityNeeds) ? null : _accessibilityNeeds.Trim()));
 
                 await createResponse.EnsureSuccessStatusCodeAsync();
-                var created = createResponse.Content!;
+                if (createResponse.Error is not null || createResponse.Content is not { } created)
+                {
+                    _errorMessage = "We couldn't save your registration right now. Please try again.";
+                    return;
+                }
+
                 registrations.Add(created);
                 _pendingRegistrationId = created.Id;
                 _pendingUploadToken = createResponse.Headers is { } headers
