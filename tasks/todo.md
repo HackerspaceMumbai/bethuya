@@ -1202,3 +1202,9 @@ All work items must be added here **before** writing code (plan-first protocol).
 - [x] Include the explicitly approved Aspire 17 AppHost SDK/API migration, preserving resource names, paths, launch-profile choices and existing configuration.
 - [x] Use latest stable .NET 10 WebAssembly servicing packages, 10.0.15; .NET 11 packages require an excluded target-framework migration.
 - [x] Normal solution restore and full Release build pass with zero warnings/errors. Release TUnit passes 605/605, zero skipped. All 17 solution projects report no vulnerable packages; no live archive writes, AppHost startup or deployment.
+
+## [2026-11-28] Fix open redirect on /authentication/login (issue #81, login portion)
+- **Status:** done (Web and test projects build with 0 errors/0 warnings; tests could not execute because Windows Application Control blocks TUnit.Core.dll)
+- **Agent/Owner:** Claude
+- **Description:** Validate `returnUrl` on both login branches (Provider=None redirect and OIDC RedirectUri) with `LocalReturnUrl.Resolve`, which accepts only local absolute paths. `RedirectToLogin.razor` now sends a base-relative path instead of the absolute `Navigation.Uri`, so post-login return still works.
+- **Acceptance:** External, protocol-relative, backslash and control-character targets fall back to `/`; local paths are preserved; endpoint tests assert the Location header.
