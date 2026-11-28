@@ -179,6 +179,17 @@ public sealed class CommunityPassportServiceTests
         await Assert.That(stored.IsDiscoverableToCommunity).IsFalse();
     }
 
+    [Test]
+    public async Task GetPassportAsync_EmailWithoutLocalPart_FallsBackToDefaultDisplayName()
+    {
+        await using var db = CreateDbContext();
+        var service = new CommunityPassportService(db);
+
+        var passport = await service.GetPassportAsync(new CommunitySubjectContext("user-at-only", null, "@"));
+
+        await Assert.That(passport.DisplayName).IsEqualTo("Community Member");
+    }
+
     private static BethuyaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<BethuyaDbContext>()
