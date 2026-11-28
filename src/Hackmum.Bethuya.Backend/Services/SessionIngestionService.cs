@@ -33,12 +33,17 @@ public sealed partial class SessionIngestionService(
         var normalizedSessions = await PreviewSessionizeAsync(eventId, ct);
         var strategy = dbContext.Database.CreateExecutionStrategy();
         var importedCount = 0;
+        var attempt = 0;
 
         await strategy.ExecuteAsync(async () =>
         {
             // A retried attempt must start from committed state; rows tracked by a failed attempt
             // would otherwise count as already imported and the retry would store nothing.
-            dbContext.ChangeTracker.Clear();
+            if (attempt++ > 0)
+            {
+                dbContext.ChangeTracker.Clear();
+            }
+
             var attemptImportedCount = 0;
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
             var evt = await dbContext.Events

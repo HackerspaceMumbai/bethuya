@@ -92,6 +92,32 @@ public sealed class SessionIngestionServiceTests
         await Assert.That(await db.Agendas.CountAsync()).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task ImportSessionizeAsync_FirstAttempt_KeepsCallerTrackedChanges()
+    {
+        await using var db = new BethuyaDbContext(new DbContextOptionsBuilder<BethuyaDbContext>()
+            .UseSqlite("Data Source=:memory:")
+            .Options);
+        db.Database.OpenConnection();
+        db.Database.EnsureCreated();
+        var evt = CreateEvent();
+        db.Events.Add(evt);
+        await db.SaveChangesAsync();
+        evt.Description = "Edited before the import";
+        var service = new SessionIngestionService(
+            new EventRepository(db),
+            CreateSessionize(new DateTimeOffset(2026, 12, 12, 5, 30, 0, TimeSpan.Zero)),
+            db,
+            NullLogger<SessionIngestionService>.Instance);
+
+        var importedCount = await service.ImportSessionizeAsync(evt.Id);
+
+        await Assert.That(importedCount).IsEqualTo(1);
+        db.ChangeTracker.Clear();
+        var stored = await db.Events.SingleAsync(e => e.Id == evt.Id);
+        await Assert.That(stored.Description).IsEqualTo("Edited before the import");
+    }
+
     private static Event CreateEvent()
         => new()
         {
