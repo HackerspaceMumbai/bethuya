@@ -1554,12 +1554,22 @@
                 _ => ScheduleStatus.Draft
             };
         }
-        catch (Refit.ApiException apiEx) when (apiEx.StatusCode is System.Net.HttpStatusCode.NotFound
-            or System.Net.HttpStatusCode.Unauthorized
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // No active cycle yet.
+            _activeCycle = null;
+        }
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode is System.Net.HttpStatusCode.Unauthorized
             or System.Net.HttpStatusCode.Forbidden)
         {
-            // No active cycle yet, or the caller may not read planning cycles.
+            // The caller may not read planning cycles; drop anything shown from an earlier load.
+            sessions.Clear();
+            editSnapshots.Clear();
+            _newlyGeneratedBlockIds.Clear();
+            _updatedGeneratedBlockIds.Clear();
             _activeCycle = null;
+            _plannerMarkdown = string.Empty;
+            agendaStatus = ScheduleStatus.Draft;
         }
 
         InitConsoleMessages();
