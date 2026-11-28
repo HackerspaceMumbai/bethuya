@@ -449,8 +449,15 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
             identity.IsVerified = true;
             changed = true;
         }
+        else if (!isVerified && identity.IsVerified)
+        {
+            // Rows linked from the profile before client-supplied ids were treated as unverified.
+            identity.IsVerified = false;
+            identity.LastVerifiedAt = null;
+            changed = true;
+        }
 
-        if (changed && identity.IsVerified)
+        if (changed && isVerified)
         {
             identity.LastVerifiedAt = DateTimeOffset.UtcNow;
         }
