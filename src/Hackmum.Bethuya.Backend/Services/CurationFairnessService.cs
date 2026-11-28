@@ -314,7 +314,8 @@ public sealed class CurationFairnessService
             summary = "Needs manual trade-off review";
             assessmentText = BuildAssessmentText(
             [
-                $"\u26a0\ufe0f Reliability concern ({reliability.Score}/100)",
+                reliability.HasHistory && reliability.Score < 45 ? $"\u26a0\ufe0f Reliability concern ({reliability.Score}/100)" : null,
+                registration.Status == RegistrationStatus.Waitlisted ? "\u26a0\ufe0f Currently waitlisted" : null,
                 strongestPositiveDimension is null ? "+ Review fairness impact" : $"+ Review fairness impact ({strongestPositiveDimension})",
                 "\u26a0\ufe0f Human trade-off review needed"
             ]);
@@ -493,7 +494,12 @@ public sealed class CurationFairnessService
             DeficitPercent: deficit,
             NeededCount: needed,
             IsSuppressed: false,
-            Alert: needed > 0 ? $"Need {needed} more {alertLabel} to meet target." : null);
+            Alert: needed switch
+            {
+                int.MaxValue => "A 100% target cannot be met by adding attendees.",
+                > 0 => $"Need {needed} more {alertLabel} to meet target.",
+                _ => null
+            });
     }
 
     private static ImpactPreviewResponse BuildImpactPreview(
@@ -503,7 +509,8 @@ public sealed class CurationFairnessService
     {
         var updatedSelected = selected.Append(candidate).ToList();
 
-        if (updatedSelected.Count < targets.KAnonymityThreshold)
+        // The baseline must clear k-anonymity too; a suppressed baseline reads as 0% and inflates every delta.
+        if (selected.Count < targets.KAnonymityThreshold)
         {
             return new ImpactPreviewResponse(
                 DeltaPercentByDimension: new Dictionary<string, double>(),
@@ -664,13 +671,14 @@ public sealed class CurationFairnessService
             return 0;
         }
 
-        if (targetPercent >= 1)
+        var target = (decimal)targetPercent;
+        if (target >= 1)
         {
             return int.MaxValue;
         }
 
-        var needed = (targetPercent * denominator - numerator) / (1 - targetPercent);
-        return Math.Max(0, (int)Math.Ceiling(needed));
+        var needed = Math.Ceiling((target * denominator - numerator) / (1 - target));
+        return needed >= int.MaxValue ? int.MaxValue : Math.Max(0, (int)needed);
     }
 
     private static double ClampPercent(double value)
@@ -730,7 +738,13 @@ public sealed class CurationFairnessService
             }
         }
 
-        candidateSuggestions.Sort((left, right) => right.Candidate.Score.CompareTo(left.Candidate.Score));
+        candidateSuggestions.Sort((left, right) =>
+        {
+            var byScore = right.Candidate.Score.CompareTo(left.Candidate.Score);
+            return byScore != 0
+                ? byScore
+                : left.Candidate.RegistrationId.Value.CompareTo(right.Candidate.RegistrationId.Value);
+        });
 
         var conflicts = BuildOpportunityConflicts(candidateSuggestions, roles);
 
