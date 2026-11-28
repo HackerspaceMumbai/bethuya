@@ -829,6 +829,7 @@ public class CurationViewRenderTests
                     IsFirstTimer: !returningStandout,
                     PastAcceptedCount: returningStandout ? 2 : 0,
                     PastAttendedCount: returningStandout ? 2 : 0,
+                    PastWaitlistedCount: 0,
                     HasOrganizerStandoutContribution: returningStandout,
                     GitHubRepoCount: 36,
                     IsGitHubLinked: true,
@@ -915,3 +916,98 @@ public class CurationViewRenderTests
                 "Apply organizer/curator decisions manually before publishing final assignments."
             ]));
 }
+
+    [Test]
+    public async Task Render_WaitlistBadge_ShowsForPriorWaitlistedRegistrants()
+    {
+        await using var ctx = new BunitCtx();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var eventId = Guid.NewGuid();
+        var curationApi = Substitute.For<ICurationApi>();
+        
+        // Create a registrant with waitlist history
+        var dashboard = new CurationDashboardDto(
+            EventId: eventId,
+            EventTitle: "Test Event",
+            Applicants: 1,
+            Capacity: 10,
+            Registrants:
+            [
+                new CurationRegistrantDto(
+                    RegistrationId: Guid.NewGuid(),
+                    FullName: "Repeated Waitlist Member",
+                    Email: "waitlisted@example.com",
+                    Status: "Pending",
+                    RegisteredAt: DateTimeOffset.UtcNow.AddDays(-1),
+                    Bio: "Trying again after multiple waitlists.",
+                    Interests: ["community", "workshop"],
+                    Profile: new CurationProfileSummaryDto(
+                        Headline: "Persistent attendee",
+                        Organization: "Example Corp",
+                        HistoryLabel: "2 prior approvals, 3 waitlisted",
+                        IsFirstTimer: false,
+                        PastAcceptedCount: 2,
+                        PastAttendedCount: 1,
+                        PastWaitlistedCount: 3,
+                        HasOrganizerStandoutContribution: false,
+                        GitHubRepoCount: 10,
+                        IsGitHubLinked: true,
+                        IsLinkedInVerified: false,
+                        MemberSinceYear: 2022,
+                        Tags: ["1 attended", "community"]),
+                    Reliability: new CurationReliabilityDto(
+                        HasHistory: true,
+                        Score: 70,
+                        Label: "Moderate",
+                        Summary: "Mixed attendance history."),
+                    Intent: new CurationIntentInsightDto(
+                        Summary: "Trying again after multiple waitlists.",
+                        Specificity: "Medium",
+                        Evidence: "Medium",
+                        Authenticity: "High",
+                        Signals: ["Persistent interest"],
+                        Interpretation: "Member keeps trying despite prior waitlists."),
+                    Recommendation: new CurationRecommendationDto(
+                        Label: "Review",
+                        Tone: "neutral",
+                        Summary: "Consider waitlist history.",
+                        Highlights: ["3× waitlisted"],
+                        AssessmentText: null),
+                    Impact: new ImpactPreviewDto(
+                        DeltaPercentByDimension: new Dictionary<string, double>(),
+                        Explanation: "Impact preview hidden.",
+                        IsSuppressed: true))
+            ],
+            CurrentCohort: [],
+            FairnessProgress: new CurationFairnessProgressDto(
+                OnTrack: true,
+                CriticalFlags: [],
+                DimensionProgress:
+                [
+                    new DimensionProgressDto(Key: "gender", Label: "Gender", Current: 0.45, Target: 0.50, Delta: 0.00, IsStable: true)
+                ]));
+        
+        curationApi.GetDashboardAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(dashboard));
+        ctx.Services.AddSingleton(curationApi);
+        ctx.Services.AddBlazorBlueprintComponents();
+        ctx.AddAuthorization();
+
+        var cut = ctx.Render<global::Bethuya.Hybrid.Web.Components.Pages.CurationView>(parameters =>
+            parameters.Add(p => p.EventId, eventId));
+
+        cut.WaitForAssertion(() =>
+        {
+            var waitlistBadge = cut.Find("[data-test='waitlist-badge']");
+            if (!waitlistBadge.TextContent.Contains("Waitlisted 3×", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected waitlist badge to show 'Waitlisted 3×' for registrant with PastWaitlistedCount = 3.");
+            }
+
+            if (!cut.Markup.Contains("2 prior approvals, 3 waitlisted", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected history label to include waitlist count.");
+            }
+        });
+    }

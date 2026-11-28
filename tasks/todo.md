@@ -23,6 +23,15 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-11-28] Surface prior waitlist history in curation
+- **Status:** in-progress
+- **Agent/Owner:** Kiro
+- **Description:** Surface prior-waitlist history that curation already loads: `PastWaitlistedCount` on the profile summary, a clearer `HistoryLabel`, and a "Waitlisted N×" badge in `CurationView`. This addresses the README question "Who keeps getting waitlisted?" by making previously loaded but dropped data visible.
+- **What Changed:** Profile summary now displays `PastWaitlistedCount`; history label clarified; waitlist badge added to curation cards.
+- **What Didn't Change:** `IsFirstTimer` semantics, all scoring/ordering/recommendations, no new queries or data sources. Inputs remain registration statuses only.
+- **Testing:** Unit tests for profile rendering with waitlist counts; E2E screenshots for curation view with badges.
+- **Acceptance:** "Waitlisted N×" badge visible in curation cards when count > 0; history label explains both attendance and waitlist; tests pass; visual proof provided.
+
 ## [2026-11-22] Protect event mutation endpoints
 - **Status:** done
 - **Agent/Owner:** Tank
