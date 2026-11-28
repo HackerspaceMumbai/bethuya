@@ -13,10 +13,10 @@
 }
 
 .curation-topbar,
-.queue-panel,
-.profile-panel,
-.metric-panel,
-.intent-panel,
+.curation-shell ::deep .queue-panel,
+.curation-shell ::deep .profile-panel,
+.curation-shell ::deep .metric-panel,
+.curation-shell ::deep .intent-panel,
 .action-tray {
     border-color: rgba(156, 143, 120, 0.22);
     background: rgba(17, 19, 22, 0.94);
@@ -38,7 +38,7 @@
     box-shadow: none;
 }
 
-.topbar-content {
+.curation-topbar ::deep .topbar-content {
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
@@ -77,7 +77,7 @@
     padding-top: 0.45rem;
 }
 
-.fairness-status-summary > .bb-alert {
+.fairness-status-summary ::deep [role="alert"] {
     width: 100%;
     margin: 0;
     text-align: left;
@@ -405,13 +405,13 @@
     backdrop-filter: blur(4px);
 }
 
-.cohort-modal-card {
+.cohort-modal-overlay ::deep .cohort-modal-card {
     width: min(40rem, calc(100vw - 2.5rem));
     max-height: calc(100vh - 2.5rem);
     overflow: auto;
 }
 
-.cohort-modal-content {
+.cohort-modal-overlay ::deep .cohort-modal-content {
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
@@ -423,7 +423,7 @@
     gap: 0.6rem;
 }
 
-.queue-panel {
+.workbench-grid ::deep .queue-panel {
     border-radius: 0;
     border-width: 0 1px 0 0;
     background: #0c0e11;
@@ -686,13 +686,13 @@
     box-shadow: 0 0 0 0.28rem rgba(250, 189, 0, 0.12), 0 0 28px rgba(250, 189, 0, 0.16);
 }
 
-.hero-avatar-shell > :last-child {
+.hero-avatar-shell ::deep > :last-child {
     margin-top: -0.7rem;
     z-index: 2;
 }
 
 .queue-name,
-.panel-title,
+.curation-shell ::deep .panel-title,
 .panel-title-sm {
     margin: 0;
     font-weight: 800;
@@ -772,7 +772,7 @@
 }
 
 /* BB does not relay p-* utility classes reliably onto component root padding in isolation mode, so padding lives here. */
-.profile-panel {
+.detail-scroll ::deep .profile-panel {
     border: 0 !important;
     background: transparent !important;
 }
@@ -819,7 +819,7 @@
     font-weight: 700;
 }
 
-.status-signals ::deep .bb-badge.status-lift-chip {
+.status-signals ::deep .status-lift-chip {
     border-color: rgba(118, 243, 170, 0.4);
     background: rgba(28, 98, 63, 0.38);
     color: #d9ffe9;
@@ -858,7 +858,7 @@
     grid-template-columns: 1fr;
 }
 
-.metric-panel,
+.curation-shell ::deep .metric-panel,
 .signal-card,
 .impact-delta,
 .explanation-panel {
@@ -867,7 +867,7 @@
     background: #1a1c1f;
 }
 
-.metric-panel {
+.curation-shell ::deep .metric-panel {
     padding: 1rem !important;
 }
 
@@ -1017,12 +1017,12 @@
     margin-top: 0.85rem;
 }
 
-.intent-panel {
+.curation-shell ::deep .intent-panel {
     border-radius: 1rem;
     background: #1a1c1f;
 }
 
-.impact-panel {
+.curation-shell ::deep .impact-panel {
     border-radius: 1rem;
     border: 1px solid rgba(212, 168, 48, 0.28);
     background: linear-gradient(180deg, rgba(212, 168, 48, 0.12) 0%, #1a1c1f 34%);
@@ -1363,32 +1363,32 @@
 }
 
 /* Button icon alignment */
-::deep .btn-reject button,
-::deep .btn-waitlist button,
-::deep .btn-approve button {
+.tray-actions ::deep .btn-reject,
+.tray-actions ::deep .btn-waitlist,
+.tray-actions ::deep .btn-approve {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
 }
 
-::deep .btn-reject button {
+.tray-actions ::deep .btn-reject {
     border-color: rgba(239, 68, 68, 0.6);
     background: rgba(239, 68, 68, 0.08);
     color: #fca5a5;
 }
 
-::deep .btn-reject button:not(:disabled):hover {
+.tray-actions ::deep .btn-reject:not(:disabled):hover {
     background: rgba(239, 68, 68, 0.16);
     border-color: rgba(239, 68, 68, 0.8);
     color: #fecaca;
 }
 
-::deep .btn-approve button {
+.tray-actions ::deep .btn-approve {
     background: rgba(212, 168, 48, 0.85);
     color: #111316;
 }
 
-.spin {
+.curation-shell ::deep .spin {
     animation: curation-spin 1s linear infinite;
 }
 
@@ -1417,57 +1417,57 @@
         box-shadow: 0 0 0 0 rgba(250, 189, 0, 0.28), 0 0 0 rgba(250, 189, 0, 0);
     }
 
-    @keyframes fairness-flash {
-        0% {
-            opacity: 0.95;
-        }
-
-        100% {
-            opacity: 0;
-        }
+    100% {
+        box-shadow: 0 0 0 1px rgba(250, 189, 0, 0.16), 0 0 22px rgba(250, 189, 0, 0.14);
     }
+}
 
-    @keyframes value-pop {
-        0% {
-            transform: translateY(4px) scale(0.88);
-            opacity: 0.4;
-            color: #cfd3d9;
-            text-shadow: none;
-        }
-
-        45% {
-            transform: translateY(-2px) scale(1.09);
-            opacity: 1;
-            color: #f0f6ff;
-            text-shadow: 0 0 12px rgba(74, 222, 128, 0.34);
-        }
-
-        100% {
-            transform: translateY(0) scale(1);
-            color: #e2e2e6;
-            text-shadow: none;
-        }
-    }
-
-    @keyframes delta-surge {
-        0% {
-            transform: translateY(4px) scale(0.92);
-            opacity: 0;
-        }
-
-        50% {
-            transform: translateY(-1px) scale(1.04);
-            opacity: 1;
-        }
-
-        100% {
-            transform: translateY(0);
-            opacity: 1;
-        }
+@keyframes fairness-flash {
+    0% {
+        opacity: 0.95;
     }
 
     100% {
-        box-shadow: 0 0 0 1px rgba(250, 189, 0, 0.16), 0 0 22px rgba(250, 189, 0, 0.14);
+        opacity: 0;
+    }
+}
+
+@keyframes value-pop {
+    0% {
+        transform: translateY(4px) scale(0.88);
+        opacity: 0.4;
+        color: #cfd3d9;
+        text-shadow: none;
+    }
+
+    45% {
+        transform: translateY(-2px) scale(1.09);
+        opacity: 1;
+        color: #f0f6ff;
+        text-shadow: 0 0 12px rgba(74, 222, 128, 0.34);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+        color: #e2e2e6;
+        text-shadow: none;
+    }
+}
+
+@keyframes delta-surge {
+    0% {
+        transform: translateY(4px) scale(0.92);
+        opacity: 0;
+    }
+
+    50% {
+        transform: translateY(-1px) scale(1.04);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
     }
 }
 
@@ -1533,7 +1533,7 @@
         grid-template-columns: 1fr;
     }
 
-    .queue-panel {
+    .workbench-grid ::deep .queue-panel {
         border-width: 0 0 1px;
     }
 
@@ -1556,7 +1556,7 @@
         font-size: 1.45rem;
     }
 
-    .tray-actions > * {
+    .tray-actions ::deep > * {
         width: 100%;
     }
 }

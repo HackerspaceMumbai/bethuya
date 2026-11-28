@@ -55,7 +55,7 @@
 }
 
 .hashtag-prefix {
-    color: hsl(var(--primary));
+    color: var(--primary);
     font-weight: 600;
     flex-shrink: 0;
 }
@@ -63,7 +63,7 @@
 /* Hint text — only for manual form groups; BB fields use HelperText param */
 .field-hint {
     font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     margin-top: 0.25rem;
 }
 
@@ -153,7 +153,7 @@
     min-height: 10rem;
     border: 2px dashed var(--border);
     border-radius: var(--radius);
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     font-size: 0.875rem;
     font-weight: 500;
 }

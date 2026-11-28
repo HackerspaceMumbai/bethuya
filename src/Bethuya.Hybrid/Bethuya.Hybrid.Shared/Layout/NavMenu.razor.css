@@ -154,7 +154,7 @@
     font-weight: 600;
 }
 
-.nav-icon {
+.nav-item ::deep .nav-icon {
     flex-shrink: 0;
     opacity: 0.75;
 }
@@ -186,30 +186,5 @@
 
     .nav-links {
         display: flex !important;
-    }
-}
-
-.nav-item ::deep .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-    color: white;
-}
-
-.nav-scrollable {
-    display: none;
-}
-
-.navbar-toggler:checked ~ .nav-scrollable {
-    display: block;
-}
-
-@media (min-width: 641px) {
-    .navbar-toggler {
-        display: none;
-    }
-
-    .nav-scrollable {
-        display: block;
-        height: calc(100vh - 3.5rem);
-        overflow-y: auto;
     }
 }
