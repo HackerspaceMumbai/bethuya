@@ -23,6 +23,8 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+- [ ] Add TUnit validation tests for CommunityIds ValueObjects (#1)
+
 ## [2026-11-22] Protect event mutation endpoints
 - **Status:** done
 - **Agent/Owner:** Tank
