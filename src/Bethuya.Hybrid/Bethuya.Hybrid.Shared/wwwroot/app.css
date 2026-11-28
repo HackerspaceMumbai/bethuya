@@ -22,6 +22,15 @@ html, body {
     background-color: var(--hs-bg);
 }
 
+/* iOS zooms the page when a focused field is smaller than 16px. */
+@media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
+
 a, .btn-link {
     color: var(--hs-gold);
 }

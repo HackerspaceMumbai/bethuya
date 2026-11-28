@@ -13,6 +13,8 @@
 
 :root,
 .dark {
+    color-scheme: dark;
+
     /* ── Brand tokens (unchanged from app.css) ── */
     --hs-gold-hover:      #E8BE48;
 
