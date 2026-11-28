@@ -4,6 +4,7 @@
     position: fixed;
     inset: 0 0 0 var(--curation-sidebar-width);
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
     height: 100vh;
@@ -142,7 +143,7 @@
 
 .metric-row {
     gap: 0.38rem;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: flex-start;
     min-width: 0;
 }
