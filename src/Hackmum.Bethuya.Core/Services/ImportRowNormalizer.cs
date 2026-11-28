@@ -140,7 +140,8 @@ public static class ImportRowNormalizer
         if (occurredAtRaw is not null)
         {
             if (DateTimeOffset.TryParse(occurredAtRaw, System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+                    System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                    out var parsed))
             {
                 occurredAt = parsed;
             }
