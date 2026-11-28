@@ -1,6 +1,7 @@
 using Hackmum.Bethuya.Agents.Workflows;
 using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Repositories;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -8,7 +9,12 @@ public static class ApprovalEndpoints
 {
     public static void MapApprovalEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/approvals").WithTags("Approvals");
+        // Decisions span organizer-only drafts (recommendations, mentorship) as well as curation,
+        // so the generic approval API requires Organizer (or Admin) for reads and mutations.
+        // Declared explicitly: the global authenticated fallback policy is opt-in.
+        var group = app.MapGroup("/api/approvals")
+            .WithTags("Approvals")
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapGet("/pending", async (IDecisionRepository repo, CancellationToken ct) =>
             Results.Ok(await repo.GetPendingAsync(ct)));

@@ -147,7 +147,7 @@ public sealed class DevelopmentPersonaSwitchingFlowTests(BethuyaAppFixture fixtu
         await Assert.That(decisionResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         // Step 4 — Read back the persisted Decision record via GET /api/approvals.
-        //   Note: /api/approvals has no RequireAuthorization — accessible to any identity.
+        //   Note: /api/approvals requires RequireOrganizer; the default dev principal satisfies it.
         //   Entity type is "registration" (hard-coded in CurationEndpoints.cs line ~142).
         using var readClient = fixture.CreateBackendClient();
         var decisions = await readClient.GetFromJsonAsync<JsonElement>(
