@@ -209,6 +209,48 @@ public sealed class SensitiveEndpointAuthorizationTests
         await fixture.RegistrationRepository.Received(2).UpdateAsync(registration, Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task GovernmentIdUpload_AllowsCreatorWhoRegisteredWithAnotherEmail()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        using var client = fixture.App.GetTestClient();
+        Registration? created = null;
+        fixture.RegistrationRepository.CreateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>())
+            .Returns(call => created = call.Arg<Registration>());
+        fixture.RegistrationRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => created is not null && call.Arg<Guid>() == created.Id ? created : null);
+
+        var create = new HttpRequestMessage(HttpMethod.Post, "/api/registrations")
+        {
+            Content = JsonContent.Create(new CreateRegistrationRequest(
+                EventId, "Creator", "different@example.com", null, [], "Learn", null, [], null, null, null))
+        };
+        create.Headers.Add("X-Test-Role", BethuyaRoleNames.Attendee);
+        create.Headers.Add("X-Test-Subject", "registration-creator");
+        using var createResponse = await client.SendAsync(create);
+
+        await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(created!.CommunityMemberId).IsNull();
+        var token = createResponse.Headers.GetValues(RegistrationEndpoints.GovernmentIdUploadTokenHeader).Single();
+        var path = $"/api/registrations/{created.Id}/government-id";
+
+        using var creatorWithoutToken = await SendGovernmentIdAsync(client, path, BethuyaRoleNames.Attendee, "registration-creator");
+        using var otherAttendeeWithToken = await SendGovernmentIdAsync(client, path, BethuyaRoleNames.Attendee, "other-attendee", token);
+        using var tamperedToken = await SendGovernmentIdAsync(client, path, BethuyaRoleNames.Attendee, "registration-creator", token + "x");
+
+        await Assert.That(creatorWithoutToken.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(otherAttendeeWithToken.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(tamperedToken.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await fixture.RegistrationRepository.DidNotReceive().UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>());
+
+        using var creator = await SendGovernmentIdAsync(client, path, BethuyaRoleNames.Attendee, "registration-creator", token);
+        using var organizer = await SendGovernmentIdAsync(client, path, BethuyaRoleNames.Organizer);
+
+        await Assert.That(creator.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+        await Assert.That(organizer.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+        await fixture.RegistrationRepository.Received(2).UpdateAsync(created, Arg.Any<CancellationToken>());
+    }
+
     private static Task<HttpResponseMessage> SendAsync(HttpClient client, string method, string path, object? body, string? role)
     {
         var request = new HttpRequestMessage(new HttpMethod(method), path);
@@ -225,7 +267,8 @@ public sealed class SensitiveEndpointAuthorizationTests
         return client.SendAsync(request);
     }
 
-    private static Task<HttpResponseMessage> SendGovernmentIdAsync(HttpClient client, string path, string? role, string? subject = null)
+    private static Task<HttpResponseMessage> SendGovernmentIdAsync(
+        HttpClient client, string path, string? role, string? subject = null, string? uploadToken = null)
     {
         byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
         var file = new ByteArrayContent(png);
@@ -243,6 +286,11 @@ public sealed class SensitiveEndpointAuthorizationTests
         if (subject is not null)
         {
             request.Headers.Add("X-Test-Subject", subject);
+        }
+
+        if (uploadToken is not null)
+        {
+            request.Headers.Add(RegistrationEndpoints.GovernmentIdUploadTokenHeader, uploadToken);
         }
 
         return client.SendAsync(request);

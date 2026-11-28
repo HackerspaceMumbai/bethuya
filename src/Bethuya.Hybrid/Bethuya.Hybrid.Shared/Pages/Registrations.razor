@@ -206,6 +206,7 @@
     /// Prevents duplicate registration records when the user retries an upload failure.
     /// </summary>
     private Guid? _pendingRegistrationId;
+    private string? _pendingUploadToken;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -288,7 +289,7 @@
             if (_pendingRegistrationId is null)
             {
                 var contributions = BuildContributionList();
-                var created = await RegistrationApi.CreateAsync(new CreateRegistrationDto(
+                using var createResponse = await RegistrationApi.CreateAsync(new CreateRegistrationDto(
                     EventId,
                     _newName,
                     _newEmail,
@@ -301,14 +302,20 @@
                     string.IsNullOrWhiteSpace(_dietaryRequirements) ? null : _dietaryRequirements.Trim(),
                     string.IsNullOrWhiteSpace(_accessibilityNeeds) ? null : _accessibilityNeeds.Trim()));
 
+                await createResponse.EnsureSuccessStatusCodeAsync();
+                var created = createResponse.Content!;
                 registrations.Add(created);
                 _pendingRegistrationId = created.Id;
+                _pendingUploadToken = createResponse.Headers is { } headers
+                    && headers.TryGetValues(IRegistrationApi.GovernmentIdUploadTokenHeader, out var tokens)
+                        ? tokens.FirstOrDefault()
+                        : null;
             }
 
             // Step 2 — Upload Government ID
             await using var stream = _governmentIdFile!.OpenReadStream(maxAllowedSize: 10L * 1024 * 1024);
             var part = new Refit.StreamPart(stream, _governmentIdFile.Name, _governmentIdFile.ContentType);
-            await RegistrationApi.UploadGovernmentIdAsync(_pendingRegistrationId!.Value, part);
+            await RegistrationApi.UploadGovernmentIdAsync(_pendingRegistrationId!.Value, part, _pendingUploadToken);
 
             // Both steps succeeded — reset form
             ResetForm();
@@ -364,6 +371,7 @@
         _accessibilityNeeds = "";
         _consentGiven = false;
         _pendingRegistrationId = null;
+        _pendingUploadToken = null;
     }
 
     private static BadgeVariant GetStatusVariant(string status) => status switch

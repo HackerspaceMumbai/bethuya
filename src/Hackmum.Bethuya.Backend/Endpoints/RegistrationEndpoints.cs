@@ -7,11 +7,21 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using ServiceDefaults.Auth;
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
 public static class RegistrationEndpoints
 {
+    /// <summary>
+    /// Response header on registration create, and request header on government ID upload, carrying a
+    /// short-lived token that binds the new registration to the signed-in user who created it.
+    /// </summary>
+    public const string GovernmentIdUploadTokenHeader = "X-Bethuya-Government-Id-Upload-Token";
+
+    private const string GovernmentIdUploadTokenPurpose = "Bethuya.Registration.GovernmentIdUploadToken.v1";
+    private static readonly TimeSpan GovernmentIdUploadTokenLifetime = TimeSpan.FromHours(1);
+
     private static readonly HashSet<string> AllowedGovernmentIdContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
@@ -47,6 +57,8 @@ public static class RegistrationEndpoints
             IAttendeeProfileRepository profileRepo,
             CommunityPassportService passportService,
             InclusionSignalsNormalizer inclusionSignalsNormalizer,
+            IDataProtectionProvider dataProtectionProvider,
+            HttpResponse response,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
@@ -88,6 +100,12 @@ public static class RegistrationEndpoints
             };
 
             var created = await repo.CreateAsync(reg, ct);
+            if (subject is not null)
+            {
+                response.Headers[GovernmentIdUploadTokenHeader] = CreateGovernmentIdUploadTokenProtector(dataProtectionProvider)
+                    .Protect(GetGovernmentIdUploadTokenPayload(created.Id, subject.UserId), GovernmentIdUploadTokenLifetime);
+            }
+
             return Results.Created($"/api/registrations/{created.Id}", created);
         });
 
@@ -146,6 +164,7 @@ public static class RegistrationEndpoints
         IRegistrationRepository repo,
         BethuyaDbContext db,
         ClaimsPrincipal user,
+        HttpRequest request,
         CancellationToken ct)
     {
         if (file is null || file.Length == 0)
@@ -169,7 +188,8 @@ public static class RegistrationEndpoints
         if (reg is null)
             return Results.NotFound();
 
-        if (!await CanUploadGovernmentIdAsync(user, reg, db, ct))
+        if (!HasValidGovernmentIdUploadToken(request, user, reg.Id, dataProtectionProvider)
+            && !await CanUploadGovernmentIdAsync(user, reg, db, ct))
             return Results.Forbid();
 
         using var ms = new MemoryStream();
@@ -209,6 +229,36 @@ public static class RegistrationEndpoints
         }
 
         return await db.CommunityMembers.AnyAsync(m => m.Id == memberId && m.UserId == subject.UserId, ct);
+    }
+
+    private static ITimeLimitedDataProtector CreateGovernmentIdUploadTokenProtector(IDataProtectionProvider dataProtectionProvider)
+        => dataProtectionProvider.CreateProtector(GovernmentIdUploadTokenPurpose).ToTimeLimitedDataProtector();
+
+    private static string GetGovernmentIdUploadTokenPayload(Guid registrationId, string userId)
+        => $"{registrationId:N}:{userId}";
+
+    private static bool HasValidGovernmentIdUploadToken(
+        HttpRequest request,
+        ClaimsPrincipal user,
+        Guid registrationId,
+        IDataProtectionProvider dataProtectionProvider)
+    {
+        var token = request.Headers[GovernmentIdUploadTokenHeader].FirstOrDefault();
+        var subject = user.GetSubject();
+        if (string.IsNullOrWhiteSpace(token) || subject is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var payload = CreateGovernmentIdUploadTokenProtector(dataProtectionProvider).Unprotect(token);
+            return string.Equals(payload, GetGovernmentIdUploadTokenPayload(registrationId, subject.UserId), StringComparison.Ordinal);
+        }
+        catch (CryptographicException)
+        {
+            return false;
+        }
     }
 
     private static bool MatchesAllowedSignature(string extension, byte[] bytes)
