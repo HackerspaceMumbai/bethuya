@@ -180,12 +180,14 @@ public sealed class CommunityPassportServiceTests
     }
 
     [Test]
-    public async Task GetPassportAsync_EmailWithoutLocalPart_FallsBackToDefaultDisplayName()
+    [Arguments("@")]
+    [Arguments("@example.com")]
+    public async Task GetPassportAsync_EmailWithoutLocalPart_FallsBackToDefaultDisplayName(string email)
     {
         await using var db = CreateDbContext();
         var service = new CommunityPassportService(db);
 
-        var passport = await service.GetPassportAsync(new CommunitySubjectContext("user-at-only", null, "@"));
+        var passport = await service.GetPassportAsync(new CommunitySubjectContext("user-without-local-part", null, email));
 
         await Assert.That(passport.DisplayName).IsEqualTo("Community Member");
     }

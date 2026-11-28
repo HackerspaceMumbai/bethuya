@@ -446,7 +446,8 @@ public sealed class CommunityPassportService(BethuyaDbContext db)
 
         if (!string.IsNullOrWhiteSpace(subject.Email))
         {
-            var localPart = subject.Email.Split('@', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            var atIndex = subject.Email.IndexOf('@', StringComparison.Ordinal);
+            var localPart = atIndex >= 0 ? subject.Email[..atIndex] : subject.Email;
             if (!string.IsNullOrWhiteSpace(localPart))
             {
                 return localPart;
