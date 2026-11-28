@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ServiceDefaults.Auth;
 
 [assembly: InternalsVisibleTo("Hackmum.Bethuya.Tests")]
 
@@ -214,6 +215,7 @@ public static class SocialProfileConnectionExtensions
             string provider,
             string? returnUrl,
             HttpContext context,
+            IConfiguration configuration,
             ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("Bethuya.Hybrid.Web.Auth.SocialProfileConnection");
@@ -236,10 +238,28 @@ public static class SocialProfileConnectionExtensions
 
             await context.SignOutAsync(SocialProfileConnectionDefaults.ExternalCookieScheme);
 
+            // The proof binds the provider identity to the signed-in Bethuya user, so it cannot be
+            // edited in the address bar or replayed by another account.
+            var subject = SocialIdentityProof.ResolveSubject(context.User);
+            var signingKey = configuration[SocialIdentityProof.SigningKeyConfigurationKey];
+            if (subject is null || !SocialIdentityProof.IsUsableSigningKey(signingKey))
+            {
+                RecordSocialFailureTelemetry(
+                    logger,
+                    normalizedProvider,
+                    "social-verification-unavailable",
+                    "complete",
+                    returnUrl,
+                    null);
+                context.Response.Redirect(BuildReturnUrl(returnUrl, "social-verification-unavailable", normalizedProvider));
+                return;
+            }
+
+            var proofContext = new SocialProofContext(subject, signingKey!, DateTimeOffset.UtcNow);
             var redirectUrl = normalizedProvider switch
             {
-                "github" => BuildGitHubReturnUrl(returnUrl, result.Principal, logger),
-                "linkedin" => BuildLinkedInReturnUrl(returnUrl, result.Principal, logger),
+                "github" => BuildGitHubReturnUrl(returnUrl, result.Principal, proofContext, logger),
+                "linkedin" => BuildLinkedInReturnUrl(returnUrl, result.Principal, proofContext, logger),
                 _ => BuildUnsupportedProviderReturnUrl(returnUrl, normalizedProvider, logger)
             };
 
@@ -259,15 +279,35 @@ public static class SocialProfileConnectionExtensions
     private static bool IsConfigured(SocialOAuthOptions options)
         => !string.IsNullOrWhiteSpace(options.ClientId) && !string.IsNullOrWhiteSpace(options.ClientSecret);
 
+    private sealed record SocialProofContext(string Subject, string SigningKey, DateTimeOffset IssuedAt);
+
+    private static string CreateProof(
+        SocialProofContext proofContext,
+        string provider,
+        string providerUserId,
+        string? login,
+        string? profileUrl)
+        => SocialIdentityProof.Create(
+            new SocialIdentityClaims(
+                provider,
+                proofContext.Subject,
+                providerUserId,
+                login,
+                profileUrl,
+                proofContext.IssuedAt.Add(SocialIdentityProof.DefaultLifetime).ToUnixTimeSeconds()),
+            proofContext.SigningKey);
+
     private static string BuildGitHubReturnUrl(
         string? returnUrl,
         ClaimsPrincipal principal,
+        SocialProofContext proofContext,
         ILogger logger)
     {
+        var gitHubId = principal.FindFirstValue("urn:github:id");
         var login = principal.FindFirstValue("urn:github:login");
         var profileUrl = principal.FindFirstValue("urn:github:profile_url");
 
-        if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(profileUrl))
+        if (string.IsNullOrWhiteSpace(gitHubId) || string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(profileUrl))
         {
             RecordSocialFailureTelemetry(
                 logger,
@@ -279,16 +319,19 @@ public static class SocialProfileConnectionExtensions
             return BuildReturnUrl(returnUrl, "github-connect-incomplete", "github");
         }
 
+        // githubLogin / githubProfileUrl are display hints only; the backend stores what the proof says.
         return QueryHelpers.AddQueryString(NormalizeReturnUrl(returnUrl), new Dictionary<string, string?>
         {
             ["githubLogin"] = login,
-            ["githubProfileUrl"] = profileUrl
+            ["githubProfileUrl"] = profileUrl,
+            ["githubProof"] = CreateProof(proofContext, SocialIdentityProof.GitHub, gitHubId, login, profileUrl)
         });
     }
 
     private static string BuildLinkedInReturnUrl(
         string? returnUrl,
         ClaimsPrincipal principal,
+        SocialProofContext proofContext,
         ILogger logger)
     {
         var memberId = principal.FindFirstValue("urn:linkedin:member_id");
@@ -306,14 +349,20 @@ public static class SocialProfileConnectionExtensions
             return BuildReturnUrl(returnUrl, "linkedin-connect-incomplete", "linkedin");
         }
 
+        var linkedInProfileUrl = string.IsNullOrWhiteSpace(vanityName)
+            ? null
+            : $"https://www.linkedin.com/in/{vanityName}";
+
+        // linkedinMemberId is a display hint only; the backend stores the member id from the proof.
         var query = new Dictionary<string, string?>
         {
-            ["linkedinMemberId"] = memberId
+            ["linkedinMemberId"] = memberId,
+            ["linkedinProof"] = CreateProof(proofContext, SocialIdentityProof.LinkedIn, memberId, vanityName, linkedInProfileUrl)
         };
 
-        if (!string.IsNullOrWhiteSpace(vanityName))
+        if (linkedInProfileUrl is not null)
         {
-            query["linkedinProfileUrl"] = $"https://www.linkedin.com/in/{vanityName}";
+            query["linkedinProfileUrl"] = linkedInProfileUrl;
         }
 
         return QueryHelpers.AddQueryString(NormalizeReturnUrl(returnUrl), query);

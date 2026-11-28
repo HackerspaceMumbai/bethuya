@@ -201,6 +201,14 @@
     [SupplyParameterFromQuery(Name = "githubProfileUrl")]
     public string? GitHubProfileUrlQuery { get; set; }
 
+    // Server-signed proofs from the OAuth callback. The display values above are hints only;
+    // the backend stores the identity carried by these proofs.
+    [SupplyParameterFromQuery(Name = "githubProof")]
+    public string? GitHubProofQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "linkedinProof")]
+    public string? LinkedInProofQuery { get; set; }
+
     [SupplyParameterFromQuery(Name = "socialError")]
     public string? SocialErrorQuery { get; set; }
 
@@ -289,7 +297,9 @@
                 _model.LinkedInMemberId,
                 linkedInProfileUrl,
                 _model.GitHubLogin,
-                _model.GitHubProfileUrl));
+                _model.GitHubProfileUrl,
+                _model.GitHubProof,
+                _model.LinkedInProof));
 
             Navigation.NavigateTo("/registration/aide");
         }
@@ -338,6 +348,16 @@
         {
             _model.GitHubProfileUrl = GitHubProfileUrlQuery;
         }
+
+        if (!string.IsNullOrWhiteSpace(GitHubProofQuery))
+        {
+            _model.GitHubProof = GitHubProofQuery;
+        }
+
+        if (!string.IsNullOrWhiteSpace(LinkedInProofQuery))
+        {
+            _model.LinkedInProof = LinkedInProofQuery;
+        }
     }
 
     private static string GetStatusSymbol(bool isConnected) => isConnected ? "✅" : "❌";
@@ -374,6 +394,17 @@
         if (!string.IsNullOrWhiteSpace(_model.GitHubProfileUrl))
         {
             query["githubProfileUrl"] = _model.GitHubProfileUrl;
+        }
+
+        // Keep a proof from the first provider while the member connects the second one.
+        if (!string.IsNullOrWhiteSpace(_model.GitHubProof))
+        {
+            query["githubProof"] = _model.GitHubProof;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_model.LinkedInProof))
+        {
+            query["linkedinProof"] = _model.LinkedInProof;
         }
 
         return query.Count == 0
@@ -423,6 +454,7 @@
             "social-provider-scope-not-authorized" => "LinkedIn sign-in is blocked because your LinkedIn app is not approved for the scopes Bethuya requested. Enable the \"Sign in with LinkedIn using OpenID Connect\" product for openid/profile access, or explicitly configure the legacy r_liteprofile scope, and keep https://localhost:7400/oauth/linkedin/callback registered as an allowed redirect URL.",
             "github-connect-incomplete" => "GitHub sign-in succeeded, but we couldn't read the verified GitHub profile details.",
             "linkedin-connect-incomplete" => "LinkedIn sign-in succeeded, but we couldn't read the verified LinkedIn member details.",
+            "social-verification-unavailable" => $"{providerName} sign-in succeeded, but Bethuya couldn't issue a verification for it. Ask an organizer to configure social verification.",
             _ => $"{providerName} couldn't complete the social profile connection. Please try again."
         };
     }
@@ -481,6 +513,7 @@
             "social-provider-scope-not-authorized" => "social-provider-scope-not-authorized",
             "github-connect-incomplete" => "github-connect-incomplete",
             "linkedin-connect-incomplete" => "linkedin-connect-incomplete",
+            "social-verification-unavailable" => "social-verification-unavailable",
             _ => "unknown"
         };
 
@@ -504,5 +537,9 @@
         public string? GitHubLogin { get; set; }
 
         public string? GitHubProfileUrl { get; set; }
+
+        public string? GitHubProof { get; set; }
+
+        public string? LinkedInProof { get; set; }
     }
 }

@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NSubstitute;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Tests.Auth;
 
@@ -223,7 +224,8 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             "yrZCpj2Z12",
             "https://www.linkedin.com/in/dev-user",
             null,
-            null));
+            null,
+            LinkedInProof: CreateLinkedInProof("yrZCpj2Z12")));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await repository.Received(1).UpdateAsync(
@@ -276,7 +278,8 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             "yrZCpj2Z12",
             "https://www.linkedin.com/in/dev-user-custom-url/",
             null,
-            null));
+            null,
+            LinkedInProof: CreateLinkedInProof("yrZCpj2Z12")));
 
         var status = await response.Content.ReadFromJsonAsync<ProfileCompletionStatusResponse>();
 
@@ -333,7 +336,8 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             null,
             null,
             "dev-user",
-            "https://github.com/dev-user"));
+            "https://github.com/dev-user",
+            GitHubProof: CreateGitHubProof("dev-user")));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await repository.Received(1).UpdateAsync(
@@ -478,7 +482,8 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             "yrZCpj2Z12",
             "https://www.linkedin.com/in/dev-user",
             null,
-            null));
+            null,
+            LinkedInProof: CreateLinkedInProof("yrZCpj2Z12")));
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -575,7 +580,9 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
             "yrZCpj2Z12",
             "https://www.linkedin.com/in/dev-user",
             "dev-user",
-            "https://github.com/dev-user"));
+            "https://github.com/dev-user",
+            GitHubProof: CreateGitHubProof("dev-user"),
+            LinkedInProof: CreateLinkedInProof("yrZCpj2Z12")));
         using var aideResponse = await client.PostAsJsonAsync("/api/profile/aide", new SaveAideProfileRequest(
             "Prefer to self-describe",
             "Non-binary femme",
@@ -808,6 +815,160 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
+    [Test]
+    public async Task SocialProfile_TypedGitHubLoginWithoutProof_IsRejectedAndNotSaved()
+    {
+        var (client, repository) = await StartStudentProfileAppAsync();
+
+        using var response = await client.PostAsJsonAsync("/api/profile/social", new SaveSocialProfileRequest(
+            null,
+            null,
+            "torvalds",
+            "https://github.com/torvalds"));
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(body).Contains("Typed GitHub details can't be verified.");
+        await repository.DidNotReceive().UpdateAsync(Arg.Any<AttendeeProfile>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SocialProfile_ProofValuesWinOverTypedValues()
+    {
+        var (client, repository) = await StartStudentProfileAppAsync();
+
+        using var response = await client.PostAsJsonAsync("/api/profile/social", new SaveSocialProfileRequest(
+            null,
+            null,
+            "torvalds",
+            "https://github.com/torvalds",
+            GitHubProof: CreateGitHubProof("dev-user")));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await repository.Received(1).UpdateAsync(
+            Arg.Is<AttendeeProfile>(profile =>
+                profile.GitHubLogin == "dev-user" &&
+                profile.GitHubProfileUrl == "https://github.com/dev-user"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SocialProfile_ProofIssuedToAnotherUser_IsRejected()
+    {
+        var (client, repository) = await StartStudentProfileAppAsync();
+
+        using var response = await client.PostAsJsonAsync("/api/profile/social", new SaveSocialProfileRequest(
+            null,
+            null,
+            "someone-else",
+            "https://github.com/someone-else",
+            GitHubProof: CreateGitHubProof("someone-else", subject: "another-user-999")));
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(body).Contains("GitHub verification is invalid or has expired.");
+        await repository.DidNotReceive().UpdateAsync(Arg.Any<AttendeeProfile>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SocialProfile_ProofSignedWithWrongKey_IsRejected()
+    {
+        var (client, repository) = await StartStudentProfileAppAsync();
+
+        using var response = await client.PostAsJsonAsync("/api/profile/social", new SaveSocialProfileRequest(
+            null,
+            null,
+            "dev-user",
+            "https://github.com/dev-user",
+            GitHubProof: CreateGitHubProof("dev-user", signingKey: "attacker-chosen-signing-key-0123456789abcdef")));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await repository.DidNotReceive().UpdateAsync(Arg.Any<AttendeeProfile>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SocialProfile_ResavingAlreadyStoredGitHubWithoutProof_Succeeds()
+    {
+        var (client, repository) = await StartStudentProfileAppAsync(existingGitHubLogin: "dev-user");
+
+        using var response = await client.PostAsJsonAsync("/api/profile/social", new SaveSocialProfileRequest(
+            null,
+            null,
+            "dev-user",
+            "https://github.com/dev-user"));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await repository.Received(1).UpdateAsync(
+            Arg.Is<AttendeeProfile>(profile => profile.GitHubLogin == "dev-user"),
+            Arg.Any<CancellationToken>());
+    }
+
+    private async Task<(HttpClient Client, IAttendeeProfileRepository Repository)> StartStudentProfileAppAsync(
+        string? existingGitHubLogin = null)
+    {
+        var existingProfile = new AttendeeProfile
+        {
+            UserId = DevSubject,
+            FirstName = "Dev",
+            LastName = "User",
+            Email = "dev@bethuya.local",
+            GovernmentPhotoIdType = "Passport",
+            GovernmentIdLastFour = "1234",
+            OccupationStatus = "Student",
+            LinkedInMemberId = string.Empty,
+            GitHubLogin = existingGitHubLogin ?? string.Empty,
+            GitHubProfileUrl = existingGitHubLogin is null ? string.Empty : $"https://github.com/{existingGitHubLogin}",
+            IsProfileComplete = true,
+            ProfileCompletedAt = DateTimeOffset.UtcNow
+        };
+
+        var repository = Substitute.For<IAttendeeProfileRepository>();
+        repository.GetByUserIdAsync(DevSubject, Arg.Any<CancellationToken>())
+            .Returns(existingProfile);
+
+        var builder = CreateBuilderWithProviderNone();
+        builder.Services.AddSingleton(repository);
+        builder.AddBethuyaApiAuthentication();
+        builder.AddBethuyaAuthorization();
+
+        var app = await StartAppAsync(builder, app =>
+        {
+            app.UseBethuyaAuthentication();
+            app.MapProfileEndpoints();
+        });
+
+        var client = app.GetTestClient();
+        _clients.Add(client);
+        return (client, repository);
+    }
+
+    private const string TestSocialSigningKey = "test-social-verification-signing-key-0123456789";
+    private const string DevSubject = "dev-user-001";
+
+    private static string CreateGitHubProof(string login, string subject = DevSubject, string signingKey = TestSocialSigningKey)
+        => SocialIdentityProof.Create(
+            new SocialIdentityClaims(
+                SocialIdentityProof.GitHub,
+                subject,
+                "583231",
+                login,
+                $"https://github.com/{login}",
+                DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds()),
+            signingKey);
+
+    private static string CreateLinkedInProof(string memberId, string subject = DevSubject)
+        => SocialIdentityProof.Create(
+            new SocialIdentityClaims(
+                SocialIdentityProof.LinkedIn,
+                subject,
+                memberId,
+                null,
+                null,
+                DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds()),
+            TestSocialSigningKey);
+
     private static WebApplicationBuilder CreateBuilderWithProviderNone()
     {
         // EnvironmentName=Development so the insecure dev-auth fail-closed guard (PR1/C2) permits
@@ -819,7 +980,8 @@ public class DevelopmentAuthenticationTests : IAsyncDisposable
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Authentication:Provider"] = "None"
+            ["Authentication:Provider"] = "None",
+            [SocialIdentityProof.SigningKeyConfigurationKey] = TestSocialSigningKey
         });
 
         return builder;

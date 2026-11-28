@@ -4,6 +4,7 @@ using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
 using Microsoft.EntityFrameworkCore;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -157,6 +158,7 @@ public static class ProfileEndpoints
             SaveSocialProfileRequest request,
             ClaimsPrincipal user,
             IAttendeeProfileRepository repo,
+            IConfiguration configuration,
             CancellationToken ct) =>
         {
             var userId = GetUserId(user);
@@ -186,16 +188,35 @@ public static class ProfileEndpoints
                 profile.ProfileCompletedAt ??= DateTimeOffset.UtcNow;
             }
 
-            var validationErrors = ValidateSocialRequest(request, profile.OccupationStatus);
+            // Identity fields come from a server-signed OAuth proof, never from what the client typed.
+            var verified = ResolveVerifiedSocialIdentity(
+                request,
+                profile,
+                SocialIdentityProof.ResolveSubject(user),
+                configuration[SocialIdentityProof.SigningKeyConfigurationKey],
+                DateTimeOffset.UtcNow);
+            if (verified.Errors.Count > 0)
+            {
+                return Results.ValidationProblem(verified.Errors);
+            }
+
+            var effectiveRequest = request with
+            {
+                LinkedInMemberId = verified.LinkedInMemberId,
+                GitHubLogin = verified.GitHubLogin,
+                GitHubProfileUrl = verified.GitHubProfileUrl
+            };
+
+            var validationErrors = ValidateSocialRequest(effectiveRequest, profile.OccupationStatus);
             if (validationErrors.Count > 0)
             {
                 return Results.ValidationProblem(validationErrors);
             }
 
-            profile.LinkedInMemberId = request.LinkedInMemberId ?? string.Empty;
+            profile.LinkedInMemberId = verified.LinkedInMemberId ?? string.Empty;
             profile.LinkedInProfileUrl = request.LinkedInProfileUrl;
-            profile.GitHubLogin = request.GitHubLogin ?? string.Empty;
-            profile.GitHubProfileUrl = request.GitHubProfileUrl ?? string.Empty;
+            profile.GitHubLogin = verified.GitHubLogin ?? string.Empty;
+            profile.GitHubProfileUrl = verified.GitHubProfileUrl ?? string.Empty;
 
             await repo.UpdateAsync(profile, ct);
 
@@ -438,6 +459,99 @@ public static class ProfileEndpoints
         }
 
         return errors;
+    }
+
+    private sealed record VerifiedSocialIdentity(
+        string? LinkedInMemberId,
+        string? GitHubLogin,
+        string? GitHubProfileUrl,
+        Dictionary<string, string[]> Errors);
+
+    /// <summary>
+    /// Works out which GitHub and LinkedIn identities may be stored for this request.
+    /// A provider identity is accepted when (a) a valid proof for that provider, issued to this user,
+    /// accompanies it, (b) it repeats what is already saved, or (c) it is empty (disconnect).
+    /// Anything else was typed or edited on the client and is rejected.
+    /// </summary>
+    private static VerifiedSocialIdentity ResolveVerifiedSocialIdentity(
+        SaveSocialProfileRequest request,
+        AttendeeProfile profile,
+        string? subject,
+        string? signingKey,
+        DateTimeOffset now)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+        string? gitHubLogin;
+        string? gitHubProfileUrl;
+        if (!string.IsNullOrWhiteSpace(request.GitHubProof))
+        {
+            if (SocialIdentityProof.TryValidate(request.GitHubProof, signingKey, SocialIdentityProof.GitHub, subject, now, out var claims)
+                && !string.IsNullOrWhiteSpace(claims!.Login)
+                && !string.IsNullOrWhiteSpace(claims.ProfileUrl))
+            {
+                gitHubLogin = claims.Login;
+                gitHubProfileUrl = claims.ProfileUrl;
+            }
+            else
+            {
+                errors[nameof(SaveSocialProfileRequest.GitHubProof)] =
+                    ["GitHub verification is invalid or has expired. Connect GitHub again."];
+                gitHubLogin = null;
+                gitHubProfileUrl = null;
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(request.GitHubLogin) && string.IsNullOrWhiteSpace(request.GitHubProfileUrl))
+        {
+            gitHubLogin = null;
+            gitHubProfileUrl = null;
+        }
+        else if (!string.IsNullOrWhiteSpace(profile.GitHubLogin)
+                 && string.Equals(request.GitHubLogin?.Trim(), profile.GitHubLogin, StringComparison.OrdinalIgnoreCase)
+                 && string.Equals(request.GitHubProfileUrl?.Trim(), profile.GitHubProfileUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            gitHubLogin = profile.GitHubLogin;
+            gitHubProfileUrl = profile.GitHubProfileUrl;
+        }
+        else
+        {
+            errors[nameof(SaveSocialProfileRequest.GitHubLogin)] =
+                ["GitHub details must come from Connect GitHub. Typed GitHub details can't be verified."];
+            gitHubLogin = null;
+            gitHubProfileUrl = null;
+        }
+
+        string? linkedInMemberId;
+        if (!string.IsNullOrWhiteSpace(request.LinkedInProof))
+        {
+            if (SocialIdentityProof.TryValidate(request.LinkedInProof, signingKey, SocialIdentityProof.LinkedIn, subject, now, out var claims))
+            {
+                linkedInMemberId = claims!.ProviderUserId;
+            }
+            else
+            {
+                errors[nameof(SaveSocialProfileRequest.LinkedInProof)] =
+                    ["LinkedIn verification is invalid or has expired. Connect LinkedIn again."];
+                linkedInMemberId = null;
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(request.LinkedInMemberId))
+        {
+            linkedInMemberId = null;
+        }
+        else if (!string.IsNullOrWhiteSpace(profile.LinkedInMemberId)
+                 && string.Equals(request.LinkedInMemberId.Trim(), profile.LinkedInMemberId, StringComparison.Ordinal))
+        {
+            linkedInMemberId = profile.LinkedInMemberId;
+        }
+        else
+        {
+            errors[nameof(SaveSocialProfileRequest.LinkedInMemberId)] =
+                ["LinkedIn details must come from Connect LinkedIn. Typed LinkedIn details can't be verified."];
+            linkedInMemberId = null;
+        }
+
+        return new VerifiedSocialIdentity(linkedInMemberId, gitHubLogin, gitHubProfileUrl, errors);
     }
 
     private static bool IsSocialProfileComplete(AttendeeProfile profile)

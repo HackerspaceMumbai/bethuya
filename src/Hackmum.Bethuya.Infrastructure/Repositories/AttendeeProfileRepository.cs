@@ -64,8 +64,10 @@ public sealed class AttendeeProfileRepository(BethuyaDbContext db) : IAttendeePr
                         profile.CompanyName,
                         profile.EducationInstitute,
                         GitHubRepoCount: null,
-                        IsGitHubLinked: !string.IsNullOrWhiteSpace(profile.GitHubLogin) || !string.IsNullOrWhiteSpace(profile.GitHubProfileUrl),
-                        IsLinkedInVerified: !string.IsNullOrWhiteSpace(profile.LinkedInMemberId) || !string.IsNullOrWhiteSpace(profile.LinkedInProfileUrl),
+                        // GitHubLogin and LinkedInMemberId are only written from a verified OAuth proof
+                        // (ProfileEndpoints). LinkedInProfileUrl is typed by the member, so it never counts as verification.
+                        IsGitHubLinked: !string.IsNullOrWhiteSpace(profile.GitHubLogin),
+                        IsLinkedInVerified: !string.IsNullOrWhiteSpace(profile.LinkedInMemberId),
                         MemberSinceYear: profile.CreatedAt.Year)
                 })
                 .First())

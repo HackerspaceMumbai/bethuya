@@ -41,6 +41,15 @@ var socialGithubClientSecret = builder.AddParameter("oauth-github-clientsecret",
 var socialLinkedInClientId = builder.AddParameter("oauth-linkedin-clientid", secret: true);
 var socialLinkedInClientSecret = builder.AddParameter("oauth-linkedin-clientsecret", secret: true);
 
+// Shared HMAC key: the web host signs GitHub/LinkedIn identity proofs in the OAuth callback and the
+// backend verifies them before storing a social identity. Generated and persisted locally; set it
+// explicitly (Parameters:social-verification-signing-key) for deployed environments.
+var socialVerificationSigningKey = builder.AddParameter(
+    "social-verification-signing-key",
+    new GenerateParameterDefault { MinLength = 48, Special = false },
+    secret: true,
+    persist: true);
+
 
 // Key Vault - provisioned in Azure only; no local emulator exists.
 // Only wire it in publish mode (azd up) so local dev starts without Azure credentials.
@@ -58,6 +67,7 @@ if (keyVault is not null)
     keyVault.AddBridgedSecret("SocialConnections--GitHub--ClientSecret", socialGithubClientSecret);
     keyVault.AddBridgedSecret("SocialConnections--LinkedIn--ClientId", socialLinkedInClientId);
     keyVault.AddBridgedSecret("SocialConnections--LinkedIn--ClientSecret", socialLinkedInClientSecret);
+    keyVault.AddBridgedSecret("SocialVerification--SigningKey", socialVerificationSigningKey);
 }
 
 
@@ -161,7 +171,8 @@ if (builder.IsLocalDevelopment())
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
         .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
-        .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret);
+        .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
+        .WithEnvironment("SocialVerification__SigningKey", socialVerificationSigningKey);
     backend.ConfigureSeedCommands(backendHttpEndpoint);
 }
 
@@ -217,7 +228,8 @@ if (builder.IsLocalDevelopment())
         .WithEnvironment("SocialConnections__GitHub__ClientId", socialGithubClientId)
         .WithEnvironment("SocialConnections__GitHub__ClientSecret", socialGithubClientSecret)
         .WithEnvironment("SocialConnections__LinkedIn__ClientId", socialLinkedInClientId)
-        .WithEnvironment("SocialConnections__LinkedIn__ClientSecret", socialLinkedInClientSecret);
+        .WithEnvironment("SocialConnections__LinkedIn__ClientSecret", socialLinkedInClientSecret)
+        .WithEnvironment("SocialVerification__SigningKey", socialVerificationSigningKey);
 }
 else
 {

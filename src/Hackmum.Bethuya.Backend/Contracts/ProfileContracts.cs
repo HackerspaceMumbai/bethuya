@@ -81,11 +81,18 @@ public sealed record SocialProfileResponse(
     string? GitHubProfileUrl);
 
 /// <summary>Request payload for saving verified social profile fields.</summary>
+/// <remarks>
+/// <see cref="GitHubLogin"/>, <see cref="GitHubProfileUrl"/> and <see cref="LinkedInMemberId"/> are only
+/// stored when they match a valid <see cref="GitHubProof"/> / <see cref="LinkedInProof"/> issued by the
+/// OAuth callback, or when they repeat the values already saved for this user.
+/// </remarks>
 public sealed record SaveSocialProfileRequest(
     [MaxLength(100)] string? LinkedInMemberId,
     [Url, MaxLength(500)] string? LinkedInProfileUrl,
     [MaxLength(100)] string? GitHubLogin,
-    [Url, MaxLength(500)] string? GitHubProfileUrl);
+    [Url, MaxLength(500)] string? GitHubProfileUrl,
+    [MaxLength(4096)] string? GitHubProof = null,
+    [MaxLength(4096)] string? LinkedInProof = null);
 
 /// <summary>Request payload for saving optional AIDE profile fields.</summary>
 public sealed record SaveAideProfileRequest(

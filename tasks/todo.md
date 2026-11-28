@@ -23,6 +23,12 @@ All work items must be added here **before** writing code (plan-first protocol).
 
 ## Active Tasks
 
+## [2026-11-28] Verify social identity server-side
+- **Status:** done — 13 new SocialIdentityProofTests and 5 new endpoint tests pass; full Release TUnit suite passes 650/650; AppHost builds.
+- **Agent/Owner:** contributor (anishatiwari1)
+- **Description:** Store GitHub/LinkedIn identities only from an HMAC-signed proof minted in the OAuth callback and bound to the signed-in user; stop trusting identity values sent by the client; derive curation badges only from proof-backed fields.
+- **Acceptance:** TUnit coverage for proof round-trip, tampering, wrong key, expiry, wrong subject/provider; endpoint tests show typed GitHub values without a proof are rejected and proof values win; existing onboarding tests pass with proofs.
+
 ## [2026-11-22] Protect event mutation endpoints
 - **Status:** done
 - **Agent/Owner:** Tank

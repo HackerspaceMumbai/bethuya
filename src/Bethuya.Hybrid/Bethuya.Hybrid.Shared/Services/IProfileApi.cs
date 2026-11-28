@@ -83,7 +83,9 @@ public sealed record SaveSocialProfileDto(
     [MaxLength(100)] string? LinkedInMemberId,
     [Url, MaxLength(500)] string? LinkedInProfileUrl,
     [MaxLength(100)] string? GitHubLogin,
-    [Url, MaxLength(500)] string? GitHubProfileUrl);
+    [Url, MaxLength(500)] string? GitHubProfileUrl,
+    [MaxLength(4096)] string? GitHubProof = null,
+    [MaxLength(4096)] string? LinkedInProof = null);
 
 /// <summary>Payload for saving optional AIDE profile fields.</summary>
 public sealed record SaveAideProfileDto(
