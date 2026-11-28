@@ -924,16 +924,16 @@ No build step required. Just add the NuGet package and reference the stylesheet 
 
 ```bash
 # Windows (WinUI)
-dotnet run --project src/Hackmum.Bethuya.App -f net10.0-windows10.0.19041.0
+dotnet run --project src/Bethuya.Hybrid/Bethuya.Hybrid -f net10.0-windows10.0.19041.0
 
 # Android
-dotnet build src/Hackmum.Bethuya.App -t:Run -f net10.0-android
+dotnet build src/Bethuya.Hybrid/Bethuya.Hybrid -t:Run -f net10.0-android
 
 # iOS (on macOS)
-dotnet build src/Hackmum.Bethuya.App -f net10.0-ios
+dotnet build src/Bethuya.Hybrid/Bethuya.Hybrid -f net10.0-ios
 
 # macOS (MacCatalyst)
-dotnet run --project src/Hackmum.Bethuya.App -f net10.0-maccatalyst
+dotnet run --project src/Bethuya.Hybrid/Bethuya.Hybrid -f net10.0-maccatalyst
 ```
 
 [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/aspnet/core/blazor/hybrid/tutorials/maui-blazor-web-app?view=aspnetcore-10.0)
