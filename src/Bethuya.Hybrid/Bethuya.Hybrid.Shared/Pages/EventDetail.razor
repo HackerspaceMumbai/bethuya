@@ -1554,9 +1554,11 @@
                 _ => ScheduleStatus.Draft
             };
         }
-        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode is System.Net.HttpStatusCode.NotFound
+            or System.Net.HttpStatusCode.Unauthorized
+            or System.Net.HttpStatusCode.Forbidden)
         {
-            // No active cycle yet.
+            // No active cycle yet, or the caller may not read planning cycles.
             _activeCycle = null;
         }
 

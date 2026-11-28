@@ -17,7 +17,10 @@ public class RegistrationsRenderTests
     public async Task Render_LoadsRegistrationsFromApi()
     {
         await using var ctx = CreateContext();
-        ctx.AddAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
+        ctx.AddAuthorization()
+            .SetAuthorized("Organizer")
+            .SetRoles(BethuyaRoles.Organizer)
+            .SetPolicies(BethuyaAuthorizationPolicies.RequireOrganizerOrCurator);
 
         var eventId = Guid.Parse("019e263d-effb-7a55-86ec-170baeee3718");
         var registrationApi = Substitute.For<IRegistrationApi>();
@@ -59,6 +62,24 @@ public class RegistrationsRenderTests
         await Assert.That(cut.Markup).Contains("Accepted");
         await Assert.That(cut.Markup).Contains("registration-name-field");
         await Assert.That(cut.Markup).Contains("Submit Registration");
+    }
+
+    [Test]
+    public async Task Render_Attendee_DoesNotLoadOtherRegistrants()
+    {
+        await using var ctx = CreateContext();
+        ctx.AddAuthorization().SetAuthorized("Attendee").SetRoles(BethuyaRoles.Attendee);
+
+        var registrationApi = Substitute.For<IRegistrationApi>();
+        ctx.Services.AddSingleton(registrationApi);
+        ctx.Services.AddBlazorBlueprintComponents();
+
+        var cut = ctx.Render<Registrations>(parameters => parameters.Add(p => p.EventId, Guid.CreateVersion7()));
+
+        await Assert.That(cut.FindAll("[data-test='registrations-restricted']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-test='registration-error']").Count).IsEqualTo(0);
+        await Assert.That(cut.Markup).Contains("Submit Registration");
+        await registrationApi.DidNotReceive().GetByEventIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     private static BunitCtx CreateContext()

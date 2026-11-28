@@ -27,7 +27,11 @@
         <div class="col-span-2">
             <BbCard Class="p-4">
                 <h2 class="text-lg font-semibold mb-4">Registered Attendees</h2>
-                @if (registrations.Count == 0)
+                @if (!_canViewRegistrations)
+                {
+                    <p class="text-muted-foreground" data-test="registrations-restricted">Only organizers and curators can see who has registered.</p>
+                }
+                else if (registrations.Count == 0)
                 {
                     <p class="text-muted-foreground">No registrations yet.</p>
                 }
@@ -163,8 +167,11 @@
 @code {
     [Parameter] public Guid EventId { get; set; }
     [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject] private IAuthorizationService AuthorizationService { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
     private List<RegistrationDto> registrations = [];
+    private bool _canViewRegistrations;
 
     // Contact
     private string _newName = "";
@@ -203,6 +210,16 @@
     protected override async Task OnParametersSetAsync()
     {
         _errorMessage = null;
+
+        _canViewRegistrations = AuthenticationStateTask is not null
+            && (await AuthorizationService.AuthorizeAsync(
+                (await AuthenticationStateTask).User,
+                BethuyaAuthorizationPolicies.RequireOrganizerOrCurator)).Succeeded;
+        if (!_canViewRegistrations)
+        {
+            registrations = [];
+            return;
+        }
 
         try
         {
