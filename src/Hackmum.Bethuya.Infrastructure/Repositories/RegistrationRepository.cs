@@ -28,14 +28,17 @@ public sealed class RegistrationRepository(BethuyaDbContext db) : IRegistrationR
 
         var normalizedEmails = emails
             .Where(email => !string.IsNullOrWhiteSpace(email))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(email => email.ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
             .ToList();
 
+#pragma warning disable CA1304, CA1311 // Npgsql translates ToLower() to lower(), backed by IX_Registrations_NormalizedEmail.
         var registrations = await db.Registrations
             .AsNoTracking()
-            .Where(r => normalizedEmails.Contains(r.Email) && r.EventId != excludedEventId)
+            .Where(r => normalizedEmails.Contains(r.Email.ToLower()) && r.EventId != excludedEventId)
             .OrderByDescending(r => r.RegisteredAt)
             .ToListAsync(ct);
+#pragma warning restore CA1304, CA1311
 
         return registrations
             .GroupBy(registration => registration.Email, StringComparer.OrdinalIgnoreCase)
