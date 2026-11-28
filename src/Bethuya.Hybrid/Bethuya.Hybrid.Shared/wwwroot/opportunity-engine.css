@@ -488,7 +488,7 @@
     display: grid;
     gap: 0.75rem;
     padding: 0.9rem;
-    background: rgba(13, 11, 9, 0.55);
+    background: light-dark(rgba(255, 255, 255, 0.72), rgba(13, 11, 9, 0.55));
     border: 1px solid var(--hs-border);
     border-radius: 0.75rem;
 }
@@ -799,7 +799,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.45rem;
     padding: 0.85rem;
-    background: rgba(13, 11, 9, 0.72);
+    background: light-dark(rgba(255, 255, 255, 0.85), rgba(13, 11, 9, 0.72));
     border-top: 1px solid var(--hs-border);
 }
 

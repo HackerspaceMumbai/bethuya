@@ -6,7 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <script>
         try {
-            var stored = localStorage.getItem("color-scheme");
+            var raw = localStorage.getItem("color-scheme");
+            var stored = raw === "light" || raw === "dark" ? raw : null;
             document.querySelector('meta[name="color-scheme"]').content = stored ?? "light dark";
             if (stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
                 document.documentElement.classList.add("dark");
