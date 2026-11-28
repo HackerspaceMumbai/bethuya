@@ -214,8 +214,16 @@ public sealed class GitHubEventRepository(HttpClient httpClient, IOptions<GitHub
         }
 
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Bethuya-EventPublisher/1.0");
-        httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+        if (httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
+        {
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Bethuya-EventPublisher/1.0");
+        }
+
+        if (httpClient.DefaultRequestHeaders.Accept.Count == 0)
+        {
+            httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+        }
+
         return settings;
     }
 

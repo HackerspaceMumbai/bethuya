@@ -73,6 +73,20 @@ public sealed class GitHubEventRepositoryTests
     }
 
     [Test]
+    public async Task PreviewThenPublish_SameClient_SendsSingleUserAgentAndAcceptHeader()
+    {
+        var handler = new FakeGitHubHandler(null, null);
+        using var client = CreateHttpClient(handler);
+        var repository = CreateRepository(client);
+        var request = await ConfirmPreviewAsync(repository, CreateRequest());
+
+        await repository.PublishEventAsync(request);
+
+        await Assert.That(client.DefaultRequestHeaders.UserAgent.ToString()).IsEqualTo("Bethuya-EventPublisher/1.0");
+        await Assert.That(client.DefaultRequestHeaders.Accept.ToString()).IsEqualTo("application/vnd.github+json");
+    }
+
+    [Test]
     public async Task PublishEventAsync_ExistingDraftPullRequest_UpdatesItsBranchAndReusesPullRequest()
     {
         var handler = new FakeGitHubHandler(null, null);
