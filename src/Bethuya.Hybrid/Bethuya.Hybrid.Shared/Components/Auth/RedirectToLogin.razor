@@ -3,6 +3,8 @@
 @code {
     protected override void OnInitialized()
     {
-        Navigation.NavigateTo($"/authentication/login?returnUrl={Uri.EscapeDataString(Navigation.Uri)}", forceLoad: true);
+        // The server only accepts local paths for returnUrl, so send the app-relative path, not the absolute URI.
+        var localReturnUrl = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.NavigateTo($"/authentication/login?returnUrl={Uri.EscapeDataString(localReturnUrl)}", forceLoad: true);
     }
 }

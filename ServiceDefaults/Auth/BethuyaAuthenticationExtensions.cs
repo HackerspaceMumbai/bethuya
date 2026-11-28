@@ -159,8 +159,9 @@ public static class BethuyaAuthenticationExtensions
 
         if (authOptions.Provider == AuthProviderType.None)
         {
+            // Only local paths are honoured; anything else falls back to "/" to prevent open redirects.
             group.MapGet("/login", (string? returnUrl) =>
-                Results.Redirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl));
+                Results.Redirect(LocalReturnUrl.Resolve(returnUrl)));
 
             group.MapPost("/logout", () => Results.Redirect("/"));
 
@@ -169,8 +170,9 @@ public static class BethuyaAuthenticationExtensions
 
         group.MapGet("/login", async (string? returnUrl, HttpContext context) =>
         {
+            // The post-sign-in redirect must stay on this site; reject absolute and protocol-relative targets.
             await context.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme,
-                new AuthenticationProperties { RedirectUri = returnUrl ?? "/" });
+                new AuthenticationProperties { RedirectUri = LocalReturnUrl.Resolve(returnUrl) });
         });
 
         group.MapPost("/logout", async (HttpContext context) =>
