@@ -12,6 +12,7 @@ public sealed class EventRepository(BethuyaDbContext db) : IEventRepository
             .Include(e => e.Registrations)
             .Include(e => e.Agenda)
             .ThenInclude(a => a!.Sessions)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
     public async Task<Event?> GetByHashtagAsync(string hashtag, CancellationToken ct = default)
@@ -19,6 +20,7 @@ public sealed class EventRepository(BethuyaDbContext db) : IEventRepository
             .Include(e => e.Registrations)
             .Include(e => e.Agenda)
             .ThenInclude(a => a!.Sessions)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(e => e.Hashtag != null && e.Hashtag == hashtag, ct);
 
     public async Task<IReadOnlyList<Event>> GetAllAsync(CancellationToken ct = default)
