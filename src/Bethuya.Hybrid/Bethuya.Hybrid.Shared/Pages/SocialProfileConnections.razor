@@ -272,6 +272,11 @@
 
     private async Task HandleContinue()
     {
+        if (_isSaving)
+        {
+            return;
+        }
+
         if (!CanContinue)
         {
             _actionErrorMessage = GetRequiredConnectionError();
