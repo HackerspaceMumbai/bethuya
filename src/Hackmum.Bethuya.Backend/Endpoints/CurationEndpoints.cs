@@ -152,13 +152,23 @@ public static class CurationEndpoints
                 return Results.NotFound("Registrant not found");
             }
 
-            var (status, type) = request.Action.Trim().ToLowerInvariant() switch
+            (RegistrationStatus Status, DecisionType Type)? mapped = request.Action?.Trim().ToLowerInvariant() switch
             {
                 "approve" => (RegistrationStatus.Accepted, DecisionType.Approve),
                 "waitlist" => (RegistrationStatus.Waitlisted, DecisionType.Defer),
                 "reject" => (RegistrationStatus.Rejected, DecisionType.Reject),
-                _ => throw new InvalidOperationException("Unsupported curation decision action.")
+                _ => null
             };
+
+            if (mapped is null)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["action"] = ["Action must be one of: approve, waitlist, reject."]
+                });
+            }
+
+            var (status, type) = mapped.Value;
 
             registration.Status = status;
             if (status == RegistrationStatus.Accepted && registration.ApprovalObservedAt is null)
