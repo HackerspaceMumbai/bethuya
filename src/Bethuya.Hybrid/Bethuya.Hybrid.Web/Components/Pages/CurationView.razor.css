@@ -1591,3 +1591,13 @@
         --curation-sidebar-width: 0px;
     }
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .metric-chip.highlighted,
+    .metric-chip.highlighted::after,
+    .metric-chip .metric-chip-value-row.metric-value-changed,
+    .metric-chip .metric-delta.delta-changed,
+    .queue-item.selected {
+        animation: none;
+    }
+}
