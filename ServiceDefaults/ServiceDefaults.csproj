@@ -25,4 +25,8 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Hackmum.Bethuya.Tests" />
+  </ItemGroup>
+
 </Project>

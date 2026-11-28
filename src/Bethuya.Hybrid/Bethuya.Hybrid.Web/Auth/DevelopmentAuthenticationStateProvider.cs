@@ -6,29 +6,38 @@ namespace Bethuya.Hybrid.Web.Auth;
 
 /// <summary>
 /// Development-only <see cref="AuthenticationStateProvider"/> used when
-/// <see cref="AuthProviderType.None"/> is configured. Returns the current HTTP request's
-/// already-resolved <see cref="System.Security.Claims.ClaimsPrincipal"/> (populated by
-/// <c>DevelopmentAuthenticationHandler</c> via the ASP.NET Core authentication middleware),
-/// so Blazor circuits reflect whichever persona was selected for this request rather than a
-/// shared static instance.
+/// <see cref="AuthProviderType.None"/> is configured. Captures the Blazor circuit's
+/// host-authenticated <see cref="System.Security.Claims.ClaimsPrincipal"/> via
+/// <see cref="IHostEnvironmentAuthenticationStateProvider"/> (preserving the selected persona
+/// across SignalR circuit callbacks when <c>HttpContext</c> is null) and falls back to
+/// <see cref="IHttpContextAccessor"/> during SSR prerendering or unit tests.
 /// </summary>
-/// <remarks>
-/// Falls back to the legacy fixed development principal when no <see cref="HttpContext"/> is
-/// available (e.g. during Blazor circuit initialization before the request is bound).
-/// </remarks>
 internal sealed class DevelopmentAuthenticationStateProvider(IHttpContextAccessor httpContextAccessor)
-    : AuthenticationStateProvider
+    : AuthenticationStateProvider, IHostEnvironmentAuthenticationStateProvider
 {
-    // Cached fallback — used only when no HttpContext is available.
+    // Cached fallback — used only when neither host circuit state nor HttpContext is available.
     private static readonly AuthenticationState DefaultDevState =
         new(DevelopmentAuthenticationDefaults.CreatePrincipal());
 
+    private Task<AuthenticationState>? _hostAuthenticationStateTask;
+
+    public void SetAuthenticationState(Task<AuthenticationState> authenticationStateTask)
+    {
+        _hostAuthenticationStateTask = authenticationStateTask
+            ?? throw new ArgumentNullException(nameof(authenticationStateTask));
+        NotifyAuthenticationStateChanged(_hostAuthenticationStateTask);
+    }
+
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
+        if (_hostAuthenticationStateTask is not null)
+        {
+            return _hostAuthenticationStateTask;
+        }
+
         var user = httpContextAccessor.HttpContext?.User;
 
-        // No HttpContext bound (circuit not yet associated with an HTTP request) →
-        // fall back to legacy fixed dev principal to keep all [Authorize] UI rendering.
+        // No HttpContext bound (SSR/test without host state) → fall back to legacy fixed dev principal.
         if (user is null)
         {
             return Task.FromResult(DefaultDevState);

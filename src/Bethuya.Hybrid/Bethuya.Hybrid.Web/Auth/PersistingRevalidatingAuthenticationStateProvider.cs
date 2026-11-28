@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
+using ServiceDefaults.Auth;
 
 namespace Bethuya.Hybrid.Web.Auth;
 
@@ -19,17 +19,20 @@ internal sealed class PersistingRevalidatingAuthenticationStateProvider : Revali
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly PersistentComponentState _state;
+    private readonly IBackendTokenStore? _tokenStore;
     private readonly PersistingComponentStateSubscription _subscription;
     private Task<AuthenticationState>? _authenticationStateTask;
 
     public PersistingRevalidatingAuthenticationStateProvider(
         ILoggerFactory loggerFactory,
         IServiceScopeFactory scopeFactory,
-        PersistentComponentState state)
+        PersistentComponentState state,
+        IBackendTokenStore? tokenStore = null)
         : base(loggerFactory)
     {
         _scopeFactory = scopeFactory;
         _state = state;
+        _tokenStore = tokenStore;
         AuthenticationStateChanged += OnAuthenticationStateChanged;
         _subscription = _state.RegisterOnPersisting(OnPersistingAsync, RenderMode.InteractiveWebAssembly);
     }
@@ -41,7 +44,21 @@ internal sealed class PersistingRevalidatingAuthenticationStateProvider : Revali
     {
         // Get fresh user from a new scope to avoid DbContext concurrency issues
         await using var scope = _scopeFactory.CreateAsyncScope();
-        return ValidatePrincipal(authenticationState.User);
+        if (!ValidatePrincipal(authenticationState.User))
+        {
+            return false;
+        }
+
+        var sessionId = authenticationState.User.FindFirst(BackendTokenClaimTypes.TokenSessionId)?.Value;
+        if (!string.IsNullOrWhiteSpace(sessionId) && _tokenStore is not null)
+        {
+            var accessToken = await _tokenStore
+                .GetValidAccessTokenAsync(sessionId, cancellationToken)
+                .ConfigureAwait(false);
+            return !string.IsNullOrWhiteSpace(accessToken);
+        }
+
+        return true;
     }
 
     private static bool ValidatePrincipal(ClaimsPrincipal principal)

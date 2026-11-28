@@ -1,5 +1,4 @@
 name: Squad CI
-# dotnet project - configure build/test commands below
 
 on:
   pull_request:
@@ -7,6 +6,7 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [dev, insider]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,12 +17,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build and test
-        run: |
-          # TODO: Add your dotnet build/test commands here
-          # Go:            go test ./...
-          # Python:        pip install -r requirements.txt && pytest
-          # .NET:          dotnet test
-          # Java (Maven):  mvn test
-          # Java (Gradle): ./gradlew test
-          echo "No build commands configured - update squad-ci.yml"
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4.2.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test (TUnit)
+        run: dotnet test --project tests/Hackmum.Bethuya.Tests/Hackmum.Bethuya.Tests.csproj --no-build --configuration Release

@@ -99,6 +99,12 @@
     font-weight: 600;
 }
 
+.nav-section--bottom ::deep .login-display-role {
+    color: var(--hs-text-muted);
+    font-size: 0.74rem;
+    line-height: 1.25;
+}
+
 .nav-section--bottom ::deep .login-display-logout,
 .nav-section--bottom ::deep .login-display-login {
     color: var(--hs-gold);

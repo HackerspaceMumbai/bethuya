@@ -1,53 +1,73 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using ServiceDefaults.Auth;
 
 namespace Bethuya.Hybrid.Web.Auth;
 
 /// <summary>
-/// Propagates the currently-selected development persona key from the Web SSR cookie to
-/// outbound Refit requests as the <c>X-Bethuya-Dev-Persona</c> header, so the Backend
-/// <c>DevelopmentAuthenticationHandler</c> constructs the same persona principal as the Web tier.
+/// Propagates the currently-selected development persona key from either the Web SSR cookie
+/// or the active Blazor <c>InteractiveServer</c> circuit principal to outbound Refit requests
+/// as the <c>X-Bethuya-Dev-Persona</c> header, so the Backend <c>DevelopmentAuthenticationHandler</c>
+/// constructs the same persona principal as the Web tier.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Active ONLY when <c>Authentication:Provider=None</c> AND <c>Environment=Development</c>
-/// (enforced at the call-site in <c>Program.cs</c> — the handler is not registered otherwise).
-/// Real-provider flows are completely unaffected.
-/// </para>
-/// <para>
-/// The propagated value is the opaque persona <em>key</em> (e.g. <c>Farah</c>) — never roles,
-/// claims, or profile data. The Backend validates the key against the same allowlist
-/// (<see cref="ServiceDefaults.Auth.DevelopmentPersonaCatalog"/>) and constructs claims from
-/// the catalog entry, so no caller-supplied authorization data crosses the service boundary.
-/// </para>
-/// <para>
-/// Never overwrites an existing <c>X-Bethuya-Dev-Persona</c> header if one was already set by
-/// the caller (mirrors <see cref="BackendAccessTokenHandler"/> behavior, consistent with the
-/// "don't double-set" convention; in practice nothing else sets this header).
-/// </para>
-/// </remarks>
-public sealed class DevPersonaPropagationHandler(IHttpContextAccessor httpContextAccessor) : DelegatingHandler
+public sealed class DevPersonaPropagationHandler(
+    IHttpContextAccessor httpContextAccessor,
+    ICircuitPrincipalAccessor? circuitPrincipalAccessor = null) : DelegatingHandler
 {
+    private const string UnknownPersonaSub = "dev-persona-unknown";
+
     /// <inheritdoc />
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
         // Only propagate if the header is not already present.
-        if (!request.Headers.Contains(ServiceDefaults.Auth.DevelopmentPersonaCatalog.PersonaHeaderName))
+        if (!request.Headers.Contains(DevelopmentPersonaCatalog.PersonaHeaderName))
         {
-            // Read the persona key from the Web SSR cookie — this is guaranteed to be the same
-            // key the Web DevelopmentAuthenticationHandler resolved for this request.
+            // Prefer the HTTP request cookie when inside an active HTTP request (SSR / tests).
             var personaKey = httpContextAccessor.HttpContext?.Request.Cookies[
-                ServiceDefaults.Auth.DevelopmentPersonaCatalog.PersonaCookieName];
+                DevelopmentPersonaCatalog.PersonaCookieName];
+
+            // On InteractiveServer SignalR circuit dispatches, HttpContext is unavailable;
+            // fall back to the circuit's authenticated ClaimsPrincipal captured by BethuyaCircuitHandler.
+            if (string.IsNullOrEmpty(personaKey))
+            {
+                personaKey = ResolvePersonaKeyFromPrincipal(circuitPrincipalAccessor?.CurrentPrincipal);
+            }
 
             if (!string.IsNullOrEmpty(personaKey))
             {
                 request.Headers.TryAddWithoutValidation(
-                    ServiceDefaults.Auth.DevelopmentPersonaCatalog.PersonaHeaderName,
+                    DevelopmentPersonaCatalog.PersonaHeaderName,
                     personaKey);
             }
         }
 
         return base.SendAsync(request, cancellationToken);
+    }
+
+    private static string? ResolvePersonaKeyFromPrincipal(ClaimsPrincipal? principal)
+    {
+        if (principal is null)
+        {
+            return null;
+        }
+
+        var personaClaim = principal.Claims.FirstOrDefault(c =>
+            c.Type == DevelopmentAuthenticationDefaults.PersonaClaimType &&
+            c.Issuer == DevelopmentAuthenticationDefaults.PersonaClaimIssuer);
+
+        if (!string.IsNullOrWhiteSpace(personaClaim?.Value))
+        {
+            return personaClaim.Value;
+        }
+
+        // Preserve fail-closed behavior if the circuit connected with an unrecognized persona cookie.
+        if (string.Equals(principal.FindFirst("sub")?.Value, UnknownPersonaSub, StringComparison.Ordinal))
+        {
+            return UnknownPersonaSub;
+        }
+
+        return null;
     }
 }

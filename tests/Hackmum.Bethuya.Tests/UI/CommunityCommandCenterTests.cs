@@ -390,6 +390,8 @@ public sealed class CommunityCommandCenterTests
 
         await Assert.That(cut.FindAll("[data-test='strategic-insight']").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("[data-test='immediate-decisions']").Count).IsEqualTo(0);
+        await Assert.That(cut.Find("[data-test='command-center-login-link']").GetAttribute("href"))
+            .IsEqualTo("/authentication/login?returnUrl=%2F");
     }
 
     [Test]

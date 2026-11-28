@@ -19,8 +19,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check Gitleaks license availability
+        id: license
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        run: |
+          if [ -n "$GITLEAKS_LICENSE" ]; then
+            echo "has_license=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_license=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run gitleaks-action (licensed org mode)
-        if: ${{ secrets.GITLEAKS_LICENSE != '' }}
+        if: steps.license.outputs.has_license == 'true'
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -29,7 +40,7 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: false
 
       - name: Run gitleaks CLI on PR commit range (license-free fallback)
-        if: ${{ secrets.GITLEAKS_LICENSE == '' }}
+        if: steps.license.outputs.has_license == 'false'
         run: |
           set -euo pipefail
           GITLEAKS_VERSION=8.30.1
