@@ -412,20 +412,24 @@
                                                 </div>
                                                 <div class="session-actions flex shrink-0 flex-wrap gap-1">
                                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                                              AriaLabel="@($"Edit {session.Title}")" title="Edit session"
                                                               OnClick="@(() => StartEdit(session))">
                                                         ✏️
                                                     </BbButton>
                                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                                              AriaLabel="@($"Move {session.Title} earlier")" title="Move earlier"
                                                               OnClick="@(() => MoveUp(session))"
                                                               Disabled="@(session.Order <= 1)">
                                                         ▲
                                                     </BbButton>
                                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                                              AriaLabel="@($"Move {session.Title} later")" title="Move later"
                                                               OnClick="@(() => MoveDown(session))"
                                                               Disabled="@(session.Order >= sessions.Count)">
                                                         ▼
                                                     </BbButton>
                                                     <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Small"
+                                                              AriaLabel="@($"Delete {session.Title}")" title="Delete session"
                                                               OnClick="@(() => DeleteSession(session))">
                                                         🗑️
                                                     </BbButton>
@@ -597,7 +601,7 @@
                         <div data-test="approve-btn">
                             <BbButton Variant="ButtonVariant.Default"
                                       OnClick="ApproveScheduleAsync"
-                                      Disabled="@(_activeCycle?.ActiveDraft is null || isCyclePublished)">
+                                      Disabled="@(_activeCycle?.ActiveDraft is null || isCyclePublished || _isCycleActionPending)">
                                 ✅ Approve
                             </BbButton>
                         </div>
@@ -670,14 +674,14 @@
                     <div data-test="publish-btn">
                         <BbButton Variant="ButtonVariant.Outline"
                                   OnClick="PublishScheduleAsync"
-                                  Disabled="@(!CanPublish)">
+                                  Disabled="@(!CanPublish || _isCycleActionPending)">
                             📢 Publish Schedule
                         </BbButton>
                     </div>
                     <div data-test="start-new-cycle-btn">
                         <BbButton Variant="ButtonVariant.Ghost"
                                   OnClick="StartNewCycleAsync"
-                                  Disabled="@(!isCyclePublished)">
+                                  Disabled="@(!isCyclePublished || _isCycleActionPending)">
                             🔁 Start New Cycle
                         </BbButton>
                     </div>
@@ -702,6 +706,7 @@
     private SessionViewModel newSession = new();
     private bool showAddForm;
     private bool isAiDrafting;
+    private bool _isCycleActionPending;
     private string? statusMessage;
     private string _refineConstraints = string.Empty;
     private int? _targetDurationMinutes;
@@ -1142,6 +1147,11 @@
 
     private async Task ApplyPromptChipAsync(string chipLabel, string constraintText)
     {
+        if (isAiDrafting)
+        {
+            return;
+        }
+
         if (!ContainsEquivalentConstraintToken(_refineConstraints, constraintText))
         {
             _refineConstraints = string.IsNullOrWhiteSpace(_refineConstraints)
@@ -1173,21 +1183,7 @@
         return $"agent-console-reasoning-step {stateClass}";
     }
 
-    private async Task TypePlannerMessageAsync(string text)
-    {
-        var msg = new ConsoleMessage("Planner", string.Empty, isStreaming: true);
-        _consoleMessages.Add(msg);
-
-        for (var i = 1; i <= text.Length; i++)
-        {
-            msg.Text = text[..i];
-            await InvokeAsync(StateHasChanged);
-            await Task.Delay(18);
-        }
-
-        msg.IsStreaming = false;
-        await InvokeAsync(StateHasChanged);
-    }
+    private void AddPlannerMessage(string text) => _consoleMessages.Add(new("Planner", text));
 
     private IEnumerable<string> GetConstraints() =>
         ActiveAgendaJson?.Constraints.Where(item => !string.IsNullOrWhiteSpace(item)) ?? [];
@@ -1315,6 +1311,11 @@
 
     private async Task DraftWithAiAsync(string? steeringPrompt = null, string? steeringLabel = null)
     {
+        if (isAiDrafting)
+        {
+            return;
+        }
+
         if (EventId == Guid.Empty)
         {
             statusMessage = "Cannot draft schedule: event is not resolved.";
@@ -1342,12 +1343,10 @@
                 .GroupBy(snapshot => snapshot.StableKey, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
-            await Task.Delay(220);
             for (var stepIndex = 0; stepIndex < PlannerReasoningSteps.Length; stepIndex++)
             {
                 _activePlannerReasoningStep = stepIndex;
-                await TypePlannerMessageAsync(PlannerReasoningSteps[stepIndex]);
-                await Task.Delay(280);
+                AddPlannerMessage(PlannerReasoningSteps[stepIndex]);
             }
 
             _activeCycle ??= await PlanningCycleApi.StartCycleAsync(EventId, new StartPlanningCycleDto());
@@ -1361,12 +1360,12 @@
 
             ApplyDraftToUi(_activeCycle.ActiveDraft, previousSnapshots);
             agendaStatus = ScheduleStatus.ProposedByAgent;
-            await TypePlannerMessageAsync("Returned agenda blocks, constraints, rationale, and risks. Review and approve to publish.");
+            AddPlannerMessage("Returned agenda blocks, constraints, rationale, and risks. Review and approve to publish.");
         }
         catch (Refit.ApiException apiEx)
         {
             statusMessage = $"Planner draft failed: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
-            await TypePlannerMessageAsync($"Draft failed ({(int)apiEx.StatusCode}). Try again.");
+            AddPlannerMessage($"Draft failed ({(int)apiEx.StatusCode}). Try again.");
         }
         finally
         {
@@ -1441,12 +1440,18 @@
 
     private async Task ApproveScheduleAsync()
     {
+        if (_isCycleActionPending)
+        {
+            return;
+        }
+
         if (_activeCycle?.ActiveDraft is null || string.IsNullOrWhiteSpace(_plannerMarkdown))
         {
             statusMessage = "No planner draft is available to approve.";
             return;
         }
 
+        _isCycleActionPending = true;
         try
         {
             _activeCycle = await PlanningCycleApi.ApproveDraftAsync(
@@ -1468,15 +1473,20 @@
         {
             statusMessage = $"Approval failed: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
         }
+        finally
+        {
+            _isCycleActionPending = false;
+        }
     }
 
     private async Task StartNewCycleAsync()
     {
-        if (EventId == Guid.Empty)
+        if (EventId == Guid.Empty || _isCycleActionPending)
         {
             return;
         }
 
+        _isCycleActionPending = true;
         try
         {
             _activeCycle = await PlanningCycleApi.StartCycleAsync(EventId, new StartPlanningCycleDto(ForceNewCycle: true));
@@ -1494,18 +1504,28 @@
         {
             statusMessage = $"Cannot start new cycle: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
         }
+        finally
+        {
+            _isCycleActionPending = false;
+        }
     }
 
     // ── Quick Actions ──
 
     private async Task PublishScheduleAsync()
     {
+        if (_isCycleActionPending)
+        {
+            return;
+        }
+
         if (_activeCycle?.ActiveDraft is null)
         {
             statusMessage = "Nothing to publish.";
             return;
         }
 
+        _isCycleActionPending = true;
         try
         {
             _ = await PlanningCycleApi.PublishAsync(
@@ -1522,6 +1542,10 @@
         catch (Refit.ApiException apiEx)
         {
             statusMessage = $"Publish failed: {(int)apiEx.StatusCode} {apiEx.StatusCode}.";
+        }
+        finally
+        {
+            _isCycleActionPending = false;
         }
     }
 
