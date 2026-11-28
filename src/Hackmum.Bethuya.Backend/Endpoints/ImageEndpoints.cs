@@ -1,4 +1,5 @@
 using Hackmum.Bethuya.Core.Services;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -9,7 +10,8 @@ public static class ImageEndpoints
     {
         var group = app.MapGroup("/api/images")
             .WithTags("Images")
-            .RequireRateLimiting(RateLimitPolicies.Ai);
+            .RequireRateLimiting(RateLimitPolicies.Ai)
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/direct-upload/session", async (
             CreateDirectUploadSessionRequest request,

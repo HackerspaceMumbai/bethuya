@@ -2,13 +2,26 @@ using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Backend.Services;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
+using Hackmum.Bethuya.Infrastructure.Data;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
+using ServiceDefaults.Auth;
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
 public static class RegistrationEndpoints
 {
+    /// <summary>
+    /// Response header on registration create, and request header on government ID upload, carrying a
+    /// short-lived token that binds the new registration to the signed-in user who created it.
+    /// </summary>
+    public const string GovernmentIdUploadTokenHeader = "X-Bethuya-Government-Id-Upload-Token";
+
+    private const string GovernmentIdUploadTokenPurpose = "Bethuya.Registration.GovernmentIdUploadToken.v1";
+    private static readonly TimeSpan GovernmentIdUploadTokenLifetime = TimeSpan.FromHours(1);
+
     private static readonly HashSet<string> AllowedGovernmentIdContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
@@ -29,12 +42,14 @@ public static class RegistrationEndpoints
         var group = app.MapGroup("/api/registrations").WithTags("Registrations");
 
         group.MapGet("/event/{eventId:guid}", async (Guid eventId, IRegistrationRepository repo, CancellationToken ct) =>
-            Results.Ok(await repo.GetByEventIdAsync(eventId, ct)));
+            Results.Ok(await repo.GetByEventIdAsync(eventId, ct)))
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizerOrCurator);
 
         group.MapGet("/{id:guid}", async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
             await repo.GetByIdAsync(id, ct) is { } reg
                 ? Results.Ok(reg)
-                : Results.NotFound());
+                : Results.NotFound())
+            .RequireAuthorization(BethuyaPolicyNames.RequireOrganizerOrCurator);
 
         group.MapPost("/", async (
             CreateRegistrationRequest request,
@@ -42,6 +57,8 @@ public static class RegistrationEndpoints
             IAttendeeProfileRepository profileRepo,
             CommunityPassportService passportService,
             InclusionSignalsNormalizer inclusionSignalsNormalizer,
+            IDataProtectionProvider dataProtectionProvider,
+            HttpResponse response,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
@@ -83,16 +100,26 @@ public static class RegistrationEndpoints
             };
 
             var created = await repo.CreateAsync(reg, ct);
+            if (subject is not null)
+            {
+                response.Headers[GovernmentIdUploadTokenHeader] = CreateGovernmentIdUploadTokenProtector(dataProtectionProvider)
+                    .Protect(GetGovernmentIdUploadTokenPayload(created.Id, subject.UserId), GovernmentIdUploadTokenLifetime);
+            }
+
             return Results.Created($"/api/registrations/{created.Id}", created);
         });
 
-        group.MapPost("/{id:guid}/government-id", UploadGovernmentIdAsync);
+        // The backend is called by the Web tier with a bearer token, not a browser form post,
+        // so the antiforgery metadata implied by IFormFile does not apply here.
+        group.MapPost("/{id:guid}/government-id", UploadGovernmentIdAsync)
+            .RequireAuthorization()
+            .DisableAntiforgery();
 
         group.MapDelete("/{id:guid}", async (Guid id, IRegistrationRepository repo, CancellationToken ct) =>
         {
             await repo.DeleteAsync(id, ct);
             return Results.NoContent();
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
     }
 
     private static async Task<AttendeeInclusionSource?> ResolveProfileInclusionSourceAsync(
@@ -135,6 +162,9 @@ public static class RegistrationEndpoints
         IFormFile file,
         IDataProtectionProvider dataProtectionProvider,
         IRegistrationRepository repo,
+        BethuyaDbContext db,
+        ClaimsPrincipal user,
+        HttpRequest request,
         CancellationToken ct)
     {
         if (file is null || file.Length == 0)
@@ -158,6 +188,10 @@ public static class RegistrationEndpoints
         if (reg is null)
             return Results.NotFound();
 
+        if (!HasValidGovernmentIdUploadToken(request, user, reg.Id, dataProtectionProvider)
+            && !await CanUploadGovernmentIdAsync(user, reg, db, ct))
+            return Results.Forbid();
+
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);
         var payloadBytes = ms.ToArray();
@@ -175,6 +209,56 @@ public static class RegistrationEndpoints
 
         await repo.UpdateAsync(reg, ct);
         return Results.NoContent();
+    }
+
+    private static async Task<bool> CanUploadGovernmentIdAsync(
+        ClaimsPrincipal user,
+        Registration registration,
+        BethuyaDbContext db,
+        CancellationToken ct)
+    {
+        if (user.IsInRole(BethuyaRoleNames.Admin) || user.IsInRole(BethuyaRoleNames.Organizer))
+        {
+            return true;
+        }
+
+        var subject = user.GetSubject();
+        if (subject is null || registration.CommunityMemberId is not { } memberId)
+        {
+            return false;
+        }
+
+        return await db.CommunityMembers.AnyAsync(m => m.Id == memberId && m.UserId == subject.UserId, ct);
+    }
+
+    private static ITimeLimitedDataProtector CreateGovernmentIdUploadTokenProtector(IDataProtectionProvider dataProtectionProvider)
+        => dataProtectionProvider.CreateProtector(GovernmentIdUploadTokenPurpose).ToTimeLimitedDataProtector();
+
+    private static string GetGovernmentIdUploadTokenPayload(Guid registrationId, string userId)
+        => $"{registrationId:N}:{userId}";
+
+    private static bool HasValidGovernmentIdUploadToken(
+        HttpRequest request,
+        ClaimsPrincipal user,
+        Guid registrationId,
+        IDataProtectionProvider dataProtectionProvider)
+    {
+        var token = request.Headers[GovernmentIdUploadTokenHeader].FirstOrDefault();
+        var subject = user.GetSubject();
+        if (string.IsNullOrWhiteSpace(token) || subject is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var payload = CreateGovernmentIdUploadTokenProtector(dataProtectionProvider).Unprotect(token);
+            return string.Equals(payload, GetGovernmentIdUploadTokenPayload(registrationId, subject.UserId), StringComparison.Ordinal);
+        }
+        catch (CryptographicException)
+        {
+            return false;
+        }
     }
 
     private static bool MatchesAllowedSignature(string extension, byte[] bytes)

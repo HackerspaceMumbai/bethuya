@@ -1559,6 +1559,18 @@
             // No active cycle yet.
             _activeCycle = null;
         }
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode is System.Net.HttpStatusCode.Unauthorized
+            or System.Net.HttpStatusCode.Forbidden)
+        {
+            // The caller may not read planning cycles; drop anything shown from an earlier load.
+            sessions.Clear();
+            editSnapshots.Clear();
+            _newlyGeneratedBlockIds.Clear();
+            _updatedGeneratedBlockIds.Clear();
+            _activeCycle = null;
+            _plannerMarkdown = string.Empty;
+            agendaStatus = ScheduleStatus.Draft;
+        }
 
         InitConsoleMessages();
     }

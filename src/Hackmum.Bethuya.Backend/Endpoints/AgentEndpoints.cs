@@ -5,6 +5,7 @@ using Hackmum.Bethuya.Backend.Contracts;
 using Hackmum.Bethuya.Core.Models;
 using Hackmum.Bethuya.Core.Repositories;
 using Microsoft.Extensions.Hosting;
+using ServiceDefaults.Auth;
 
 namespace Hackmum.Bethuya.Backend.Endpoints;
 
@@ -34,7 +35,7 @@ public static class AgentEndpoints
 
             var response = await planner.DraftAsync(agentRequest, ct);
             return Results.Ok(response);
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/curator/{eventId:guid}", async (
             Guid eventId,
@@ -64,7 +65,7 @@ public static class AgentEndpoints
 
             var response = await curator.DraftAsync(agentRequest, ct);
             return Results.Ok(response);
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizerOrCurator);
 
         group.MapPost("/facilitator/{eventId:guid}", async (
             Guid eventId,
@@ -85,7 +86,7 @@ public static class AgentEndpoints
 
             var response = await facilitator.DraftAsync(agentRequest, ct);
             return Results.Ok(response);
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/reporter/{eventId:guid}", async (
             Guid eventId,
@@ -104,7 +105,7 @@ public static class AgentEndpoints
 
             var response = await reporter.DraftAsync(agentRequest, ct);
             return Results.Ok(response);
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
 
         group.MapPost("/recommend-dates", async (
             RecommendDatesApiRequest request,
@@ -126,6 +127,6 @@ public static class AgentEndpoints
                 EndDate: recommendation.EndDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
                 EndTime: recommendation.EndTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
                 Reasoning: recommendation.Reasoning));
-        });
+        }).RequireAuthorization(BethuyaPolicyNames.RequireOrganizer);
     }
 }
