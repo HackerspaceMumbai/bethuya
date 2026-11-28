@@ -59,7 +59,26 @@ public sealed class CurationEndpointAuthorizationTests
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
+    [Test]
+    [Arguments("{\"action\":\"promote\"}")]
+    [Arguments("{\"action\":null}")]
+    [Arguments("{}")]
+    public async Task CurationDecision_ReturnsValidationProblemForUnknownOrMissingAction(string body)
+    {
+        await using var app = await CreateAppAsync(BethuyaRoleNames.Organizer);
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test");
+        using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(
+            $"/api/curation/{TestEventId}/registrants/{TestRegistrationId}/decision",
+            content);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
+
     private static readonly Guid TestEventId = Guid.Parse("01985f65-71aa-7e2b-9581-b3e8b0548b10");
+    private static readonly Guid TestRegistrationId = Guid.Parse("01985f65-71aa-7e2b-9581-b3e8b0548b11");
 
     private static async Task<WebApplication> CreateAppAsync(string role)
     {
@@ -78,6 +97,14 @@ public sealed class CurationEndpointAuthorizationTests
         var registrationRepository = Substitute.For<IRegistrationRepository>();
         registrationRepository.GetByEventIdAsync(TestEventId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<Registration>());
+        registrationRepository.GetByIdAsync(TestRegistrationId, Arg.Any<CancellationToken>())
+            .Returns(new Registration
+            {
+                Id = TestRegistrationId,
+                EventId = TestEventId,
+                FullName = "Curation Decision Test",
+                Email = "decision-test@example.com"
+            });
         registrationRepository.GetHistoricalByEmailsAsync(
                 Arg.Any<IReadOnlyCollection<string>>(),
                 Arg.Any<Guid>(),

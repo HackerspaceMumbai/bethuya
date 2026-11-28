@@ -182,9 +182,18 @@ public sealed class CommunityJourneyReadModelService(
         Dictionary<Guid, Event> eventsById)
     {
         var timeline = new List<JourneyTimelineEntryResponse>(registrations.Count + ledgerEntries.Count);
+        var attendedEventIds = ledgerEntries
+            .Where(entry => entry.Activity == ParticipationActivityKind.Attended && entry.EventId.HasValue)
+            .Select(entry => entry.EventId!.Value)
+            .ToHashSet();
 
         foreach (var registration in registrations)
         {
+            if (registration.Status == RegistrationStatus.CheckedIn && attendedEventIds.Contains(registration.EventId))
+            {
+                continue;
+            }
+
             var status = registration.Status.ToString();
             var points = PointsForRegistration(registration.Status);
             var eventTitle = eventsById.TryGetValue(registration.EventId, out var evt)
@@ -336,7 +345,7 @@ public sealed class CommunityJourneyReadModelService(
             return 100d;
         }
 
-        var span = Math.Max(1, stage.MaxScore - stage.MinScore);
+        var span = Math.Max(1, stage.MaxScore - stage.MinScore + 1);
         var normalized = Math.Clamp(score - stage.MinScore, 0, span);
         return Math.Round((double)normalized / span * 100d, 2);
     }

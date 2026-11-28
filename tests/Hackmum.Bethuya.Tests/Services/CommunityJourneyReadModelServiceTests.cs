@@ -165,6 +165,84 @@ public sealed class CommunityJourneyReadModelServiceTests
     }
 
     [Test]
+    public async Task GetJourneyProjectionAsync_CountsImportedCheckInOnce()
+    {
+        await using var db = CreateDbContext();
+        var passportService = new CommunityPassportService(db);
+        var subject = new CommunitySubjectContext("journey-import-member", "Import Tester", "import@example.com");
+        var evt = new Event
+        {
+            Title = "Imported Meetup",
+            CreatedBy = "organizer",
+            StartDate = DateTimeOffset.UtcNow.AddDays(-1),
+            EndDate = DateTimeOffset.UtcNow.AddDays(-1).AddHours(3)
+        };
+        db.Events.Add(evt);
+        await db.SaveChangesAsync();
+        _ = await passportService.GetPassportAsync(subject);
+        var memberId = await db.CommunityMembers
+            .Where(member => member.UserId == subject.UserId)
+            .Select(member => member.Id)
+            .SingleAsync();
+
+        db.Registrations.Add(new Registration
+        {
+            EventId = evt.Id,
+            CommunityMemberId = memberId,
+            FullName = "Import Tester",
+            Email = subject.Email!,
+            Status = RegistrationStatus.CheckedIn
+        });
+        db.ParticipationLedgerEntries.Add(new ParticipationLedgerEntry
+        {
+            Id = ParticipationLedgerEntryId.From(Guid.CreateVersion7()),
+            CommunityMemberId = memberId,
+            Connector = ParticipationConnectorKind.Luma,
+            IngestionMethod = ParticipationIngestionMethod.FileImport,
+            ExternalMemberKey = subject.Email!,
+            EventId = evt.Id,
+            Activity = ParticipationActivityKind.Attended,
+            OccurredAt = DateTimeOffset.UtcNow.AddDays(-1),
+            Evidence = "Imported attendance record.",
+            ProvenanceKey = "journey:import:attended:1"
+        });
+        await db.SaveChangesAsync();
+        var service = new CommunityJourneyReadModelService(db, passportService);
+
+        var projection = await service.GetJourneyProjectionAsync(subject, timelineLimit: 50);
+
+        await Assert.That(projection.JourneyScore).IsEqualTo(4);
+        await Assert.That(projection.Timeline.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task GetJourneyProjectionAsync_StageCompletionStaysBelowFullUntilNextStage()
+    {
+        await using var db = CreateDbContext();
+        var passportService = new CommunityPassportService(db);
+        var subject = new CommunitySubjectContext("journey-boundary-member", "Boundary Tester", "boundary@example.com");
+        _ = await passportService.GetPassportAsync(subject);
+        var memberId = await db.CommunityMembers
+            .Where(member => member.UserId == subject.UserId)
+            .Select(member => member.Id)
+            .SingleAsync();
+
+        db.ParticipationLedgerEntries.AddRange(
+            CreateLedgerEntry(memberId, ParticipationActivityKind.Attended, "journey:boundary:attended"),
+            CreateLedgerEntry(memberId, ParticipationActivityKind.JoinedCommunity, "journey:boundary:joined"),
+            CreateLedgerEntry(memberId, ParticipationActivityKind.MessageEngaged, "journey:boundary:message"));
+        await db.SaveChangesAsync();
+        var service = new CommunityJourneyReadModelService(db, passportService);
+
+        var projection = await service.GetJourneyProjectionAsync(subject);
+
+        await Assert.That(projection.JourneyScore).IsEqualTo(7);
+        await Assert.That(projection.CurrentStage).IsEqualTo("Explorer");
+        await Assert.That(projection.StageProgress.PointsToNextStage).IsEqualTo(1);
+        await Assert.That(projection.StageCompletionPercent).IsEqualTo(87.5d);
+    }
+
+    [Test]
     public async Task GetDashboardReadModelAsync_ComputesRetentionVolunteerGrowthAndFunnel()
     {
         await using var db = CreateDbContext();
@@ -297,6 +375,22 @@ public sealed class CommunityJourneyReadModelServiceTests
         await Assert.That(readModel.LeadershipFunnel.LeadershipCandidates).IsEqualTo(1);
         await Assert.That(readModel.VolunteerGrowth.CurrentWindowSignals).IsEqualTo(1);
     }
+
+    private static ParticipationLedgerEntry CreateLedgerEntry(
+        CommunityMemberId memberId,
+        ParticipationActivityKind activity,
+        string provenanceKey)
+        => new()
+        {
+            Id = ParticipationLedgerEntryId.From(Guid.CreateVersion7()),
+            CommunityMemberId = memberId,
+            Connector = ParticipationConnectorKind.Discord,
+            ExternalMemberKey = "discord:boundary:1",
+            Activity = activity,
+            OccurredAt = DateTimeOffset.UtcNow.AddDays(-3),
+            Evidence = $"{activity} signal",
+            ProvenanceKey = provenanceKey
+        };
 
     private static BethuyaDbContext CreateDbContext()
     {

@@ -9,6 +9,9 @@ namespace Hackmum.Bethuya.Backend.Services;
 public sealed class InclusionSignalsNormalizer
 {
     private static readonly Regex LanguageSplitRegex = new(@"[,;/\|]+", RegexOptions.Compiled);
+    private static readonly Regex PostgraduateAbbreviationRegex = new(@"\b(m\.?tech|mba|m\.?sc|m\.?a)\b", RegexOptions.Compiled);
+    private static readonly Regex UndergraduateAbbreviationRegex = new(@"\b(b\.?tech|b\.?e|b\.?ed|b\.?sc|b\.?a|b\.?com)\b", RegexOptions.Compiled);
+    private static readonly Regex DiplomaAbbreviationRegex = new(@"\biti\b", RegexOptions.Compiled);
 
     public InclusionSignals FromSource(AttendeeInclusionSource? source)
     {
@@ -117,17 +120,17 @@ public sealed class InclusionSignalsNormalizer
             return EducationBucket.Doctorate;
         }
 
-        if (ContainsAny(value, "master", "postgraduate", "post-graduate", "m.tech", "mtech", "mba", "msc", "m.sc", "ma ", "m.a"))
+        if (ContainsAny(value, "master", "postgraduate", "post-graduate") || PostgraduateAbbreviationRegex.IsMatch(value))
         {
             return EducationBucket.Postgraduate;
         }
 
-        if (ContainsAny(value, "bachelor", "undergraduate", "under-grad", "b.tech", "btech", "be ", "b.e", "bsc", "b.sc", "ba ", "b.a", "bcom"))
+        if (ContainsAny(value, "bachelor", "undergraduate", "under-grad") || UndergraduateAbbreviationRegex.IsMatch(value))
         {
             return EducationBucket.Undergraduate;
         }
 
-        if (ContainsAny(value, "diploma", "certificate", "iti"))
+        if (ContainsAny(value, "diploma", "certificate") || DiplomaAbbreviationRegex.IsMatch(value))
         {
             return EducationBucket.DiplomaOrCertificate;
         }
@@ -164,14 +167,14 @@ public sealed class InclusionSignalsNormalizer
             return SocioeconomicBucket.LowerMiddleClass;
         }
 
-        if (ContainsAny(value, "middle class"))
-        {
-            return SocioeconomicBucket.MiddleClass;
-        }
-
         if (ContainsAny(value, "upper middle"))
         {
             return SocioeconomicBucket.UpperMiddleClass;
+        }
+
+        if (ContainsAny(value, "middle class"))
+        {
+            return SocioeconomicBucket.MiddleClass;
         }
 
         if (ContainsAny(value, "upper class"))
