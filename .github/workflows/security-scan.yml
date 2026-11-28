@@ -12,6 +12,9 @@ jobs:
   gitleaks:
     name: Gitleaks PR Diff Scan
     runs-on: ubuntu-latest
+    # `secrets` is not available in step-level `if:` expressions; expose the presence check via job env instead.
+    env:
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
     steps:
       - name: Checkout
@@ -20,16 +23,16 @@ jobs:
           fetch-depth: 0
 
       - name: Run gitleaks-action (licensed org mode)
-        if: ${{ secrets.GITLEAKS_LICENSE != '' }}
+        if: ${{ env.GITLEAKS_LICENSE != '' }}
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_LICENSE: ${{ env.GITLEAKS_LICENSE }}
           GITLEAKS_CONFIG: .security/gitleaks.toml
           GITLEAKS_ENABLE_COMMENTS: false
 
       - name: Run gitleaks CLI on PR commit range (license-free fallback)
-        if: ${{ secrets.GITLEAKS_LICENSE == '' }}
+        if: ${{ env.GITLEAKS_LICENSE == '' }}
         run: |
           set -euo pipefail
           GITLEAKS_VERSION=8.30.1

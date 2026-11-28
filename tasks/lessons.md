@@ -973,3 +973,14 @@ The original backend implementation deferred the organizer UI, but the PRD succe
 
 ## 2026-11-20 - Outbox completion atomicity
 - An EF execution strategy alone does not make multiple database operations atomic. When recording the external publication result, wrap the conditional outbox completion and event-state update in an explicit transaction inside the execution strategy, and test rollback when the event update fails.
+
+## [2026-11-28] Local TUnit runs can be blocked by Windows Application Control
+- **What happened:** After a clean Release build (0 errors, 0 warnings), running `--treenode-filter` against the test project failed: "An Application Control policy has blocked this file" for `TUnit.Core.dll`.
+- **Root cause:** A machine-level Windows Application Control policy rejects unsigned test-host DLLs under `tests/*/bin`. Not a code defect.
+- **Fix:** None applied; the policy was not bypassed. Tests must be run on a machine or CI runner where that policy allows the test host.
+- **Prevention:** Report test execution status separately from build status. Do not claim tests pass when only the build succeeded.
+
+## [2026-11-28] Editing a file with a large old_string can duplicate imports
+- **What happened:** A replacement that re-included the file's first lines duplicated two `using` directives (CS0105) in ApprovalEndpoints.cs.
+- **Fix:** Removed the duplicates; the build then passed.
+- **Prevention:** Anchor edits on lines that are actually changing, and rebuild after every edit of a file with a using block.

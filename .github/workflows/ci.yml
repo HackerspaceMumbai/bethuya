@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     name: Build & Test
@@ -41,19 +44,26 @@ jobs:
 
   e2e:
     name: Playwright E2E
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest now resolves to 26.04, which Playwright 1.60 cannot install Chromium on.
+    runs-on: ubuntu-24.04
     if: github.ref == 'refs/heads/main'
     needs: build-and-test
 
+    # Npgsql is the only database provider (see Hackmum.Bethuya.Infrastructure), so E2E uses PostgreSQL.
+    # GitHub waits for the health check to pass before the first step runs.
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+      postgres:
+        image: postgres:17
         env:
-          SA_PASSWORD: "BethuyaCI-Dev2025"
-          ACCEPT_EULA: "Y"
-          MSSQL_PID: Developer
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: bethuya-ci-postgres
         ports:
-          - 1433:1433
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
 
     steps:
       - name: Checkout
@@ -76,42 +86,11 @@ jobs:
       - name: Install Playwright browsers
         run: pwsh tests/Hackmum.Bethuya.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
-      - name: Wait for SQL Server
-        run: |
-          echo "Waiting for SQL Server to accept connections..."
-          SQLCMD=""
-          if [ -f /opt/mssql-tools18/bin/sqlcmd ]; then
-            SQLCMD="/opt/mssql-tools18/bin/sqlcmd -C"
-          elif [ -f /opt/mssql-tools/bin/sqlcmd ]; then
-            SQLCMD="/opt/mssql-tools/bin/sqlcmd"
-          fi
-          if [ -z "$SQLCMD" ]; then
-            echo "sqlcmd not found — falling back to nc + sleep..."
-            for i in $(seq 1 30); do
-              if nc -z -w 1 localhost 1433 2>/dev/null; then
-                echo "Port 1433 open — sleeping 15s for SQL Server to initialise..."
-                sleep 15
-                break
-              fi
-              echo "Attempt $i/30 — retrying in 3s..."
-              sleep 3
-            done
-          else
-            for i in $(seq 1 30); do
-              if $SQLCMD -S localhost,1433 -U sa -P "BethuyaCI-Dev2025" -Q "SELECT 1" -l 3 > /dev/null 2>&1; then
-                echo "SQL Server is accepting connections."
-                break
-              fi
-              echo "Attempt $i/30 — retrying in 3s..."
-              sleep 3
-            done
-          fi
-
       - name: Create E2E database schema
         env:
           ASPNETCORE_ENVIRONMENT: Development
           DOTNET_ENVIRONMENT: Development
-          ConnectionStrings__BethuyaDb: "Server=localhost,1433;Database=BethuyaE2EDb;User Id=sa;Password=BethuyaCI-Dev2025;TrustServerCertificate=True;Encrypt=False"
+          ConnectionStrings__BethuyaDb: "Host=localhost;Port=5432;Database=BethuyaE2EDb;Username=postgres;Password=bethuya-ci-postgres"
         run: |
           dotnet run --project src/Bethuya.MigrationService/Bethuya.MigrationService.csproj \
             --no-build --no-launch-profile --configuration Release
@@ -119,7 +98,7 @@ jobs:
       - name: Start backend API
         env:
           ASPNETCORE_ENVIRONMENT: Development
-          ConnectionStrings__BethuyaDb: "Server=localhost,1433;Database=BethuyaE2EDb;User Id=sa;Password=BethuyaCI-Dev2025;TrustServerCertificate=True;Encrypt=False"
+          ConnectionStrings__BethuyaDb: "Host=localhost;Port=5432;Database=BethuyaE2EDb;Username=postgres;Password=bethuya-ci-postgres"
         run: |
           dotnet run --project src/Hackmum.Bethuya.Backend/Hackmum.Bethuya.Backend.csproj \
             --no-build --no-launch-profile --configuration Release \
@@ -171,6 +150,8 @@ jobs:
       - name: Run E2E tests
         env:
           BETHUYA_BASE_URL: http://localhost:5095
+          BETHUYA_BACKEND_URL: http://localhost:5247
+          ASPIRE_BACKEND_URL: http://localhost:5247
           BETHUYA_BUDGET_PAGE_LOAD_MS: 30000
           BETHUYA_BUDGET_NAVIGATION_MS: 15000
           BETHUYA_BUDGET_FORM_SUBMIT_MS: 30000
