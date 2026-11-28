@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using GitHub.Copilot;
+using GitHub.Copilot.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -52,16 +53,7 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
         var responseBuilder = new System.Text.StringBuilder();
         var done = new TaskCompletionSource();
 
-        await using var session = await client.CreateSessionAsync(new SessionConfig
-        {
-            Model = _options.Value.Model,
-            SystemMessage = new SystemMessageConfig
-            {
-                Mode = SystemMessageMode.Replace,
-                Content = CommunityEventPatterns.GetSystemPrompt()
-            },
-            OnPermissionRequest = PermissionHandler.ApproveAll
-        }, ct);
+        await using var session = await client.CreateSessionAsync(CreateSessionConfig(_options.Value.Model), ct);
 
 
         // Assistant message stream
@@ -70,7 +62,6 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
             if (msg.Data.Content is not null)
             {
                 responseBuilder.Append(msg.Data.Content);
-                Console.WriteLine(msg.Data.Content);
             }
         });
 
@@ -94,6 +85,27 @@ public sealed partial class DateRecommendationService : IDateRecommendationServi
 
         return ParseResponse(responseText);
     }
+
+    /// <summary>
+    /// The session only needs a text answer and its prompt carries caller input,
+    /// so every tool is excluded and any permission request is rejected.
+    /// </summary>
+    internal static SessionConfig CreateSessionConfig(string model) => new()
+    {
+        Model = model,
+        SystemMessage = new SystemMessageConfig
+        {
+            Mode = SystemMessageMode.Replace,
+            Content = CommunityEventPatterns.GetSystemPrompt()
+        },
+        ExcludedTools = new ToolSet().AddBuiltIn("*").AddMcp("*").AddCustom("*"),
+        OnPermissionRequest = DenyAllPermissions
+    };
+
+#pragma warning disable GHCP001 // PermissionDecision is marked experimental; the SDK has no stable deny helper.
+    internal static Task<PermissionDecision> DenyAllPermissions(PermissionRequest request, PermissionInvocation invocation) =>
+        Task.FromResult(PermissionDecision.Reject("Tools are disabled for date recommendations."));
+#pragma warning restore GHCP001
 
     private static string BuildUserPrompt(DateRecommendationContext context)
     {
